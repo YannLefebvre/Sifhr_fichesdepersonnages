@@ -206,8 +206,8 @@
 // ═══════════════════════════════════════════════
 // CONFIGURATION — remplace par tes vraies valeurs
 // ═══════════════════════════════════════════════
-const SUPABASE_URL   = 'https://qyifamxfvswcglvrzduf.supabase.co';
-const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
+const SUPABASE_URL   = 'SUPABASE_URL';
+const SUPABASE_KEY   = 'SUPABASE_ANON_KEY';
 // ═══════════════════════════════════════════════
 
 const params   = new URLSearchParams(location.search);
@@ -564,7 +564,7 @@ ACTIONS.forEach((action,ai)=>{
 });
 
 /* ── Helper : crée un item accordéon titre+texte ── */
-function buildAccItem(panel, stateArr, idx, titlePlaceholder, textPlaceholder){
+function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
   const item=document.createElement('div'); item.className='acc-item';
 
   const titleWrap=document.createElement('div'); titleWrap.className='acc-title-wrap';
@@ -574,7 +574,7 @@ function buildAccItem(panel, stateArr, idx, titlePlaceholder, textPlaceholder){
 
   const titleInp=document.createElement('input'); titleInp.type='text'; titleInp.className='acc-title';
   titleInp.placeholder=titlePlaceholder;
-  const cur=stateArr[idx]||{title:'',text:''};
+  const cur=(getArr()[idx])||{title:'',text:''};
   titleInp.value=cur.title||'';
   titleWrap.appendChild(titleInp);
   item.appendChild(titleWrap);
@@ -597,9 +597,9 @@ function buildAccItem(panel, stateArr, idx, titlePlaceholder, textPlaceholder){
     toggle.classList.toggle('open',!isOpen);
   });
 
-  // Save on input
+  // Save on input — write directly into state via getter
   function saveItem(){
-    stateArr[idx]={title:titleInp.value, text:textArea.value};
+    getArr()[idx]={title:titleInp.value, text:textArea.value};
     saveState();
   }
   titleInp.addEventListener('input', saveItem);
@@ -613,33 +613,33 @@ function buildAccItem(panel, stateArr, idx, titlePlaceholder, textPlaceholder){
 const traitsPanel=document.getElementById('traits-inner');
 const traitWidgets=[];
 for(let i=0;i<NUM_TRAITS;i++){
-  traitWidgets.push(buildAccItem(traitsPanel, state.traits, i, 'Titre du trait…', 'Description du trait…'));
+  traitWidgets.push(buildAccItem(traitsPanel, ()=>state.traits, i, 'Titre du trait…', 'Description du trait…'));
 }
 
 /* ── Confrérie ── */
 const confreriePanel=document.getElementById('confrerie-inner');
 const confrerieWidgets=[];
 for(let i=0;i<NUM_CONFRERIE;i++){
-  confrerieWidgets.push(buildAccItem(confreriePanel, state.confrerie, i, 'Nom, rang…', 'Détails…'));
+  confrerieWidgets.push(buildAccItem(confreriePanel, ()=>state.confrerie, i, 'Nom, rang…', 'Détails…'));
 }
 
 /* ── Équipement ── */
 const equipPanel=document.getElementById('equipement-inner');
 const equipWidgets=[];
 for(let i=0;i<NUM_EQUIPEMENT;i++){
-  equipWidgets.push(buildAccItem(equipPanel, state.equipement, i, "Nom de l'objet…", 'Description…'));
+  equipWidgets.push(buildAccItem(equipPanel, ()=>state.equipement, i, "Nom de l'objet…", 'Description…'));
 }
 
 /* ── Artefacts ── */
 const artefactsPanel=document.getElementById('artefacts-inner');
 const artefactWidgets=[];
 for(let i=0;i<NUM_ARTEFACTS;i++){
-  artefactWidgets.push(buildAccItem(artefactsPanel, state.artefacts, i, "Nom de l'artefact…", 'Propriétés, histoire…'));
+  artefactWidgets.push(buildAccItem(artefactsPanel, ()=>state.artefacts, i, "Nom de l'artefact…", 'Propriétés, histoire…'));
 }
 
 /* ── Historique ── */
 const historiquePanel=document.getElementById('historique-inner');
-const historiqueWidget=buildAccItem(historiquePanel, [state.historique], 0, 'Titre…', 'Historique du personnage…');
+const historiqueWidget=buildAccItem(historiquePanel, ()=>[state.historique], 0, 'Titre…', 'Historique du personnage…');
 // Wire save back to state.historique directly
 function saveHistorique(){
   state.historique={title:historiqueWidget.titleInp.value, text:historiqueWidget.textArea.value};
