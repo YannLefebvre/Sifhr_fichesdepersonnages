@@ -142,7 +142,7 @@
 </div>
 
 <div class="oct-wrap">
-<svg id="oct" viewBox="-110 -110 520 520" xmlns="http://www.w3.org/2000/svg">
+<svg id="oct" viewBox="-130 -130 560 560" xmlns="http://www.w3.org/2000/svg">
   <g id="roue"></g>
   <g id="labels-static"></g>
 </svg>
@@ -428,7 +428,7 @@ function rebuildLabels(){
 
     // ── Vertus / vices : juste après les cases de score, sur l'axe du secteur ──
     // Placées entre les cases (OUTER_R+14) et les étiquettes d'humeur
-    const vvR = OUTER_R + (isDiag ? 34 : 30);
+    const vvR = OUTER_R + (isDiag ? 54 : 50);
     const vvPos = polar(CX,CY,vvR,visAng);
     const vg=svgEl('g',{},labelsStatic);
     svgEl('text',{x:vvPos.x.toFixed(2),y:(vvPos.y-4).toFixed(2),
@@ -439,7 +439,7 @@ function rebuildLabels(){
       'font-style':'italic','text-anchor':'middle','dominant-baseline':'auto'},vg).textContent=sec.sub2;
 
     // ── Numéro + nom d'humeur : plus loin sur l'axe ──
-    const lblR = OUTER_R + (isDiag ? 82 : 68);
+    const lblR = OUTER_R + (isDiag ? 104 : 88);
     const lblPos=polar(CX,CY,lblR,visAng);
     const words=sec.label.split(' ');
     const lineH=13;
