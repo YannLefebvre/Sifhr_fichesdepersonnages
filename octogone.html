@@ -318,10 +318,10 @@ let wheelRot=0;
 const NUM_EQUIPEMENT=6, NUM_ARTEFACTS=5;
 const NUM_CONFRERIE=4;
 let state={tokens:{},scores:{},actions:{},
-  traits:Array(NUM_TRAITS).fill({title:'',text:''}),
-  confrerie:Array(NUM_CONFRERIE).fill({title:'',text:''}),
-  equipement:Array(NUM_EQUIPEMENT).fill({title:'',text:''}),
-  artefacts:Array(NUM_ARTEFACTS).fill({title:'',text:''}),
+  traits:Array.from({length:NUM_TRAITS},()=>({title:'',text:''})),
+  confrerie:Array.from({length:NUM_CONFRERIE},()=>({title:'',text:''})),
+  equipement:Array.from({length:NUM_EQUIPEMENT},()=>({title:'',text:''})),
+  artefacts:Array.from({length:NUM_ARTEFACTS},()=>({title:'',text:''})),
   historique:{title:'',text:''},
   portrait:'',
   des:'',ether:'',wheelRot:0,accordion:{}};
