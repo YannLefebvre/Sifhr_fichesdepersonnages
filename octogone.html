@@ -1056,14 +1056,21 @@ function selectDiceRole(role){
     document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
     document.getElementById('dreset-btn').style.display='block';
   }
-  // Verrouiller les X premiers dés selon dés dévoyés
   if(role==='launcher'){
-    const desDevoyes=parseInt(desInput.value)||0;
     const s=dS();
     if(!s.dice||!s.dice.length) dInitDice(false);
-    if(desDevoyes>0 && s.dice){
-      s.dice.forEach((d,idx)=>{
-        if(idx<desDevoyes) d.locked=true;
+
+    // Modif 1 : appliquer les règles des jetons dès l'ouverture
+    // Remettre à null les dés non verrouillés pour une application propre
+    s.dice.forEach(d=>{ if(!d.locked){ d.value=null; d.modified=false; d.color=d.color==='black_token'?'white':d.color; } });
+    dApplyTokenRules();
+
+    // Modif 2 : verrouiller les X dés dévoyés APRÈS les dés déjà verrouillés par majorité noire
+    const desDevoyes=parseInt(desInput.value)||0;
+    if(desDevoyes>0){
+      let count=0;
+      s.dice.forEach(d=>{
+        if(!d.locked && count<desDevoyes){ d.locked=true; count++; }
       });
     }
   }
