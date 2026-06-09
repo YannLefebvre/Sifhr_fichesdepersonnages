@@ -206,8 +206,8 @@
 // ═══════════════════════════════════════════════
 // CONFIGURATION — remplace par tes vraies valeurs
 // ═══════════════════════════════════════════════
-const SUPABASE_URL   = 'https://qyifamxfvswcglvrzduf.supabase.co';
-const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
+const SUPABASE_URL   = 'SUPABASE_URL';
+const SUPABASE_KEY   = 'SUPABASE_ANON_KEY';
 // ═══════════════════════════════════════════════
 
 const params   = new URLSearchParams(location.search);
@@ -407,7 +407,7 @@ SECTORS.forEach((sec)=>{
   const perpRad=ang*Math.PI/180;
   const px=Math.cos(perpRad),py=Math.sin(perpRad);
   const qx=-py,qy=px;
-  [-10,0,10].forEach((off,qi)=>{
+  [-5,5].forEach((off,qi)=>{
     const sx=c.x+qx*off,sy=c.y+qy*off;
     const sqSz=9;
     const g=svgEl('g',{class:'score-sq',id:`sq-${sec.id}-${qi}`},roue);
