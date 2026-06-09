@@ -363,8 +363,8 @@
 // ═══════════════════════════════════════════════
 // CONFIGURATION — remplace par tes vraies valeurs
 // ═══════════════════════════════════════════════
-const SUPABASE_URL   = 'https://qyifamxfvswcglvrzduf.supabase.co';
-const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
+const SUPABASE_URL   = 'SUPABASE_URL';
+const SUPABASE_KEY   = 'SUPABASE_ANON_KEY';
 // ═══════════════════════════════════════════════
 
 const params   = new URLSearchParams(location.search);
@@ -1153,11 +1153,48 @@ function dInitDice(preserve){
   s.dice=nd;
 }
 
+function dApplyTokenRules(){
+  // Parcourt les axes 1→8 dans l'ordre et fixe les dés blancs disponibles
+  const s=dS();
+  const sorted=[...SECTORS].sort((a,b)=>a.num-b.num);
+  sorted.forEach(sec=>{
+    const tokens=state.tokens[sec.id];
+    if(!tokens) return;
+    const whites=tokens.filter(t=>t==='white').length;
+    const blacks=tokens.filter(t=>t==='black').length;
+    const total=whites+blacks;
+    if(total<3) return; // axe non plein
+    const majorityWhite = whites>blacks; // 2b1n ou 3b → true ; 2n1b ou 3n → false
+    // Trouver le premier dé blanc non encore assigné par cette règle
+    const dieIdx=s.dice.findIndex(d=>d.color==='white'&&!d._tokenAssigned);
+    if(dieIdx===-1) return; // plus de dés blancs disponibles
+    const d=s.dice[dieIdx];
+    d.value=sec.num;
+    d._tokenAssigned=true;
+    if(majorityWhite){
+      // Dé blanc, déverrouillé
+      d.color='white';
+      d.locked=false;
+      d.modified=false;
+    } else {
+      // Dé passé en noir, verrouillé
+      d.color='black_token'; // couleur spéciale pour rendu
+      d.locked=true;
+      d.modified=true;
+    }
+  });
+  // Nettoyer le flag temporaire
+  s.dice.forEach(d=>{ delete d._tokenAssigned; });
+}
+
 function dRollDice(){
   if(dCurrentRole!=='launcher') return;
   const s=dS();
   s.rolled=true;
   if(!s.dice||!s.dice.length) dInitDice(false);
+  // Appliquer les règles des jetons avant le lancer
+  dApplyTokenRules();
+  // Lancer les dés non verrouillés et sans valeur
   s.dice.forEach(d=>{ if(!d.locked&&d.value===null) d.value=Math.ceil(Math.random()*10); });
   document.getElementById('dice-section-lbl').textContent='Dés';
   document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
@@ -1211,9 +1248,10 @@ function dMakeDieSVG(d,i,animate){
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   svg.setAttribute('width','100%');
   svg.setAttribute('style','display:block');
-  const isModified=d.modified,isLocked=d.locked,isWhite=d.color==='white',hasValue=d.value!==null;
+  const isModified=d.modified,isLocked=d.locked,isWhite=d.color==='white'&&d.color!=='black_token',hasValue=d.value!==null;
   let bodyFill,bodyStroke,ridgeStroke,textFill,labelFill,inputLineColor;
-  if(isModified){bodyFill='#1a1a1a';bodyStroke='#444';ridgeStroke='#555';textFill='#fff';labelFill='#888';inputLineColor='#666';}
+  const isBlackToken=d.color==='black_token';
+  if(isBlackToken||isModified){bodyFill='#1a1a1a';bodyStroke='#444';ridgeStroke='#555';textFill='#fff';labelFill='#888';inputLineColor='#666';}
   else if(isWhite){bodyFill='#f2f2f2';bodyStroke='#bbb';ridgeStroke='#ccc';textFill='#1a1a1a';labelFill='#aaa';inputLineColor='#bbb';}
   else{bodyFill='#E24B4A';bodyStroke='#a83030';ridgeStroke='#a02828';textFill='#fff';labelFill='#f7b0b0';inputLineColor='#f09090';}
   const cx=45,cy=50;
