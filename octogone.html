@@ -206,8 +206,8 @@
 // ═══════════════════════════════════════════════
 // CONFIGURATION — remplace par tes vraies valeurs
 // ═══════════════════════════════════════════════
-const SUPABASE_URL   = 'https://qyifamxfvswcglvrzduf.supabase.co';
-const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
+const SUPABASE_URL   = 'SUPABASE_URL';
+const SUPABASE_KEY   = 'SUPABASE_ANON_KEY';
 // ═══════════════════════════════════════════════
 
 const params   = new URLSearchParams(location.search);
@@ -627,14 +627,14 @@ for(let i=0;i<NUM_CONFRERIE;i++){
 const equipPanel=document.getElementById('equipement-inner');
 const equipWidgets=[];
 for(let i=0;i<NUM_EQUIPEMENT;i++){
-  equipWidgets.push(buildAccItem(equipPanel, state.equipement, i, 'Nom de l'objet…', 'Description…'));
+  equipWidgets.push(buildAccItem(equipPanel, state.equipement, i, "Nom de l'objet…", 'Description…'));
 }
 
 /* ── Artefacts ── */
 const artefactsPanel=document.getElementById('artefacts-inner');
 const artefactWidgets=[];
 for(let i=0;i<NUM_ARTEFACTS;i++){
-  artefactWidgets.push(buildAccItem(artefactsPanel, state.artefacts, i, 'Nom de l'artefact…', 'Propriétés, histoire…'));
+  artefactWidgets.push(buildAccItem(artefactsPanel, state.artefacts, i, "Nom de l'artefact…", 'Propriétés, histoire…'));
 }
 
 /* ── Historique ── */
