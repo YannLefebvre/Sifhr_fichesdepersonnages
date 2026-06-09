@@ -38,9 +38,18 @@
   .action-squares { display:flex; gap:4px; }
   .act-sq { width:18px; height:18px; border:1px solid var(--border); background:var(--sq-empty); border-radius:2px; cursor:pointer; transition:background .15s; }
   .act-sq.filled { background:var(--sq-fill); }
-  .trait-row { display:flex; margin-bottom:.3rem; }
-  .trait-input { width:100%; background:var(--input-bg); border:none; border-bottom:1px dotted var(--border); font-family:'Crimson Text',serif; font-size:.9rem; color:var(--ink); padding:2px 4px; outline:none; }
-  .trait-input:focus { border-bottom-color:var(--accent); background:#fff; }
+  /* ── Accordion items ── */
+  .acc-item { margin-bottom:.35rem; border-bottom:1px dotted var(--border); }
+  .acc-title-wrap { display:flex; align-items:center; gap:.4rem; }
+  .acc-toggle { flex-shrink:0; width:14px; height:14px; cursor:pointer; color:var(--ink3); font-size:.65rem; user-select:none; display:flex; align-items:center; justify-content:center; transition:transform .2s; }
+  .acc-toggle.open { transform:rotate(90deg); }
+  .acc-title { flex:1; background:transparent; border:none; font-family:'Crimson Text',serif; font-size:.9rem; color:var(--ink); padding:2px 4px; outline:none; cursor:text; }
+  .acc-title:focus { background:var(--input-bg); }
+  .acc-title::placeholder { color:var(--border); }
+  .acc-body { overflow:hidden; max-height:0; opacity:0; transition:max-height .25s ease, opacity .2s ease; }
+  .acc-body.open { max-height:300px; opacity:1; }
+  .acc-text { width:100%; background:var(--input-bg); border:none; border-left:2px solid var(--border2); font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2); padding:4px 6px; outline:none; resize:none; min-height:3em; line-height:1.5; margin:.2rem 0 .4rem 1rem; width:calc(100% - 1rem); box-sizing:border-box; }
+  .acc-text:focus { border-left-color:var(--accent); background:#fff; }
   .des-row { display:flex; align-items:center; gap:.75rem; max-width:700px; margin:0 auto .5rem; padding:.5rem .75rem; background:var(--section-bg); border:1px solid var(--border); border-radius:var(--radius); }
   .des-label { font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.08em; color:var(--accent); text-transform:uppercase; white-space:nowrap; }
   .des-input { width:60px; background:var(--input-bg); border:1px solid var(--border); border-radius:2px; font-family:'Cinzel',serif; font-size:1rem; color:var(--ink); text-align:center; padding:3px; outline:none; }
@@ -60,23 +69,7 @@
   .panel-body { overflow:hidden; transition:max-height .3s ease, opacity .25s ease; max-height:600px; opacity:1; }
   .panel-body.collapsed { max-height:0; opacity:0; }
   .panel-body-inner { padding:.6rem .75rem .75rem; }
-  /* Confrérie textarea */
-  .confrerie-textarea {
-    width:100%; min-height:90px; resize:vertical;
-    background:var(--input-bg); border:none; border-bottom:1px dotted var(--border);
-    font-family:'Crimson Text',serif; font-size:.9rem; color:var(--ink);
-    padding:4px; outline:none; line-height:1.5;
-  }
-  .confrerie-textarea:focus { border-color:var(--accent); background:#fff; }
-  /* Artefacts textarea rows */
-  .artefact-row { display:flex; margin-bottom:.4rem; }
-  .artefact-input {
-    width:100%; background:var(--input-bg); border:none;
-    border-bottom:1px dotted var(--border);
-    font-family:'Crimson Text',serif; font-size:.85rem; color:var(--ink);
-    padding:3px 4px; outline:none; resize:none; min-height:2.4em; line-height:1.4;
-  }
-  .artefact-input:focus { border-bottom-color:var(--accent); background:#fff; }
+  /* (accordion items handle confrerie/artefacts/equipement now) */
   /* Wide panels below actions/traits */
   .lower-wide { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; max-width:700px; margin:0 auto 1rem; }
   @media(max-width:600px){ .lower-wide{grid-template-columns:1fr;} }
@@ -101,6 +94,24 @@
   #modal-btn:hover { background:#6e1a1a; }
   #modal-err { color:var(--accent); font-size:.8rem; margin-top:.5rem; min-height:1em; font-style:italic; }
   #app { display:none; }
+
+  /* ── Portrait ── */
+  .portrait-panel-body { overflow:hidden; transition:max-height .3s ease, opacity .25s ease; max-height:600px; opacity:1; }
+  .portrait-panel-body.collapsed { max-height:0; opacity:0; }
+  .portrait-upload-btn {
+    display:inline-block; font-family:'Cinzel',serif; font-size:.75rem;
+    background:none; border:1px solid var(--border); border-radius:3px;
+    padding:3px 12px; cursor:pointer; color:var(--ink2); margin-bottom:.6rem;
+  }
+  .portrait-upload-btn:hover { background:var(--border2); }
+  .portrait-img-wrap {
+    position:fixed; inset:0; background:rgba(26,21,16,0.85);
+    display:flex; align-items:center; justify-content:center;
+    z-index:200; cursor:zoom-out;
+  }
+  .portrait-img-wrap img { max-height:92vh; max-width:92vw; border-radius:4px; box-shadow:0 8px 40px rgba(0,0,0,0.7); }
+  .portrait-thumb { max-width:160px; max-height:220px; border-radius:3px; cursor:zoom-in; border:1px solid var(--border); display:block; margin:.4rem auto; }
+  .portrait-placeholder { text-align:center; font-style:italic; color:var(--ink3); font-size:.85rem; padding:.5rem 0; }
 </style>
 </head>
 <body>
@@ -150,9 +161,7 @@
 <div class="lower-wide">
   <div class="panel">
     <div class="panel-title" data-target="confrerie-panel">Confrérie</div>
-    <div class="panel-body" id="confrerie-panel"><div class="panel-body-inner">
-      <textarea class="confrerie-textarea" id="confrerie-input" placeholder="Nom, rang, allégeances…"></textarea>
-    </div></div>
+    <div class="panel-body" id="confrerie-panel"><div class="panel-body-inner" id="confrerie-inner"></div></div>
   </div>
   <div class="panel">
     <div class="panel-title" data-target="equipement-panel">Équipement</div>
@@ -161,6 +170,28 @@
   <div class="panel">
     <div class="panel-title" data-target="artefacts-panel">Artefacts</div>
     <div class="panel-body" id="artefacts-panel"><div class="panel-body-inner" id="artefacts-inner"></div></div>
+  </div>
+</div>
+<div style="max-width:700px;margin:0 auto 1rem;">
+  <div class="panel">
+    <div class="panel-title" data-target="historique-panel">Historique du personnage</div>
+    <div class="panel-body" id="historique-panel"><div class="panel-body-inner" id="historique-inner"></div></div>
+  </div>
+</div>
+<div style="max-width:700px;margin:0 auto 1rem;">
+  <div class="panel">
+    <div class="panel-title" data-target="portrait-panel-body" id="portrait-panel-title">Portrait</div>
+    <div class="portrait-panel-body" id="portrait-panel-body">
+      <div class="panel-body-inner">
+        <label class="portrait-upload-btn">
+          Choisir une image
+          <input type="file" id="portrait-file-input" accept="image/*" style="display:none;">
+        </label>
+        <div id="portrait-display">
+          <p class="portrait-placeholder" id="portrait-placeholder">Aucun portrait chargé</p>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 <div class="des-row">
@@ -285,7 +316,15 @@ const ACTIONS=['Se déplacer','Se mesurer','Occulter','Imaginer','Fabriquer','D�
 const NUM_TRAITS=10,SQ_PER_ACTION=6;
 let wheelRot=0;
 const NUM_EQUIPEMENT=6, NUM_ARTEFACTS=5;
-let state={tokens:{},scores:{},actions:{},traits:Array(NUM_TRAITS).fill(''),des:'',ether:'',wheelRot:0,confrerie:'',equipement:Array(NUM_EQUIPEMENT).fill(''),artefacts:Array(NUM_ARTEFACTS).fill(''),accordion:{}};
+const NUM_CONFRERIE=4;
+let state={tokens:{},scores:{},actions:{},
+  traits:Array(NUM_TRAITS).fill({title:'',text:''}),
+  confrerie:Array(NUM_CONFRERIE).fill({title:'',text:''}),
+  equipement:Array(NUM_EQUIPEMENT).fill({title:'',text:''}),
+  artefacts:Array(NUM_ARTEFACTS).fill({title:'',text:''}),
+  historique:{title:'',text:''},
+  portrait:'',
+  des:'',ether:'',wheelRot:0,accordion:{}};
 SECTORS.forEach(s=>{state.tokens[s.id]=['empty','empty','empty'];});
 
 function deg2rad(d){return(d-90)*Math.PI/180;}
@@ -524,40 +563,137 @@ ACTIONS.forEach((action,ai)=>{
   row.appendChild(sqs);actPanel.appendChild(row);
 });
 
+/* ── Helper : crée un item accordéon titre+texte ── */
+function buildAccItem(panel, stateArr, idx, titlePlaceholder, textPlaceholder){
+  const item=document.createElement('div'); item.className='acc-item';
+
+  const titleWrap=document.createElement('div'); titleWrap.className='acc-title-wrap';
+
+  const toggle=document.createElement('span'); toggle.className='acc-toggle'; toggle.textContent='▶';
+  titleWrap.appendChild(toggle);
+
+  const titleInp=document.createElement('input'); titleInp.type='text'; titleInp.className='acc-title';
+  titleInp.placeholder=titlePlaceholder;
+  const cur=stateArr[idx]||{title:'',text:''};
+  titleInp.value=cur.title||'';
+  titleWrap.appendChild(titleInp);
+  item.appendChild(titleWrap);
+
+  const body=document.createElement('div'); body.className='acc-body';
+  const textArea=document.createElement('textarea'); textArea.className='acc-text';
+  textArea.placeholder=textPlaceholder; textArea.value=cur.text||'';
+  body.appendChild(textArea);
+  item.appendChild(body);
+
+  // Toggle on click
+  toggle.addEventListener('click',()=>{
+    const isOpen=body.classList.contains('open');
+    body.classList.toggle('open',!isOpen);
+    toggle.classList.toggle('open',!isOpen);
+  });
+  titleInp.addEventListener('dblclick',()=>{
+    const isOpen=body.classList.contains('open');
+    body.classList.toggle('open',!isOpen);
+    toggle.classList.toggle('open',!isOpen);
+  });
+
+  // Save on input
+  function saveItem(){
+    stateArr[idx]={title:titleInp.value, text:textArea.value};
+    saveState();
+  }
+  titleInp.addEventListener('input', saveItem);
+  textArea.addEventListener('input', saveItem);
+
+  panel.appendChild(item);
+  return {titleInp, textArea, body, toggle};
+}
+
 /* ── Traits ── */
 const traitsPanel=document.getElementById('traits-inner');
+const traitWidgets=[];
 for(let i=0;i<NUM_TRAITS;i++){
-  const row=document.createElement('div');row.className='trait-row';
-  const inp=document.createElement('input');inp.type='text';inp.className='trait-input';
-  inp.placeholder='···';inp.dataset.ti=i;inp.value=state.traits[i]||'';
-  inp.addEventListener('input',()=>{state.traits[parseInt(inp.dataset.ti)]=inp.value;saveState();});
-  row.appendChild(inp);traitsPanel.appendChild(row);
+  traitWidgets.push(buildAccItem(traitsPanel, state.traits, i, 'Titre du trait…', 'Description du trait…'));
 }
 
 /* ── Confrérie ── */
-const confrerieInput=document.getElementById('confrerie-input');
-confrerieInput.addEventListener('input',()=>{state.confrerie=confrerieInput.value;saveState();});
+const confreriePanel=document.getElementById('confrerie-inner');
+const confrerieWidgets=[];
+for(let i=0;i<NUM_CONFRERIE;i++){
+  confrerieWidgets.push(buildAccItem(confreriePanel, state.confrerie, i, 'Nom, rang…', 'Détails…'));
+}
 
 /* ── Équipement ── */
 const equipPanel=document.getElementById('equipement-inner');
+const equipWidgets=[];
 for(let i=0;i<NUM_EQUIPEMENT;i++){
-  const row=document.createElement('div');row.className='trait-row';
-  const inp=document.createElement('input');inp.type='text';inp.className='trait-input';
-  inp.placeholder='···';inp.dataset.ei=i;inp.value=state.equipement[i]||'';
-  inp.addEventListener('input',()=>{state.equipement[parseInt(inp.dataset.ei)]=inp.value;saveState();});
-  row.appendChild(inp);equipPanel.appendChild(row);
+  equipWidgets.push(buildAccItem(equipPanel, state.equipement, i, 'Nom de l'objet…', 'Description…'));
 }
 
 /* ── Artefacts ── */
 const artefactsPanel=document.getElementById('artefacts-inner');
+const artefactWidgets=[];
 for(let i=0;i<NUM_ARTEFACTS;i++){
-  const row=document.createElement('div');row.className='artefact-row';
-  const ta=document.createElement('textarea');ta.className='artefact-input';
-  ta.placeholder='···';ta.dataset.ari=i;ta.value=state.artefacts[i]||'';
-  ta.rows=2;
-  ta.addEventListener('input',()=>{state.artefacts[parseInt(ta.dataset.ari)]=ta.value;saveState();});
-  row.appendChild(ta);artefactsPanel.appendChild(row);
+  artefactWidgets.push(buildAccItem(artefactsPanel, state.artefacts, i, 'Nom de l'artefact…', 'Propriétés, histoire…'));
 }
+
+/* ── Historique ── */
+const historiquePanel=document.getElementById('historique-inner');
+const historiqueWidget=buildAccItem(historiquePanel, [state.historique], 0, 'Titre…', 'Historique du personnage…');
+// Wire save back to state.historique directly
+function saveHistorique(){
+  state.historique={title:historiqueWidget.titleInp.value, text:historiqueWidget.textArea.value};
+  saveState();
+}
+historiqueWidget.titleInp.addEventListener('input', saveHistorique);
+historiqueWidget.textArea.addEventListener('input', saveHistorique);
+
+/* ── Portrait ── */
+const portraitFileInput = document.getElementById('portrait-file-input');
+const portraitDisplay = document.getElementById('portrait-display');
+const portraitPlaceholder = document.getElementById('portrait-placeholder');
+
+function renderPortrait(dataUrl){
+  portraitDisplay.innerHTML='';
+  if(!dataUrl){ portraitDisplay.appendChild(portraitPlaceholder); return; }
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.className = 'portrait-thumb';
+  img.title = 'Cliquer pour agrandir';
+  img.addEventListener('click', ()=>showPortraitFullscreen(dataUrl));
+  portraitDisplay.appendChild(img);
+}
+
+function showPortraitFullscreen(dataUrl){
+  const wrap = document.createElement('div');
+  wrap.className = 'portrait-img-wrap';
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  wrap.appendChild(img);
+  wrap.addEventListener('click', ()=>wrap.remove());
+  document.body.appendChild(wrap);
+}
+
+portraitFileInput.addEventListener('change', ()=>{
+  const file = portraitFileInput.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    state.portrait = e.target.result;
+    renderPortrait(state.portrait);
+    saveState();
+  };
+  reader.readAsDataURL(file);
+});
+
+// Portrait accordion — wire to panel accordion system
+const portraitPanelTitle = document.getElementById('portrait-panel-title');
+const portraitPanelBody = document.getElementById('portrait-panel-body');
+portraitPanelTitle.addEventListener('click', ()=>{
+  const isCollapsed = portraitPanelBody.classList.contains('collapsed');
+  portraitPanelBody.classList.toggle('collapsed', !isCollapsed);
+  portraitPanelTitle.classList.toggle('collapsed', !isCollapsed);
+});
 
 /* ── Accordion ── */
 function toggleAccordion(titleEl){
@@ -613,13 +749,54 @@ function applyRemoteState(saved){
     });
     if(saved.scores){state.scores=saved.scores;Object.entries(saved.scores).forEach(([key,val])=>{const[sid,qi]=key.split('_');const t=document.querySelector(`#sq-${sid}-${qi} text`);if(t) t.textContent=val;});}
     if(saved.actions){state.actions=saved.actions;Object.entries(saved.actions).forEach(([key,filled])=>{const[ai,si]=key.split('_');const sq=document.querySelector(`.act-sq[data-ai="${ai}"][data-si="${si}"]`);if(sq) sq.classList.toggle('filled',!!filled);});}
-    if(saved.traits){state.traits=saved.traits;saved.traits.forEach((t,i)=>{const inp=document.querySelector(`.trait-input[data-ti="${i}"]`);if(inp) inp.value=t;});}
+    if(saved.traits){
+      state.traits=saved.traits;
+      saved.traits.forEach((t,i)=>{
+        if(traitWidgets[i]&&t){
+          traitWidgets[i].titleInp.value=t.title||'';
+          traitWidgets[i].textArea.value=t.text||'';
+        }
+      });
+    }
     if(saved.des!==undefined){state.des=saved.des;desInput.value=saved.des;}
     if(saved.ether!==undefined){state.ether=saved.ether;etherInput.value=saved.ether;}
     if(saved.wheelRot!==undefined) applyRotation(saved.wheelRot, true);
-    if(saved.confrerie!==undefined){state.confrerie=saved.confrerie;confrerieInput.value=saved.confrerie;}
-    if(saved.equipement){state.equipement=saved.equipement;saved.equipement.forEach((v,i)=>{const inp=document.querySelector(`.trait-input[data-ei="${i}"]`);if(inp) inp.value=v;});}
-    if(saved.artefacts){state.artefacts=saved.artefacts;saved.artefacts.forEach((v,i)=>{const ta=document.querySelector(`.artefact-input[data-ari="${i}"]`);if(ta) ta.value=v;});}
+    if(saved.confrerie){
+      state.confrerie=saved.confrerie;
+      saved.confrerie.forEach((t,i)=>{
+        if(confrerieWidgets[i]&&t){
+          confrerieWidgets[i].titleInp.value=t.title||'';
+          confrerieWidgets[i].textArea.value=t.text||'';
+        }
+      });
+    }
+    if(saved.equipement){
+      state.equipement=saved.equipement;
+      saved.equipement.forEach((v,i)=>{
+        if(equipWidgets[i]&&v){
+          equipWidgets[i].titleInp.value=v.title||'';
+          equipWidgets[i].textArea.value=v.text||'';
+        }
+      });
+    }
+    if(saved.artefacts){
+      state.artefacts=saved.artefacts;
+      saved.artefacts.forEach((v,i)=>{
+        if(artefactWidgets[i]&&v){
+          artefactWidgets[i].titleInp.value=v.title||'';
+          artefactWidgets[i].textArea.value=v.text||'';
+        }
+      });
+    }
+    if(saved.historique){
+      state.historique=saved.historique;
+      historiqueWidget.titleInp.value=saved.historique.title||'';
+      historiqueWidget.textArea.value=saved.historique.text||'';
+    }
+    if(saved.portrait!==undefined){
+      state.portrait=saved.portrait;
+      renderPortrait(saved.portrait);
+    }
     if(saved.accordion){
       state.accordion=saved.accordion;
       Object.entries(saved.accordion).forEach(([id,isCollapsed])=>{
