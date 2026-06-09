@@ -1192,6 +1192,8 @@ function dRollDice(){
   const s=dS();
   s.rolled=true;
   if(!s.dice||!s.dice.length) dInitDice(false);
+  // Remettre à null les dés non verrouillés (pour relancer proprement)
+  s.dice.forEach(d=>{ if(!d.locked){ d.value=null; d.modified=false; d.color=d.color==='black_token'?'white':d.color; } });
   // Appliquer les règles des jetons avant le lancer
   dApplyTokenRules();
   // Lancer les dés non verrouillés et sans valeur
@@ -1248,10 +1250,11 @@ function dMakeDieSVG(d,i,animate){
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   svg.setAttribute('width','100%');
   svg.setAttribute('style','display:block');
-  const isModified=d.modified,isLocked=d.locked,isWhite=d.color==='white'&&d.color!=='black_token',hasValue=d.value!==null;
-  let bodyFill,bodyStroke,ridgeStroke,textFill,labelFill,inputLineColor;
   const isBlackToken=d.color==='black_token';
-  if(isBlackToken||isModified){bodyFill='#1a1a1a';bodyStroke='#444';ridgeStroke='#555';textFill='#fff';labelFill='#888';inputLineColor='#666';}
+  const isModified=d.modified,isLocked=d.locked,isWhite=d.color==='white',hasValue=d.value!==null;
+  let bodyFill,bodyStroke,ridgeStroke,textFill,labelFill,inputLineColor;
+  if(isBlackToken){bodyFill='#1a1a1a';bodyStroke='#444';ridgeStroke='#555';textFill='#fff';labelFill='#888';inputLineColor='#666';}
+  else if(isModified){bodyFill='#1a1a1a';bodyStroke='#444';ridgeStroke='#555';textFill='#fff';labelFill='#888';inputLineColor='#666';}
   else if(isWhite){bodyFill='#f2f2f2';bodyStroke='#bbb';ridgeStroke='#ccc';textFill='#1a1a1a';labelFill='#aaa';inputLineColor='#bbb';}
   else{bodyFill='#E24B4A';bodyStroke='#a83030';ridgeStroke='#a02828';textFill='#fff';labelFill='#f7b0b0';inputLineColor='#f09090';}
   const cx=45,cy=50;
@@ -1262,7 +1265,7 @@ function dMakeDieSVG(d,i,animate){
   }
   const shadow=document.createElementNS(ns,'polygon');
   shadow.setAttribute('points',polyPts(cx+2,cy+3,40,22,-90));
-  shadow.setAttribute('fill',isModified?'#000':isWhite?'#ccc':'#a02020');
+  shadow.setAttribute('fill',isBlackToken||isModified?'#000':isWhite?'#ccc':'#a02020');
   shadow.setAttribute('opacity','0.35'); svg.appendChild(shadow);
   const body=document.createElementNS(ns,'polygon');
   body.setAttribute('points',polyPts(cx,cy,40,22,-90));
