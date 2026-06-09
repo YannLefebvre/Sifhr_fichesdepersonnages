@@ -112,6 +112,111 @@
   .portrait-img-wrap img { max-height:92vh; max-width:92vw; border-radius:4px; box-shadow:0 8px 40px rgba(0,0,0,0.7); }
   .portrait-thumb { max-width:160px; max-height:220px; border-radius:3px; cursor:zoom-in; border:1px solid var(--border); display:block; margin:.4rem auto; }
   .portrait-placeholder { text-align:center; font-style:italic; color:var(--ink3); font-size:.85rem; padding:.5rem 0; }
+
+  /* ── Lanceur de dés ── */
+  #dice-overlay {
+    position:fixed; inset:0; background:rgba(26,21,16,0.82);
+    display:none; align-items:center; justify-content:center;
+    z-index:210;
+  }
+  #dice-overlay.open { display:flex; }
+  #dice-box {
+    background:#f5f5f0; border-radius:14px; padding:1.2rem 1rem 1rem;
+    max-width:420px; width:94vw; max-height:90vh; overflow-y:auto;
+    box-shadow:0 8px 40px rgba(0,0,0,0.5); position:relative;
+  }
+  #dice-close {
+    position:absolute; top:10px; right:12px;
+    background:none; border:none; font-size:1.3rem; cursor:pointer; color:#888;
+  }
+  #dice-close:hover { color:#1a1a1a; }
+  .dice-header { font-family:'Cinzel',serif; font-size:.9rem; color:var(--accent);
+    letter-spacing:.08em; text-align:center; margin-bottom:.8rem; }
+  .dice-role-screen { display:flex; flex-direction:column; align-items:center; gap:10px; padding:.5rem 0; }
+  .dice-role-screen p { font-size:.8rem; color:#666; }
+  .drole-btn {
+    width:200px; padding:10px; border-radius:10px; border:1px solid #ddd;
+    background:#fff; cursor:pointer; font-size:.85rem; font-weight:500;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    transition:background .15s;
+  }
+  .drole-btn small { font-size:.7rem; color:#888; font-weight:400; }
+  .drole-btn.launcher { border-color:#378ADD; }
+  .drole-btn.launcher:hover { background:#e6f1fb; }
+  .drole-btn.viewer { border-color:#1D9E75; }
+  .drole-btn.viewer:hover { background:#e1f5ee; }
+  .dice-sync-bar { display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:.6rem; font-size:.75rem; color:#888; }
+  .dsync-dot { width:7px; height:7px; border-radius:50%; background:#ccc;
+    display:inline-block; margin-right:5px; transition:background .3s; }
+  .dsync-dot.live { background:#1D9E75; }
+  .dsync-dot.syncing { background:#EF9F27; animation:dpulse .8s infinite; }
+  @keyframes dpulse { 0%,100%{opacity:1}50%{opacity:.4} }
+  .setup-card {
+    background:#fff; border:.5px solid #e0e0d8; border-radius:10px;
+    padding:.7rem; margin-bottom:.7rem;
+  }
+  .setup-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .setup-row:last-child { margin-bottom:0; }
+  .setup-label { font-size:.8rem; color:#666; flex:1; }
+  .count-ctrl { display:flex; align-items:center; gap:5px; }
+  .count-ctrl button {
+    width:24px; height:24px; border-radius:50%; border:.5px solid #ddd;
+    background:#f5f5f0; color:#1a1a1a; font-size:15px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:background .15s;
+  }
+  .count-ctrl button:hover { background:#ebebeb; }
+  .count-ctrl button:disabled { opacity:.3; cursor:not-allowed; }
+  .count-ctrl span { font-size:.85rem; font-weight:500; min-width:18px; text-align:center; }
+  .color-dot { width:10px; height:10px; border-radius:50%; border:.5px solid #ddd; flex-shrink:0; }
+  .dot-white { background:#fff; border-color:#bbb; }
+  .dot-red { background:#E24B4A; }
+  .dice-section-title { font-size:.7rem; color:#888; margin-bottom:6px; }
+  .dice-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:.7rem; }
+  .die-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .die-svg-wrap { width:100%; }
+  .die-controls-row { display:flex; align-items:center; gap:3px; }
+  .adj-btn {
+    width:22px; height:22px; border-radius:50%; border:.5px solid #ddd;
+    background:#f5f5f0; color:#1a1a1a; font-size:14px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:background .12s;
+  }
+  .adj-btn:hover:not(:disabled) { background:#ebebeb; }
+  .adj-btn:disabled { opacity:.2; cursor:not-allowed; }
+  .lock-btn {
+    width:22px; height:22px; border-radius:50%; border:.5px solid #ddd;
+    background:#f5f5f0; color:#888; font-size:12px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:background .12s;
+  }
+  .lock-btn.locked { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
+  .ten-note { font-size:.6rem; color:#aaa; text-align:center; }
+  .dlaunch-btn {
+    width:100%; padding:9px; background:#fff; border:.5px solid #ddd;
+    border-radius:8px; color:#1a1a1a; font-size:.85rem; font-weight:500;
+    cursor:pointer; transition:background .15s; margin-bottom:.5rem;
+  }
+  .dlaunch-btn:hover { background:#f5f5f0; }
+  .dlaunch-btn:disabled { opacity:.4; cursor:not-allowed; }
+  .dreset-btn {
+    width:100%; padding:9px; background:#fff0f0; border:.5px solid #E24B4A;
+    border-radius:8px; color:#c0392b; font-size:.8rem; font-weight:500;
+    cursor:pointer; transition:background .15s;
+  }
+  .dreset-btn:hover { background:#fde0e0; }
+  @keyframes dfadeIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+
+  /* Bouton flottant dés */
+  #dice-fab {
+    position:fixed; bottom:1.2rem; right:1.2rem;
+    width:52px; height:52px; border-radius:50%;
+    background:var(--accent); color:#f5f0e8;
+    border:none; font-size:1.4rem; cursor:pointer;
+    box-shadow:0 4px 16px rgba(0,0,0,0.3);
+    display:none; align-items:center; justify-content:center;
+    z-index:190; transition:background .15s;
+  }
+  #dice-fab:hover { background:#6e1a1a; }
+  #dice-fab.open { background:#1a1a1a; }
 </style>
 </head>
 <body>
@@ -127,6 +232,58 @@
     <div id="modal-err"></div>
   </div>
 </div>
+
+<!-- Lanceur de dés overlay -->
+<div id="dice-overlay">
+  <div id="dice-box">
+    <button id="dice-close" onclick="closeDice()">✕</button>
+    <div class="dice-header">🎲 Lanceur de dés — <span id="dice-fiche-label"></span></div>
+    <div id="dice-role-screen" class="dice-role-screen">
+      <p>Choisissez votre rôle</p>
+      <button class="drole-btn launcher" onclick="selectDiceRole('launcher')">
+        🎯 Lanceur de dés
+        <small>Vous contrôlez les dés</small>
+      </button>
+      <button class="drole-btn viewer" onclick="selectDiceRole('viewer')">
+        👁️ Spectateur
+        <small>Vous observez en temps réel</small>
+      </button>
+    </div>
+    <div id="dice-app" style="display:none">
+      <div class="dice-sync-bar">
+        <span><span class="dsync-dot" id="dsync-dot"></span><span id="dsync-label">Connexion…</span></span>
+        <span class="role-badge" id="drole-badge" style="font-size:.7rem;padding:2px 7px;border-radius:12px;"></span>
+      </div>
+      <div class="setup-card" id="dice-setup">
+        <div class="setup-row">
+          <span class="color-dot dot-white"></span>
+          <span class="setup-label">Dés blancs</span>
+          <div class="count-ctrl">
+            <button id="dwb-minus" onclick="dChangeCount('white',-1)">−</button>
+            <span id="dwhite-count">3</span>
+            <button id="dwb-plus" onclick="dChangeCount('white',1)">+</button>
+          </div>
+        </div>
+        <div class="setup-row">
+          <span class="color-dot dot-red"></span>
+          <span class="setup-label">Dés rouges</span>
+          <div class="count-ctrl">
+            <button id="drb-minus" onclick="dChangeCount('red',-1)">−</button>
+            <span id="dred-count">2</span>
+            <button id="drb-plus" onclick="dChangeCount('red',1)">+</button>
+          </div>
+        </div>
+      </div>
+      <p class="dice-section-title" id="dice-section-lbl">Fixer des valeurs avant le lancer (optionnel)</p>
+      <div class="dice-grid" id="dice-grid"></div>
+      <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés</button>
+      <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bouton flottant -->
+<button id="dice-fab" onclick="toggleDice()">🎲</button>
 
 <!-- Contenu principal -->
 <div id="app">
@@ -263,6 +420,7 @@ document.getElementById('modal-btn').addEventListener('click', async () => {
       authenticated = true;
       document.getElementById('modal-overlay').style.display = 'none';
       document.getElementById('app').style.display = 'block';
+      showDiceFab();
       if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);
       startRealtime();
     }
@@ -324,6 +482,7 @@ let state={tokens:{},scores:{},actions:{},
   artefacts:Array.from({length:NUM_ARTEFACTS},()=>({title:'',text:''})),
   historique:{title:'',text:''},
   portrait:'',
+  dice:{whites:3,reds:2,dice:[],rolled:false},
   des:'',ether:'',wheelRot:0,accordion:{}};
 SECTORS.forEach(s=>{state.tokens[s.id]=['empty','empty','empty'];});
 
@@ -785,6 +944,20 @@ function applyRemoteState(saved){
       historiqueWidget.titleInp.value=saved.historique.title||'';
       historiqueWidget.textArea.value=saved.historique.text||'';
     }
+    if(saved.dice!==undefined){
+      state.dice=saved.dice;
+      if(dCurrentRole){
+        const s=dS();
+        document.getElementById('dwhite-count').textContent=s.whites||3;
+        document.getElementById('dred-count').textContent=s.reds||2;
+        if(s.rolled){
+          document.getElementById('dice-section-lbl').textContent='Dés';
+          document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
+          document.getElementById('dreset-btn').style.display='block';
+        }
+        dRenderDice(false);
+      }
+    }
     if(saved.portrait!==undefined){
       state.portrait=saved.portrait;
       renderPortrait(saved.portrait);
@@ -833,6 +1006,301 @@ function startRealtime(){
   }
   connect();
 }
+
+/* ══════════════════════════════════════════════
+   LANCEUR DE DÉS
+   ══════════════════════════════════════════════ */
+const D_ADJ_MAP={1:[8,2],2:[1,3],3:[2,4],4:[3,5],5:[4,6],6:[5,7],7:[6,8],8:[7,1],9:null,10:'ten'};
+let dCurrentRole=null;
+let dIsSyncing=false;
+let dWs=null, dHeartbeat=null;
+
+// Raccourcis vers state.dice
+function dS(){ return state.dice; }
+
+function openDice(){
+  document.getElementById('dice-fab').classList.add('open');
+  document.getElementById('dice-overlay').classList.add('open');
+  document.getElementById('dice-fiche-label').textContent=FICHE_ID;
+  // Affiche rôle ou app selon si rôle déjà choisi
+  if(dCurrentRole){
+    document.getElementById('dice-role-screen').style.display='none';
+    document.getElementById('dice-app').style.display='block';
+    dRenderDice(false);
+  }
+}
+function closeDice(){
+  document.getElementById('dice-fab').classList.remove('open');
+  document.getElementById('dice-overlay').classList.remove('open');
+}
+function toggleDice(){
+  const ol=document.getElementById('dice-overlay');
+  ol.classList.contains('open')?closeDice():openDice();
+}
+
+function selectDiceRole(role){
+  dCurrentRole=role;
+  document.getElementById('dice-role-screen').style.display='none';
+  document.getElementById('dice-app').style.display='block';
+  const badge=document.getElementById('drole-badge');
+  badge.textContent=role==='launcher'?'🎯 Lanceur':'👁️ Spectateur';
+  badge.style.background=role==='launcher'?'#e6f1fb':'#e1f5ee';
+  badge.style.color=role==='launcher'?'#185FA5':'#0F6E56';
+  if(role==='viewer') dLockControls();
+  // Charger état actuel
+  const s=dS();
+  document.getElementById('dwhite-count').textContent=s.whites||3;
+  document.getElementById('dred-count').textContent=s.reds||2;
+  if(s.rolled){
+    document.getElementById('dice-section-lbl').textContent='Dés';
+    document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
+    document.getElementById('dreset-btn').style.display='block';
+  }
+  dRenderDice(false);
+  dStartRealtime();
+}
+
+function dLockControls(){
+  ['dwb-minus','dwb-plus','drb-minus','drb-plus','dlaunch-btn'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.disabled=true;
+  });
+}
+
+function dSetSync(st,lbl){
+  const dot=document.getElementById('dsync-dot');
+  const l=document.getElementById('dsync-label');
+  if(!dot||!l) return;
+  dot.className='dsync-dot '+(st==='live'?'live':st==='syncing'?'syncing':'');
+  l.textContent=lbl;
+}
+
+function dStartRealtime(){
+  dSetSync('syncing','Connexion…');
+  const wsUrl=SUPABASE_URL
+    .replace('https://','wss://')
+    .replace('http://','ws://')
+    +'/realtime/v1/websocket?apikey='+SUPABASE_KEY+'&vsn=1.0.0';
+  if(dWs){ dWs.close(); }
+  function connect(){
+    dWs=new WebSocket(wsUrl);
+    dWs.onopen=()=>{
+      dWs.send(JSON.stringify({topic:'realtime:public:fiches:id=eq.'+FICHE_ID,event:'phx_join',payload:{},ref:'dice1'}));
+      dHeartbeat=setInterval(()=>{dWs.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hbd'}));},25000);
+      dSetSync('live','En direct');
+    };
+    dWs.onmessage=(e)=>{
+      try{
+        const m=JSON.parse(e.data);
+        if((m.event==='UPDATE'||m.event==='INSERT')&&!dIsSyncing){
+          const newEtat=m.payload?.record?.etat;
+          if(newEtat?.dice){
+            state.dice=newEtat.dice;
+            const s=dS();
+            document.getElementById('dwhite-count').textContent=s.whites||3;
+            document.getElementById('dred-count').textContent=s.reds||2;
+            if(s.rolled){
+              document.getElementById('dice-section-lbl').textContent='Dés';
+              document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
+              document.getElementById('dreset-btn').style.display='block';
+            }
+            dRenderDice(false);
+          }
+        }
+      }catch(err){}
+    };
+    dWs.onclose=()=>{ clearInterval(dHeartbeat); setTimeout(connect,3000); dSetSync('syncing','Reconnexion…'); };
+    dWs.onerror=()=>{ dWs.close(); };
+  }
+  connect();
+}
+
+function dPushState(){
+  if(dCurrentRole!=='launcher') return;
+  dIsSyncing=true;
+  dSetSync('syncing','Envoi…');
+  saveState(); // sauvegarde tout l'état fiche + dés
+  setTimeout(()=>{ dIsSyncing=false; dSetSync('live','En direct'); },700);
+}
+
+function dChangeCount(color,delta){
+  if(dCurrentRole!=='launcher') return;
+  const s=dS();
+  if(color==='white'){ s.whites=Math.max(0,Math.min(10,(s.whites||3)+delta)); document.getElementById('dwhite-count').textContent=s.whites; }
+  else{ s.reds=Math.max(0,Math.min(10,(s.reds||2)+delta)); document.getElementById('dred-count').textContent=s.reds; }
+  dInitDice(true); dRenderDice(false); dPushState();
+}
+
+function dInitDice(preserve){
+  const s=dS();
+  const total=(s.whites||3)+(s.reds||2);
+  const nd=[];
+  for(let i=0;i<total;i++){
+    const color=i<(s.whites||3)?'white':'red';
+    const ex=preserve&&s.dice&&s.dice[i]&&s.dice[i].color===color?s.dice[i]:null;
+    nd.push(ex||{color,value:null,locked:false,modified:false});
+  }
+  s.dice=nd;
+}
+
+function dRollDice(){
+  if(dCurrentRole!=='launcher') return;
+  const s=dS();
+  s.rolled=true;
+  if(!s.dice||!s.dice.length) dInitDice(false);
+  s.dice.forEach(d=>{ if(!d.locked&&d.value===null) d.value=Math.ceil(Math.random()*10); });
+  document.getElementById('dice-section-lbl').textContent='Dés';
+  document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
+  document.getElementById('dreset-btn').style.display='block';
+  dRenderDice(true); dPushState();
+}
+
+function dAdjustDie(i,dir){
+  if(dCurrentRole!=='launcher') return;
+  const d=dS().dice[i]; if(!d||d.locked) return;
+  const adj=D_ADJ_MAP[d.value];
+  if(!adj||adj==='ten') return;
+  d.value=dir==='minus'?adj[0]:adj[1]; d.modified=true;
+  dRenderDice(false); dPushState();
+}
+
+function dSetVal(i,v){
+  if(dCurrentRole!=='launcher') return;
+  const d=dS().dice[i]; if(!d||d.locked) return;
+  let val=parseInt(v); if(isNaN(val)||val<1) val=1; if(val>10) val=10;
+  d.value=val; d.modified=false;
+  dRenderDice(false); dPushState();
+}
+
+function dToggleLock(i){
+  if(dCurrentRole!=='launcher') return;
+  const d=dS().dice[i]; if(!d) return;
+  d.locked=!d.locked;
+  dRenderDice(false); dPushState();
+}
+
+function dResetAll(){
+  if(dCurrentRole!=='launcher') return;
+  if(!confirm('Réinitialiser les dés ?')) return;
+  const s=dS(); s.rolled=false; s.dice=[];
+  dInitDice(false);
+  document.getElementById('dice-section-lbl').textContent='Fixer des valeurs avant le lancer (optionnel)';
+  document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés';
+  document.getElementById('dreset-btn').style.display='none';
+  dRenderDice(false); dPushState();
+}
+
+function dMakeDieSVG(d,i,animate){
+  const ns='http://www.w3.org/2000/svg';
+  const W=90,H=96;
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('width','100%');
+  svg.setAttribute('style','display:block');
+  const isModified=d.modified,isLocked=d.locked,isWhite=d.color==='white',hasValue=d.value!==null;
+  let bodyFill,bodyStroke,ridgeStroke,textFill,labelFill,inputLineColor;
+  if(isModified){bodyFill='#1a1a1a';bodyStroke='#444';ridgeStroke='#555';textFill='#fff';labelFill='#888';inputLineColor='#666';}
+  else if(isWhite){bodyFill='#f2f2f2';bodyStroke='#bbb';ridgeStroke='#ccc';textFill='#1a1a1a';labelFill='#aaa';inputLineColor='#bbb';}
+  else{bodyFill='#E24B4A';bodyStroke='#a83030';ridgeStroke='#a02828';textFill='#fff';labelFill='#f7b0b0';inputLineColor='#f09090';}
+  const cx=45,cy=50;
+  function polyPts(cx,cy,rO,rI,off){
+    const p=[];
+    for(let k=0;k<10;k++){const a=((k*36)+off)*Math.PI/180;const r=k%2===0?rO:rI;p.push(`${(cx+r*Math.cos(a)).toFixed(2)},${(cy+r*Math.sin(a)).toFixed(2)}`);}
+    return p.join(' ');
+  }
+  const shadow=document.createElementNS(ns,'polygon');
+  shadow.setAttribute('points',polyPts(cx+2,cy+3,40,22,-90));
+  shadow.setAttribute('fill',isModified?'#000':isWhite?'#ccc':'#a02020');
+  shadow.setAttribute('opacity','0.35'); svg.appendChild(shadow);
+  const body=document.createElementNS(ns,'polygon');
+  body.setAttribute('points',polyPts(cx,cy,40,22,-90));
+  body.setAttribute('fill',bodyFill);body.setAttribute('stroke',bodyStroke);body.setAttribute('stroke-width','1');
+  svg.appendChild(body);
+  for(let k=0;k<10;k+=2){
+    const angle=((k*36)-90)*Math.PI/180;
+    const line=document.createElementNS(ns,'line');
+    line.setAttribute('x1',cx);line.setAttribute('y1',cy);
+    line.setAttribute('x2',(cx+40*Math.cos(angle)).toFixed(2));line.setAttribute('y2',(cy+40*Math.sin(angle)).toFixed(2));
+    line.setAttribute('stroke',ridgeStroke);line.setAttribute('stroke-width','0.6');line.setAttribute('opacity','0.5');
+    svg.appendChild(line);
+  }
+  const inner=document.createElementNS(ns,'polygon');
+  inner.setAttribute('points',polyPts(cx,cy,28,16,-90));
+  inner.setAttribute('fill','none');inner.setAttribute('stroke',ridgeStroke);
+  inner.setAttribute('stroke-width','0.5');inner.setAttribute('opacity','0.4');
+  svg.appendChild(inner);
+  const lbl=document.createElementNS(ns,'text');
+  lbl.setAttribute('x',cx);lbl.setAttribute('y',18);lbl.setAttribute('text-anchor','middle');
+  lbl.setAttribute('font-size','9');lbl.setAttribute('fill',labelFill);
+  lbl.setAttribute('font-family','-apple-system,BlinkMacSystemFont,sans-serif');
+  lbl.textContent=`#${i+1}`; svg.appendChild(lbl);
+  if(hasValue){
+    const fs=d.value===10?22:26;
+    const valT=document.createElementNS(ns,'text');
+    valT.setAttribute('x',cx);valT.setAttribute('y',cy+9);
+    valT.setAttribute('text-anchor','middle');valT.setAttribute('font-size',fs);
+    valT.setAttribute('font-weight','500');valT.setAttribute('fill',textFill);
+    valT.setAttribute('font-family','-apple-system,BlinkMacSystemFont,sans-serif');
+    if(animate&&!isLocked) valT.style.cssText='animation:dfadeIn .35s ease-out';
+    valT.textContent=String(d.value); svg.appendChild(valT);
+  }
+  if(!isLocked&&dCurrentRole==='launcher'){
+    const lineY=H-10;
+    const inputLine=document.createElementNS(ns,'line');
+    inputLine.setAttribute('x1',cx-18);inputLine.setAttribute('y1',lineY);
+    inputLine.setAttribute('x2',cx+18);inputLine.setAttribute('y2',lineY);
+    inputLine.setAttribute('stroke',inputLineColor);inputLine.setAttribute('stroke-width','0.8');
+    svg.appendChild(inputLine);
+    const fo=document.createElementNS(ns,'foreignObject');
+    fo.setAttribute('x',cx-18);fo.setAttribute('y',H-18);fo.setAttribute('width','36');fo.setAttribute('height','16');
+    const inp=document.createElement('input');
+    inp.type='number';inp.min=1;inp.max=10;
+    inp.style.cssText=`width:100%;text-align:center;font-size:10px;border:none;background:transparent;color:${inputLineColor};outline:none;padding:0;`;
+    inp.addEventListener('change',()=>dSetVal(i,inp.value));
+    fo.appendChild(inp); svg.appendChild(fo);
+  }
+  return svg;
+}
+
+function dRenderDice(animate){
+  const grid=document.getElementById('dice-grid');
+  if(!grid) return;
+  grid.innerHTML='';
+  const s=dS();
+  if(!s.dice||!s.dice.length){ dInitDice(false); }
+  (s.dice||[]).forEach((d,i)=>{
+    const wrap=document.createElement('div'); wrap.className='die-wrap';
+    const svgWrap=document.createElement('div'); svgWrap.className='die-svg-wrap';
+    svgWrap.appendChild(dMakeDieSVG(d,i,animate));
+    wrap.appendChild(svgWrap);
+    if(dCurrentRole==='launcher'){
+      const ctrl=document.createElement('div'); ctrl.className='die-controls-row';
+      const adj=d.value!==null?D_ADJ_MAP[d.value]:undefined;
+      const canAdj=s.rolled&&d.value!==null&&adj&&adj!=='ten'&&!d.locked;
+      const btnM=document.createElement('button'); btnM.className='adj-btn'; btnM.textContent='−'; btnM.disabled=!canAdj;
+      if(canAdj) btnM.title=`→ ${adj[0]}`; btnM.onclick=()=>dAdjustDie(i,'minus');
+      const lockBtn=document.createElement('button'); lockBtn.className='lock-btn'+(d.locked?' locked':'');
+      lockBtn.innerHTML=d.locked?'🔒':'🔓'; lockBtn.onclick=()=>dToggleLock(i);
+      const btnP=document.createElement('button'); btnP.className='adj-btn'; btnP.textContent='+'; btnP.disabled=!canAdj;
+      if(canAdj) btnP.title=`→ ${adj[1]}`; btnP.onclick=()=>dAdjustDie(i,'plus');
+      ctrl.appendChild(btnM); ctrl.appendChild(lockBtn); ctrl.appendChild(btnP);
+      wrap.appendChild(ctrl);
+    }
+    if(s.rolled&&d.value===10&&!d.locked&&dCurrentRole==='launcher'){
+      const note=document.createElement('div'); note.className='ten-note'; note.textContent='Saisir 1–8'; wrap.appendChild(note);
+    }
+    if(s.rolled&&d.value===9){
+      const note=document.createElement('div'); note.className='ten-note'; note.textContent='Non modifiable'; wrap.appendChild(note);
+    }
+    grid.appendChild(wrap);
+  });
+}
+
+// Afficher le bouton FAB après authentification (appelé après login)
+function showDiceFab(){
+  const fab=document.getElementById('dice-fab');
+  fab.style.display='flex';
+}
+
 </script>
 </div>
 </body>
