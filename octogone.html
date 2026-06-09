@@ -424,40 +424,32 @@ function rebuildLabels(){
   while(labelsStatic.firstChild) labelsStatic.removeChild(labelsStatic.firstChild);
   SECTORS.forEach((sec)=>{
     const visAng=(sec.angle+wheelRot+360)%360;
-
-    // Virtue / vice — offset perpendicular to sector axis, beside the score squares
-    const sqR_vv=OUTER_R+14;
-    const sqCenter=polar(CX,CY,sqR_vv,visAng);
-    // Perpendicular direction (axis rotated 90 degrees)
-    const axRad=(visAng-90)*Math.PI/180;
-    const perpX=Math.cos(axRad), perpY=Math.sin(axRad);
-    const sideOff=24;
-    const vvX=sqCenter.x+perpX*sideOff;
-    const vvY=sqCenter.y+perpY*sideOff;
-    const anchor=perpX>=0?'start':'end';
-    const vg=svgEl('g',{},labelsStatic);
-    svgEl('text',{x:vvX.toFixed(2),y:(vvY-4).toFixed(2),
-      'font-family':'Cinzel,serif','font-size':'8','fill':'#3d342a',
-      'text-anchor':anchor,'dominant-baseline':'auto'},vg).textContent=sec.sub1;
-    svgEl('text',{x:vvX.toFixed(2),y:(vvY+6).toFixed(2),
-      'font-family':'Crimson Text,serif','font-size':'7.5','fill':'#6b5d4f',
-      'font-style':'italic','text-anchor':anchor,'dominant-baseline':'auto'},vg).textContent=sec.sub2;
-
-    // Element label + number outside octogon
     const isDiag=visAng%90!==0;
-    const lblR=OUTER_R+(isDiag?66:56);
+
+    // ── Vertus / vices : juste après les cases de score, sur l'axe du secteur ──
+    // Placées entre les cases (OUTER_R+14) et les étiquettes d'humeur
+    const vvR = OUTER_R + (isDiag ? 34 : 30);
+    const vvPos = polar(CX,CY,vvR,visAng);
+    const vg=svgEl('g',{},labelsStatic);
+    svgEl('text',{x:vvPos.x.toFixed(2),y:(vvPos.y-4).toFixed(2),
+      'font-family':'Cinzel,serif','font-size':'7.5','fill':'#3d342a',
+      'text-anchor':'middle','dominant-baseline':'auto'},vg).textContent=sec.sub1;
+    svgEl('text',{x:vvPos.x.toFixed(2),y:(vvPos.y+6).toFixed(2),
+      'font-family':'Crimson Text,serif','font-size':'7','fill':'#6b5d4f',
+      'font-style':'italic','text-anchor':'middle','dominant-baseline':'auto'},vg).textContent=sec.sub2;
+
+    // ── Numéro + nom d'humeur : plus loin sur l'axe ──
+    const lblR = OUTER_R + (isDiag ? 82 : 68);
     const lblPos=polar(CX,CY,lblR,visAng);
     const words=sec.label.split(' ');
     const lineH=13;
     const numY=words.length===1?lblPos.y-12:lblPos.y-19;
 
-    // Number above label
     svgEl('text',{x:lblPos.x.toFixed(2),y:numY.toFixed(2),
       'font-family':'Cinzel,serif','font-size':'13','font-weight':'600',
       'fill':'#8b2020','text-anchor':'middle','dominant-baseline':'central'},labelsStatic
     ).textContent=sec.num;
 
-    // Label lines
     if(words.length===1){
       svgEl('text',{x:lblPos.x.toFixed(2),y:lblPos.y.toFixed(2),
         'font-family':'Cinzel,serif','font-size':'11','font-weight':'600',
