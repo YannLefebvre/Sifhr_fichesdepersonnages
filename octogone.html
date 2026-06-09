@@ -48,7 +48,7 @@
   .acc-title::placeholder { color:var(--border); }
   .acc-body { overflow:hidden; max-height:0; opacity:0; transition:max-height .25s ease, opacity .2s ease; }
   .acc-body.open { max-height:300px; opacity:1; }
-  .acc-text { width:100%; background:var(--input-bg); border:none; border-left:2px solid var(--border2); font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2); padding:4px 6px; outline:none; resize:none; min-height:3em; line-height:1.5; margin:.2rem 0 .4rem 1rem; width:calc(100% - 1rem); box-sizing:border-box; }
+  .acc-text { width:calc(100% - 1rem); background:var(--input-bg); border:none; border-left:2px solid var(--border2); font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2); padding:4px 6px; outline:none; resize:none; min-height:3em; line-height:1.5; margin:.2rem 0 .4rem 1rem; box-sizing:border-box; overflow:hidden; }
   .acc-text:focus { border-left-color:var(--accent); background:#fff; }
   .des-row { display:flex; align-items:center; gap:.75rem; max-width:700px; margin:0 auto .5rem; padding:.5rem .75rem; background:var(--section-bg); border:1px solid var(--border); border-radius:var(--radius); }
   .des-label { font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.08em; color:var(--accent); text-transform:uppercase; white-space:nowrap; }
@@ -733,20 +733,20 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
   const body=document.createElement('div'); body.className='acc-body';
   const textArea=document.createElement('textarea'); textArea.className='acc-text';
   textArea.placeholder=textPlaceholder; textArea.value=cur.text||'';
+  function autoResize(){ textArea.style.height='auto'; textArea.style.height=textArea.scrollHeight+'px'; }
+  textArea.addEventListener('input', autoResize);
   body.appendChild(textArea);
   item.appendChild(body);
 
   // Toggle on click
-  toggle.addEventListener('click',()=>{
+  function toggleAcc(){
     const isOpen=body.classList.contains('open');
     body.classList.toggle('open',!isOpen);
     toggle.classList.toggle('open',!isOpen);
-  });
-  titleInp.addEventListener('dblclick',()=>{
-    const isOpen=body.classList.contains('open');
-    body.classList.toggle('open',!isOpen);
-    toggle.classList.toggle('open',!isOpen);
-  });
+    if(!isOpen) setTimeout(autoResize, 10);
+  }
+  toggle.addEventListener('click', toggleAcc);
+  titleInp.addEventListener('dblclick', toggleAcc);
 
   // Save on input — write directly into state via getter
   function saveItem(){
@@ -906,6 +906,8 @@ function applyRemoteState(saved){
         if(traitWidgets[i]&&t){
           traitWidgets[i].titleInp.value=t.title||'';
           traitWidgets[i].textArea.value=t.text||'';
+          traitWidgets[i].textArea.style.height='auto';
+          traitWidgets[i].textArea.style.height=traitWidgets[i].textArea.scrollHeight+'px';
         }
       });
     }
@@ -918,6 +920,8 @@ function applyRemoteState(saved){
         if(confrerieWidgets[i]&&t){
           confrerieWidgets[i].titleInp.value=t.title||'';
           confrerieWidgets[i].textArea.value=t.text||'';
+          confrerieWidgets[i].textArea.style.height='auto';
+          confrerieWidgets[i].textArea.style.height=confrerieWidgets[i].textArea.scrollHeight+'px';
         }
       });
     }
@@ -927,6 +931,8 @@ function applyRemoteState(saved){
         if(equipWidgets[i]&&v){
           equipWidgets[i].titleInp.value=v.title||'';
           equipWidgets[i].textArea.value=v.text||'';
+          equipWidgets[i].textArea.style.height='auto';
+          equipWidgets[i].textArea.style.height=equipWidgets[i].textArea.scrollHeight+'px';
         }
       });
     }
@@ -936,6 +942,8 @@ function applyRemoteState(saved){
         if(artefactWidgets[i]&&v){
           artefactWidgets[i].titleInp.value=v.title||'';
           artefactWidgets[i].textArea.value=v.text||'';
+          artefactWidgets[i].textArea.style.height='auto';
+          artefactWidgets[i].textArea.style.height=artefactWidgets[i].textArea.scrollHeight+'px';
         }
       });
     }
@@ -943,6 +951,8 @@ function applyRemoteState(saved){
       state.historique=saved.historique;
       historiqueWidget.titleInp.value=saved.historique.title||'';
       historiqueWidget.textArea.value=saved.historique.text||'';
+      historiqueWidget.textArea.style.height='auto';
+      historiqueWidget.textArea.style.height=historiqueWidget.textArea.scrollHeight+'px';
     }
     if(saved.dice!==undefined){
       state.dice=saved.dice;
