@@ -363,8 +363,8 @@
 // ═══════════════════════════════════════════════
 // CONFIGURATION — remplace par tes vraies valeurs
 // ═══════════════════════════════════════════════
-const SUPABASE_URL   = 'https://qyifamxfvswcglvrzduf.supabase.co';
-const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
+const SUPABASE_URL   = 'SUPABASE_URL';
+const SUPABASE_KEY   = 'SUPABASE_ANON_KEY';
 // ═══════════════════════════════════════════════
 
 const params   = new URLSearchParams(location.search);
@@ -1056,6 +1056,17 @@ function selectDiceRole(role){
     document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
     document.getElementById('dreset-btn').style.display='block';
   }
+  // Verrouiller les X premiers dés selon dés dévoyés
+  if(role==='launcher'){
+    const desDevoyes=parseInt(desInput.value)||0;
+    const s=dS();
+    if(!s.dice||!s.dice.length) dInitDice(false);
+    if(desDevoyes>0 && s.dice){
+      s.dice.forEach((d,idx)=>{
+        if(idx<desDevoyes) d.locked=true;
+      });
+    }
+  }
   dRenderDice(false);
   dStartRealtime();
 }
@@ -1160,6 +1171,10 @@ function dAdjustDie(i,dir){
   const adj=D_ADJ_MAP[d.value];
   if(!adj||adj==='ten') return;
   d.value=dir==='minus'?adj[0]:adj[1]; d.modified=true;
+  // Incrémenter dés dévoyés
+  const curDes=parseInt(desInput.value)||0;
+  state.des=String(curDes+1);
+  desInput.value=state.des;
   dRenderDice(false); dPushState();
 }
 
