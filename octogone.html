@@ -232,8 +232,8 @@
   .acc-rendered li { margin:.1em 0; }
   /* Cadenas titre */
   .acc-lock-btn { flex-shrink:0; background:none; border:none; cursor:pointer;
-    font-size:.85rem; color:var(--ink3); padding:0 2px; line-height:1; }
-  .acc-lock-btn:hover { color:var(--accent); }
+    font-size:.6rem; color:var(--border); padding:0 2px; line-height:1; opacity:.5; transition:opacity .15s; }
+  .acc-lock-btn:hover { opacity:1; color:var(--accent); }
 
   /* ── Bouton transfert octogone ── */
   .oct-transfer-btn {
@@ -284,7 +284,7 @@
       <div class="setup-card" id="dice-setup">
         <div class="setup-row">
           <span class="color-dot dot-white"></span>
-          <span class="setup-label">Dés blancs</span>
+          <span class="setup-label">Dés blancs — aptitudes</span>
           <div class="count-ctrl">
             <button id="dwb-minus" onclick="dChangeCount('white',-1)">−</button>
             <span id="dwhite-count">3</span>
@@ -293,7 +293,7 @@
         </div>
         <div class="setup-row">
           <span class="color-dot dot-red"></span>
-          <span class="setup-label">Dés rouges</span>
+          <span class="setup-label">Dés rouges — souffle</span>
           <div class="count-ctrl">
             <button id="drb-minus" onclick="dChangeCount('red',-1)">−</button>
             <span id="dred-count">2</span>
@@ -305,6 +305,13 @@
       <div class="dice-grid" id="dice-grid"></div>
       <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés</button>
       <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
+    <div id="dice-legend" style="display:none;margin-top:.6rem;padding:.5rem .6rem;background:#f0ede6;border-radius:6px;font-size:.72rem;color:#6b5d4f;line-height:1.6;">
+      <strong style="font-family:'Cinzel',serif;font-size:.7rem;color:#3d342a;">Légende des verrous</strong><br>
+      🔓 <em>Libre</em> — dé modifiable avant lancer<br>
+      🔒 <em>Dés dévoyés</em> — verrouillé au lancer<br>
+      🔒 <em style="color:#8b2020;">Jeton noir majoritaire</em> — axe à 3 jetons, valeur fixée<br>
+      ⬡ <em>Transférer</em> — ajoute un jeton sur la roue
+    </div>
     </div>
   </div>
 </div>
@@ -1100,6 +1107,7 @@ function applyRemoteState(saved){
           document.getElementById('dice-section-lbl').textContent='Dés';
           document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
           document.getElementById('dreset-btn').style.display='block';
+      const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
         }
         dRenderDice(false);
       }
@@ -1201,6 +1209,7 @@ function selectDiceRole(role){
     document.getElementById('dice-section-lbl').textContent='Dés';
     document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
     document.getElementById('dreset-btn').style.display='block';
+      const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
   }
   if(role==='launcher'){
     const s=dS();
@@ -1266,6 +1275,7 @@ function dStartRealtime(){
               document.getElementById('dice-section-lbl').textContent='Dés';
               document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
               document.getElementById('dreset-btn').style.display='block';
+      const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
             }
             dRenderDice(false);
           }
@@ -1361,6 +1371,7 @@ function dRollDice(){
   document.getElementById('dice-section-lbl').textContent='Dés';
   document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
   document.getElementById('dreset-btn').style.display='block';
+      const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
   dRenderDice(true); dPushState();
 }
 
@@ -1400,6 +1411,7 @@ function dResetAll(){
   document.getElementById('dice-section-lbl').textContent='Fixer des valeurs avant le lancer (optionnel)';
   document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés';
   document.getElementById('dreset-btn').style.display='none';
+  const dl2=document.getElementById('dice-legend');if(dl2)dl2.style.display='none';
   dRenderDice(false); dPushState();
 }
 
