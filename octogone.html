@@ -309,17 +309,15 @@
   #xfer-fab:hover { background:#1a1510; }
   #xfer-fab.open { background:var(--accent); }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script>
+
 /* ══════════════════════════════════════════════
    TRANSFERT DE JETONS INTER-FICHES
    ══════════════════════════════════════════════ */
 let xferPending = null; // {sectorId, idx, color, fromFiche}
 let xferWs = null, xferHb = null;
 
-function showXferFab(){
-  const fab=document.getElementById('xfer-fab');
-  if(fab) fab.style.display='flex';
-}
 
 function toggleXfer(){
   const ol=document.getElementById('xfer-overlay');
@@ -448,6 +446,7 @@ async function xferClearRequest(){
     });
   } catch(e){ console.error('xferClear error',e); }
 }
+
 
 </script>
 </head>
