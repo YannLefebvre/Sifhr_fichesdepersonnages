@@ -217,7 +217,25 @@
   }
   #dice-fab:hover { background:#6e1a1a; }
   #dice-fab.open { background:#1a1a1a; }
+
+  /* ── Markdown render ── */
+  .acc-rendered { display:none; width:calc(100% - 1rem); margin:.2rem 0 .4rem 1rem;
+    font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2);
+    border-left:2px solid var(--border2); padding:4px 6px; line-height:1.5;
+    box-sizing:border-box; min-height:1.5em; }
+  .acc-rendered.visible { display:block; }
+  .acc-rendered p { margin:.2em 0; }
+  .acc-rendered strong { font-weight:700; color:var(--ink); }
+  .acc-rendered em { font-style:italic; }
+  .acc-rendered h1,.acc-rendered h2,.acc-rendered h3 { font-family:'Cinzel',serif; color:var(--accent); margin:.4em 0 .2em; }
+  .acc-rendered ul,.acc-rendered ol { padding-left:1.2em; margin:.2em 0; }
+  .acc-rendered li { margin:.1em 0; }
+  /* Cadenas titre */
+  .acc-lock-btn { flex-shrink:0; background:none; border:none; cursor:pointer;
+    font-size:.85rem; color:var(--ink3); padding:0 2px; line-height:1; }
+  .acc-lock-btn:hover { color:var(--accent); }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 </head>
 <body>
 
@@ -356,6 +374,8 @@
   <input class="des-input" type="number" id="des-devoyes" min="0" max="99" placeholder="0">
   <span style="font-size:.8rem;color:var(--ink3);font-style:italic;">/ éther :</span>
   <input class="des-input" type="text" id="ether-val" style="width:50px;">
+  <span style="font-size:.8rem;color:var(--ink3);font-style:italic;">/ occultation :</span>
+  <input class="des-input" type="number" id="occultation-val" min="0" max="999" placeholder="0" style="width:55px;">
 </div>
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
 
@@ -483,7 +503,7 @@ let state={tokens:{},scores:{},actions:{},
   historique:{title:'',text:''},
   portrait:'',
   dice:{whites:3,reds:2,dice:[],rolled:false},
-  des:'',ether:'',wheelRot:0,accordion:{}};
+  des:'',ether:'',occultation:'',wheelRot:0,accordion:{}};
 SECTORS.forEach(s=>{state.tokens[s.id]=['empty','empty','empty'];});
 
 function deg2rad(d){return(d-90)*Math.PI/180;}
@@ -715,6 +735,11 @@ ACTIONS.forEach((action,ai)=>{
 });
 
 /* ── Helper : crée un item accordéon titre+texte ── */
+function markdownToHtml(text){
+  if(typeof marked==='undefined') return text.replace(/\n/g,'<br>');
+  return marked.parse(text||'');
+}
+
 function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
   const item=document.createElement('div'); item.className='acc-item';
 
@@ -725,20 +750,70 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
 
   const titleInp=document.createElement('input'); titleInp.type='text'; titleInp.className='acc-title';
   titleInp.placeholder=titlePlaceholder;
-  const cur=(getArr()[idx])||{title:'',text:''};
+  const cur=(getArr()[idx])||{title:'',text:'',locked:false};
   titleInp.value=cur.title||'';
   titleWrap.appendChild(titleInp);
+
+  // Cadenas
+  const lockBtn=document.createElement('button'); lockBtn.className='acc-lock-btn';
+  lockBtn.title='Verrouiller / déverrouiller la saisie';
+  let isLocked=cur.locked||false;
+  lockBtn.textContent=isLocked?'🔒':'🔓';
+  titleWrap.appendChild(lockBtn);
   item.appendChild(titleWrap);
 
   const body=document.createElement('div'); body.className='acc-body';
+
   const textArea=document.createElement('textarea'); textArea.className='acc-text';
   textArea.placeholder=textPlaceholder; textArea.value=cur.text||'';
+  textArea.disabled=isLocked;
+
+  const rendered=document.createElement('div'); rendered.className='acc-rendered';
+  if(isLocked){
+    rendered.innerHTML=markdownToHtml(cur.text||'');
+    rendered.classList.add('visible');
+    textArea.style.display='none';
+  }
+
   function autoResize(){ textArea.style.height='auto'; textArea.style.height=textArea.scrollHeight+'px'; }
   textArea.addEventListener('input', autoResize);
+
+  // Ctrl+B / Ctrl+I
+  textArea.addEventListener('keydown', e=>{
+    if((e.ctrlKey||e.metaKey) && (e.key==='b'||e.key==='B'||e.key==='i'||e.key==='I')){
+      e.preventDefault();
+      const tag=e.key.toLowerCase()==='b'?'**':'*';
+      const start=textArea.selectionStart, end=textArea.selectionEnd;
+      const sel=textArea.value.substring(start,end);
+      const replacement=tag+sel+tag;
+      textArea.setRangeText(replacement,start,end,'select');
+      saveItem();
+    }
+  });
+
   body.appendChild(textArea);
+  body.appendChild(rendered);
   item.appendChild(body);
 
-  // Toggle on click
+  // Cadenas toggle
+  lockBtn.addEventListener('click',()=>{
+    isLocked=!isLocked;
+    lockBtn.textContent=isLocked?'🔒':'🔓';
+    textArea.disabled=isLocked;
+    if(isLocked){
+      rendered.innerHTML=markdownToHtml(textArea.value);
+      rendered.classList.add('visible');
+      textArea.style.display='none';
+    } else {
+      rendered.classList.remove('visible');
+      textArea.style.display='';
+      setTimeout(autoResize,10);
+    }
+    getArr()[idx]={...(getArr()[idx]||{}), locked:isLocked};
+    saveState();
+  });
+
+  // Toggle accordéon
   function toggleAcc(){
     const isOpen=body.classList.contains('open');
     body.classList.toggle('open',!isOpen);
@@ -748,16 +823,30 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
   toggle.addEventListener('click', toggleAcc);
   titleInp.addEventListener('dblclick', toggleAcc);
 
-  // Save on input — write directly into state via getter
+  // Save
   function saveItem(){
-    getArr()[idx]={title:titleInp.value, text:textArea.value};
+    getArr()[idx]={title:titleInp.value, text:textArea.value, locked:isLocked};
     saveState();
   }
   titleInp.addEventListener('input', saveItem);
   textArea.addEventListener('input', saveItem);
 
   panel.appendChild(item);
-  return {titleInp, textArea, body, toggle};
+  return {titleInp, textArea, rendered, body, toggle, autoResize,
+    applyLock: (locked)=>{
+      isLocked=locked;
+      lockBtn.textContent=locked?'🔒':'🔓';
+      textArea.disabled=locked;
+      if(locked){
+        rendered.innerHTML=markdownToHtml(textArea.value);
+        rendered.classList.add('visible');
+        textArea.style.display='none';
+      } else {
+        rendered.classList.remove('visible');
+        textArea.style.display='';
+      }
+    }
+  };
 }
 
 /* ── Traits ── */
@@ -864,8 +953,10 @@ document.querySelectorAll('.panel-title').forEach(title=>{
 /* ── Dés / Éther ── */
 const desInput=document.getElementById('des-devoyes');
 const etherInput=document.getElementById('ether-val');
+const occultationInput=document.getElementById('occultation-val');
 desInput.addEventListener('input',()=>{state.des=desInput.value;saveState();});
 etherInput.addEventListener('input',()=>{state.ether=etherInput.value;saveState();});
+occultationInput.addEventListener('input',()=>{state.occultation=occultationInput.value;saveState();});
 
 /* ── Sauvegarde Supabase ──────────────────────── */
 let saveTimer=null;
@@ -908,11 +999,14 @@ function applyRemoteState(saved){
           traitWidgets[i].textArea.value=t.text||'';
           traitWidgets[i].textArea.style.height='auto';
           traitWidgets[i].textArea.style.height=traitWidgets[i].textArea.scrollHeight+'px';
+          if(t.locked) traitWidgets[i].applyLock(true);
+          else traitWidgets[i].applyLock(false);
         }
       });
     }
     if(saved.des!==undefined){state.des=saved.des;desInput.value=saved.des;}
     if(saved.ether!==undefined){state.ether=saved.ether;etherInput.value=saved.ether;}
+    if(saved.occultation!==undefined){state.occultation=saved.occultation;occultationInput.value=saved.occultation;}
     if(saved.wheelRot!==undefined) applyRotation(saved.wheelRot, true);
     if(saved.confrerie){
       state.confrerie=saved.confrerie;
@@ -922,6 +1016,8 @@ function applyRemoteState(saved){
           confrerieWidgets[i].textArea.value=t.text||'';
           confrerieWidgets[i].textArea.style.height='auto';
           confrerieWidgets[i].textArea.style.height=confrerieWidgets[i].textArea.scrollHeight+'px';
+          if(t.locked) confrerieWidgets[i].applyLock(true);
+          else confrerieWidgets[i].applyLock(false);
         }
       });
     }
@@ -953,6 +1049,8 @@ function applyRemoteState(saved){
       historiqueWidget.textArea.value=saved.historique.text||'';
       historiqueWidget.textArea.style.height='auto';
       historiqueWidget.textArea.style.height=historiqueWidget.textArea.scrollHeight+'px';
+      if(saved.historique.locked) historiqueWidget.applyLock(true);
+      else historiqueWidget.applyLock(false);
     }
     if(saved.dice!==undefined){
       state.dice=saved.dice;
@@ -1215,6 +1313,13 @@ function dRollDice(){
   dApplyTokenRules();
   // Lancer les dés non verrouillés et sans valeur
   s.dice.forEach(d=>{ if(!d.locked&&d.value===null) d.value=Math.ceil(Math.random()*10); });
+  // Compter les 9 obtenus et incrémenter occultation
+  const nines=s.dice.filter(d=>d.value===9).length;
+  if(nines>0){
+    const curOcc=parseInt(occultationInput.value)||0;
+    state.occultation=String(curOcc+nines);
+    occultationInput.value=state.occultation;
+  }
   document.getElementById('dice-section-lbl').textContent='Dés';
   document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
   document.getElementById('dreset-btn').style.display='block';
