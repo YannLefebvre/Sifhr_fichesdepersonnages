@@ -521,56 +521,6 @@ async function xferClearRequest(){
 </div>
 
 
-<!-- Overlay transfert inter-fiches -->
-<div id="xfer-overlay">
-  <div id="xfer-box">
-    <button class="xfer-close" onclick="closeXfer()">✕</button>
-    <h3>↗ Transfert de jeton</h3>
-
-    <!-- Étape 1 : choisir le jeton -->
-    <div class="xfer-step active" id="xfer-step1">
-      <p style="font-size:.82rem;color:var(--ink3);margin-bottom:.4rem;">Choisissez le jeton à transférer :</p>
-      <div class="xfer-token-grid" id="xfer-token-list"></div>
-      <p style="font-size:.75rem;color:var(--ink3);font-style:italic;">Seuls les jetons blancs et noirs sont transférables.</p>
-    </div>
-
-    <!-- Étape 2 : choisir la fiche destinataire -->
-    <div class="xfer-step" id="xfer-step2">
-      <p style="font-size:.82rem;color:var(--ink3);margin-bottom:.2rem;">Fiche destinataire (identifiant exact) :</p>
-      <input class="xfer-input" type="text" id="xfer-target-input" placeholder="ex: aldric, sifhr…">
-      <p id="xfer-err" style="font-size:.75rem;color:var(--accent);min-height:1em;"></p>
-      <div class="xfer-btn-row">
-        <button class="xfer-btn" onclick="xferBack()">← Retour</button>
-        <button class="xfer-btn primary" onclick="xferSend()">Envoyer →</button>
-      </div>
-    </div>
-
-    <!-- Étape 3 : confirmation envoi -->
-    <div class="xfer-step" id="xfer-step3">
-      <p style="font-size:.88rem;color:var(--ink2);text-align:center;padding:.5rem 0;">
-        ✓ Jeton envoyé.<br>
-        <span style="font-size:.8rem;color:var(--ink3);">En attente de réponse du destinataire…</span>
-      </p>
-      <div class="xfer-btn-row">
-        <button class="xfer-btn primary" onclick="closeXfer()">Fermer</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Notification réception -->
-<div id="xfer-notif">
-  <h4>↘ Transfert de jeton entrant</h4>
-  <div id="xfer-notif-body"></div>
-  <div class="xfer-notif-btns">
-    <button class="xfer-btn primary" onclick="xferAccept()">Accepter</button>
-    <button class="xfer-btn" onclick="xferRefuse()">Refuser</button>
-  </div>
-</div>
-
-<!-- Bouton FAB transfert -->
-<button id="xfer-fab" onclick="toggleXfer()" title="Transfert de jeton">↗</button>
-
 <!-- Bouton flottant -->
 <button id="dice-fab" onclick="toggleDice()">🎲</button>
 
@@ -1848,5 +1798,49 @@ function showXferFab(){
 
 </script>
 </div>
+
+<!-- Overlay transfert inter-fiches -->
+<div id="xfer-overlay">
+  <div id="xfer-box">
+    <button class="xfer-close" onclick="closeXfer()">✕</button>
+    <h3>↗ Transfert de jeton</h3>
+    <div class="xfer-step active" id="xfer-step1">
+      <p style="font-size:.82rem;color:var(--ink3);margin-bottom:.4rem;">Choisissez le jeton à transférer :</p>
+      <div class="xfer-token-grid" id="xfer-token-list"></div>
+      <p style="font-size:.75rem;color:var(--ink3);font-style:italic;">Seuls les jetons blancs et noirs sont transférables.</p>
+    </div>
+    <div class="xfer-step" id="xfer-step2">
+      <p style="font-size:.82rem;color:var(--ink3);margin-bottom:.2rem;">Fiche destinataire (identifiant exact) :</p>
+      <input class="xfer-input" type="text" id="xfer-target-input" placeholder="ex: aldric, sifhr…">
+      <p id="xfer-err" style="font-size:.75rem;color:var(--accent);min-height:1em;"></p>
+      <div class="xfer-btn-row">
+        <button class="xfer-btn" onclick="xferBack()">← Retour</button>
+        <button class="xfer-btn primary" onclick="xferSend()">Envoyer →</button>
+      </div>
+    </div>
+    <div class="xfer-step" id="xfer-step3">
+      <p style="font-size:.88rem;color:var(--ink2);text-align:center;padding:.5rem 0;">
+        ✓ Jeton envoyé.<br>
+        <span style="font-size:.8rem;color:var(--ink3);">En attente de réponse du destinataire…</span>
+      </p>
+      <div class="xfer-btn-row">
+        <button class="xfer-btn primary" onclick="closeXfer()">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Notification réception -->
+<div id="xfer-notif">
+  <h4>↘ Transfert de jeton entrant</h4>
+  <div id="xfer-notif-body"></div>
+  <div class="xfer-notif-btns">
+    <button class="xfer-btn primary" onclick="xferAccept()">Accepter</button>
+    <button class="xfer-btn" onclick="xferRefuse()">Refuser</button>
+  </div>
+</div>
+
+<!-- Bouton FAB transfert -->
+<button id="xfer-fab" onclick="toggleXfer()" title="Transfert de jeton">↗</button>
 </body>
 </html>
