@@ -709,6 +709,33 @@ function renderToken(sectorId,idx){
 
 /* ── Score editing ── */
 let activeScoreInput=null;
+// Multiplicateurs de taille selon valeur
+const SQ_SCALE={0:1, 1:1.3, 2:2, 3:2.5};
+const SQ_BASE=9;
+
+function updateScoreSq(sectorId, qi, val){
+  const g=document.getElementById(`sq-${sectorId}-${qi}`);
+  if(!g) return;
+  const rect=g.querySelector('rect');
+  const txt=g.querySelector('text');
+  if(!rect||!txt) return;
+  // Valeur numérique 0-3 pour le scaling
+  const numVal=Math.min(3,Math.max(0,parseInt(val)||0));
+  const scale=SQ_SCALE[numVal]||1;
+  const newSz=SQ_BASE*scale;
+  // Centre du carré (récupéré depuis les coordonnées stockées dans dataset)
+  const cx=parseFloat(g.dataset.cx);
+  const cy=parseFloat(g.dataset.cy);
+  rect.setAttribute('x',(cx-newSz/2).toFixed(2));
+  rect.setAttribute('y',(cy-newSz/2).toFixed(2));
+  rect.setAttribute('width',newSz.toFixed(2));
+  rect.setAttribute('height',newSz.toFixed(2));
+  // Couleur texte : rouge pour qi=1 (carré extérieur), noir pour qi=0
+  const textColor = qi==1 ? '#8b2020' : '#1a1510';
+  txt.setAttribute('fill', textColor);
+  txt.setAttribute('font-size', Math.max(6, 7*scale).toFixed(1));
+}
+
 function editScore(sectorId,qi,txt,g){
   if(activeScoreInput) activeScoreInput.remove();
   const key=`${sectorId}_${qi}`;
@@ -720,7 +747,13 @@ function editScore(sectorId,qi,txt,g){
   inp.type='text';inp.maxLength=3;inp.value=state.scores[key]||'';
   inp.style.cssText='width:100%;height:100%;border:1px solid #8b2020;background:#fff;font-family:Cinzel,serif;font-size:7px;text-align:center;padding:0;outline:none;';
   fo.appendChild(inp);activeScoreInput=fo;inp.focus();inp.select();
-  const commit=()=>{state.scores[key]=inp.value;txt.textContent=inp.value;fo.remove();activeScoreInput=null;saveState();};
+  const commit=()=>{
+    state.scores[key]=inp.value;
+    txt.textContent=inp.value;
+    fo.remove();activeScoreInput=null;
+    updateScoreSq(sectorId,qi,inp.value);
+    saveState();
+  };
   inp.addEventListener('blur',commit);
   inp.addEventListener('keydown',e=>{if(e.key==='Enter') inp.blur();});
 }
@@ -998,7 +1031,7 @@ function applyRemoteState(saved){
       arr.forEach((_,i)=>renderToken(sid,i));
       updateSectorLane(sid);
     });
-    if(saved.scores){state.scores=saved.scores;Object.entries(saved.scores).forEach(([key,val])=>{const[sid,qi]=key.split('_');const t=document.querySelector(`#sq-${sid}-${qi} text`);if(t) t.textContent=val;});}
+    if(saved.scores){state.scores=saved.scores;Object.entries(saved.scores).forEach(([key,val])=>{const[sid,qi]=key.split('_');const t=document.querySelector(`#sq-${sid}-${qi} text`);if(t) t.textContent=val;updateScoreSq(sid,parseInt(qi),val);});}
     if(saved.actions){state.actions=saved.actions;Object.entries(saved.actions).forEach(([key,filled])=>{const[ai,si]=key.split('_');const sq=document.querySelector(`.act-sq[data-ai="${ai}"][data-si="${si}"]`);if(sq) sq.classList.toggle('filled',!!filled);});}
     if(saved.traits){
       state.traits=saved.traits;
