@@ -614,31 +614,64 @@ function rebuildLabels(){
     const visAng=(sec.angle+wheelRot+360)%360;
     const isDiag=visAng%90!==0;
 
-    // ── Vertus / vices : nom + valeur, taille proportionnelle à la valeur ──
-    const vvR = OUTER_R + (isDiag ? 54 : 50);
-    const vvPos = polar(CX,CY,vvR,visAng);
-    const vg=svgEl('g',{},labelsStatic);
+    // ── Vertus / vices : le long de l'arête droite de l'axe ──
+    // L'arête droite va du sommet de l'axe visAng au sommet visAng+45
+    // On place les textes à mi-chemin le long de cette arête, légèrement à l'extérieur
 
-    // Récupérer les valeurs scores pour ce secteur
     const score0=parseInt(state.scores[`${sec.id}_0`])||0; // vertu
     const score1=parseInt(state.scores[`${sec.id}_1`])||0; // vice
     const SQ_SCALE_LBL={0:1,1:1.3,2:2,3:2.5};
     const scale0=SQ_SCALE_LBL[Math.min(3,score0)]||1;
     const scale1=SQ_SCALE_LBL[Math.min(3,score1)]||1;
 
-    // Vertu (qi=0) : noir, taille variable, avec valeur si >0
-    const fs0=(7.5*scale0).toFixed(1);
-    const virtLabel=score0>0?`${sec.sub1} ${score0}`:sec.sub1;
-    svgEl('text',{x:vvPos.x.toFixed(2),y:(vvPos.y-4).toFixed(2),
-      'font-family':'Cinzel,serif','font-size':fs0,'fill':'#1a1510',
-      'text-anchor':'middle','dominant-baseline':'auto'},vg).textContent=virtLabel;
+    // Deux sommets de l'arête droite (entre visAng et visAng+45)
+    const pA=polar(CX,CY,OUTER_R,visAng);
+    const pB=polar(CX,CY,OUTER_R,visAng+45);
+    // Point médian de l'arête, décalé légèrement vers l'extérieur
+    const midX=(pA.x+pB.x)/2;
+    const midY=(pA.y+pB.y)/2;
+    // Direction normale extérieure à l'arête
+    const edgeDx=pB.x-pA.x, edgeDy=pB.y-pA.y;
+    const edgeLen=Math.sqrt(edgeDx*edgeDx+edgeDy*edgeDy);
+    // Normale pointant vers l'extérieur
+    const normX=edgeDy/edgeLen, normY=-edgeDx/edgeLen;
+    // Vérifier que la normale pointe vers l'extérieur (loin du centre)
+    const dotCheck=(midX-CX)*normX+(midY-CY)*normY;
+    const nx=dotCheck>=0?normX:-normX;
+    const ny=dotCheck>=0?normY:-normY;
+    // Angle de l'arête pour orienter le texte
+    const edgeAngleDeg=Math.atan2(edgeDy,edgeDx)*180/Math.PI;
 
-    // Vice (qi=1) : rouge, taille variable, avec valeur si >0
+    // Offset le long de l'arête : vertu vers pA, vice vers pB
+    const lineOffset=edgeLen*0.18;
+    // Décalage vers l'extérieur
+    const outOff=10;
+
+    const vg=svgEl('g',{},labelsStatic);
+
+    // Vertu (qi=0) : côté pA (vers l'axe lui-même), noir
+    const v0x=(midX - edgeDx/edgeLen*lineOffset + nx*outOff).toFixed(2);
+    const v0y=(midY - edgeDy/edgeLen*lineOffset + ny*outOff).toFixed(2);
+    const fs0=(7*scale0).toFixed(1);
+    const virtLabel=score0>0?`${sec.sub1} ${score0}`:sec.sub1;
+    svgEl('text',{
+      x:v0x, y:v0y,
+      'font-family':'Cinzel,serif','font-size':fs0,'fill':'#1a1510',
+      'text-anchor':'middle','dominant-baseline':'central',
+      'transform':`rotate(${edgeAngleDeg},${v0x},${v0y})`
+    },vg).textContent=virtLabel;
+
+    // Vice (qi=1) : côté pB (vers l'axe suivant), rouge italique
+    const v1x=(midX + edgeDx/edgeLen*lineOffset + nx*outOff).toFixed(2);
+    const v1y=(midY + edgeDy/edgeLen*lineOffset + ny*outOff).toFixed(2);
     const fs1=(7*scale1).toFixed(1);
     const viceLabel=score1>0?`${sec.sub2} ${score1}`:sec.sub2;
-    svgEl('text',{x:vvPos.x.toFixed(2),y:(vvPos.y+6+(7*(scale1-1))).toFixed(2),
+    svgEl('text',{
+      x:v1x, y:v1y,
       'font-family':'Crimson Text,serif','font-size':fs1,'fill':'#8b2020',
-      'font-style':'italic','text-anchor':'middle','dominant-baseline':'auto'},vg).textContent=viceLabel;
+      'font-style':'italic','text-anchor':'middle','dominant-baseline':'central',
+      'transform':`rotate(${edgeAngleDeg},${v1x},${v1y})`
+    },vg).textContent=viceLabel;
 
     // ── Numéro + nom d'humeur : plus loin sur l'axe ──
     const lblR = OUTER_R + (isDiag ? 104 : 88);
