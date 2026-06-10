@@ -47,7 +47,7 @@
   .acc-title:focus { background:var(--input-bg); }
   .acc-title::placeholder { color:var(--border); }
   .acc-body { overflow:hidden; max-height:0; opacity:0; transition:max-height .25s ease, opacity .2s ease; }
-  .acc-body.open { max-height:300px; opacity:1; }
+  .acc-body.open { max-height:none; opacity:1; overflow:visible; }
   .acc-text { width:calc(100% - 1rem); background:var(--input-bg); border:none; border-left:2px solid var(--border2); font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2); padding:4px 6px; outline:none; resize:none; min-height:3em; line-height:1.5; margin:.2rem 0 .4rem 1rem; box-sizing:border-box; overflow:hidden; }
   .acc-text:focus { border-left-color:var(--accent); background:#fff; }
   .des-row { display:flex; align-items:center; gap:.75rem; max-width:700px; margin:0 auto .5rem; padding:.5rem .75rem; background:var(--section-bg); border:1px solid var(--border); border-radius:var(--radius); }
@@ -1072,7 +1072,7 @@ function selectDiceRole(role){
 
     // Modif 1 : appliquer les règles des jetons dès l'ouverture
     // Remettre à null les dés non verrouillés pour une application propre
-    s.dice.forEach(d=>{ if(!d.locked){ d.value=null; d.modified=false; d.color=d.color==='black_token'?'white':d.color; } });
+    s.dice.forEach(d=>{ if(!d.locked){ d.value=null; d.modified=false; d.color=d.color==='black_token'?'red':d.color; } });
     dApplyTokenRules();
 
     // Modif 2 : verrouiller les X dés dévoyés APRÈS les dés déjà verrouillés par majorité noire
@@ -1171,7 +1171,7 @@ function dInitDice(preserve){
 }
 
 function dApplyTokenRules(){
-  // Parcourt les axes 1→8 dans l'ordre et fixe les dés blancs disponibles
+  // Parcourt les axes 1→8 dans l'ordre et fixe les dés rouges disponibles
   const s=dS();
   const sorted=[...SECTORS].sort((a,b)=>a.num-b.num);
   sorted.forEach(sec=>{
@@ -1181,21 +1181,21 @@ function dApplyTokenRules(){
     const blacks=tokens.filter(t=>t==='black').length;
     const total=whites+blacks;
     if(total<3) return; // axe non plein
-    const majorityWhite = whites>blacks; // 2b1n ou 3b → true ; 2n1b ou 3n → false
-    // Trouver le premier dé blanc non encore assigné par cette règle
-    const dieIdx=s.dice.findIndex(d=>d.color==='white'&&!d._tokenAssigned);
-    if(dieIdx===-1) return; // plus de dés blancs disponibles
+    const majorityWhite = whites>blacks;
+    // Trouver le premier dé rouge non encore assigné par cette règle
+    const dieIdx=s.dice.findIndex(d=>d.color==='red'&&!d._tokenAssigned);
+    if(dieIdx===-1) return; // plus de dés rouges disponibles, on arrête
     const d=s.dice[dieIdx];
     d.value=sec.num;
     d._tokenAssigned=true;
     if(majorityWhite){
-      // Dé blanc, déverrouillé
-      d.color='white';
+      // Majorité blanche : dé rouge, déverrouillé
+      d.color='red';
       d.locked=false;
       d.modified=false;
     } else {
-      // Dé passé en noir, verrouillé
-      d.color='black_token'; // couleur spéciale pour rendu
+      // Majorité noire : dé rouge passé en noir, verrouillé
+      d.color='black_token';
       d.locked=true;
       d.modified=true;
     }
@@ -1210,7 +1210,7 @@ function dRollDice(){
   s.rolled=true;
   if(!s.dice||!s.dice.length) dInitDice(false);
   // Remettre à null les dés non verrouillés (pour relancer proprement)
-  s.dice.forEach(d=>{ if(!d.locked){ d.value=null; d.modified=false; d.color=d.color==='black_token'?'white':d.color; } });
+  s.dice.forEach(d=>{ if(!d.locked){ d.value=null; d.modified=false; d.color=d.color==='black_token'?'red':d.color; } });
   // Appliquer les règles des jetons avant le lancer
   dApplyTokenRules();
   // Lancer les dés non verrouillés et sans valeur
