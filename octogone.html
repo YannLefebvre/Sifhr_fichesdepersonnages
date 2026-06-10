@@ -303,13 +303,12 @@
       </div>
       <p class="dice-section-title" id="dice-section-lbl">Fixer des valeurs avant le lancer (optionnel)</p>
       <div class="dice-grid" id="dice-grid"></div>
-      <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés</button>
+      <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
       <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
     <div id="dice-legend" style="display:none;margin-top:.6rem;padding:.5rem .6rem;background:#f0ede6;border-radius:6px;font-size:.72rem;color:#6b5d4f;line-height:1.6;">
       <strong style="font-family:'Cinzel',serif;font-size:.7rem;color:#3d342a;">Légende des verrous</strong><br>
       🔓 <em>Libre</em> — dé modifiable avant lancer<br>
-      🔒 <em>Dés dévoyés</em> — verrouillé au lancer<br>
-      🔒 <em style="color:#8b2020;">Jeton noir majoritaire</em> — axe à 3 jetons, valeur fixée<br>
+      <span style="display:inline-block;border:1.5px solid #1a1510;border-radius:3px;padding:0 2px;line-height:1.4;">🔒</span> <em>Dés dévoyés</em> — verrouillé au lancer<br>
       ⬡ <em>Transférer</em> — ajoute un jeton sur la roue
     </div>
     </div>
@@ -1105,7 +1104,7 @@ function applyRemoteState(saved){
         document.getElementById('dred-count').textContent=s.reds||2;
         if(s.rolled){
           document.getElementById('dice-section-lbl').textContent='Dés';
-          document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
+          document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés libres';
           document.getElementById('dreset-btn').style.display='block';
       const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
         }
@@ -1207,7 +1206,7 @@ function selectDiceRole(role){
   document.getElementById('dred-count').textContent=s.reds||2;
   if(s.rolled){
     document.getElementById('dice-section-lbl').textContent='Dés';
-    document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
+    document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés libres';
     document.getElementById('dreset-btn').style.display='block';
       const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
   }
@@ -1273,7 +1272,7 @@ function dStartRealtime(){
             document.getElementById('dred-count').textContent=s.reds||2;
             if(s.rolled){
               document.getElementById('dice-section-lbl').textContent='Dés';
-              document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
+              document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés libres';
               document.getElementById('dreset-btn').style.display='block';
       const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
             }
@@ -1360,7 +1359,9 @@ function dRollDice(){
   // Appliquer les règles des jetons avant le lancer
   dApplyTokenRules();
   // Lancer les dés non verrouillés et sans valeur
-  s.dice.forEach(d=>{ if(!d.locked&&d.value===null) d.value=Math.ceil(Math.random()*10); });
+  s.dice.forEach(d=>{
+    if(d.value===null) d.value=Math.ceil(Math.random()*10); // tous les dés sans valeur, verrouillés ou non
+  });
   // Compter les 9 obtenus et incrémenter occultation
   const nines=s.dice.filter(d=>d.value===9).length;
   if(nines>0){
@@ -1369,7 +1370,7 @@ function dRollDice(){
     occultationInput.value=state.occultation;
   }
   document.getElementById('dice-section-lbl').textContent='Dés';
-  document.getElementById('dlaunch-btn').textContent='🎲 Relancer les dés libres';
+  document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés libres';
   document.getElementById('dreset-btn').style.display='block';
       const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
   dRenderDice(true); dPushState();
