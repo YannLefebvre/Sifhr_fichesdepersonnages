@@ -899,6 +899,7 @@ function addToken(sectorId,color){
 }
 
 function cycleToken(sectorId,idx){
+  if(!isGM) return; // Seul le MJ peut modifier les jetons
   const cur=state.tokens[sectorId][idx];
   state.tokens[sectorId][idx]=cur==='empty'?'white':cur==='white'?'black':'empty';
   renderToken(sectorId,idx); updateSectorLane(sectorId); saveState();
@@ -907,6 +908,13 @@ function cycleToken(sectorId,idx){
 function renderToken(sectorId,idx){
   const g=document.getElementById(`tok-${sectorId}-${idx}`); if(!g) return;
   const c=g.querySelector('circle');
+  if(!isGM){
+    // Joueur : toujours vide (les jetons fantômes gèrent l'affichage)
+    c.setAttribute('fill','none');
+    c.setAttribute('stroke','none');
+    c.setAttribute('stroke-dasharray','3,2');
+    return;
+  }
   const v=state.tokens[sectorId][idx];
   if(v==='white'){c.setAttribute('fill','#f0ead8');c.setAttribute('stroke','#b8a88a');c.removeAttribute('stroke-dasharray');}
   else if(v==='black'){c.setAttribute('fill','#1a1510');c.setAttribute('stroke','#3d342a');c.removeAttribute('stroke-dasharray');}
@@ -915,6 +923,11 @@ function renderToken(sectorId,idx){
 
 function updateSectorLane(sectorId){
   const lane=document.getElementById(`lane-${sectorId}`); if(!lane) return;
+  if(!isGM){
+    // Joueur : pas de couleur de lane visible (géré par les fantômes)
+    lane.setAttribute('fill','none'); lane.setAttribute('stroke','none');
+    return;
+  }
   const key=laneColorKey(state.tokens[sectorId]);
   const col=LANE_COLORS[key];
   if(!col){lane.setAttribute('fill','none');lane.setAttribute('stroke','none');}
@@ -1106,6 +1119,8 @@ function applyRemoteState(saved){
   applyingRemote=true;
   try{
     if(saved.tokens) Object.entries(saved.tokens).forEach(([sid,arr])=>{ state.tokens[sid]=arr; arr.forEach((_,i)=>renderToken(sid,i)); updateSectorLane(sid); });
+    // Si joueur : reconstruire les fantômes après mise à jour tokens
+    if(!isGM) pneuRenderGhostTokens();
     if(saved.scores){ state.scores=saved.scores; Object.entries(saved.scores).forEach(([key,val])=>{ const[sid,qi]=key.split('_'); const t=document.querySelector(`#sq-${sid}-${qi} text`); if(t) t.textContent=val; }); rebuildLabels(); }
     if(saved.axisNotes){
       state.axisNotes=saved.axisNotes;
