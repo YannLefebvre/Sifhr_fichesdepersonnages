@@ -18,13 +18,21 @@
 // }
 
 function pneuInit(){
-  if(!state.pneumato||typeof state.pneumato!=='object'||!state.pneumato.direction){
-    state.pneumato={
-      valeurs:0, polarite:0,
+  // Ne réinitialiser que si vraiment absent ou mal formé
+  if(!state.pneumato||typeof state.pneumato!=='object'||Array.isArray(state.pneumato)){
+    state.pneumato={valeurs:0,polarite:0,
       direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
       dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}}
     };
+    return;
   }
+  // Compléter les sous-structures manquantes sans écraser ce qui existe
+  if(!state.pneumato.direction) state.pneumato.direction={1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}};
+  if(!state.pneumato.dynamique) state.pneumato.dynamique={1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}};
+  [1,2,3].forEach(lvl=>{
+    if(!state.pneumato.direction[lvl]) state.pneumato.direction[lvl]={text:'',active:false,locked:false};
+    if(!state.pneumato.dynamique[lvl]) state.pneumato.dynamique[lvl]={text:'',active:false,locked:false};
+  });
 }
 
 function pneuRenderButtons(){
@@ -35,7 +43,8 @@ function pneuRenderButtons(){
       const btn=document.querySelector(`.pneu-btn[data-zone="${zone}"][data-level="${lvl}"]`);
       if(!btn) return;
       btn.classList.toggle('active', active===lvl);
-      if(!isGM) btn.style.pointerEvents='none';
+      btn.style.pointerEvents=isGM?'':'none';
+      btn.style.opacity=isGM?'':'0.6';
     });
   });
   ['direction','dynamique'].forEach(zone=>{
@@ -44,7 +53,8 @@ function pneuRenderButtons(){
       if(!btn) return;
       const s=state.pneumato[zone]?.[lvl];
       btn.classList.toggle('active', !!(s&&s.active));
-      if(!isGM) btn.style.pointerEvents='none';
+      btn.style.pointerEvents=isGM?'':'none';
+      btn.style.opacity=isGM?'':'0.6';
     });
   });
   pneuRenderGhostTokens();
@@ -224,9 +234,10 @@ function pneuRenderPlayerView(){
         const textEl=document.createElement('div');
         textEl.innerHTML=markdownToHtml(s.text);
         div.appendChild(textEl);
-        // Insérer après le panneau pneumato
-        const panel=document.querySelector('.pneumato-panel');
+        // Insérer après le panneau pneumato ou la des-row
+        const panel=document.querySelector('.pneumato-panel')||document.querySelector('.des-row');
         if(panel) panel.after(div);
+        else document.getElementById('app').appendChild(div);
       }
     });
   });
@@ -732,7 +743,7 @@ function laneColorKey(tokens){
 let state={
   tokens:{},scores:{},
   axisNotes:{}, // {sectorId: {gm:{text,locked,revealed}, players:{text,locked}}}
-  pneumato:'',ether:'',occultation:'',
+  pneumato:{valeurs:0,polarite:0,direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}}},ether:'',occultation:'',
   wheelRot:0
 };
 SECTORS.forEach(s=>{
@@ -1100,9 +1111,9 @@ function applyRemoteState(saved){
       // Mettre à jour le panneau si ouvert
       if(currentAxisSec){ openAxisPanel(currentAxisSec); }
     }
-    if(saved.pneumato!==undefined){
+    if(saved.pneumato!==undefined&&saved.pneumato!==null&&typeof saved.pneumato==='object'){
       state.pneumato=saved.pneumato;
-      pneuInit();
+      pneuInit(); // compléter les sous-structures sans écraser
       pneuRenderButtons();
       pneuRenderPlayerView();
     }
