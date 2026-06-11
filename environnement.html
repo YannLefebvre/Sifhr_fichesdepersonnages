@@ -1093,7 +1093,8 @@ function saveState(){
   saveTimer=setTimeout(async()=>{
     const msg=document.getElementById('save-msg');
     try{
-      const ok=await SB.upsert(FICHE_ID,state);
+      const stateCopy=JSON.parse(JSON.stringify(state));
+      const ok=await SB.upsert(FICHE_ID,stateCopy);
       if(ok){msg.textContent='Sauvegardé ✓';msg.className='save-info saved';setTimeout(()=>{msg.textContent='Synchronisation active';msg.className='save-info';},2000);}
       else{msg.textContent='Erreur de sauvegarde';msg.className='save-info error';}
     }catch(e){msg.textContent='Hors-ligne';msg.className='save-info error';}
@@ -1111,8 +1112,10 @@ function applyRemoteState(saved){
       // Mettre à jour le panneau si ouvert
       if(currentAxisSec){ openAxisPanel(currentAxisSec); }
     }
-    if(saved.pneumato!==undefined&&saved.pneumato!==null&&typeof saved.pneumato==='object'){
-      state.pneumato=saved.pneumato;
+    if(saved.pneumato!==undefined&&saved.pneumato!==null){
+      if(typeof saved.pneumato==='object'&&!Array.isArray(saved.pneumato)){
+        state.pneumato=saved.pneumato;
+      }
       pneuInit(); // compléter les sous-structures sans écraser
       pneuRenderButtons();
       pneuRenderPlayerView();
@@ -1163,10 +1166,14 @@ async function doLogin(tryGM){
         document.getElementById('modal-overlay').style.display='none';
         document.getElementById('app').style.display='block';
         document.getElementById('xfer-fab').style.display='flex';
-        pneuInit();
-        pneuRenderButtons();
-        if(row.etat&&Object.keys(row.etat).length>0) applyRemoteState(row.etat);
-        else { pneuRenderButtons(); }
+        if(tryGM) document.getElementById('gm-bar').style.display='flex';
+        // Charger d'abord l'état Supabase, PUIS initialiser l'UI
+        if(row.etat&&Object.keys(row.etat).length>0){
+          applyRemoteState(row.etat);
+        } else {
+          pneuInit();
+          pneuRenderButtons();
+        }
         startRealtime();
       }
     }
