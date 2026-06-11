@@ -4,7 +4,235 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Octogone — Environnement</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js">
+/* ══════════════════════════════════════════════
+   PNEUMATOGRAPHIE
+   ══════════════════════════════════════════════ */
+
+// État pneumato dans state
+// state.pneumato = {
+//   valeurs: 0|1|2|3,
+//   polarite: 0|1|2|3,
+//   direction: {1:{text:'',active:false,locked:false}, 2:{...}, 3:{...}},
+//   dynamique: {1:{...}, 2:{...}, 3:{...}}
+// }
+
+function pneuInit(){
+  if(!state.pneumato||typeof state.pneumato!=='object'||!state.pneumato.direction){
+    state.pneumato={
+      valeurs:0, polarite:0,
+      direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
+      dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}}
+    };
+  }
+}
+
+function pneuRenderButtons(){
+  pneuInit();
+  ['valeurs','polarite'].forEach(zone=>{
+    const active=state.pneumato[zone]||0;
+    [1,2,3].forEach(lvl=>{
+      const btn=document.querySelector(`.pneu-btn[data-zone="${zone}"][data-level="${lvl}"]`);
+      if(!btn) return;
+      btn.classList.toggle('active', active===lvl);
+      if(!isGM) btn.style.pointerEvents='none';
+    });
+  });
+  ['direction','dynamique'].forEach(zone=>{
+    [1,2,3].forEach(lvl=>{
+      const btn=document.querySelector(`.pneu-btn[data-zone="${zone}"][data-level="${lvl}"]`);
+      if(!btn) return;
+      const s=state.pneumato[zone]?.[lvl];
+      btn.classList.toggle('active', !!(s&&s.active));
+      if(!isGM) btn.style.pointerEvents='none';
+    });
+  });
+  pneuRenderGhostTokens();
+}
+
+// ── Valeurs/Polarité → jetons fantômes ──
+function pneuRenderGhostTokens(){
+  pneuInit();
+  // Supprimer anciens fantômes
+  document.querySelectorAll('.ghost-token').forEach(el=>el.remove());
+
+  const vLevel=state.pneumato.valeurs||0;
+  const pLevel=state.pneumato.polarite||0;
+  if(vLevel===0) return;
+
+  // Collecter tous les jetons réels (non empty), dans l'ordre axes 1→8
+  const allTokens=[];
+  const sorted=[...SECTORS].sort((a,b)=>a.num-b.num);
+  sorted.forEach(sec=>{
+    state.tokens[sec.id].forEach((color,idx)=>{
+      if(color!=='empty') allTokens.push({sectorId:sec.id,idx,color});
+    });
+  });
+
+  const total=allTokens.length;
+  if(total===0) return;
+
+  // Nombre de jetons révélés par valeurs
+  const vCount=vLevel===1?Math.ceil(total/3):vLevel===2?Math.ceil(total*2/3):total;
+  // Nombre de jetons colorés par polarité (parmi les révélés)
+  const pCount=pLevel===0?0:pLevel===1?Math.ceil(vCount/3):pLevel===2?Math.ceil(vCount*2/3):vCount;
+
+  const tokenRadii=[
+    INNER_R+(OUTER_R-INNER_R)*1.5/RINGS,
+    INNER_R+(OUTER_R-INNER_R)*2.5/RINGS,
+    INNER_R+(OUTER_R-INNER_R)*3.5/RINGS,
+  ];
+
+  allTokens.slice(0,vCount).forEach((tok,i)=>{
+    const sec=SECTORS.find(s=>s.id===tok.sectorId);
+    if(!sec) return;
+    const ang=(sec.angle+wheelRot+360)%360;
+    const pos=polar(CX,CY,tokenRadii[tok.idx],ang);
+    const showColor=i<pCount;
+    const fillColor=showColor?(tok.color==='white'?'rgba(240,234,216,0.7)':'rgba(26,21,16,0.7)'):'rgba(150,140,130,0.55)';
+    const strokeColor=showColor?(tok.color==='white'?'#b8a88a':'#3d342a'):'#9a8a7a';
+
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','ghost-token');
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',pos.x.toFixed(2));
+    circle.setAttribute('cy',pos.y.toFixed(2));
+    circle.setAttribute('r','9');
+    circle.setAttribute('fill',fillColor);
+    circle.setAttribute('stroke',strokeColor);
+    circle.setAttribute('stroke-width','1.5');
+    circle.setAttribute('stroke-dasharray', showColor?'none':'4,2');
+    g.appendChild(circle);
+    labelsStatic.appendChild(g);
+  });
+}
+
+// ── Toggle valeurs/polarité ──
+function pneuToggle(zone,level){
+  if(!isGM) return;
+  pneuInit();
+  const current=state.pneumato[zone]||0;
+  state.pneumato[zone]=(current===level)?0:level;
+  // Polarité ne peut pas dépasser valeurs
+  if(zone==='valeurs'&&state.pneumato.polarite>state.pneumato.valeurs){
+    state.pneumato.polarite=0;
+  }
+  pneuRenderButtons();
+  saveState();
+}
+
+// ── Direction / Dynamique ──
+let pneuCurrentZone=null;
+
+function pneuOpenText(zone,level){
+  if(!isGM) return;
+  pneuInit();
+  pneuCurrentZone={zone,level};
+  const titles={direction:'Direction',dynamique:'Dynamique'};
+  const levels={1:'Niveau I',2:'Niveau II',3:'Niveau III'};
+  document.getElementById('pneumato-panel-title').textContent=`${titles[zone]} — ${levels[level]}`;
+
+  const body=document.getElementById('pneumato-panel-body');
+  body.innerHTML='';
+
+  [1,2,3].forEach(lvl=>{
+    const s=state.pneumato[zone][lvl]||{text:'',active:false,locked:false};
+    const sec=document.createElement('div'); sec.className='pneu-level-section';
+
+    const header=document.createElement('div'); header.className='pneu-level-header';
+    const lbl=document.createElement('span'); lbl.className='pneu-level-label'; lbl.textContent=`Niveau ${['I','II','III'][lvl-1]}`;
+    const dot=document.createElement('span'); dot.className='pneu-level-active-dot'+(s.active?' on':''); dot.id=`pneu-dot-${zone}-${lvl}`;
+    header.appendChild(lbl); header.appendChild(dot);
+    sec.appendChild(header);
+
+    const ta=document.createElement('textarea'); ta.className='pneu-textarea'; ta.value=s.text||'';
+    ta.placeholder=`Texte ${titles[zone]} niveau ${['I','II','III'][lvl-1]}…`;
+    ta.disabled=s.locked||!isGM;
+    function autoR(){ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; }
+    ta.addEventListener('input',()=>{ autoR(); state.pneumato[zone][lvl].text=ta.value; saveState(); });
+    setTimeout(autoR,10);
+
+    const rend=document.createElement('div'); rend.className='pneu-rendered'+(s.locked?' visible':'');
+    if(s.locked) rend.innerHTML=markdownToHtml(s.text||'');
+    if(s.locked) ta.style.display='none';
+
+    sec.appendChild(ta); sec.appendChild(rend);
+
+    const actions=document.createElement('div'); actions.className='pneu-actions';
+
+    // Bouton Révéler/Masquer
+    const revBtn=document.createElement('button'); revBtn.className='pneu-act-btn';
+    revBtn.textContent=s.active?'Masquer aux joueurs':'Révéler aux joueurs';
+    revBtn.onclick=()=>{
+      state.pneumato[zone][lvl].active=!state.pneumato[zone][lvl].active;
+      revBtn.textContent=state.pneumato[zone][lvl].active?'Masquer aux joueurs':'Révéler aux joueurs';
+      dot.classList.toggle('on',state.pneumato[zone][lvl].active);
+      // Mettre à jour bouton principal
+      const mainBtn=document.querySelector(`.pneu-btn[data-zone="${zone}"][data-level="${lvl}"]`);
+      if(mainBtn) mainBtn.classList.toggle('active',state.pneumato[zone][lvl].active);
+      saveState();
+    };
+    actions.appendChild(revBtn);
+
+    // Bouton Verrouiller
+    const lockBtn=document.createElement('button'); lockBtn.className='pneu-act-btn';
+    lockBtn.textContent=s.locked?'🔒':'🔓';
+    lockBtn.onclick=()=>{
+      state.pneumato[zone][lvl].locked=!state.pneumato[zone][lvl].locked;
+      lockBtn.textContent=state.pneumato[zone][lvl].locked?'🔒':'🔓';
+      ta.disabled=state.pneumato[zone][lvl].locked;
+      if(state.pneumato[zone][lvl].locked){
+        rend.innerHTML=markdownToHtml(ta.value); rend.classList.add('visible'); ta.style.display='none';
+      } else {
+        rend.classList.remove('visible'); ta.style.display=''; setTimeout(autoR,10);
+      }
+      saveState();
+    };
+    actions.appendChild(lockBtn);
+
+    sec.appendChild(actions);
+    body.appendChild(sec);
+  });
+
+  document.getElementById('pneumato-overlay').classList.add('open');
+}
+
+function closePneumatoPanel(){
+  document.getElementById('pneumato-overlay').classList.remove('open');
+  pneuCurrentZone=null;
+}
+
+// ── Affichage joueurs : textes révélés ──
+function pneuRenderPlayerView(){
+  // Supprimer anciens affichages joueurs
+  document.querySelectorAll('.pneu-player-reveal').forEach(el=>el.remove());
+  if(isGM) return; // MJ voit via le panneau d'édition
+
+  pneuInit();
+  ['direction','dynamique'].forEach(zone=>{
+    [1,2,3].forEach(lvl=>{
+      const s=state.pneumato[zone]?.[lvl];
+      if(s&&s.active&&s.text){
+        // Afficher dans un bandeau sous le panneau pneumato
+        const div=document.createElement('div');
+        div.className='pneu-player-reveal';
+        div.style.cssText='max-width:700px;margin:.4rem auto;padding:.6rem .8rem;background:var(--section-bg);border:1px solid var(--border2);border-radius:var(--radius);font-family:"Crimson Text",serif;font-size:.88rem;color:var(--ink2);';
+        const titleEl=document.createElement('div');
+        titleEl.style.cssText='font-family:"Cinzel",serif;font-size:.7rem;color:var(--accent);letter-spacing:.06em;margin-bottom:.3rem;';
+        titleEl.textContent=`${zone==='direction'?'Direction':'Dynamique'} — Niveau ${['I','II','III'][lvl-1]}`;
+        div.appendChild(titleEl);
+        const textEl=document.createElement('div');
+        textEl.innerHTML=markdownToHtml(s.text);
+        div.appendChild(textEl);
+        // Insérer après le panneau pneumato
+        const panel=document.querySelector('.pneumato-panel');
+        if(panel) panel.after(div);
+      }
+    });
+  });
+}
+
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
   :root {
@@ -123,6 +351,54 @@
   #xfer-fab { position:fixed; bottom:1.2rem; right:1.2rem; width:52px; height:52px; border-radius:50%; background:#3d342a; color:#f5f0e8; border:none; font-size:1.1rem; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.3); display:none; align-items:center; justify-content:center; z-index:190; transition:background .15s; }
   #xfer-fab:hover { background:#1a1510; }
   #xfer-fab.open { background:var(--accent); }
+
+  /* ── Pneumatographie ── */
+  .pneumato-panel { max-width:700px; margin:0 auto 1rem; background:var(--section-bg); border:1px solid var(--border); border-radius:var(--radius); padding:.75rem; }
+  .pneumato-title { font-family:'Cinzel',serif; font-size:.85rem; letter-spacing:.1em; color:var(--accent); text-transform:uppercase; margin-bottom:.75rem; border-bottom:1px solid var(--border2); padding-bottom:.3rem; text-align:center; }
+  .pneumato-grid { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+  @media(max-width:480px){ .pneumato-grid{grid-template-columns:1fr;} }
+  .pneumato-zone { background:var(--input-bg); border:1px solid var(--border2); border-radius:var(--radius); padding:.5rem; }
+  .pneumato-zone-title { font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.08em; color:var(--ink2); text-transform:uppercase; margin-bottom:.5rem; text-align:center; }
+  .pneumato-btns { display:flex; justify-content:center; gap:.5rem; }
+  .pneu-btn {
+    background:none; border:1px solid var(--border); border-radius:4px;
+    padding:4px 8px; cursor:pointer; display:flex; flex-direction:column;
+    align-items:center; gap:3px; transition:background .15s, border-color .15s;
+    position:relative;
+  }
+  .pneu-btn:hover { background:var(--border2); }
+  .pneu-btn.active { border-color:var(--accent); background:#f5e8e8; }
+  .pneu-btn.gm-only { opacity:.5; }
+  .pneu-btn.gm-only:not([data-gm="true"]) { pointer-events:none; }
+  .pneu-oct-icon { display:block; }
+  .pneu-label { font-family:'Cinzel',serif; font-size:.55rem; color:var(--ink3); letter-spacing:.04em; }
+
+  /* Fenêtre flottante pneumato */
+  #pneumato-overlay { position:fixed; inset:0; background:rgba(26,21,16,0.65); display:none; align-items:center; justify-content:center; z-index:160; }
+  #pneumato-overlay.open { display:flex; }
+  #pneumato-box { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:1.5rem; max-width:460px; width:94vw; max-height:85vh; overflow-y:auto; box-shadow:0 6px 32px rgba(0,0,0,0.4); position:relative; }
+  #pneumato-box h3 { font-family:'Cinzel',serif; color:var(--accent); font-size:.95rem; letter-spacing:.1em; margin-bottom:1rem; padding-right:2rem; }
+  .pneumato-close { position:absolute; top:10px; right:12px; background:none; border:none; font-size:1.1rem; cursor:pointer; color:#888; }
+  .pneumato-close:hover { color:var(--ink); }
+  .pneu-level-section { margin-bottom:.85rem; border:1px solid var(--border2); border-radius:var(--radius); overflow:hidden; }
+  .pneu-level-header { display:flex; align-items:center; gap:.5rem; padding:.45rem .6rem; background:var(--section-bg); border-bottom:1px solid var(--border2); }
+  .pneu-level-label { font-family:'Cinzel',serif; font-size:.72rem; color:var(--ink2); letter-spacing:.06em; flex:1; }
+  .pneu-level-active-dot { width:8px; height:8px; border-radius:50%; background:#ccc; flex-shrink:0; }
+  .pneu-level-active-dot.on { background:var(--accent); }
+  .pneu-textarea { width:100%; background:var(--input-bg); border:none; font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2); padding:6px; outline:none; resize:none; min-height:3em; line-height:1.5; overflow:hidden; }
+  .pneu-textarea:focus { background:#fff; }
+  .pneu-textarea:disabled { background:var(--section-bg); }
+  .pneu-rendered { display:none; font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2); padding:6px; line-height:1.5; border-left:2px solid var(--border2); }
+  .pneu-rendered.visible { display:block; }
+  .pneu-rendered p { margin:.2em 0; }
+  .pneu-actions { display:flex; gap:.4rem; padding:.35rem .5rem; background:var(--section-bg); }
+  .pneu-act-btn { font-family:'Cinzel',serif; font-size:.65rem; padding:3px 8px; border:1px solid var(--border); border-radius:3px; background:var(--input-bg); cursor:pointer; color:var(--ink2); }
+  .pneu-act-btn:hover { background:var(--border2); }
+  .pneu-act-btn.danger { border-color:#c0392b; color:#c0392b; }
+  .pneu-act-btn.danger:hover { background:#fde0e0; }
+
+  /* Jetons fantômes */
+  .ghost-token { pointer-events:none; }
 </style>
 </head>
 <body>
@@ -204,13 +480,96 @@
     </svg>
   </div>
 
+  <!-- Pneumatographie -->
+  <div class="pneumato-panel">
+    <div class="pneumato-title">Pneumatographie</div>
+    <div class="pneumato-grid">
+      <div class="pneumato-zone">
+        <div class="pneumato-zone-title">Valeurs</div>
+        <div class="pneumato-btns" id="pneu-valeurs-btns">
+          <button class="pneu-btn" data-zone="valeurs" data-level="1" onclick="pneuToggle('valeurs',1)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">I</span>
+          </button>
+          <button class="pneu-btn" data-zone="valeurs" data-level="2" onclick="pneuToggle('valeurs',2)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">II</span>
+          </button>
+          <button class="pneu-btn" data-zone="valeurs" data-level="3" onclick="pneuToggle('valeurs',3)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">III</span>
+          </button>
+        </div>
+      </div>
+      <div class="pneumato-zone">
+        <div class="pneumato-zone-title">Polarité</div>
+        <div class="pneumato-btns" id="pneu-polarite-btns">
+          <button class="pneu-btn" data-zone="polarite" data-level="1" onclick="pneuToggle('polarite',1)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">I</span>
+          </button>
+          <button class="pneu-btn" data-zone="polarite" data-level="2" onclick="pneuToggle('polarite',2)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">II</span>
+          </button>
+          <button class="pneu-btn" data-zone="polarite" data-level="3" onclick="pneuToggle('polarite',3)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">III</span>
+          </button>
+        </div>
+      </div>
+      <div class="pneumato-zone">
+        <div class="pneumato-zone-title">Direction</div>
+        <div class="pneumato-btns" id="pneu-direction-btns">
+          <button class="pneu-btn" data-zone="direction" data-level="1" onclick="pneuOpenText('direction',1)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">I</span>
+          </button>
+          <button class="pneu-btn" data-zone="direction" data-level="2" onclick="pneuOpenText('direction',2)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">II</span>
+          </button>
+          <button class="pneu-btn" data-zone="direction" data-level="3" onclick="pneuOpenText('direction',3)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">III</span>
+          </button>
+        </div>
+      </div>
+      <div class="pneumato-zone">
+        <div class="pneumato-zone-title">Dynamique</div>
+        <div class="pneumato-btns" id="pneu-dynamique-btns">
+          <button class="pneu-btn" data-zone="dynamique" data-level="1" onclick="pneuOpenText('dynamique',1)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">I</span>
+          </button>
+          <button class="pneu-btn" data-zone="dynamique" data-level="2" onclick="pneuOpenText('dynamique',2)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">II</span>
+          </button>
+          <button class="pneu-btn" data-zone="dynamique" data-level="3" onclick="pneuOpenText('dynamique',3)">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
+            <span class="pneu-label">III</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barre éther/occultation -->
   <div class="des-row">
-    <span class="des-label">Pneumatographie</span>
-    <input class="des-input" type="number" id="pneumato-val" min="0" max="999" placeholder="0">
-    <span style="font-size:.8rem;color:var(--ink3);font-style:italic;">/ éther :</span>
-    <input class="des-input" type="text" id="ether-val" style="width:50px;">
+    <span class="des-label">Éther</span>
+    <input class="des-input" type="text" id="ether-val" style="width:60px;">
     <span style="font-size:.8rem;color:var(--ink3);font-style:italic;">/ occultation :</span>
     <input class="des-input" type="number" id="occultation-val" min="0" max="999" placeholder="0" style="width:55px;">
+  </div>
+
+  <!-- Overlay pneumato -->
+  <div id="pneumato-overlay">
+    <div id="pneumato-box">
+      <button class="pneumato-close" onclick="closePneumatoPanel()">✕</button>
+      <h3 id="pneumato-panel-title">Direction</h3>
+      <div id="pneumato-panel-body"></div>
+    </div>
   </div>
   <p class="save-info" id="save-msg">Synchronisation en cours…</p>
 </div>
@@ -395,6 +754,7 @@ SECTORS.forEach((sec)=>{
 const labelsStatic=document.getElementById('labels-static');
 function rebuildLabels(){
   while(labelsStatic.firstChild) labelsStatic.removeChild(labelsStatic.firstChild);
+  // Les fantômes sont reconstruits à la fin
   SECTORS.forEach((sec)=>{
     const visAng=(sec.angle+wheelRot+360)%360;
     const isDiag=visAng%90!==0;
@@ -675,7 +1035,12 @@ function applyRemoteState(saved){
       // Mettre à jour le panneau si ouvert
       if(currentAxisSec){ openAxisPanel(currentAxisSec); }
     }
-    if(saved.pneumato!==undefined){state.pneumato=saved.pneumato;document.getElementById('pneumato-val').value=saved.pneumato;}
+    if(saved.pneumato!==undefined){
+      state.pneumato=saved.pneumato;
+      pneuInit();
+      pneuRenderButtons();
+      pneuRenderPlayerView();
+    }
     if(saved.ether!==undefined){state.ether=saved.ether;document.getElementById('ether-val').value=saved.ether;}
     if(saved.occultation!==undefined){state.occultation=saved.occultation;document.getElementById('occultation-val').value=saved.occultation;}
     if(saved.wheelRot!==undefined) applyRotation(saved.wheelRot,true);
@@ -722,7 +1087,10 @@ async function doLogin(tryGM){
         document.getElementById('modal-overlay').style.display='none';
         document.getElementById('app').style.display='block';
         document.getElementById('xfer-fab').style.display='flex';
+        pneuInit();
+        pneuRenderButtons();
         if(row.etat&&Object.keys(row.etat).length>0) applyRemoteState(row.etat);
+        else { pneuRenderButtons(); }
         startRealtime();
       }
     }
@@ -731,10 +1099,8 @@ async function doLogin(tryGM){
 }
 
 // ── Compteurs ──
-const pneumatoInput=document.getElementById('pneumato-val');
 const etherInput=document.getElementById('ether-val');
 const occultationInput=document.getElementById('occultation-val');
-pneumatoInput.addEventListener('input',()=>{state.pneumato=pneumatoInput.value;saveState();});
 etherInput.addEventListener('input',()=>{state.ether=etherInput.value;saveState();});
 occultationInput.addEventListener('input',()=>{state.occultation=occultationInput.value;saveState();});
 
