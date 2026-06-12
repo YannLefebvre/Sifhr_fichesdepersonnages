@@ -916,6 +916,8 @@ function rebuildLabels(){
       });
     }
   });
+  // Reconstruire les jetons fantômes après les labels
+  if(typeof pneuRenderGhostTokens==='function') pneuRenderGhostTokens();
 }
 
 function applyRotation(deg,skipSave=false){
