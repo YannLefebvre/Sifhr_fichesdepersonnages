@@ -22,13 +22,15 @@ function pneuInit(){
   if(!state.pneumato||typeof state.pneumato!=='object'||Array.isArray(state.pneumato)){
     state.pneumato={valeurs:0,polarite:0,
       direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
-      dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}}
+      dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
+      zonesRevealed:{valeurs:false,polarite:false,direction:false,dynamique:false}
     };
     return;
   }
   // Compléter les sous-structures manquantes sans écraser ce qui existe
   if(!state.pneumato.direction) state.pneumato.direction={1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}};
   if(!state.pneumato.dynamique) state.pneumato.dynamique={1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}};
+  if(!state.pneumato.zonesRevealed) state.pneumato.zonesRevealed={valeurs:false,polarite:false,direction:false,dynamique:false};
   [1,2,3].forEach(lvl=>{
     if(!state.pneumato.direction[lvl]) state.pneumato.direction[lvl]={text:'',active:false,locked:false};
     if(!state.pneumato.dynamique[lvl]) state.pneumato.dynamique[lvl]={text:'',active:false,locked:false};
@@ -37,26 +39,54 @@ function pneuInit(){
 
 function pneuRenderButtons(){
   pneuInit();
+  const revealed=state.pneumato.zonesRevealed||{};
+
+  ['valeurs','polarite','direction','dynamique'].forEach(zone=>{
+    const revealBtn=document.getElementById(`pneu-reveal-${zone}`);
+    if(revealBtn){
+      if(isGM){
+        revealBtn.style.display='';
+        revealBtn.classList.toggle('revealed', !!revealed[zone]);
+        revealBtn.title=revealed[zone]?'Masquer aux joueurs':'Révéler aux joueurs';
+      } else {
+        revealBtn.style.display='none';
+      }
+    }
+  });
+
   ['valeurs','polarite'].forEach(zone=>{
     const active=state.pneumato[zone]||0;
+    const showToPlayer=!isGM&&revealed[zone];
     [1,2,3].forEach(lvl=>{
       const btn=document.querySelector(`.pneu-btn[data-zone="${zone}"][data-level="${lvl}"]`);
       if(!btn) return;
       btn.classList.toggle('active', active===lvl);
       btn.style.pointerEvents=isGM?'':'none';
-      btn.style.opacity=isGM?'':'0.6';
+      // Côté joueur : visible seulement si la zone est révélée par le MJ
+      if(!isGM){
+        btn.style.opacity = showToPlayer ? (active===lvl?'1':'0.4') : '0.15';
+      } else {
+        btn.style.opacity='';
+      }
     });
   });
+
   ['direction','dynamique'].forEach(zone=>{
+    const showToPlayer=!isGM&&revealed[zone];
     [1,2,3].forEach(lvl=>{
       const btn=document.querySelector(`.pneu-btn[data-zone="${zone}"][data-level="${lvl}"]`);
       if(!btn) return;
       const s=state.pneumato[zone]?.[lvl];
       btn.classList.toggle('active', !!(s&&s.active));
       btn.style.pointerEvents=isGM?'':'none';
-      btn.style.opacity=isGM?'':'0.6';
+      if(!isGM){
+        btn.style.opacity = showToPlayer ? ((s&&s.active)?'1':'0.4') : '0.15';
+      } else {
+        btn.style.opacity='';
+      }
     });
   });
+
   pneuRenderGhostTokens();
 }
 
@@ -115,6 +145,15 @@ function pneuRenderGhostTokens(){
     g.appendChild(circle);
     labelsStatic.appendChild(g);
   });
+}
+
+// ── Révélation de zone aux joueurs ──
+function pneuToggleZoneReveal(zone){
+  if(!isGM) return;
+  pneuInit();
+  state.pneumato.zonesRevealed[zone]=!state.pneumato.zonesRevealed[zone];
+  pneuRenderButtons();
+  saveState();
 }
 
 // ── Toggle valeurs/polarité ──
@@ -415,6 +454,12 @@ async function gmReset(){
   @media(max-width:480px){ .pneumato-grid{grid-template-columns:1fr;} }
   .pneumato-zone { background:var(--input-bg); border:1px solid var(--border2); border-radius:var(--radius); padding:.5rem; }
   .pneumato-zone-title { font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.08em; color:var(--ink2); text-transform:uppercase; margin-bottom:.5rem; text-align:center; }
+  .pneumato-zone-title { display:flex; align-items:center; justify-content:center; gap:.4rem; }
+  .pneu-zone-reveal-btn { font-size:.6rem; background:none; border:1px solid var(--border); border-radius:3px;
+    padding:1px 5px; cursor:pointer; color:var(--ink3); opacity:.6; transition:opacity .15s; font-family:'Cinzel',serif; }
+  .pneu-zone-reveal-btn:hover { opacity:1; }
+  .pneu-zone-reveal-btn.revealed { border-color:var(--accent); color:var(--accent); opacity:1; }
+
   .pneumato-btns { display:flex; justify-content:center; gap:.5rem; }
   .pneu-btn {
     background:none; border:1px solid var(--border); border-radius:4px;
@@ -556,7 +601,7 @@ async function gmReset(){
     <div class="pneumato-title">Pneumatographie</div>
     <div class="pneumato-grid">
       <div class="pneumato-zone">
-        <div class="pneumato-zone-title">Valeurs</div>
+        <div class="pneumato-zone-title">Valeurs<button class="pneu-zone-reveal-btn" id="pneu-reveal-valeurs" onclick="pneuToggleZoneReveal('valeurs')" style="display:none;">👁</button></div>
         <div class="pneumato-btns" id="pneu-valeurs-btns">
           <button class="pneu-btn" data-zone="valeurs" data-level="1" onclick="pneuToggle('valeurs',1)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
@@ -573,7 +618,7 @@ async function gmReset(){
         </div>
       </div>
       <div class="pneumato-zone">
-        <div class="pneumato-zone-title">Polarité</div>
+        <div class="pneumato-zone-title">Polarité<button class="pneu-zone-reveal-btn" id="pneu-reveal-polarite" onclick="pneuToggleZoneReveal('polarite')" style="display:none;">👁</button></div>
         <div class="pneumato-btns" id="pneu-polarite-btns">
           <button class="pneu-btn" data-zone="polarite" data-level="1" onclick="pneuToggle('polarite',1)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
@@ -590,7 +635,7 @@ async function gmReset(){
         </div>
       </div>
       <div class="pneumato-zone">
-        <div class="pneumato-zone-title">Direction</div>
+        <div class="pneumato-zone-title">Direction<button class="pneu-zone-reveal-btn" id="pneu-reveal-direction" onclick="pneuToggleZoneReveal('direction')" style="display:none;">👁</button></div>
         <div class="pneumato-btns" id="pneu-direction-btns">
           <button class="pneu-btn" data-zone="direction" data-level="1" onclick="pneuOpenText('direction',1)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
@@ -607,7 +652,7 @@ async function gmReset(){
         </div>
       </div>
       <div class="pneumato-zone">
-        <div class="pneumato-zone-title">Dynamique</div>
+        <div class="pneumato-zone-title">Dynamique<button class="pneu-zone-reveal-btn" id="pneu-reveal-dynamique" onclick="pneuToggleZoneReveal('dynamique')" style="display:none;">👁</button></div>
         <div class="pneumato-btns" id="pneu-dynamique-btns">
           <button class="pneu-btn" data-zone="dynamique" data-level="1" onclick="pneuOpenText('dynamique',1)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
@@ -688,8 +733,8 @@ async function gmReset(){
 <button id="xfer-fab" onclick="toggleXfer()" title="Transfert de jeton">↗</button>
 
 <script>
-const SUPABASE_URL   = 'https://qyifamxfvswcglvrzduf.supabase.co';
-const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
+const SUPABASE_URL = 'SUPABASE_URL';
+const SUPABASE_KEY = 'SUPABASE_ANON_KEY';
 
 const params   = new URLSearchParams(location.search);
 const FICHE_ID = params.get('fiche') || 'env-test';
@@ -743,7 +788,7 @@ function laneColorKey(tokens){
 let state={
   tokens:{},scores:{},
   axisNotes:{}, // {sectorId: {gm:{text,locked,revealed}, players:{text,locked}}}
-  pneumato:{valeurs:0,polarite:0,direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}}},ether:'',occultation:'',
+  pneumato:{valeurs:0,polarite:0,direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},zonesRevealed:{valeurs:false,polarite:false,direction:false,dynamique:false}},ether:'',occultation:'',
   wheelRot:0
 };
 SECTORS.forEach(s=>{
@@ -1118,20 +1163,32 @@ function saveState(){
 function applyRemoteState(saved){
   applyingRemote=true;
   try{
-    if(saved.tokens) Object.entries(saved.tokens).forEach(([sid,arr])=>{ state.tokens[sid]=arr; arr.forEach((_,i)=>renderToken(sid,i)); updateSectorLane(sid); });
-    // Si joueur : reconstruire les fantômes après mise à jour tokens
-    if(!isGM) pneuRenderGhostTokens();
-    if(saved.scores){ state.scores=saved.scores; Object.entries(saved.scores).forEach(([key,val])=>{ const[sid,qi]=key.split('_'); const t=document.querySelector(`#sq-${sid}-${qi} text`); if(t) t.textContent=val; }); rebuildLabels(); }
-    if(saved.axisNotes){
-      state.axisNotes=saved.axisNotes;
-      // Mettre à jour le panneau si ouvert
-      if(currentAxisSec){ openAxisPanel(currentAxisSec); }
-    }
+    // 1. Mettre à jour les données d'état SANS toucher au rendu encore
+    if(saved.tokens) Object.entries(saved.tokens).forEach(([sid,arr])=>{ state.tokens[sid]=arr; });
+    if(saved.scores) state.scores=saved.scores;
     if(saved.pneumato!==undefined&&saved.pneumato!==null){
       if(typeof saved.pneumato==='object'&&!Array.isArray(saved.pneumato)){
         state.pneumato=saved.pneumato;
       }
       pneuInit(); // compléter les sous-structures sans écraser
+    }
+
+    // 2. Rendu des tokens et lanes (selon rôle)
+    if(saved.tokens) Object.entries(saved.tokens).forEach(([sid,arr])=>{ arr.forEach((_,i)=>renderToken(sid,i)); updateSectorLane(sid); });
+
+    // 3. Rendu des scores
+    if(saved.scores) Object.entries(saved.scores).forEach(([key,val])=>{ const[sid,qi]=key.split('_'); const t=document.querySelector(`#sq-${sid}-${qi} text`); if(t) t.textContent=val; });
+
+    // 4. rebuildLabels une seule fois (régénère vertus/vices + appelle pneuRenderGhostTokens à la fin)
+    if(saved.tokens||saved.scores||saved.pneumato!==undefined||saved.wheelRot!==undefined) rebuildLabels();
+
+    if(saved.axisNotes){
+      state.axisNotes=saved.axisNotes;
+      if(currentAxisSec){ openAxisPanel(currentAxisSec); }
+    }
+
+    // 5. Boutons et vue joueur pneumato (après que tout l'état soit cohérent)
+    if(saved.pneumato!==undefined&&saved.pneumato!==null){
       pneuRenderButtons();
       pneuRenderPlayerView();
     }
