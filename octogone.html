@@ -353,6 +353,10 @@
     overflow-y:auto; padding:1.2rem;
   }
   #vv-panel.open { transform:translateX(0); }
+  #vv-panel-close { position:absolute; top:.6rem; right:.6rem; background:none; border:none;
+    font-size:1.1rem; cursor:pointer; color:#888; }
+  #vv-panel-close:hover { color:var(--ink); }
+
   #vv-panel h3 { font-family:'Cinzel',serif; color:var(--accent); font-size:1rem;
     letter-spacing:.08em; margin-bottom:.8rem; text-align:center; }
   .vv-pair-btn {
@@ -862,7 +866,7 @@ async function xferClearRequest(){
 // ═══════════════════════════════════════════════
 const SUPABASE_URL   = 'https://qyifamxfvswcglvrzduf.supabase.co';
 const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
-// ═══════════════════════════════════════════════
+/ ═══════════════════════════════════════════════
 
 const params   = new URLSearchParams(location.search);
 const FICHE_ID = params.get('fiche') || 'test';
@@ -2126,6 +2130,7 @@ function showXferFab(){
 <!-- Panneau latéral oppositions -->
 <button id="vv-side-tab" onclick="toggleVVPanel()">Vices &amp; Vertus</button>
 <div id="vv-panel">
+  <button id="vv-panel-close" onclick="toggleVVPanel()">✕</button>
   <h3>Tensions intérieures</h3>
   <div id="vv-pair-list"></div>
   <div id="vv-pair-result"></div>
