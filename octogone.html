@@ -441,18 +441,26 @@ const VV_PAIRS = [
   {v:'force',     vi:'lachete',  vLabel:'Force',     viLabel:'Lâcheté',  vAxis:1, viAxis:5},
   {v:'charite',   vi:'avarice',  vLabel:'Charité',   viLabel:'Avarice',  vAxis:2, viAxis:6},
   {v:'loyaute',   vi:'felonie',  vLabel:'Loyauté',   viLabel:'Félonie',  vAxis:3, viAxis:7},
-  {v:'prudence',  vi:'acedie',   vLabel:'Prudence',  viLabel:'Acédie',   vAxis:4, viAxis:4},
+  {v:'prudence',  vi:'temerite', vLabel:'Prudence',  viLabel:'Témérité', vAxis:4, viAxis:8},
   {v:'temperance',vi:'envie',    vLabel:'Tempérance',viLabel:'Envie',    vAxis:5, viAxis:1},
   {v:'chastete',  vi:'luxure',   vLabel:'Chasteté',  viLabel:'Luxure',   vAxis:6, viAxis:2},
   {v:'foi',       vi:'malignite',vLabel:'Foi',       viLabel:'Malignité',vAxis:7, viAxis:3},
-  {v:'esperance', vi:'temerite', vLabel:'Espérance', viLabel:'Témérité', vAxis:8, viAxis:8}
+  {v:'esperance', vi:'acedie',   vLabel:'Espérance', viLabel:'Acédie',   vAxis:8, viAxis:4}
 ];
-// Note: prudence/acedie et esperance/temerite sont sur le même axe (sub1/sub2 du même secteur)
+// Chaque secteur a sub1 (vertu, qi=0) et sub2 (vice, qi=1). Les paires d'opposition
+// du jeu ne correspondent pas toujours à des axes opposés à 180° :
+// - Prudence (axe4 sub1) s'oppose à Témérité (axe8 sub2)
+// - Espérance (axe8 sub1) s'oppose à Acédie (axe4 sub2)
+
 
 // ── Tooltip au survol ── 
-const vvTooltip = document.getElementById('vv-tooltip');
-const vvTTTitle = document.getElementById('vv-tt-title');
-const vvTTText = document.getElementById('vv-tt-text');
+function getVVTooltipEls(){
+  return {
+    tooltip: document.getElementById('vv-tooltip'),
+    title: document.getElementById('vv-tt-title'),
+    text: document.getElementById('vv-tt-text')
+  };
+}
 
 function showVVTooltip(label, key, score, evt){
   const normKey = VV_KEY_MAP[key.toLowerCase()] || key.toLowerCase();
@@ -464,13 +472,17 @@ function showVVTooltip(label, key, score, evt){
     // Pour les vices, le niveau 0 n'existe pas dans le PDF -> fallback
     text = desc['0'] || desc['1'] || Object.values(desc)[0];
   }
-  vvTTTitle.textContent = `${label} — niveau ${lvl}`;
-  vvTTText.textContent = text;
-  vvTooltip.style.display = 'block';
+  const els = getVVTooltipEls();
+  if(!els.tooltip||!els.title||!els.text) return;
+  els.title.textContent = `${label} — niveau ${lvl}`;
+  els.text.textContent = text;
+  els.tooltip.style.display = 'block';
   positionVVTooltip(evt);
 }
 
 function positionVVTooltip(evt){
+  const els = getVVTooltipEls();
+  if(!els.tooltip) return;
   const x = evt.clientX, y = evt.clientY;
   const margin = 12;
   let left = x + margin, top = y + margin;
@@ -478,11 +490,14 @@ function positionVVTooltip(evt){
   const ttW = 320, ttH = 150;
   if(left + ttW > window.innerWidth) left = x - ttW - margin;
   if(top + ttH > window.innerHeight) top = y - ttH - margin;
-  vvTooltip.style.left = left+'px';
-  vvTooltip.style.top = top+'px';
+  els.tooltip.style.left = left+'px';
+  els.tooltip.style.top = top+'px';
 }
 
-function hideVVTooltip(){ vvTooltip.style.display='none'; }
+function hideVVTooltip(){
+  const els = getVVTooltipEls();
+  if(els.tooltip) els.tooltip.style.display='none';
+}
 
 // ── Panneau latéral oppositions ──
 function toggleVVPanel(){
@@ -534,8 +549,16 @@ function vvSelectPair(idx){
   }
 }
 
-// Mettre à jour le panneau quand on l'ouvre
-document.getElementById('vv-side-tab').addEventListener('click', buildVVPanelList);
+// Mettre à jour le panneau quand on l'ouvre (attache différée car l'élément est en fin de body)
+document.addEventListener('DOMContentLoaded', ()=>{
+  const tab = document.getElementById('vv-side-tab');
+  if(tab) tab.addEventListener('click', buildVVPanelList);
+});
+// Au cas où DOMContentLoaded serait déjà passé (script en fin de body)
+if(document.readyState!=='loading'){
+  const tab = document.getElementById('vv-side-tab');
+  if(tab) tab.addEventListener('click', buildVVPanelList);
+}
 
 </script>
 <script>
