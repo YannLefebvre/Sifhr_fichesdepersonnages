@@ -33,11 +33,11 @@
   .panel { background:var(--section-bg); border:1px solid var(--border); border-radius:var(--radius); }
   .panel-title { font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.1em; color:var(--accent); text-transform:uppercase; padding:.6rem .75rem; border-bottom:1px solid var(--border2); }
   .panel-title.collapsed { border-bottom:none; }
-  .action-row { display:flex; align-items:center; gap:.5rem; margin-bottom:.35rem; }
-  .action-label { font-size:.9rem; color:var(--ink2); width:80px; flex-shrink:0; font-style:italic; }
-  .action-squares { display:flex; gap:4px; }
-  .act-sq { width:18px; height:18px; border:1px solid var(--border); background:var(--sq-empty); border-radius:2px; cursor:pointer; transition:background .15s; }
-  .act-sq.filled { background:var(--sq-fill); }
+  .aptitude-row { display:flex; align-items:center; gap:.5rem; margin-bottom:.35rem; }
+  .aptitude-label { font-size:.9rem; color:var(--ink2); width:80px; flex-shrink:0; font-style:italic; }
+  .aptitude-squares { display:flex; gap:4px; }
+  .apt-sq { width:18px; height:18px; border:1px solid var(--border); background:var(--sq-empty); border-radius:2px; cursor:pointer; transition:background .15s; }
+  .apt-sq.filled { background:var(--sq-fill); }
   /* ── Accordion items ── */
   .acc-item { margin-bottom:.35rem; border-bottom:1px dotted var(--border); }
   .acc-title-wrap { display:flex; align-items:center; gap:.4rem; }
@@ -378,7 +378,30 @@
   #vv-pair-result .vv-result-title { font-family:'Cinzel',serif; font-size:.78rem; color:var(--accent);
     letter-spacing:.06em; text-transform:uppercase; margin-bottom:.5rem; text-align:center; }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js">
+const APT_DATA = {"se_deplacer":{"0":"Votre corps semble vous trahir à chaque mouvement. Un terrain accidenté, un obstacle à franchir, une simple course — tout cela vous est presque impossible sans trébucher, perdre l'équilibre ou vous essouffler immédiatement. Vous évitez instinctivement toute situation qui exigerait de votre corps plus qu'une marche tranquille.","1":"Vous vous déplacez sans grâce particulière, mais sans catastrophe non plus. Courir pour rattraper un bus, escalader une clôture basse, garder l'équilibre sur un sol inégal — ces gestes simples du quotidien ne vous posent pas de problème insurmontable, même s'ils vous demandent un effort visible.","2":"Votre corps répond correctement quand vous le sollicitez. Vous pouvez courir sur une distance raisonnable, vous faufiler dans une foule, descendre un escalier rapidement sans trébucher. Rien d'impressionnant, mais vous n'êtes jamais le boulet du groupe lors d'un déplacement.","3":"Votre agilité est celle d'une personne entraînée. Vous grimpez sans effort excessif, courez avec une endurance honorable, et vous déplacez avec une fluidité qui ne passe pas inaperçue. Sur un fil, une corniche, un terrain instable, vous gardez votre équilibre là où d'autres hésiteraient.","4":"Votre maîtrise du mouvement est remarquable. Charger sans réfléchir à l'obstacle, se déplacer à pas feutrés sans alerter le moindre témoin, enchaîner des mouvements avec une rapidité stupéfiante — ces prouesses font désormais partie de votre registre naturel. On vous remarque pour cela.","5":"Votre corps semble obéir à des lois différentes de celles des autres. Acrobate accompli, vous sautez, grimpez et vous déplacez sur les voies les plus étroites comme un funambule. Esquiver une prise, échapper à des liens en vous contorsionnant, vous faufiler dans un espace terriblement exigu — peu de choses vous arrêtent.","6":"Vous êtes de ceux dont on raconte les exploits. Insaisissable, votre capacité à esquiver, vous déplacer sans entraves et disparaître d'un mouvement relève de l'art. Aucun obstacle, aucune prise, aucun espace ne semble pouvoir vous contenir — votre corps est devenu une arme de liberté absolue."},"se_mesurer":{"0":"La confrontation, qu'elle soit physique ou verbale, vous paralyse. Face à un adversaire — au sens propre ou figuré — vous perdez pied immédiatement, incapable de défendre votre position, de porter un coup ou même de soutenir un regard. Tout conflit vous dépasse complètement.","1":"Vous pouvez tenir votre rang dans un désaccord ou une échauffourée mineure, sans plus. Si quelqu'un hausse le ton ou lève la main, vous réagissez — maladroitement, mais vous réagissez. Face à un adversaire déterminé, en revanche, vous êtes rapidement dépassé.","2":"Vous savez vous défendre et argumenter sans paraître ridicule. Dans une dispute ou une échauffourée ordinaire, vous tenez votre position. Ce n'est pas la force brute ni le brio qui vous caractérisent, mais une compétence honnête, suffisante pour ne pas être la cible facile du groupe.","3":"Que ce soit au corps à corps ou dans un débat tendu, vous savez vous imposer. Vous évaluez correctement un adversaire avant d'agir, et votre présence — physique ou verbale — n'est pas négligeable. On vous prend au sérieux dans une confrontation.","4":"Votre maîtrise du conflit est notable. Une spécialité avec une arme particulière, une frappe redoutable au premier round avant que l'adversaire n'ait pris votre mesure, ou une présence si patibulaire qu'elle décuple l'effet de vos intimidations — vous disposez d'un avantage tangible dans toute confrontation.","5":"Vous évaluez d'un regard les forces, l'armement ou la valeur combattante d'un adversaire, et cette lecture rapide guide chacun de vos choix. Que vous soyez fort comme un lion ou que votre ruse compense un corps moins affûté, peu d'adversaires sortent indemnes d'un affrontement avec vous.","6":"Vous êtes une référence dans l'art de la confrontation. Que ce soit par la force brute, une spécialité martiale incomparable, ou un sens du débat qui démonte n'importe quel argument adverse, vous dominez systématiquement. Votre seule présence change l'issue d'un conflit avant même qu'il ne commence."},"occulter":{"0":"La discrétion vous est totalement étrangère. Votre stature, votre allure, votre simple présence attirent immédiatement l'attention — vous êtes un phare dans n'importe quelle pénombre. Tenter de vous cacher ou de passer inaperçu ne fait qu'accentuer le ridicule de la situation.","1":"Vous pouvez vous tenir tranquille dans un coin et espérer qu'on vous oublie, mais le moindre examen un peu attentif vous repère immédiatement. La dissimulation n'est pas un talent chez vous — au mieux, une absence temporaire d'attention de la part des autres.","2":"Dans une situation ordinaire, vous savez vous faire discret — éviter un regard, vous fondre dans un groupe, ne pas attirer l'attention sur vous. Face à quelqu'un qui vous cherche activement, en revanche, vous êtes vite repéré.","3":"Vous savez vous fondre dans un environnement avec une certaine aisance. Une foule, une pièce mal éclairée, un costume approprié — vous utilisez ces éléments à votre avantage pour ne pas être identifié facilement, même par quelqu'un d'attentif.","4":"Votre talent pour la dissimulation est réel. Vous maîtrisez l'art du déguisement, capable de prendre l'apparence et le bagout des gens du cru, ou celui de l'escamotage, faisant disparaître un objet en un clin d'œil sous le nez de quiconque.","5":"Dans une foule, vous devenez un quidam — quelqu'un que personne ne remarque ni ne se souvient d'avoir vu, même après coup. Votre capacité à vous fondre dans la multitude rend votre identification presque impossible pour qui ne sait pas exactement ce qu'il cherche.","6":"Vous maîtrisez l'occultation elle-même — non seulement la discrétion physique, mais le passage dans cette dimension où les choses échappent au regard ordinaire. Déguisement parfait, escamotage indétectable, disparition dans la foule : on ne vous trouve que si vous décidez d'être trouvé."},"imaginer":{"0":"Les concepts un peu abstraits, les plans à plusieurs étapes, les implications logiques d'une situation — tout cela vous échappe presque entièrement. Vous fonctionnez dans l'instant présent, sans grande capacité à anticiper, organiser ou comprendre ce qui dépasse l'évidence immédiate.","1":"Vous parvenez à suivre un raisonnement simple et à élaborer un projet basique, à condition qu'il ne comporte pas trop d'étapes. Comprendre une situation complexe ou un système avec de nombreuses interactions reste cependant hors de votre portée.","2":"Vous avez une capacité de raisonnement correcte. Concevoir un plan simple, vous représenter une situation, suivre une explication un peu technique — ces tâches intellectuelles ordinaires ne vous posent pas de difficulté particulière.","3":"Votre esprit est vif et organisé. Vous concevez des plans à plusieurs étapes, comprenez rapidement le fonctionnement d'un système ou d'une organisation, et votre logique vous sert dans la plupart des situations qui demandent de la réflexion.","4":"Votre intelligence est remarquable et se distingue par sa polyvalence. Maîtriser parfaitement deux langues, comprendre intuitivement comment fonctionne une organisation par simple observation, ou diagnostiquer les symptômes d'un déséquilibre chez un tiers — ces capacités font partie de votre quotidien.","5":"Votre esprit fonctionne avec une vivacité rare. Les calculs mentaux les plus complexes vous viennent naturellement, facilitant tout ce que vous entreprenez avec la réflexion ou la fabrication. Vous saisissez en un instant ce que d'autres mettraient des heures à comprendre.","6":"Vous êtes de ceux dont l'intelligence devient légendaire. Polyglotte accompli, diagnosticien hors pair, capable de décortiquer n'importe quel système — votre esprit traite simultanément ce que la plupart des gens peinent à appréhender un par un. Votre réputation intellectuelle vous précède."},"fabriquer":{"0":"Le moindre objet que vous tentez de créer ou de réparer finit cassé, mal assemblé ou totalement inutilisable. Vos mains semblent incapables de traduire une intention en geste précis — l'artisanat, sous toute ses formes, vous est fermé.","1":"Vous pouvez exécuter des tâches manuelles très simples — assembler des pièces basiques, effectuer une réparation grossière — à condition que cela ne demande aucune précision particulière. Les travaux délicats restent hors de votre portée.","2":"Vos mains sont compétentes pour les tâches courantes. Réparer un objet simple, fabriquer un outil basique, suivre des instructions d'assemblage — vous vous en sortez correctement, sans plus.","3":"Votre savoir-faire artisanal est solide. Vous travaillez le bois, le tissu ou des matériaux courants avec une habileté reconnue, et les objets que vous produisez sont fonctionnels et bien finis.","4":"Votre talent artisanal se spécialise dans un domaine précis. Que vous soyez un véritable Vulcain dans le travail du métal et des alliages, ou un orfèvre du détail minutieux capable d'assembler des mécanismes complexes, votre production dépasse largement la moyenne.","5":"Vous avez la capacité de concevoir, utiliser ou réparer des artefacts — ces objets imprégnés de pneuma qui dépassent l'artisanat ordinaire. Votre compréhension de ces mécanismes subtils fait de vous quelqu'un de précieux dans ce domaine spécialisé.","6":"Votre maîtrise atteint un niveau quasi mystique. Insuffleur accompli, vous projetez la pneuma à l'intérieur d'un artefact préalablement constitué, lui donnant vie ou pouvoir. Peu de personnes au monde possèdent une telle compréhension de l'union entre la matière et le souffle."},"devoiler":{"0":"Ce qui est caché reste caché, pour vous. Votre intuition est inexistante, votre attention aux détails nulle — vous passez à côté de tout ce qui n'est pas immédiatement visible et explicite, sans jamais soupçonner qu'il pourrait y avoir davantage à découvrir.","1":"Vous remarquez occasionnellement qu'une situation n'est pas tout à fait normale, sans pour autant comprendre pourquoi ni quoi faire de cette impression. Votre intuition existe, mais elle reste vague et peu fiable.","2":"Vous savez prêter attention aux détails quand on vous y invite, et repérer ce qui sort de l'ordinaire dans un environnement familier. Ce n'est pas un don spectaculaire, mais une vigilance ordinaire qui vous évite les pièges les plus grossiers.","3":"Votre sens de l'observation est fiable. Vous remarquez les incohérences, devinez les non-dits dans une conversation, et repérez un objet mal dissimulé sans effort particulier. On vous consulte parfois pour un second avis sur une situation ambiguë.","4":"Vous avez développé un sens aigu de la perception. Vous pouvez faire état du profil pneumatique d'un lieu, sentant les éléments et les humeurs comme on sent des épices dans un bazar, et évaluer les forces d'un adversaire même s'il tente de les dissimuler.","5":"Rien ne semble pouvoir vous surprendre. Expert fouilleur, vous mettez à jour des objets dissimulés ou oubliés depuis longtemps avec une facilité déconcertante. Clairvoyant, vous devinez les intentions d'une tierce personne avec une justesse qui impressionne — ou inquiète.","6":"Votre clairvoyance dépasse l'entendement ordinaire. Par des songes et des états de grâce, vous accédez à des visions de ce qui pourrait advenir — un don que beaucoup considèrent comme la marque d'une volonté divine. Vous êtes en avance sur le temps, et le savez."},"resister":{"0":"La moindre douleur, la moindre privation, le moindre inconfort vous accable immédiatement et totalement. Votre corps et votre esprit cèdent au premier signe d'adversité, sans aucune capacité à encaisser, endurer ou simplement tenir.","1":"Vous pouvez supporter un inconfort mineur — une nuit blanche, une petite blessure, une attente prolongée — sans vous effondrer, mais sans aisance non plus. Face à une vraie épreuve, votre résistance atteint vite ses limites.","2":"Votre corps tient correctement face aux désagréments ordinaires de la vie. Fatigue, faim passagère, douleur modérée — vous gérez ces situations sans qu'elles n'affectent significativement vos capacités.","3":"Votre endurance est solide. Vous résistez à la douleur le temps nécessaire pour agir malgré une blessure, supportez les privations sur une durée raisonnable, et votre constitution générale vous protège des petits maux du quotidien.","4":"Votre résistance se distingue nettement. Ascète dans votre discipline, vous repoussez vos besoins naturels bien plus longtemps que la moyenne. Votre organisme montre aussi une certaine immunité face aux poisons et agents pathogènes courants.","5":"Vous résistez à des conditions que la plupart jugeraient insupportables. Infatigable lors d'une longue marche ou d'un manque de sommeil prolongé, survivant en milieu hostile capable de trouver de quoi subsister et d'éviter les dangers — votre corps refuse de céder.","6":"Votre endurance est presque surnaturelle. Vous retardez l'échéance du dévoiement, absorbant les valeurs impaires sans qu'elles n'affectent les assauts suivants. Poisons, tortures, privations extrêmes — rien ne semble pouvoir entamer durablement votre constitution."},"ravir":{"0":"L'idée même de charme ou de persuasion vous est étrangère. Vos tentatives d'approche, qu'elles soient sociales ou séductrices, se soldent systématiquement par un malaise ou un rejet immédiat — vous n'avez ni les mots, ni les gestes, ni la présence qui pourraient y remédier.","1":"Vous pouvez établir un contact social basique sans le faire fuir immédiatement, mais la séduction ou la persuasion fine restent hors de votre portée. Vos tentatives sont souvent perçues comme maladroites ou trop directes.","2":"Vous savez engager une conversation agréable et donner une impression correcte. Sans être charismatique, vous n'inspirez pas non plus de méfiance immédiate — un terrain neutre suffisant pour la plupart des interactions sociales.","3":"Votre présence sociale est appréciable. Vous savez mettre les gens à l'aise, amorcer une discussion qui mène quelque part, et vos tentatives de persuasion ont de réelles chances d'aboutir face à un interlocuteur ordinaire.","4":"Votre charme opère clairement. Que vous soyez du genre belle gueule, séduisant avec assurance auprès du sexe qui vous attire, ou que votre beauté froide inspire le respect chez tous, votre présence influence naturellement les autres.","5":"Vous lisez les émotions et les intentions des gens avec une facilité qui vous donne toujours un coup d'avance dans une interaction. Convaincre, séduire, désamorcer une tension — ces situations sociales complexes deviennent des terrains où vous excellez.","6":"Votre maîtrise de l'affect humain est quasi totale. Personne ne semble résister longtemps à votre charisme, votre capacité de persuasion ou votre charme — qu'il s'agisse de séduction, de négociation ou de manipulation des émotions d'autrui, vous évoluez sur un terrain qui vous appartient."}};
+
+function showAptTooltip(label, key, evt){
+  const desc = APT_DATA[key];
+  if(!desc) return;
+  // Compter le nombre de cases remplies pour cette aptitude
+  const ai = APTITUDE_KEYS.indexOf(key);
+  let filled = 0;
+  for(let si=0; si<SQ_PER_APTITUDE; si++){
+    if(state.aptitudes[`${ai}_${si}`]) filled++;
+  }
+  const lvl = Math.min(6, Math.max(0, filled));
+  const text = desc[String(lvl)];
+  if(!text) return;
+  const els = getVVTooltipEls();
+  if(!els.tooltip||!els.title||!els.text) return;
+  els.title.textContent = `${label} — niveau ${lvl}`;
+  els.text.textContent = text;
+  els.tooltip.style.display = 'block';
+  positionVVTooltip(evt);
+}
+
+</script>
 <script>
 /* ── Boutons MJ ── */
 async function gmSaveOrigin(){
@@ -801,8 +824,8 @@ async function xferClearRequest(){
 
 <div class="lower">
   <div class="panel">
-    <div class="panel-title" data-target="actions-panel">Actions</div>
-    <div class="panel-body" id="actions-panel"><div class="panel-body-inner" id="actions-inner"></div></div>
+    <div class="panel-title" data-target="aptitudes-panel">Aptitudes</div>
+    <div class="panel-body" id="aptitudes-panel"><div class="panel-body-inner" id="aptitudes-inner"></div></div>
   </div>
   <div class="panel">
     <div class="panel-title" data-target="traits-panel">Traits</div>
@@ -979,12 +1002,13 @@ const SECTORS=[
   {id:'sang',   num:8, label:'SANG',       sub1:'espérance', sub2:'témérité',  angle:315},
 ];
 
-const ACTIONS=['Se déplacer','Se mesurer','Occulter','Imaginer','Fabriquer','Dévoiler','Résister','Ravir'];
-const NUM_TRAITS=10,SQ_PER_ACTION=6;
+const APTITUDES=['Se déplacer','Se mesurer','Occulter','Imaginer','Fabriquer','Dévoiler','Résister','Ravir'];
+const APTITUDE_KEYS=['se_deplacer','se_mesurer','occulter','imaginer','fabriquer','devoiler','resister','ravir'];
+const NUM_TRAITS=10,SQ_PER_APTITUDE=6;
 let wheelRot=0;
 const NUM_EQUIPEMENT=6, NUM_ARTEFACTS=5;
 const NUM_CONFRERIE=4;
-let state={tokens:{},scores:{},actions:{},
+let state={tokens:{},scores:{},aptitudes:{},
   traits:Array.from({length:NUM_TRAITS},()=>({title:'',text:''})),
   confrerie:Array.from({length:NUM_CONFRERIE},()=>({title:'',text:''})),
   equipement:Array.from({length:NUM_EQUIPEMENT},()=>({title:'',text:''})),
@@ -1266,22 +1290,26 @@ function editScore(sectorId,qi,txt,g){
   inp.addEventListener('keydown',e=>{if(e.key==='Enter') inp.blur();});
 }
 
-/* ── Actions ── */
-const actPanel=document.getElementById('actions-inner');
-ACTIONS.forEach((action,ai)=>{
-  const row=document.createElement('div');row.className='action-row';
-  const lbl=document.createElement('span');lbl.className='action-label';lbl.textContent=action;
+/* ── Aptitudes ── */
+const aptPanel=document.getElementById('aptitudes-inner');
+APTITUDES.forEach((aptitude,ai)=>{
+  const row=document.createElement('div');row.className='aptitude-row';
+  const lbl=document.createElement('span');lbl.className='aptitude-label vv-hoverable';lbl.textContent=aptitude;
+  const aptKey=APTITUDE_KEYS[ai];
+  lbl.addEventListener('mouseenter',(e)=>showAptTooltip(aptitude, aptKey, e));
+  lbl.addEventListener('mousemove', positionVVTooltip);
+  lbl.addEventListener('mouseleave', hideVVTooltip);
   row.appendChild(lbl);
-  const sqs=document.createElement('div');sqs.className='action-squares';
-  for(let si=0;si<SQ_PER_ACTION;si++){
-    const sq=document.createElement('div');sq.className='act-sq';
+  const sqs=document.createElement('div');sqs.className='aptitude-squares';
+  for(let si=0;si<SQ_PER_APTITUDE;si++){
+    const sq=document.createElement('div');sq.className='apt-sq';
     sq.dataset.ai=ai;sq.dataset.si=si;
     const key=`${ai}_${si}`;
-    if(state.actions[key]) sq.classList.add('filled');
-    sq.addEventListener('click',()=>{state.actions[key]=!state.actions[key];sq.classList.toggle('filled',state.actions[key]);saveState();});
+    if(state.aptitudes[key]) sq.classList.add('filled');
+    sq.addEventListener('click',()=>{state.aptitudes[key]=!state.aptitudes[key];sq.classList.toggle('filled',state.aptitudes[key]);saveState();});
     sqs.appendChild(sq);
   }
-  row.appendChild(sqs);actPanel.appendChild(row);
+  row.appendChild(sqs);aptPanel.appendChild(row);
 });
 
 /* ── Helper : crée un item accordéon titre+texte ── */
@@ -1540,7 +1568,7 @@ function applyRemoteState(saved){
       updateSectorLane(sid);
     });
     if(saved.scores){state.scores=saved.scores;Object.entries(saved.scores).forEach(([key,val])=>{const[sid,qi]=key.split('_');const t=document.querySelector(`#sq-${sid}-${qi} text`);if(t) t.textContent=val;updateScoreSq(sid,parseInt(qi),val);});}
-    if(saved.actions){state.actions=saved.actions;Object.entries(saved.actions).forEach(([key,filled])=>{const[ai,si]=key.split('_');const sq=document.querySelector(`.act-sq[data-ai="${ai}"][data-si="${si}"]`);if(sq) sq.classList.toggle('filled',!!filled);});}
+    if(saved.aptitudes){state.aptitudes=saved.aptitudes;Object.entries(saved.aptitudes).forEach(([key,filled])=>{const[ai,si]=key.split('_');const sq=document.querySelector(`.apt-sq[data-ai="${ai}"][data-si="${si}"]`);if(sq) sq.classList.toggle('filled',!!filled);});}
     if(saved.traits){
       state.traits=saved.traits;
       saved.traits.forEach((t,i)=>{
