@@ -1103,20 +1103,19 @@ SECTORS.forEach((sec)=>{
     svgEl('rect',{x:(pos.x-10).toFixed(2),y:(pos.y-10).toFixed(2),width:20,height:20,fill:'transparent',stroke:'none'},g);
     svgEl('circle',{cx:pos.x.toFixed(2),cy:pos.y.toFixed(2),r:'8',fill:'none',stroke:'#c8b89a','stroke-dasharray':'3,2','stroke-width':'1.5'},g);
     g.addEventListener('click',()=>cycleToken(sec.id,ti));
+    g.addEventListener('mouseenter',(e)=>{
+      const desc=getEHDescription(sec.id);
+      if(!desc) return;
+      const els=getVVTooltipEls();
+      if(!els.tooltip||!els.title||!els.text) return;
+      els.title.textContent=sec.label;
+      els.text.textContent=desc;
+      els.tooltip.style.display='block';
+      positionVVTooltip(e);
+    });
+    g.addEventListener('mousemove',positionVVTooltip);
+    g.addEventListener('mouseleave',hideVVTooltip);
   });
-
-  tg.addEventListener('mouseenter',(e)=>{
-    const desc=getEHDescription(sec.id);
-    if(!desc) return;
-    const els=getVVTooltipEls();
-    if(!els.tooltip||!els.title||!els.text) return;
-    els.title.textContent=sec.label;
-    els.text.textContent=desc;
-    els.tooltip.style.display='block';
-    positionVVTooltip(e);
-  });
-  tg.addEventListener('mousemove',positionVVTooltip);
-  tg.addEventListener('mouseleave',hideVVTooltip);
 
   // ── Score squares
   const sqR=OUTER_R+14;
