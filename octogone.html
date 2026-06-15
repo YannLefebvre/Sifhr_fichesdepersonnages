@@ -337,18 +337,18 @@
 
   /* ── Panneau latéral environnement ── */
   #env-side-tab {
-    position:fixed; right:0; top:calc(50% + 2.5rem); transform:translateY(-50%);
+    position:fixed; right:0; top:calc(50% + 3.5rem); transform:translateY(0);
     background:#3a5a3a; color:#f5f0e8; border:none;
     border-radius:6px 0 0 6px; padding:.7rem .4rem;
     cursor:pointer; font-family:'Cinzel',serif; font-size:.7rem;
     letter-spacing:.08em; writing-mode:vertical-rl; text-orientation:mixed;
-    box-shadow:-2px 0 8px rgba(0,0,0,0.2); z-index:180; transition:background .15s;
+    box-shadow:-2px 0 8px rgba(0,0,0,0.2); z-index:181; transition:background .15s;
   }
   #env-side-tab:hover { background:#2a4a2a; }
   #env-panel {
     position:fixed; right:0; top:0; bottom:0; width:600px; max-width:95vw;
     background:var(--bg); border-left:1px solid var(--border);
-    box-shadow:-4px 0 20px rgba(0,0,0,0.2); z-index:185;
+    box-shadow:-4px 0 20px rgba(0,0,0,0.2); z-index:186;
     transform:translateX(100%); transition:transform .25s ease;
     display:flex; flex-direction:column;
   }
@@ -569,7 +569,13 @@ function hideVVTooltip(){
 
 // ── Panneau latéral oppositions ──
 function toggleVVPanel(){
-  document.getElementById('vv-panel').classList.toggle('open');
+  const panel = document.getElementById('vv-panel');
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')){
+    panel.style.zIndex = '186';
+    const ep = document.getElementById('env-panel');
+    if(ep) ep.style.zIndex = '185';
+  }
 }
 
 // ── Panneau latéral environnement ──
@@ -577,11 +583,16 @@ function toggleEnvPanel(){
   const panel = document.getElementById('env-panel');
   const isOpening = !panel.classList.contains('open');
   panel.classList.toggle('open');
+  // Monter le panneau env au-dessus du panneau VV si les deux sont ouverts
   if(isOpening){
+    document.getElementById('vv-panel').style.zIndex = '185';
+    panel.style.zIndex = '186';
     const iframe = document.getElementById('env-iframe');
-    const src = 'environnement.html?fiche=' + encodeURIComponent(FICHE_ID);
-    if(!iframe.src || !iframe.src.includes('fiche=')){
-      iframe.src = src;
+    const target = 'environnement.html?fiche=' + encodeURIComponent(FICHE_ID);
+    // Charger seulement si pas encore chargé avec le bon FICHE_ID
+    if(!iframe.dataset.loaded){
+      iframe.src = target;
+      iframe.dataset.loaded = '1';
     }
   }
 }
