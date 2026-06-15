@@ -335,6 +335,35 @@
     letter-spacing:.06em; text-transform:uppercase; margin-bottom:.3rem; font-weight:600; }
   .vv-hoverable { cursor:help; }
 
+  /* ── Panneau latéral environnement ── */
+  #env-side-tab {
+    position:fixed; right:0; top:calc(50% + 2.5rem); transform:translateY(-50%);
+    background:#3a5a3a; color:#f5f0e8; border:none;
+    border-radius:6px 0 0 6px; padding:.7rem .4rem;
+    cursor:pointer; font-family:'Cinzel',serif; font-size:.7rem;
+    letter-spacing:.08em; writing-mode:vertical-rl; text-orientation:mixed;
+    box-shadow:-2px 0 8px rgba(0,0,0,0.2); z-index:180; transition:background .15s;
+  }
+  #env-side-tab:hover { background:#2a4a2a; }
+  #env-panel {
+    position:fixed; right:0; top:0; bottom:0; width:600px; max-width:95vw;
+    background:var(--bg); border-left:1px solid var(--border);
+    box-shadow:-4px 0 20px rgba(0,0,0,0.2); z-index:185;
+    transform:translateX(100%); transition:transform .25s ease;
+    display:flex; flex-direction:column;
+  }
+  #env-panel.open { transform:translateX(0); }
+  #env-panel-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:.6rem 1rem; border-bottom:1px solid var(--border);
+    font-family:'Cinzel',serif; color:#3a5a3a; font-size:.85rem;
+    flex-shrink:0;
+  }
+  #env-panel-close { background:none; border:none; font-size:1.1rem;
+    cursor:pointer; color:#888; }
+  #env-panel-close:hover { color:var(--ink); }
+  #env-iframe { flex:1; border:none; width:100%; }
+
   /* ── Panneau latéral oppositions ── */
   #vv-side-tab {
     position:fixed; right:0; top:50%; transform:translateY(-50%);
@@ -541,6 +570,20 @@ function hideVVTooltip(){
 // ── Panneau latéral oppositions ──
 function toggleVVPanel(){
   document.getElementById('vv-panel').classList.toggle('open');
+}
+
+// ── Panneau latéral environnement ──
+function toggleEnvPanel(){
+  const panel = document.getElementById('env-panel');
+  const isOpening = !panel.classList.contains('open');
+  panel.classList.toggle('open');
+  if(isOpening){
+    const iframe = document.getElementById('env-iframe');
+    const src = 'environnement.html?fiche=' + encodeURIComponent(FICHE_ID);
+    if(!iframe.src || !iframe.src.includes('fiche=')){
+      iframe.src = src;
+    }
+  }
 }
 
 function vvScoreFor(axisNum, qi){
@@ -2186,6 +2229,16 @@ function showXferFab(){
   <h3>Tensions intérieures</h3>
   <div id="vv-pair-list"></div>
   <div id="vv-pair-result"></div>
+</div>
+
+<!-- Panneau latéral environnement -->
+<button id="env-side-tab" onclick="toggleEnvPanel()">Environnement</button>
+<div id="env-panel">
+  <div id="env-panel-header">
+    <span>Environnement</span>
+    <button id="env-panel-close" onclick="toggleEnvPanel()">✕</button>
+  </div>
+  <iframe id="env-iframe" src="" title="Environnement"></iframe>
 </div>
 </body>
 </html>
