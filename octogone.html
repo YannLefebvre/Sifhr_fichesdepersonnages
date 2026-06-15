@@ -381,6 +381,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="apt-data.js"></script>
 <script src="vv-data.js"></script>
+<script src="elements-humeurs-data.js"></script>
 <script>
 
 function showAptTooltip(label, key, evt){
@@ -401,6 +402,16 @@ function showAptTooltip(label, key, evt){
   els.text.textContent = text;
   els.tooltip.style.display = 'block';
   positionVVTooltip(evt);
+}
+
+function getEHDescription(sectorId) {
+  const tokens = state.tokens[sectorId];
+  const blancs = tokens.filter(t => t === 'white').length;
+  const noirs  = tokens.filter(t => t === 'black').length;
+  if (blancs === 0 && noirs === 0) return null;
+  const cle = `${blancs}b_${noirs}n`;
+  const ehKey = { 'bile_j': 'bile_jaune', 'bile_n': 'bile_noire' }[sectorId] || sectorId;
+  return EH_DATA[ehKey]?.[cle] ?? null;
 }
 
 </script>
@@ -1093,6 +1104,19 @@ SECTORS.forEach((sec)=>{
     svgEl('circle',{cx:pos.x.toFixed(2),cy:pos.y.toFixed(2),r:'8',fill:'none',stroke:'#c8b89a','stroke-dasharray':'3,2','stroke-width':'1.5'},g);
     g.addEventListener('click',()=>cycleToken(sec.id,ti));
   });
+
+  tg.addEventListener('mouseenter',(e)=>{
+    const desc=getEHDescription(sec.id);
+    if(!desc) return;
+    const els=getVVTooltipEls();
+    if(!els.tooltip||!els.title||!els.text) return;
+    els.title.textContent=sec.label;
+    els.text.textContent=desc;
+    els.tooltip.style.display='block';
+    positionVVTooltip(e);
+  });
+  tg.addEventListener('mousemove',positionVVTooltip);
+  tg.addEventListener('mouseleave',hideVVTooltip);
 
   // ── Score squares
   const sqR=OUTER_R+14;
