@@ -348,6 +348,119 @@ function pneuAction(zone, level) {
 }
 
 // ══════════════════════════════════════════════
+// Visuels (images dévoilables) — MJ gère, joueur voit si révélé
+// ══════════════════════════════════════════════
+
+function uid(){ return 'v'+Date.now()+'_'+Math.random().toString(36).slice(2,7); }
+
+function addVisuelFile(file){
+  if(!isGM || !file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    state.visuels.push({ id: uid(), titre: file.name.replace(/\.[^.]+$/,''), dataUrl: e.target.result, revealed: false });
+    renderVisuels();
+    saveState();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeVisuel(id){
+  if(!isGM) return;
+  state.visuels = state.visuels.filter(v => v.id !== id);
+  renderVisuels();
+  saveState();
+}
+
+function toggleVisuelReveal(id){
+  if(!isGM) return;
+  const v = state.visuels.find(v => v.id === id);
+  if(!v) return;
+  v.revealed = !v.revealed;
+  renderVisuels();
+  saveState();
+}
+
+function renameVisuel(id, titre){
+  if(!isGM) return;
+  const v = state.visuels.find(v => v.id === id);
+  if(!v) return;
+  v.titre = titre;
+  saveState();
+}
+
+function renderVisuels(){
+  const listEl = document.getElementById('visuels-list');
+  if(!listEl) return;
+  listEl.innerHTML = '';
+
+  const visibles = isGM ? state.visuels : state.visuels.filter(v => v.revealed);
+
+  if(visibles.length === 0){
+    const p = document.createElement('p');
+    p.className = 'visuel-placeholder';
+    p.textContent = isGM ? 'Aucun visuel ajouté' : 'Aucun visuel à afficher';
+    listEl.appendChild(p);
+    return;
+  }
+
+  visibles.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'visuel-card';
+
+    const img = document.createElement('img');
+    img.src = v.dataUrl;
+    img.className = 'visuel-thumb';
+    img.addEventListener('click', () => openVisuelZoom(v.dataUrl, v.titre));
+    card.appendChild(img);
+
+    const row = document.createElement('div');
+    row.className = 'visuel-row';
+
+    if(isGM){
+      const titleInput = document.createElement('input');
+      titleInput.type = 'text';
+      titleInput.className = 'visuel-title-input';
+      titleInput.value = v.titre || '';
+      titleInput.addEventListener('change', () => renameVisuel(v.id, titleInput.value));
+      row.appendChild(titleInput);
+
+      const revealBtn = document.createElement('button');
+      revealBtn.className = 'visuel-act-btn' + (v.revealed ? ' revealed' : '');
+      revealBtn.textContent = v.revealed ? 'Révélé 👁' : 'Masqué';
+      revealBtn.title = v.revealed ? 'Masquer aux joueurs' : 'Révéler aux joueurs';
+      revealBtn.addEventListener('click', () => toggleVisuelReveal(v.id));
+      row.appendChild(revealBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'visuel-act-btn danger';
+      delBtn.textContent = '✕';
+      delBtn.title = 'Supprimer';
+      delBtn.addEventListener('click', () => { if(confirm('Supprimer ce visuel ?')) removeVisuel(v.id); });
+      row.appendChild(delBtn);
+    } else {
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'visuel-title-label';
+      titleSpan.textContent = v.titre || '';
+      row.appendChild(titleSpan);
+    }
+
+    card.appendChild(row);
+    listEl.appendChild(card);
+  });
+}
+
+function openVisuelZoom(dataUrl, titre){
+  const overlay = document.createElement('div');
+  overlay.className = 'visuel-zoom-overlay';
+  overlay.addEventListener('click', () => overlay.remove());
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.alt = titre || '';
+  overlay.appendChild(img);
+  document.body.appendChild(overlay);
+}
+
+// ══════════════════════════════════════════════
 // Attribution de niveaux aux personnages (MJ)
 // ══════════════════════════════════════════════
 
@@ -358,7 +471,7 @@ let attribChars = []; // [{id, nom}] chargés depuis Supabase
 async function loadChars() {
   try {
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/fiches?select=id,nom&order=nom`,
+      `${SUPABASE_URL}/rest/v1/fiches?select=id,nom,etat_env&order=nom`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
     );
     const d = await r.json();
@@ -367,6 +480,17 @@ async function loadChars() {
   } catch(e) {
     attribChars = [];
   }
+}
+
+// Détermine si un personnage a déjà reçu ce niveau précis pour cette zone
+function charHasLevel(char, zone, level) {
+  const env = char.etat_env;
+  if (!env || !env.pneumato) return false;
+  if (zone === 'valeurs' || zone === 'polarite') {
+    return env.pneumato[zone] === level;
+  }
+  const s = env.pneumato[zone]?.[level];
+  return !!(s && s.active);
 }
 
 function openAttrib(zone, level) {
@@ -399,7 +523,12 @@ function openAttrib(zone, level) {
       const btn = document.createElement('button');
       btn.className = 'attrib-char-btn';
       btn.dataset.id = char.id;
-      btn.innerHTML = `<span class="attrib-check"></span><span>${char.nom || char.id}</span>`;
+      const already = charHasLevel(char, zone, level);
+      if (already) {
+        btn.classList.add('already-attrib');
+      }
+      const badge = already ? '<span class="attrib-already-badge" title="Déjà attribué">déjà reçu</span>' : '';
+      btn.innerHTML = `<span class="attrib-check"></span><span>${char.nom || char.id}</span>${badge}`;
       btn.addEventListener('click', () => toggleAttribChar(char.id, btn));
       listEl.appendChild(btn);
     });
@@ -477,6 +606,12 @@ async function confirmAttrib() {
           locked: false
         };
       }
+
+      // Révéler la zone au joueur — sans ça l'attribution reste invisible côté joueur
+      if (!envActuel.pneumato.zonesRevealed) {
+        envActuel.pneumato.zonesRevealed = { valeurs: false, polarite: false, occultation: false, dynamique: false };
+      }
+      envActuel.pneumato.zonesRevealed[zone] = true;
 
       // Sauvegarder dans etat_env du personnage
       const r2 = await fetch(`${SUPABASE_URL}/rest/v1/fiches`, {
@@ -727,6 +862,12 @@ async function confirmAttrib() {
     text-align:left;
   }
   .attrib-char-btn:hover { background:var(--border2); }
+  .attrib-char-btn.already-attrib { border-color:#3a6e3a; }
+  .attrib-already-badge {
+    margin-left:auto; font-family:'Cinzel',serif; font-size:.62rem;
+    letter-spacing:.04em; color:#3a6e3a; background:#e8f5e8;
+    padding:2px 6px; border-radius:3px; flex-shrink:0;
+  }
   .attrib-char-btn.selected {
     border-color:var(--accent); background:#f5e8e8; color:var(--ink);
   }
@@ -748,6 +889,51 @@ async function confirmAttrib() {
   #attrib-confirm:hover { background:#6e1a1a; }
   #attrib-confirm:disabled { background:#aaa; cursor:not-allowed; }
   #attrib-status { font-size:.78rem; color:var(--ink3); text-align:center; margin-top:.5rem; min-height:1.1em; }
+
+  /* ── Panneau Visuels ── */
+  .visuels-section { max-width:700px; margin:0 auto .8rem; }
+  .visuels-section-title { font-family:'Cinzel',serif; color:var(--accent); font-size:.85rem; letter-spacing:.06em; margin-bottom:.5rem; }
+  .visuels-panel-body { display:flex; flex-direction:column; gap:.6rem; }
+  .visuel-upload-btn {
+    display:inline-block; align-self:flex-start;
+    font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.04em;
+    padding:.45rem .9rem; border:1px solid var(--border); border-radius:4px;
+    background:var(--input-bg); cursor:pointer; color:var(--ink2);
+    transition:background .15s;
+  }
+  .visuel-upload-btn:hover { background:var(--border2); }
+  .visuel-placeholder { text-align:center; font-style:italic; color:var(--ink3); font-size:.85rem; padding:.5rem 0; }
+  .visuel-card {
+    border:1px solid var(--border2); border-radius:var(--radius);
+    padding:.5rem; display:flex; flex-direction:column; gap:.4rem;
+    background:var(--section-bg);
+  }
+  .visuel-thumb {
+    max-width:100%; max-height:220px; border-radius:3px; cursor:zoom-in;
+    display:block; margin:0 auto; border:1px solid var(--border);
+  }
+  .visuel-row { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
+  .visuel-title-input {
+    flex:1; min-width:80px; font-family:'Crimson Text',serif; font-size:.85rem;
+    padding:3px 6px; border:1px solid var(--border); border-radius:3px;
+    background:var(--input-bg); color:var(--ink2);
+  }
+  .visuel-title-label { flex:1; font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2); font-style:italic; }
+  .visuel-act-btn {
+    font-family:'Cinzel',serif; font-size:.65rem; padding:3px 8px;
+    border:1px solid var(--border); border-radius:3px; background:var(--input-bg);
+    cursor:pointer; color:var(--ink2); white-space:nowrap;
+  }
+  .visuel-act-btn:hover { background:var(--border2); }
+  .visuel-act-btn.revealed { border-color:#3a6e3a; color:#3a6e3a; background:#e8f5e8; }
+  .visuel-act-btn.danger { border-color:#c0392b; color:#c0392b; }
+  .visuel-act-btn.danger:hover { background:#fde0e0; }
+  .visuel-zoom-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.85);
+    z-index:500; display:flex; align-items:center; justify-content:center;
+    cursor:zoom-out;
+  }
+  .visuel-zoom-overlay img { max-width:92vw; max-height:92vh; border-radius:4px; box-shadow:0 8px 40px rgba(0,0,0,0.7); }
 </style>
 </head>
 <body>
@@ -912,6 +1098,18 @@ async function confirmAttrib() {
     <input class="des-input" type="number" id="occultation-val" min="0" max="999" placeholder="0" style="width:55px;">
   </div>
 
+  <!-- Panneau Visuels -->
+  <div class="visuels-section">
+    <h3 class="visuels-section-title">Visuels</h3>
+    <div class="visuels-panel-body" id="visuels-panel-body">
+      <label class="visuel-upload-btn" id="visuel-upload-label" style="display:none;">
+        Ajouter un visuel
+        <input type="file" id="visuel-file-input" accept="image/*" style="display:none;">
+      </label>
+      <div id="visuels-list"></div>
+    </div>
+  </div>
+
   <!-- Overlay pneumato -->
   <div id="pneumato-overlay">
     <div id="pneumato-box">
@@ -1022,6 +1220,7 @@ let state={
   tokens:{},scores:{},
   axisNotes:{}, // {sectorId: {gm:{text,locked,revealed}, players:{text,locked}}}
   pneumato:{valeurs:0,polarite:0,occultation:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},zonesRevealed:{valeurs:false,polarite:false,occultation:false,dynamique:false}},ether:'',occultation:'',
+  visuels:[], // [{id, titre, dataUrl, revealed}]
   wheelRot:0
 };
 SECTORS.forEach(s=>{
@@ -1430,6 +1629,7 @@ function applyRemoteState(saved){
     if(saved.ether!==undefined){state.ether=saved.ether;document.getElementById('ether-val').value=saved.ether;}
     if(saved.occultation!==undefined){state.occultation=saved.occultation;document.getElementById('occultation-val').value=saved.occultation;}
     if(saved.wheelRot!==undefined) applyRotation(saved.wheelRot,true);
+    if(saved.visuels!==undefined){ state.visuels=Array.isArray(saved.visuels)?saved.visuels:[]; renderVisuels(); }
     if(saved._xferRequest){ const req=saved._xferRequest; if(!xferPending||xferPending.ts!==req.ts) xferShowNotif(req); }
   }catch(e){console.error('applyRemoteState',e);}
   applyingRemote=false;
@@ -1474,6 +1674,8 @@ async function doLogin(tryGM){
         document.getElementById('app').style.display='block';
         document.getElementById('xfer-fab').style.display='flex';
         if(tryGM) document.getElementById('gm-bar').style.display='flex';
+        const uploadLabel=document.getElementById('visuel-upload-label');
+        if(uploadLabel) uploadLabel.style.display=tryGM?'inline-block':'none';
         // Charger d'abord l'état Supabase, PUIS initialiser l'UI
         if(row.etat_env&&Object.keys(row.etat_env).length>0){
           applyRemoteState(row.etat_env);
@@ -1481,6 +1683,7 @@ async function doLogin(tryGM){
           pneuInit();
           pneuRenderButtons();
         }
+        renderVisuels();
         startRealtime();
       }
     }
@@ -1493,6 +1696,15 @@ const etherInput=document.getElementById('ether-val');
 const occultationInput=document.getElementById('occultation-val');
 etherInput.addEventListener('input',()=>{state.ether=etherInput.value;saveState();});
 occultationInput.addEventListener('input',()=>{state.occultation=occultationInput.value;saveState();});
+
+const visuelFileInput=document.getElementById('visuel-file-input');
+if(visuelFileInput){
+  visuelFileInput.addEventListener('change',()=>{
+    const file=visuelFileInput.files[0];
+    if(file) addVisuelFile(file);
+    visuelFileInput.value='';
+  });
+}
 
 // ── Transfert inter-fiches ──
 let xferPending=null;
