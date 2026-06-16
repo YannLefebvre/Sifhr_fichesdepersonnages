@@ -1642,7 +1642,7 @@ function startRealtime(){
   function connect(){
     ws=new WebSocket(wsUrl);
     ws.onopen=()=>{ ws.send(JSON.stringify({topic:'realtime:public:fiches:id=eq.'+FICHE_ID,event:'phx_join',payload:{},ref:'1'})); hb=setInterval(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'})),25000); };
-    ws.onmessage=(e)=>{ try{ const m=JSON.parse(e.data); if((m.event==='UPDATE'||m.event==='INSERT')){ const ne=m.payload?.record?.etat_env; if(ne) applyRemoteState(ne); } }catch(err){} };
+    ws.onmessage=(e)=>{ try{ const m=JSON.parse(e.data); if((m.event==='UPDATE'||m.event==='INSERT')){ const ne=m.payload?.record?.etat_env; if(ne) applyRemoteState(ne); const et=m.payload?.record?.etat; if(et&&et.tokens){ Object.entries(et.tokens).forEach(([sid,arr])=>{ if(state.tokens[sid]) state.tokens[sid]=arr; }); pneuRenderGhostTokens(); } } }catch(err){} };
     ws.onclose=()=>{ clearInterval(hb); setTimeout(connect,3000); };
     ws.onerror=()=>ws.close();
   }
@@ -1682,6 +1682,14 @@ async function doLogin(tryGM){
         } else {
           pneuInit();
           pneuRenderButtons();
+        }
+        // Importer les jetons de la fiche octogone (colonne etat) en lecture seule,
+        // nécessaires pour le calcul des jetons fantômes Valeurs/Polarité
+        if(row.etat&&row.etat.tokens){
+          Object.entries(row.etat.tokens).forEach(([sid,arr])=>{
+            if(state.tokens[sid]) state.tokens[sid]=arr;
+          });
+          pneuRenderGhostTokens();
         }
         renderVisuels();
         startRealtime();
