@@ -470,6 +470,15 @@ function showEnvFab(){
   document.getElementById('env-fab').style.display='flex';
   document.getElementById('carte-fab').style.display='flex';
 }
+function showDiceFab(){
+  const fab=document.getElementById('dice-fab');
+  if(fab) fab.style.display='flex';
+  showXferFab();
+}
+function showXferFab(){
+  const fab=document.getElementById('xfer-fab');
+  if(fab) fab.style.display='flex';
+}
 
 function toggleEnvPanel(){
   const ol=document.getElementById('env-overlay');
@@ -2196,15 +2205,7 @@ function dTransferToOctogone(dieIdx){
 }
 
 // Afficher le bouton FAB après authentification (appelé après login)
-function showDiceFab(){
-  const fab=document.getElementById('dice-fab');
-  fab.style.display='flex';
-  showXferFab();
-}
-function showXferFab(){
-  const fab=document.getElementById('xfer-fab');
-  if(fab) fab.style.display='flex';
-}
+
 
 </script>
 </div>
