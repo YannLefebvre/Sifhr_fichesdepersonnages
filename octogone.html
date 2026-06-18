@@ -466,19 +466,7 @@ function getBaseUrl(){
 }
 
 // ── Environnement ──
-function showEnvFab(){
-  document.getElementById('env-fab').style.display='flex';
-  document.getElementById('carte-fab').style.display='flex';
-}
-function showDiceFab(){
-  const fab=document.getElementById('dice-fab');
-  if(fab) fab.style.display='flex';
-  showXferFab();
-}
-function showXferFab(){
-  const fab=document.getElementById('xfer-fab');
-  if(fab) fab.style.display='flex';
-}
+
 
 function toggleEnvPanel(){
   const ol=document.getElementById('env-overlay');
@@ -701,6 +689,22 @@ if(document.readyState!=='loading'){
 
 </script>
 <script>
+/* ── Fonctions FAB (définies tôt pour être disponibles dès le login) ── */
+function showEnvFab(){
+  const ef=document.getElementById('env-fab');
+  const cf=document.getElementById('carte-fab');
+  if(ef) ef.style.display='flex';
+  if(cf) cf.style.display='flex';
+}
+function showDiceFab(){
+  const fab=document.getElementById('dice-fab');
+  if(fab) fab.style.display='flex';
+  showXferFab();
+}
+function showXferFab(){
+  const fab=document.getElementById('xfer-fab');
+  if(fab) fab.style.display='flex';
+}
 
 /* ══════════════════════════════════════════════
    TRANSFERT DE JETONS INTER-FICHES
