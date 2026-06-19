@@ -475,8 +475,10 @@ function toggleEnvPanel(){
   const ol=document.getElementById('env-overlay');
   if(ol.classList.contains('open')){ closeEnvPanel(); return; }
   const iframe=document.getElementById('env-iframe');
-  if(!iframe.src||iframe.src==='about:blank'||!iframe.src.includes('fiche=')){
-    iframe.src=getBaseUrl()+'environnement.html?fiche='+encodeURIComponent(FICHE_ID);
+  const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
+  if(!iframe.getAttribute('data-loaded')){
+    iframe.src=base+'environnement.html?fiche='+encodeURIComponent(FICHE_ID);
+    iframe.setAttribute('data-loaded','1');
   }
   ol.classList.add('open');
   document.getElementById('env-fab').classList.add('open');
@@ -2290,7 +2292,7 @@ function dTransferToOctogone(dieIdx){
 </svg> Environnement</span>
       <button class="iframe-close" onclick="closeEnvPanel()">✕</button>
     </div>
-    <iframe id="env-iframe" src="" title="Environnement"></iframe>
+    <iframe id="env-iframe" src="about:blank" title="Environnement"></iframe>
   </div>
 </div>
 
@@ -2310,7 +2312,7 @@ function dTransferToOctogone(dieIdx){
 </svg> Carte</span>
       <button class="iframe-close" onclick="CartePanel.close()">✕</button>
     </div>
-    <iframe id="carte-iframe" src="" title="Carte"></iframe>
+    <iframe id="carte-iframe" src="about:blank" title="Carte"></iframe>
   </div>
 </div>
 
