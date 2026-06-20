@@ -14,7 +14,7 @@
 // state.pneumato = {
 //   valeurs: 0|1|2|3,
 //   polarite: 0|1|2|3,
-//   occultation: {1:{text:'',active:false,locked:false}, 2:{...}, 3:{...}},
+//   direction: {1:{text:'',active:false,locked:false}, 2:{...}, 3:{...}},
 //   dynamique: {1:{...}, 2:{...}, 3:{...}}
 // }
 
@@ -22,18 +22,18 @@ function pneuInit(){
   // Ne réinitialiser que si vraiment absent ou mal formé
   if(!state.pneumato||typeof state.pneumato!=='object'||Array.isArray(state.pneumato)){
     state.pneumato={valeurs:0,polarite:0,
-      occultation:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
+      direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
       dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
-      zonesRevealed:{valeurs:false,polarite:false,occultation:false,dynamique:false}
+      zonesRevealed:{valeurs:false,polarite:false,direction:false,dynamique:false}
     };
     return;
   }
   // Compléter les sous-structures manquantes sans écraser ce qui existe
-  if(!state.pneumato.occultation) state.pneumato.occultation={1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}};
+  if(!state.pneumato.direction) state.pneumato.direction={1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}};
   if(!state.pneumato.dynamique) state.pneumato.dynamique={1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}};
-  if(!state.pneumato.zonesRevealed) state.pneumato.zonesRevealed={valeurs:false,polarite:false,occultation:false,dynamique:false};
+  if(!state.pneumato.zonesRevealed) state.pneumato.zonesRevealed={valeurs:false,polarite:false,direction:false,dynamique:false};
   [1,2,3].forEach(lvl=>{
-    if(!state.pneumato.occultation[lvl]) state.pneumato.occultation[lvl]={text:'',active:false,locked:false};
+    if(!state.pneumato.direction[lvl]) state.pneumato.direction[lvl]={text:'',active:false,locked:false};
     if(!state.pneumato.dynamique[lvl]) state.pneumato.dynamique[lvl]={text:'',active:false,locked:false};
   });
 }
@@ -42,7 +42,7 @@ function pneuRenderButtons(){
   pneuInit();
   const revealed=state.pneumato.zonesRevealed||{};
 
-  ['valeurs','polarite','occultation','dynamique'].forEach(zone=>{
+  ['valeurs','polarite','direction','dynamique'].forEach(zone=>{
     const revealBtn=document.getElementById(`pneu-reveal-${zone}`);
     if(revealBtn){
       if(isGM){
@@ -72,7 +72,7 @@ function pneuRenderButtons(){
     });
   });
 
-  ['occultation','dynamique'].forEach(zone=>{
+  ['direction','dynamique'].forEach(zone=>{
     const showToPlayer=!isGM&&revealed[zone];
     [1,2,3].forEach(lvl=>{
       const btn=document.querySelector(`.pneu-btn[data-zone="${zone}"][data-level="${lvl}"]`);
@@ -171,14 +171,14 @@ function pneuToggle(zone,level){
   saveState();
 }
 
-// ── Occultation / Dynamique ──
+// ── Direction / Dynamique ──
 let pneuCurrentZone=null;
 
 function pneuOpenText(zone,level){
   if(!isGM) return;
   pneuInit();
   pneuCurrentZone={zone,level};
-  const titles={occultation:'Occultation',dynamique:'Dynamique'};
+  const titles={direction:'Direction',dynamique:'Dynamique'};
   const levels={1:'Niveau I',2:'Niveau II',3:'Niveau III'};
   document.getElementById('pneumato-panel-title').textContent=`${titles[zone]} — ${levels[level]}`;
 
@@ -259,7 +259,7 @@ function pneuRenderPlayerView(){
   if(isGM) return; // MJ voit via le panneau d'édition
 
   pneuInit();
-  ['occultation','dynamique'].forEach(zone=>{
+  ['direction','dynamique'].forEach(zone=>{
     [1,2,3].forEach(lvl=>{
       const s=state.pneumato[zone]?.[lvl];
       if(s&&s.active&&s.text){
@@ -269,7 +269,7 @@ function pneuRenderPlayerView(){
         div.style.cssText='max-width:700px;margin:.6rem auto;padding:.7rem 1rem;background:#fff;border:2px solid var(--accent);border-radius:var(--radius);font-family:"Crimson Text",serif;font-size:.92rem;color:var(--ink);box-shadow:0 2px 8px rgba(139,32,32,0.15);position:relative;z-index:5;';
         const titleEl=document.createElement('div');
         titleEl.style.cssText='font-family:"Cinzel",serif;font-size:.75rem;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem;font-weight:600;';
-        titleEl.textContent=`${zone==='occultation'?'Occultation':'Dynamique'} — Niveau ${['I','II','III'][lvl-1]}`;
+        titleEl.textContent=`${zone==='direction'?'Direction':'Dynamique'} — Niveau ${['I','II','III'][lvl-1]}`;
         div.appendChild(titleEl);
         const textEl=document.createElement('div');
         textEl.innerHTML=markdownToHtml(s.text);
@@ -320,325 +320,13 @@ async function gmReset(){
     const r2=await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
       method:'POST',
       headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-      body:JSON.stringify({id:FICHE_ID, etat_env:origine})
+      body:JSON.stringify({id:FICHE_ID, etat:origine})
     });
     if(r2.ok){ msg.textContent='Fiche réinitialisée ✓'; msg.className='save-info saved'; }
     else { msg.textContent='Erreur lors de la réinitialisation'; msg.className='save-info error'; }
   }catch(e){ msg.textContent='Erreur réseau'; msg.className='save-info error'; }
   setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },2500);
 }
-// ── Dispatch selon rôle : MJ → attribution, joueur → affichage ──
-function pneuAction(zone, level) {
-  if (isGM) {
-    // MJ : d'abord toggler localement, puis ouvrir l'attribution
-    if (zone === 'valeurs' || zone === 'polarite') {
-      pneuToggle(zone, level);
-    } else {
-      pneuOpenText(zone, level);
-    }
-    openAttrib(zone, level);
-  } else {
-    // Joueur : comportement habituel (lecture seule)
-    if (zone === 'valeurs' || zone === 'polarite') {
-      // rien (pointer-events désactivé côté joueur)
-    } else {
-      pneuOpenText(zone, level);
-    }
-  }
-}
-
-// ══════════════════════════════════════════════
-// Visuels (images dévoilables) — MJ gère, joueur voit si révélé
-// ══════════════════════════════════════════════
-
-function uid(){ return 'v'+Date.now()+'_'+Math.random().toString(36).slice(2,7); }
-
-function addVisuelFile(file){
-  if(!isGM || !file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    state.visuels.push({ id: uid(), titre: file.name.replace(/\.[^.]+$/,''), dataUrl: e.target.result, revealed: false });
-    renderVisuels();
-    saveState();
-  };
-  reader.readAsDataURL(file);
-}
-
-function removeVisuel(id){
-  if(!isGM) return;
-  state.visuels = state.visuels.filter(v => v.id !== id);
-  renderVisuels();
-  saveState();
-}
-
-function toggleVisuelReveal(id){
-  if(!isGM) return;
-  const v = state.visuels.find(v => v.id === id);
-  if(!v) return;
-  v.revealed = !v.revealed;
-  renderVisuels();
-  saveState();
-}
-
-function renameVisuel(id, titre){
-  if(!isGM) return;
-  const v = state.visuels.find(v => v.id === id);
-  if(!v) return;
-  v.titre = titre;
-  saveState();
-}
-
-function renderVisuels(){
-  const listEl = document.getElementById('visuels-list');
-  if(!listEl) return;
-  listEl.innerHTML = '';
-
-  const visibles = isGM ? state.visuels : state.visuels.filter(v => v.revealed);
-
-  if(visibles.length === 0){
-    const p = document.createElement('p');
-    p.className = 'visuel-placeholder';
-    p.textContent = isGM ? 'Aucun visuel ajouté' : 'Aucun visuel à afficher';
-    listEl.appendChild(p);
-    return;
-  }
-
-  visibles.forEach(v => {
-    const card = document.createElement('div');
-    card.className = 'visuel-card';
-
-    const img = document.createElement('img');
-    img.src = v.dataUrl;
-    img.className = 'visuel-thumb';
-    img.addEventListener('click', () => openVisuelZoom(v.dataUrl, v.titre));
-    card.appendChild(img);
-
-    const row = document.createElement('div');
-    row.className = 'visuel-row';
-
-    if(isGM){
-      const titleInput = document.createElement('input');
-      titleInput.type = 'text';
-      titleInput.className = 'visuel-title-input';
-      titleInput.value = v.titre || '';
-      titleInput.addEventListener('change', () => renameVisuel(v.id, titleInput.value));
-      row.appendChild(titleInput);
-
-      const revealBtn = document.createElement('button');
-      revealBtn.className = 'visuel-act-btn' + (v.revealed ? ' revealed' : '');
-      revealBtn.textContent = v.revealed ? 'Révélé 👁' : 'Masqué';
-      revealBtn.title = v.revealed ? 'Masquer aux joueurs' : 'Révéler aux joueurs';
-      revealBtn.addEventListener('click', () => toggleVisuelReveal(v.id));
-      row.appendChild(revealBtn);
-
-      const delBtn = document.createElement('button');
-      delBtn.className = 'visuel-act-btn danger';
-      delBtn.textContent = '✕';
-      delBtn.title = 'Supprimer';
-      delBtn.addEventListener('click', () => { if(confirm('Supprimer ce visuel ?')) removeVisuel(v.id); });
-      row.appendChild(delBtn);
-    } else {
-      const titleSpan = document.createElement('span');
-      titleSpan.className = 'visuel-title-label';
-      titleSpan.textContent = v.titre || '';
-      row.appendChild(titleSpan);
-    }
-
-    card.appendChild(row);
-    listEl.appendChild(card);
-  });
-}
-
-function openVisuelZoom(dataUrl, titre){
-  const overlay = document.createElement('div');
-  overlay.className = 'visuel-zoom-overlay';
-  overlay.addEventListener('click', () => overlay.remove());
-  const img = document.createElement('img');
-  img.src = dataUrl;
-  img.alt = titre || '';
-  overlay.appendChild(img);
-  document.body.appendChild(overlay);
-}
-
-// ══════════════════════════════════════════════
-// Attribution de niveaux aux personnages (MJ)
-// ══════════════════════════════════════════════
-
-let attribPending = null; // {zone, level}
-let attribSelected = new Set(); // ids des personnages sélectionnés
-let attribChars = []; // [{id, nom}] chargés depuis Supabase
-
-async function loadChars() {
-  try {
-    const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/fiches?select=id,nom,etat_env&order=nom`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
-    );
-    const d = await r.json();
-    // Exclure la fiche courante (l'environnement MJ lui-même)
-    attribChars = Array.isArray(d) ? d.filter(row => row.id !== FICHE_ID) : [];
-  } catch(e) {
-    attribChars = [];
-  }
-}
-
-// Détermine si un personnage a déjà reçu ce niveau précis pour cette zone
-function charHasLevel(char, zone, level) {
-  const env = char.etat_env;
-  if (!env || !env.pneumato) return false;
-  if (zone === 'valeurs' || zone === 'polarite') {
-    return env.pneumato[zone] === level;
-  }
-  const s = env.pneumato[zone]?.[level];
-  return !!(s && s.active);
-}
-
-function openAttrib(zone, level) {
-  if (!isGM) return;
-  attribPending = { zone, level };
-  attribSelected = new Set();
-  const zoneLabels = { valeurs: 'Valeurs', polarite: 'Polarité', occultation: 'Occultation', dynamique: 'Dynamique' };
-  const lvlLabel = ['I', 'II', 'III'][level - 1];
-  document.getElementById('attrib-title').textContent =
-    `Attribuer ${zoneLabels[zone]} — Niveau ${lvlLabel}`;
-  document.getElementById('attrib-status').textContent = '';
-  document.getElementById('attrib-confirm').disabled = true;
-
-  const listEl = document.getElementById('attrib-char-list');
-  const loadingEl = document.getElementById('attrib-loading');
-  listEl.style.display = 'none';
-  loadingEl.style.display = 'block';
-  listEl.innerHTML = '';
-
-  document.getElementById('attrib-overlay').classList.add('open');
-
-  loadChars().then(() => {
-    loadingEl.style.display = 'none';
-    if (attribChars.length === 0) {
-      loadingEl.textContent = 'Aucun personnage trouvé.';
-      loadingEl.style.display = 'block';
-      return;
-    }
-    attribChars.forEach(char => {
-      const btn = document.createElement('button');
-      btn.className = 'attrib-char-btn';
-      btn.dataset.id = char.id;
-      const already = charHasLevel(char, zone, level);
-      if (already) {
-        btn.classList.add('already-attrib');
-      }
-      const badge = already ? '<span class="attrib-already-badge" title="Déjà attribué">déjà reçu</span>' : '';
-      btn.innerHTML = `<span class="attrib-check"></span><span>${char.nom || char.id}</span>${badge}`;
-      btn.addEventListener('click', () => toggleAttribChar(char.id, btn));
-      listEl.appendChild(btn);
-    });
-    listEl.style.display = 'flex';
-  });
-}
-
-function toggleAttribChar(id, btn) {
-  if (attribSelected.has(id)) {
-    attribSelected.delete(id);
-    btn.classList.remove('selected');
-    btn.querySelector('.attrib-check').textContent = '';
-  } else {
-    attribSelected.add(id);
-    btn.classList.add('selected');
-    btn.querySelector('.attrib-check').textContent = '✓';
-  }
-  document.getElementById('attrib-confirm').disabled = attribSelected.size === 0;
-}
-
-function closeAttrib() {
-  document.getElementById('attrib-overlay').classList.remove('open');
-  attribPending = null;
-  attribSelected = new Set();
-}
-
-async function confirmAttrib() {
-  if (!attribPending || attribSelected.size === 0) return;
-  const { zone, level } = attribPending;
-  const confirmBtn = document.getElementById('attrib-confirm');
-  const statusEl = document.getElementById('attrib-status');
-  confirmBtn.disabled = true;
-  statusEl.textContent = 'Attribution en cours…';
-
-  const ids = [...attribSelected];
-  let ok = 0, fail = 0;
-
-  for (const targetId of ids) {
-    try {
-      // Lire l'etat_env actuel du personnage
-      const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(targetId)}&select=etat_env`,
-        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
-      );
-      const d = await r.json();
-      const envActuel = (d[0]?.etat_env) || {};
-
-      // Initialiser la structure pneumato si absente
-      if (!envActuel.pneumato || typeof envActuel.pneumato !== 'object') {
-        envActuel.pneumato = {
-          valeurs: 0, polarite: 0,
-          occultation: { 1: { text: '', active: false, locked: false }, 2: { text: '', active: false, locked: false }, 3: { text: '', active: false, locked: false } },
-          dynamique: { 1: { text: '', active: false, locked: false }, 2: { text: '', active: false, locked: false }, 3: { text: '', active: false, locked: false } },
-          zonesRevealed: { valeurs: false, polarite: false, occultation: false, dynamique: false }
-        };
-      }
-
-      // Appliquer le niveau selon la zone
-      if (zone === 'valeurs' || zone === 'polarite') {
-        // Pour valeurs/polarité : le niveau attribué remplace (comme pneuToggle)
-        const current = envActuel.pneumato[zone] || 0;
-        envActuel.pneumato[zone] = (current === level) ? 0 : level;
-        // Contrainte : polarité ne peut pas dépasser valeurs
-        if (zone === 'valeurs' && envActuel.pneumato.polarite > envActuel.pneumato.valeurs) {
-          envActuel.pneumato.polarite = 0;
-        }
-      } else {
-        // Pour occultation/dynamique : on copie le texte du MJ vers le personnage
-        if (!envActuel.pneumato[zone]) envActuel.pneumato[zone] = {};
-        // Récupérer le texte depuis l'état MJ courant
-        const srcText = state.pneumato[zone]?.[level]?.text || '';
-        envActuel.pneumato[zone][level] = {
-          text: srcText,
-          active: true,
-          locked: false
-        };
-      }
-
-      // Révéler la zone au joueur — sans ça l'attribution reste invisible côté joueur
-      if (!envActuel.pneumato.zonesRevealed) {
-        envActuel.pneumato.zonesRevealed = { valeurs: false, polarite: false, occultation: false, dynamique: false };
-      }
-      envActuel.pneumato.zonesRevealed[zone] = true;
-
-      // Sauvegarder dans etat_env du personnage
-      const r2 = await fetch(`${SUPABASE_URL}/rest/v1/fiches`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_KEY,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates,return=minimal'
-        },
-        body: JSON.stringify({ id: targetId, etat_env: envActuel })
-      });
-      if (r2.ok) ok++; else fail++;
-    } catch(e) {
-      fail++;
-    }
-  }
-
-  if (fail === 0) {
-    statusEl.textContent = `✓ Attribué à ${ok} personnage${ok > 1 ? 's' : ''}.`;
-    setTimeout(() => closeAttrib(), 1500);
-  } else {
-    statusEl.textContent = `${ok} réussi${ok > 1 ? 's' : ''}, ${fail} échec${fail > 1 ? 's' : ''}.`;
-    confirmBtn.disabled = false;
-  }
-}
-
 
 </script>
 <style>
@@ -828,112 +516,6 @@ async function confirmAttrib() {
   .gm-btn.danger:hover { background:#f5e8e8; }
   .gm-btn.safe { border-color:#3a6e3a; color:#3a6e3a; }
   .gm-btn.safe:hover { background:#e8f5e8; }
-  /* ── Modale attribution personnages ── */
-  #attrib-overlay {
-    display:none; position:fixed; inset:0;
-    background:rgba(0,0,0,0.55); z-index:400;
-    align-items:center; justify-content:center;
-  }
-  #attrib-overlay.open { display:flex; }
-  #attrib-box {
-    background:var(--bg); border:1px solid var(--border);
-    border-radius:var(--radius); padding:1.4rem 1.6rem;
-    min-width:280px; max-width:420px; width:92vw;
-    box-shadow:0 4px 24px rgba(0,0,0,0.35); position:relative;
-  }
-  #attrib-box h3 {
-    font-family:'Cinzel',serif; color:var(--accent);
-    font-size:.9rem; letter-spacing:.08em;
-    margin-bottom:1rem; text-align:center;
-  }
-  .attrib-close {
-    position:absolute; top:.5rem; right:.7rem;
-    background:none; border:none; font-size:1.1rem;
-    cursor:pointer; color:#888;
-  }
-  .attrib-char-list { display:flex; flex-direction:column; gap:.45rem; margin-bottom:1rem; }
-  .attrib-char-btn {
-    display:flex; align-items:center; gap:.6rem;
-    padding:.55rem .8rem; border:1px solid var(--border);
-    border-radius:6px; background:var(--input-bg);
-    cursor:pointer; font-family:'Crimson Text',serif;
-    font-size:.9rem; color:var(--ink2);
-    transition:background .12s, border-color .12s;
-    text-align:left;
-  }
-  .attrib-char-btn:hover { background:var(--border2); }
-  .attrib-char-btn.already-attrib { border-color:#3a6e3a; }
-  .attrib-already-badge {
-    margin-left:auto; font-family:'Cinzel',serif; font-size:.62rem;
-    letter-spacing:.04em; color:#3a6e3a; background:#e8f5e8;
-    padding:2px 6px; border-radius:3px; flex-shrink:0;
-  }
-  .attrib-char-btn.selected {
-    border-color:var(--accent); background:#f5e8e8; color:var(--ink);
-  }
-  .attrib-char-btn .attrib-check {
-    width:16px; height:16px; border-radius:3px;
-    border:1.5px solid var(--border); flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    font-size:.75rem; background:#fff;
-  }
-  .attrib-char-btn.selected .attrib-check {
-    background:var(--accent); border-color:var(--accent); color:#fff;
-  }
-  #attrib-confirm {
-    width:100%; padding:.6rem; background:var(--accent); color:#f5f0e8;
-    border:none; border-radius:6px; font-family:'Cinzel',serif;
-    font-size:.8rem; letter-spacing:.06em; cursor:pointer;
-    transition:background .15s;
-  }
-  #attrib-confirm:hover { background:#6e1a1a; }
-  #attrib-confirm:disabled { background:#aaa; cursor:not-allowed; }
-  #attrib-status { font-size:.78rem; color:var(--ink3); text-align:center; margin-top:.5rem; min-height:1.1em; }
-
-  /* ── Panneau Visuels ── */
-  .visuels-section { max-width:700px; margin:0 auto .8rem; }
-  .visuels-section-title { font-family:'Cinzel',serif; color:var(--accent); font-size:.85rem; letter-spacing:.06em; margin-bottom:.5rem; }
-  .visuels-panel-body { display:flex; flex-direction:column; gap:.6rem; }
-  .visuel-upload-btn {
-    display:inline-block; align-self:flex-start;
-    font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.04em;
-    padding:.45rem .9rem; border:1px solid var(--border); border-radius:4px;
-    background:var(--input-bg); cursor:pointer; color:var(--ink2);
-    transition:background .15s;
-  }
-  .visuel-upload-btn:hover { background:var(--border2); }
-  .visuel-placeholder { text-align:center; font-style:italic; color:var(--ink3); font-size:.85rem; padding:.5rem 0; }
-  .visuel-card {
-    border:1px solid var(--border2); border-radius:var(--radius);
-    padding:.5rem; display:flex; flex-direction:column; gap:.4rem;
-    background:var(--section-bg);
-  }
-  .visuel-thumb {
-    max-width:100%; max-height:220px; border-radius:3px; cursor:zoom-in;
-    display:block; margin:0 auto; border:1px solid var(--border);
-  }
-  .visuel-row { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
-  .visuel-title-input {
-    flex:1; min-width:80px; font-family:'Crimson Text',serif; font-size:.85rem;
-    padding:3px 6px; border:1px solid var(--border); border-radius:3px;
-    background:var(--input-bg); color:var(--ink2);
-  }
-  .visuel-title-label { flex:1; font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2); font-style:italic; }
-  .visuel-act-btn {
-    font-family:'Cinzel',serif; font-size:.65rem; padding:3px 8px;
-    border:1px solid var(--border); border-radius:3px; background:var(--input-bg);
-    cursor:pointer; color:var(--ink2); white-space:nowrap;
-  }
-  .visuel-act-btn:hover { background:var(--border2); }
-  .visuel-act-btn.revealed { border-color:#3a6e3a; color:#3a6e3a; background:#e8f5e8; }
-  .visuel-act-btn.danger { border-color:#c0392b; color:#c0392b; }
-  .visuel-act-btn.danger:hover { background:#fde0e0; }
-  .visuel-zoom-overlay {
-    position:fixed; inset:0; background:rgba(0,0,0,0.85);
-    z-index:500; display:flex; align-items:center; justify-content:center;
-    cursor:zoom-out;
-  }
-  .visuel-zoom-overlay img { max-width:92vw; max-height:92vh; border-radius:4px; box-shadow:0 8px 40px rgba(0,0,0,0.7); }
 </style>
 </head>
 <body>
@@ -1022,15 +604,15 @@ async function confirmAttrib() {
       <div class="pneumato-zone">
         <div class="pneumato-zone-title">Valeurs<button class="pneu-zone-reveal-btn" id="pneu-reveal-valeurs" onclick="pneuToggleZoneReveal('valeurs')" style="display:none;">👁</button></div>
         <div class="pneumato-btns" id="pneu-valeurs-btns">
-          <button class="pneu-btn" data-zone="valeurs" data-level="1" onclick="pneuAction('valeurs',1)">
+          <button class="pneu-btn" data-zone="valeurs" data-level="1" onclick="pneuToggle('valeurs',1)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">I</span>
           </button>
-          <button class="pneu-btn" data-zone="valeurs" data-level="2" onclick="pneuAction('valeurs',2)">
+          <button class="pneu-btn" data-zone="valeurs" data-level="2" onclick="pneuToggle('valeurs',2)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">II</span>
           </button>
-          <button class="pneu-btn" data-zone="valeurs" data-level="3" onclick="pneuAction('valeurs',3)">
+          <button class="pneu-btn" data-zone="valeurs" data-level="3" onclick="pneuToggle('valeurs',3)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">III</span>
           </button>
@@ -1039,32 +621,32 @@ async function confirmAttrib() {
       <div class="pneumato-zone">
         <div class="pneumato-zone-title">Polarité<button class="pneu-zone-reveal-btn" id="pneu-reveal-polarite" onclick="pneuToggleZoneReveal('polarite')" style="display:none;">👁</button></div>
         <div class="pneumato-btns" id="pneu-polarite-btns">
-          <button class="pneu-btn" data-zone="polarite" data-level="1" onclick="pneuAction('polarite',1)">
+          <button class="pneu-btn" data-zone="polarite" data-level="1" onclick="pneuToggle('polarite',1)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">I</span>
           </button>
-          <button class="pneu-btn" data-zone="polarite" data-level="2" onclick="pneuAction('polarite',2)">
+          <button class="pneu-btn" data-zone="polarite" data-level="2" onclick="pneuToggle('polarite',2)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">II</span>
           </button>
-          <button class="pneu-btn" data-zone="polarite" data-level="3" onclick="pneuAction('polarite',3)">
+          <button class="pneu-btn" data-zone="polarite" data-level="3" onclick="pneuToggle('polarite',3)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">III</span>
           </button>
         </div>
       </div>
       <div class="pneumato-zone">
-        <div class="pneumato-zone-title">Occultation<button class="pneu-zone-reveal-btn" id="pneu-reveal-occultation" onclick="pneuToggleZoneReveal('occultation')" style="display:none;">👁</button></div>
-        <div class="pneumato-btns" id="pneu-occultation-btns">
-          <button class="pneu-btn" data-zone="occultation" data-level="1" onclick="pneuAction('occultation',1)">
+        <div class="pneumato-zone-title">Direction<button class="pneu-zone-reveal-btn" id="pneu-reveal-direction" onclick="pneuToggleZoneReveal('direction')" style="display:none;">👁</button></div>
+        <div class="pneumato-btns" id="pneu-direction-btns">
+          <button class="pneu-btn" data-zone="direction" data-level="1" onclick="pneuOpenText('direction',1)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">I</span>
           </button>
-          <button class="pneu-btn" data-zone="occultation" data-level="2" onclick="pneuAction('occultation',2)">
+          <button class="pneu-btn" data-zone="direction" data-level="2" onclick="pneuOpenText('direction',2)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">II</span>
           </button>
-          <button class="pneu-btn" data-zone="occultation" data-level="3" onclick="pneuAction('occultation',3)">
+          <button class="pneu-btn" data-zone="direction" data-level="3" onclick="pneuOpenText('direction',3)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">III</span>
           </button>
@@ -1073,15 +655,15 @@ async function confirmAttrib() {
       <div class="pneumato-zone">
         <div class="pneumato-zone-title">Dynamique<button class="pneu-zone-reveal-btn" id="pneu-reveal-dynamique" onclick="pneuToggleZoneReveal('dynamique')" style="display:none;">👁</button></div>
         <div class="pneumato-btns" id="pneu-dynamique-btns">
-          <button class="pneu-btn" data-zone="dynamique" data-level="1" onclick="pneuAction('dynamique',1)">
+          <button class="pneu-btn" data-zone="dynamique" data-level="1" onclick="pneuOpenText('dynamique',1)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">I</span>
           </button>
-          <button class="pneu-btn" data-zone="dynamique" data-level="2" onclick="pneuAction('dynamique',2)">
+          <button class="pneu-btn" data-zone="dynamique" data-level="2" onclick="pneuOpenText('dynamique',2)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">II</span>
           </button>
-          <button class="pneu-btn" data-zone="dynamique" data-level="3" onclick="pneuAction('dynamique',3)">
+          <button class="pneu-btn" data-zone="dynamique" data-level="3" onclick="pneuOpenText('dynamique',3)">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
             <span class="pneu-label">III</span>
           </button>
@@ -1098,23 +680,11 @@ async function confirmAttrib() {
     <input class="des-input" type="number" id="occultation-val" min="0" max="999" placeholder="0" style="width:55px;">
   </div>
 
-  <!-- Panneau Visuels -->
-  <div class="visuels-section">
-    <h3 class="visuels-section-title">Visuels</h3>
-    <div class="visuels-panel-body" id="visuels-panel-body">
-      <label class="visuel-upload-btn" id="visuel-upload-label" style="display:none;">
-        Ajouter un visuel
-        <input type="file" id="visuel-file-input" accept="image/*" style="display:none;">
-      </label>
-      <div id="visuels-list"></div>
-    </div>
-  </div>
-
   <!-- Overlay pneumato -->
   <div id="pneumato-overlay">
     <div id="pneumato-box">
       <button class="pneumato-close" onclick="closePneumatoPanel()">✕</button>
-      <h3 id="pneumato-panel-title">Occultation</h3>
+      <h3 id="pneumato-panel-title">Direction</h3>
       <div id="pneumato-panel-body"></div>
     </div>
   </div>
@@ -1177,7 +747,7 @@ document.getElementById('fiche-title').textContent = FICHE_ID;
 const SB = {
   headers: { 'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation' },
   async get(id){ const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(id)}&select=*`,{headers:this.headers}); const d=await r.json(); return d[0]||null; },
-  async upsert(id,etat_env){ const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',headers:{...this.headers,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id,etat_env})}); return r.ok; }
+  async upsert(id,etat){ const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',headers:{...this.headers,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id,etat})}); return r.ok; }
 };
 
 // ── État ──
@@ -1219,8 +789,7 @@ function laneColorKey(tokens){
 let state={
   tokens:{},scores:{},
   axisNotes:{}, // {sectorId: {gm:{text,locked,revealed}, players:{text,locked}}}
-  pneumato:{valeurs:0,polarite:0,occultation:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},zonesRevealed:{valeurs:false,polarite:false,occultation:false,dynamique:false}},ether:'',occultation:'',
-  visuels:[], // [{id, titre, dataUrl, revealed}]
+  pneumato:{valeurs:0,polarite:0,direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},zonesRevealed:{valeurs:false,polarite:false,direction:false,dynamique:false}},ether:'',occultation:'',
   wheelRot:0
 };
 SECTORS.forEach(s=>{
@@ -1586,7 +1155,7 @@ function saveState(){
     const msg=document.getElementById('save-msg');
     try{
       const stateCopy=JSON.parse(JSON.stringify(state));
-      const ok=await SB.upsert(FICHE_ID,stateCopy); // écrit dans etat_env
+      const ok=await SB.upsert(FICHE_ID,stateCopy);
       if(ok){msg.textContent='Sauvegardé ✓';msg.className='save-info saved';setTimeout(()=>{msg.textContent='Synchronisation active';msg.className='save-info';},2000);}
       else{msg.textContent='Erreur de sauvegarde';msg.className='save-info error';}
     }catch(e){msg.textContent='Hors-ligne';msg.className='save-info error';}
@@ -1629,7 +1198,6 @@ function applyRemoteState(saved){
     if(saved.ether!==undefined){state.ether=saved.ether;document.getElementById('ether-val').value=saved.ether;}
     if(saved.occultation!==undefined){state.occultation=saved.occultation;document.getElementById('occultation-val').value=saved.occultation;}
     if(saved.wheelRot!==undefined) applyRotation(saved.wheelRot,true);
-    if(saved.visuels!==undefined){ state.visuels=Array.isArray(saved.visuels)?saved.visuels:[]; renderVisuels(); }
     if(saved._xferRequest){ const req=saved._xferRequest; if(!xferPending||xferPending.ts!==req.ts) xferShowNotif(req); }
   }catch(e){console.error('applyRemoteState',e);}
   applyingRemote=false;
@@ -1642,7 +1210,7 @@ function startRealtime(){
   function connect(){
     ws=new WebSocket(wsUrl);
     ws.onopen=()=>{ ws.send(JSON.stringify({topic:'realtime:public:fiches:id=eq.'+FICHE_ID,event:'phx_join',payload:{},ref:'1'})); hb=setInterval(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'})),25000); };
-    ws.onmessage=(e)=>{ try{ const m=JSON.parse(e.data); if((m.event==='UPDATE'||m.event==='INSERT')){ const ne=m.payload?.record?.etat_env; if(ne) applyRemoteState(ne); const et=m.payload?.record?.etat; if(et&&et.tokens){ Object.entries(et.tokens).forEach(([sid,arr])=>{ if(state.tokens[sid]) state.tokens[sid]=arr; }); pneuRenderGhostTokens(); } } }catch(err){} };
+    ws.onmessage=(e)=>{ try{ const m=JSON.parse(e.data); if((m.event==='UPDATE'||m.event==='INSERT')){ const ne=m.payload?.record?.etat; if(ne) applyRemoteState(ne); } }catch(err){} };
     ws.onclose=()=>{ clearInterval(hb); setTimeout(connect,3000); };
     ws.onerror=()=>ws.close();
   }
@@ -1655,7 +1223,11 @@ document.getElementById('modal-btn-gm').addEventListener('click',()=>doLogin(tru
 document.querySelectorAll('.modal-pw').forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter') doLogin(false);}));
 
 async function doLogin(tryGM){
-  const pw=document.getElementById('modal-pw').value.trim();
+  const pwInput=document.getElementById('modal-pw').value.trim();
+  return doLoginWithPw(pwInput, tryGM);
+}
+
+async function doLoginWithPw(pw, tryGM){
   const err=document.getElementById('modal-err');
   err.textContent='';
   if(!pw){err.textContent='Saisis un mot de passe.';return;}
@@ -1674,24 +1246,13 @@ async function doLogin(tryGM){
         document.getElementById('app').style.display='block';
         document.getElementById('xfer-fab').style.display='flex';
         if(tryGM) document.getElementById('gm-bar').style.display='flex';
-        const uploadLabel=document.getElementById('visuel-upload-label');
-        if(uploadLabel) uploadLabel.style.display=tryGM?'inline-block':'none';
         // Charger d'abord l'état Supabase, PUIS initialiser l'UI
-        if(row.etat_env&&Object.keys(row.etat_env).length>0){
-          applyRemoteState(row.etat_env);
+        if(row.etat&&Object.keys(row.etat).length>0){
+          applyRemoteState(row.etat);
         } else {
           pneuInit();
           pneuRenderButtons();
         }
-        // Importer les jetons de la fiche octogone (colonne etat) en lecture seule,
-        // nécessaires pour le calcul des jetons fantômes Valeurs/Polarité
-        if(row.etat&&row.etat.tokens){
-          Object.entries(row.etat.tokens).forEach(([sid,arr])=>{
-            if(state.tokens[sid]) state.tokens[sid]=arr;
-          });
-          pneuRenderGhostTokens();
-        }
-        renderVisuels();
         startRealtime();
       }
     }
@@ -1699,20 +1260,23 @@ async function doLogin(tryGM){
   btn.textContent=tryGM?'Entrer (meneur)':'Entrer (joueur)';btn.disabled=false;
 }
 
+// ── Connexion automatique via paramètres d'URL (?pw=...&gm=1) ──
+// Permet de passer directement de octogone.html à environnement.html sans ressaisir le mot de passe
+(function tryAutoLogin(){
+  const autoPw = params.get('pw');
+  if(autoPw){
+    const autoGM = params.get('gm')==='1';
+    // Léger délai pour laisser le DOM se stabiliser avant la tentative
+    setTimeout(()=>doLoginWithPw(autoPw, autoGM), 50);
+  }
+})();
+
+
 // ── Compteurs ──
 const etherInput=document.getElementById('ether-val');
 const occultationInput=document.getElementById('occultation-val');
 etherInput.addEventListener('input',()=>{state.ether=etherInput.value;saveState();});
 occultationInput.addEventListener('input',()=>{state.occultation=occultationInput.value;saveState();});
-
-const visuelFileInput=document.getElementById('visuel-file-input');
-if(visuelFileInput){
-  visuelFileInput.addEventListener('change',()=>{
-    const file=visuelFileInput.files[0];
-    if(file) addVisuelFile(file);
-    visuelFileInput.value='';
-  });
-}
 
 // ── Transfert inter-fiches ──
 let xferPending=null;
@@ -1777,9 +1341,6 @@ function xferShowNotif(req){
 }
 function xferAccept(){ if(!xferPending) return; addToken(xferPending.sectorId,xferPending.color); saveState(); xferClearRequest(); document.getElementById('xfer-notif').style.display='none'; xferPending=null; }
 function xferRefuse(){ xferClearRequest(); document.getElementById('xfer-notif').style.display='none'; xferPending=null; }
-
-
-
 async function xferClearRequest(){
   try{
     const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
@@ -1788,18 +1349,5 @@ async function xferClearRequest(){
   }catch(e){console.error(e);}
 }
 </script>
-
-<!-- Modale attribution personnages ── MJ uniquement -->
-<div id="attrib-overlay">
-  <div id="attrib-box">
-    <button class="attrib-close" onclick="closeAttrib()">✕</button>
-    <h3 id="attrib-title">Attribuer</h3>
-    <div id="attrib-loading" style="text-align:center;font-size:.85rem;color:var(--ink3);padding:.5rem 0;">Chargement des personnages…</div>
-    <div class="attrib-char-list" id="attrib-char-list" style="display:none;"></div>
-    <button id="attrib-confirm" onclick="confirmAttrib()" disabled>Attribuer</button>
-    <div id="attrib-status"></div>
-  </div>
-</div>
-
 </body>
 </html>

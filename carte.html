@@ -298,9 +298,27 @@ document.getElementById('modal-btn-player').addEventListener('click',()=>doLogin
 document.getElementById('modal-btn-gm').addEventListener('click',()=>doLogin(true));
 document.getElementById('modal-pw').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(false); });
 
+// ── Connexion automatique via paramètres d'URL (?pw=...&gm=1&pid=...) ──
+// Permet de passer directement de octogone.html à carte.html sans ressaisir le mot de passe
+(function tryAutoLogin(){
+  const autoPw = params.get('pw');
+  if(autoPw){
+    const autoGM = params.get('gm')==='1';
+    const autoPid = params.get('pid')||'';
+    if(autoPid) document.getElementById('modal-player-id').value=autoPid;
+    setTimeout(()=>doLoginWithPw(autoPw, autoGM, autoPid), 50);
+  }
+})();
+
+
 async function doLogin(tryGM){
   const pw=document.getElementById('modal-pw').value.trim();
   const pid=document.getElementById('modal-player-id').value.trim();
+  return doLoginWithPw(pw, tryGM, pid);
+}
+
+async function doLoginWithPw(pw, tryGM, pidOverride){
+  const pid=pidOverride!==undefined?pidOverride:document.getElementById('modal-player-id').value.trim();
   const err=document.getElementById('modal-err');
   err.textContent='';
   if(!pw){err.textContent='Saisis un mot de passe.';return;}
