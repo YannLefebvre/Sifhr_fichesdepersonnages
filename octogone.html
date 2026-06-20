@@ -267,6 +267,40 @@
     background:#f7f4ee; border-radius:10px; padding:2px 10px;
   }
 
+  /* ── Boutons Bonus/Malus cumulables ── */
+  .dbm-row { display:flex; gap:8px; justify-content:center; margin-top:.7rem; flex-wrap:wrap; }
+  .dbm-group { display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .dbm-group-label { font-family:'Cinzel',serif; font-size:.65rem; letter-spacing:.05em; color:#888; }
+  .dbm-buttons { display:flex; gap:5px; }
+  .dbm-btn {
+    position:relative; width:42px; height:42px; border-radius:8px;
+    border:1.5px solid transparent; cursor:pointer;
+    font-family:'Cinzel',serif; font-size:.62rem; font-weight:600;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    line-height:1.15; color:#fff; transition:transform .1s, box-shadow .15s;
+  }
+  .dbm-btn:hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,0.25); }
+  .dbm-btn:active { transform:translateY(0); }
+  .dbm-btn .dbm-btn-name { font-size:.58rem; }
+  .dbm-btn .dbm-btn-count {
+    position:absolute; top:-7px; right:-7px; min-width:18px; height:18px;
+    border-radius:50%; background:#1a1510; color:#fff; font-size:.62rem;
+    display:none; align-items:center; justify-content:center; padding:0 3px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.4); border:1.5px solid #fff;
+  }
+  .dbm-btn.dbm-active .dbm-btn-count { display:flex; }
+  /* Gradient bonus (vert, clair -> foncé) */
+  .dbm-btn.dbm-bonus-1 { background:#a8d5ad; }
+  .dbm-btn.dbm-bonus-2 { background:#5fa86a; }
+  .dbm-btn.dbm-bonus-3 { background:#2d6e38; }
+  /* Gradient malus (rouge, clair -> foncé) */
+  .dbm-btn.dbm-malus-1 { background:#e8a3a0; }
+  .dbm-btn.dbm-malus-2 { background:#c85a52; }
+  .dbm-btn.dbm-malus-3 { background:#8b2020; }
+  .dbm-btn.dbm-active { border-color:#1a1510; }
+  .dbm-btn:disabled { opacity:.45; cursor:not-allowed; }
+  .dbm-btn:disabled:hover { transform:none; box-shadow:none; }
+
   /* ── Explications narratives des dés verrouillés ── */
   .dlock-explain { display:flex; flex-direction:column; gap:.5rem; margin:.6rem 0; }
   .dlock-block {
@@ -1176,6 +1210,42 @@ async function xferClearRequest(){
             <input type="number" id="dsuccess-val2" class="dsuccess-input" min="1" max="10" placeholder="—" onchange="dOnSuccessValChange()">
           </div>
         </div>
+        <div class="dbm-row">
+          <div class="dbm-group">
+            <span class="dbm-group-label">Bonus</span>
+            <div class="dbm-buttons">
+              <button class="dbm-btn dbm-bonus-1" id="dbm-bonus-1" onclick="dbmClick('bonus',1)" oncontextmenu="dResetBonusMalusOne('bonus',1);return false;" title="Clic droit pour réinitialiser">
+                <span class="dbm-btn-name">Avantage</span>
+                <span class="dbm-btn-count" id="dbm-bonus-1-count">0</span>
+              </button>
+              <button class="dbm-btn dbm-bonus-2" id="dbm-bonus-2" onclick="dbmClick('bonus',2)" oncontextmenu="dResetBonusMalusOne('bonus',2);return false;" title="Clic droit pour réinitialiser">
+                <span class="dbm-btn-name">Expertise</span>
+                <span class="dbm-btn-count" id="dbm-bonus-2-count">0</span>
+              </button>
+              <button class="dbm-btn dbm-bonus-3" id="dbm-bonus-3" onclick="dbmClick('bonus',3)" oncontextmenu="dResetBonusMalusOne('bonus',3);return false;" title="Clic droit pour réinitialiser">
+                <span class="dbm-btn-name">Maîtrise</span>
+                <span class="dbm-btn-count" id="dbm-bonus-3-count">0</span>
+              </button>
+            </div>
+          </div>
+          <div class="dbm-group">
+            <span class="dbm-group-label">Malus</span>
+            <div class="dbm-buttons">
+              <button class="dbm-btn dbm-malus-1" id="dbm-malus-1" onclick="dbmClick('malus',1)" oncontextmenu="dResetBonusMalusOne('malus',1);return false;" title="Clic droit pour réinitialiser">
+                <span class="dbm-btn-name">Relance</span>
+                <span class="dbm-btn-count" id="dbm-malus-1-count">0</span>
+              </button>
+              <button class="dbm-btn dbm-malus-2" id="dbm-malus-2" onclick="dbmClick('malus',2)" oncontextmenu="dResetBonusMalusOne('malus',2);return false;" title="Clic droit pour réinitialiser">
+                <span class="dbm-btn-name">Opposition</span>
+                <span class="dbm-btn-count" id="dbm-malus-2-count">0</span>
+              </button>
+              <button class="dbm-btn dbm-malus-3" id="dbm-malus-3" onclick="dbmClick('malus',3)" oncontextmenu="dResetBonusMalusOne('malus',3);return false;" title="Clic droit pour réinitialiser">
+                <span class="dbm-btn-name">Négation</span>
+                <span class="dbm-btn-count" id="dbm-malus-3-count">0</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
       <p class="dice-section-title" id="dice-section-lbl">Fixer des valeurs avant le lancer (optionnel)</p>
       <div class="dice-grid" id="dice-grid"></div>
@@ -2060,7 +2130,7 @@ function applyRemoteState(saved){
           document.getElementById('dreset-btn').style.display='block';
       const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
         }
-        dSyncSuccessInputs();
+        dSyncSuccessInputs(); dSyncBonusMalus();
         dRenderDice(false);
         dComputeSuccesses(); dRenderLockExplanations();
       }
@@ -2197,14 +2267,15 @@ function selectDiceRole(role){
       });
     }
   }
-  dSyncSuccessInputs();
+  dSyncSuccessInputs(); dSyncBonusMalus();
   dRenderDice(false);
   dComputeSuccesses(); dRenderLockExplanations();
   dStartRealtime();
 }
 
 function dLockControls(){
-  ['apt-picker-toggle','drb-minus','drb-plus','dlaunch-btn','dsuccess-val1','dsuccess-val2'].forEach(id=>{
+  ['apt-picker-toggle','drb-minus','drb-plus','dlaunch-btn','dsuccess-val1','dsuccess-val2',
+   'dbm-bonus-1','dbm-bonus-2','dbm-bonus-3','dbm-malus-1','dbm-malus-2','dbm-malus-3'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.disabled=true;
   });
 }
@@ -2250,7 +2321,7 @@ function dStartRealtime(){
               document.getElementById('dreset-btn').style.display='block';
       const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
             }
-            dSyncSuccessInputs();
+            dSyncSuccessInputs(); dSyncBonusMalus();
             dRenderDice(false);
             dComputeSuccesses(); dRenderLockExplanations();
           }
@@ -2360,7 +2431,14 @@ function dUpdateRedMessage(){
   const el=document.getElementById('dred-message');
   if(!el) return;
   const s=dS();
-  el.textContent=dRedMessageFor(s.reds||0);
+  let text = dRedMessageFor(s.reds||0);
+  // Ajouter la description du niveau de l'aptitude choisie, le cas échéant
+  if(s._aptKey && APT_DATA[s._aptKey]){
+    const lvl = Math.max(0, Math.min(6, s.whites||0));
+    const aptText = APT_DATA[s._aptKey][String(lvl)];
+    if(aptText) text += ' ' + aptText;
+  }
+  el.textContent = text;
 }
 
 // ══════════════════════════════════════════════
@@ -2570,6 +2648,42 @@ function dSyncSuccessInputs(){
   if(i2) i2.value=(s.successVal2!==undefined&&s.successVal2!==null)?s.successVal2:'';
 }
 
+// ══════════════════════════════════════════════
+// Boutons Bonus/Malus cumulables (clics répétés)
+// ══════════════════════════════════════════════
+
+function dbmClick(type,level){
+  if(dCurrentRole!=='launcher') return;
+  const s=dS();
+  if(!s.bonusMalus) s.bonusMalus={bonus:{1:0,2:0,3:0},malus:{1:0,2:0,3:0}};
+  if(!s.bonusMalus[type]) s.bonusMalus[type]={1:0,2:0,3:0};
+  s.bonusMalus[type][level]=(s.bonusMalus[type][level]||0)+1;
+  dSyncBonusMalus();
+  dPushState();
+}
+
+function dResetBonusMalusOne(type,level){
+  if(dCurrentRole!=='launcher') return;
+  const s=dS();
+  if(s.bonusMalus && s.bonusMalus[type]) s.bonusMalus[type][level]=0;
+  dSyncBonusMalus();
+  dPushState();
+}
+
+function dSyncBonusMalus(){
+  const s=dS();
+  const bm = s.bonusMalus || {bonus:{1:0,2:0,3:0},malus:{1:0,2:0,3:0}};
+  ['bonus','malus'].forEach(type=>{
+    [1,2,3].forEach(level=>{
+      const count = (bm[type] && bm[type][level]) || 0;
+      const btn = document.getElementById(`dbm-${type}-${level}`);
+      const countEl = document.getElementById(`dbm-${type}-${level}-count`);
+      if(countEl) countEl.textContent = count;
+      if(btn) btn.classList.toggle('dbm-active', count>0);
+    });
+  });
+}
+
 function dComputeSuccesses(){
   const s=dS();
   const resultEl=document.getElementById('dsuccess-result');
@@ -2715,12 +2829,13 @@ function dResetAll(){
   if(dCurrentRole!=='launcher') return;
   if(!confirm('Réinitialiser les dés ?')) return;
   const s=dS(); s.rolled=false; s.dice=[];
+  s.bonusMalus={bonus:{1:0,2:0,3:0},malus:{1:0,2:0,3:0}};
   dInitDice(false);
   document.getElementById('dice-section-lbl').textContent='Fixer des valeurs avant le lancer (optionnel)';
   document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés';
   document.getElementById('dreset-btn').style.display='none';
   const dl2=document.getElementById('dice-legend');if(dl2)dl2.style.display='none';
-  dRenderDice(false); dComputeSuccesses(); dRenderLockExplanations(); dPushState();
+  dRenderDice(false); dComputeSuccesses(); dRenderLockExplanations(); dSyncBonusMalus(); dPushState();
 }
 
 function dMakeDieSVG(d,i,animate){
