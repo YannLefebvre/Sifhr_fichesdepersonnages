@@ -595,16 +595,30 @@ function getBaseUrl(){
   return url.origin + url.pathname.replace(/[^/]*$/, '');
 }
 
+// ── Fiche d'environnement liée ──
+// Utilise state.envFiche si défini, sinon retombe sur FICHE_ID (comportement historique)
+function getEnvFicheId(){
+  return (state.envFiche && state.envFiche.trim()) ? state.envFiche.trim() : FICHE_ID;
+}
+function saveEnvFiche(){
+  const val=document.getElementById('env-fiche-input').value.trim();
+  state.envFiche=val;
+  saveState();
+  // Forcer le rechargement des iframes si elles étaient déjà ouvertes avec une autre fiche
+  const envIframe=document.getElementById('env-iframe');
+  const carteIframe=document.getElementById('carte-iframe');
+  if(envIframe) envIframe.removeAttribute('data-loaded');
+  if(carteIframe) carteIframe.removeAttribute('data-loaded');
+}
+
 // ── Environnement ──
-
-
 function toggleEnvPanel(){
   const ol=document.getElementById('env-overlay');
   if(ol.classList.contains('open')){ closeEnvPanel(); return; }
   const iframe=document.getElementById('env-iframe');
   const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
   if(!iframe.getAttribute('data-loaded')){
-    iframe.src=base+'environnement.html?fiche='+encodeURIComponent(FICHE_ID);
+    iframe.src=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId());
     iframe.setAttribute('data-loaded','1');
   }
   ol.classList.add('open');
@@ -621,8 +635,9 @@ const CartePanel = {
     const ol=document.getElementById('carte-overlay');
     if(ol.classList.contains('open')){ this.close(); return; }
     const iframe=document.getElementById('carte-iframe');
-    if(!iframe.src||iframe.src==='about:blank'||!iframe.src.includes('fiche=')){
-      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(FICHE_ID);
+    if(!iframe.getAttribute('data-loaded')){
+      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId());
+      iframe.setAttribute('data-loaded','1');
     }
     ol.classList.add('open');
     document.getElementById('carte-fab').classList.add('open');
@@ -632,6 +647,7 @@ const CartePanel = {
     document.getElementById('carte-fab').classList.remove('open');
   }
 };
+
 
 </script>
 <script>
@@ -1259,6 +1275,10 @@ async function xferClearRequest(){
   <span class="gm-bar-label">MJ</span>
   <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
   <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser à l'état d'origine</button>
+  <span class="gm-bar-label" style="margin-left:.6rem;">Environnement lié</span>
+  <input id="env-fiche-input" type="text" placeholder="nom de la fiche environnement"
+    style="width:140px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
+  <button class="gm-btn" onclick="saveEnvFiche()">Lier</button>
 </div>
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
 
@@ -1388,7 +1408,7 @@ const NUM_TRAITS=10,SQ_PER_APTITUDE=6;
 let wheelRot=0;
 const NUM_EQUIPEMENT=6, NUM_ARTEFACTS=5;
 const NUM_CONFRERIE=4;
-let state={tokens:{},scores:{},aptitudes:{},
+let state={tokens:{},scores:{},aptitudes:{},envFiche:'',
   traits:Array.from({length:NUM_TRAITS},()=>({title:'',text:''})),
   confrerie:Array.from({length:NUM_CONFRERIE},()=>({title:'',text:''})),
   equipement:Array.from({length:NUM_EQUIPEMENT},()=>({title:'',text:''})),
@@ -1952,6 +1972,11 @@ function saveState(){
 function applyRemoteState(saved){
   applyingRemote = true;
   try {
+    if(saved.envFiche!==undefined){
+      state.envFiche=saved.envFiche;
+      const inp=document.getElementById('env-fiche-input');
+      if(inp) inp.value=saved.envFiche||'';
+    }
     if(saved.tokens) Object.entries(saved.tokens).forEach(([sid,arr])=>{
       state.tokens[sid]=arr;
       arr.forEach((_,i)=>renderToken(sid,i));
