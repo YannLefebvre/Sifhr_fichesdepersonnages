@@ -960,14 +960,16 @@ const EvtGen = {
   },
 
   // Compte les jetons blancs/noirs pour un axe donné à partir de etat.tokens
+  // Structure réelle : etat.tokens[axeId] = ['empty'|'white'|'black', ...] (tableau de 3 jetons)
   countTokens(axeId){
     if(!this.envEtat||!this.envEtat.tokens) return {white:0, black:0, total:0};
+    const arr=this.envEtat.tokens[axeId];
+    if(!Array.isArray(arr)) return {white:0, black:0, total:0};
     let white=0, black=0;
-    for(let i=1;i<=8;i++){
-      const tk=this.envEtat.tokens[`${axeId}_${i}`];
+    arr.forEach(tk=>{
       if(tk==='white') white++;
       else if(tk==='black') black++;
-    }
+    });
     return {white, black, total:white+black};
   },
 
