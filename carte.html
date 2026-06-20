@@ -140,6 +140,36 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 .gm-btn.safe:hover{background:#1a2a14;}
 .gm-btn.danger{border-color:#8a3a2a;color:#c06050;}
 .gm-btn.danger:hover{background:#2a1410;}
+
+/* ── Générateur d'événements ── */
+.gm-btn.generate{border-color:#8a6b1a;color:#d4a83a;}
+.gm-btn.generate:hover{background:#2a2010;}
+#evt-overlay{position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:160;}
+#evt-overlay.open{display:flex;}
+#evt-box{background:var(--panel-bg);border:1px solid var(--border);border-radius:10px;padding:1.2rem;max-width:480px;width:94vw;max-height:90vh;overflow-y:auto;box-shadow:0 6px 32px rgba(0,0,0,0.6);position:relative;}
+.evt-close{position:absolute;top:10px;right:12px;background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);}
+.evt-close:hover{color:var(--ink);}
+.evt-title{font-family:'Cinzel',serif;color:var(--accent);font-size:.95rem;letter-spacing:.08em;margin-bottom:.8rem;padding-right:1.5rem;}
+.evt-axe-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-bottom:.8rem;}
+.evt-axe-btn{padding:.5rem .3rem;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--ink2);font-family:'Cinzel',serif;font-size:.72rem;cursor:pointer;text-align:center;transition:all .15s;}
+.evt-axe-btn:hover{border-color:var(--accent);}
+.evt-axe-btn.active{border-color:var(--accent);background:#2a1a04;color:var(--accent);}
+.evt-axe-btn.disabled{opacity:.35;cursor:not-allowed;}
+.evt-axe-btn.disabled:hover{border-color:var(--border);}
+.evt-info-row{font-size:.8rem;color:var(--ink3);margin-bottom:.6rem;line-height:1.6;}
+.evt-info-row b{color:var(--ink2);}
+.evt-preview{padding:.8rem;background:var(--border2);border-left:3px solid var(--accent);border-radius:4px;font-size:.9rem;color:var(--ink2);line-height:1.6;margin-bottom:.8rem;min-height:3em;}
+.evt-preview.empty{color:var(--ink3);font-style:italic;text-align:center;}
+.evt-target-row{font-size:.78rem;color:var(--ink3);margin-bottom:.8rem;}
+.evt-btns{display:flex;gap:.5rem;}
+.evt-btn{flex:1;font-family:'Cinzel',serif;font-size:.78rem;padding:.5rem;border-radius:4px;border:1px solid var(--border);cursor:pointer;letter-spacing:.04em;}
+.evt-btn.gen{background:var(--input-bg);color:var(--ink2);}
+.evt-btn.gen:hover{background:var(--border);}
+.evt-btn.accept{background:#2a5a3a;color:#e8f5e8;border-color:#3a7a4a;}
+.evt-btn.accept:hover{background:#3a7a4a;}
+.evt-btn.reject{background:#5a2a2a;color:#f5e8e8;border-color:#7a3a3a;}
+.evt-btn.reject:hover{background:#7a3a3a;}
+.evt-btn:disabled{opacity:.4;cursor:not-allowed;}
 </style>
 </head>
 <body>
@@ -168,6 +198,24 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   </div>
 </div>
 
+<!-- Générateur d'événements -->
+<div id="evt-overlay">
+  <div id="evt-box">
+    <button class="evt-close" onclick="EvtGen.close()">✕</button>
+    <div class="evt-title">🎲 Générateur d'événements</div>
+    <div class="evt-info-row">Choisis un axe ayant au moins <b>2 jetons</b> remplis sur l'octogone de cette fiche d'environnement.</div>
+    <div class="evt-axe-grid" id="evt-axe-grid"></div>
+    <div class="evt-info-row" id="evt-detail"></div>
+    <div class="evt-preview empty" id="evt-preview">Choisis un axe pour générer un événement…</div>
+    <div class="evt-target-row" id="evt-target"></div>
+    <div class="evt-btns">
+      <button class="evt-btn gen" id="evt-btn-gen" onclick="EvtGen.generate()" disabled>🎲 Générer</button>
+      <button class="evt-btn reject" id="evt-btn-reject" onclick="EvtGen.generate()" disabled>↻ Refuser</button>
+      <button class="evt-btn accept" id="evt-btn-accept" onclick="EvtGen.accept()" disabled>✓ Accepter</button>
+    </div>
+  </div>
+</div>
+
 <div id="app">
   <div class="carte-header">
     <h1>🌙 Carte de l'Environnement</h1>
@@ -190,6 +238,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     <span class="gm-bar-label">MJ</span>
     <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
     <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser</button>
+    <button class="gm-btn generate" onclick="EvtGen.open()">🎲 Générer un événement</button>
   </div>
 
   <!-- Carte SVG -->
@@ -849,6 +898,208 @@ function buildCouleurLegend(){
     leg.appendChild(item);
   });
 }
+</script>
+
+<script>
+const EVT_TEMPLATES = {"feu":{"personnage":{"positif":["Un {personnage_type} de {lieu_local} fait preuve d'un courage inattendu lors {evenement_local}, et son geste commence déjà à être colporté de bouche à oreille.","Saisi d'une impulsion soudaine, un {personnage_type} prend une décision audacieuse concernant {enjeu_local} — l'avenir dira si cette spontanéité était sagesse ou folie.","Un {personnage_type} retrouve une vigueur qu'on ne lui connaissait plus, et se lance avec une énergie renouvelée dans {entreprise_locale}."],"negatif":["Un {personnage_type} cède à un accès de colère lors {evenement_local}, et les conséquences de cet emportement risquent de le poursuivre longtemps.","La rancœur d'un {personnage_type} envers {cible_locale} a fini par s'embraser, et son comportement devient de plus en plus imprévisible.","Un {personnage_type} agit avec une précipitation dangereuse concernant {enjeu_local}, négligeant les conseils de prudence qu'on a pu lui prodiguer."],"ambivalent":["Un {personnage_type} traverse une période d'instabilité où des élans d'énergie remarquable alternent avec des sautes d'humeur qui inquiètent son entourage.","Tantôt porté par une vivacité salutaire, tantôt emporté par un emballement regrettable, un {personnage_type} devient difficile à cerner ces derniers temps."]},"groupe":{"positif":["{groupe_culture} de {lieu} retrouve une vigueur collective inattendue, galvanisé par {evenement_declencheur}, et porte désormais ses projets avec une énergie renouvelée.","Une vague d'enthousiasme traverse {groupe_culture}, qui se mobilise avec une détermination remarquable autour de {entreprise_collective}.","{groupe_culture} fait preuve d'une réactivité exemplaire face à {situation_locale}, tranchant et agissant là où d'autres auraient tergiversé."],"negatif":["Une colère sourde gagne {groupe_culture} de {lieu}, attisée par {evenement_declencheur}, et les esprits s'échauffent dangereusement.","Des tensions internes embrasent {groupe_culture}, qui se divise en factions rivales prêtes à en découdre pour {enjeu_local}.","{groupe_culture} se précipite vers {entreprise_collective} avec une impatience qui inquiète les plus avisés, négligeant toute prudence."],"ambivalent":["{groupe_culture} de {lieu} oscille entre des élans de mobilisation remarquables et des emportements destructeurs, sans qu'on sache lequel l'emportera.","L'énergie qui anime {groupe_culture} est aussi précieuse qu'instable — elle pourrait aussi bien porter {entreprise_collective} que la faire échouer dans la précipitation."]},"region":{"positif":["Une dynamique de renouveau traverse {region}, où {force_groupe} insuffle une vigueur nouvelle aux entreprises de {groupe_culture}.","{region} connaît un sursaut d'activité et de détermination collective, porté par {evenement_declencheur}, qui pourrait redessiner les équilibres en place.","Un esprit de conquête anime soudain plusieurs factions de {region}, décidées à agir avec audace concernant {enjeu_regional}."],"negatif":["Des troubles éclatent dans {region}, attisés par {evenement_declencheur}, et la violence menace de s'étendre au-delà de son foyer initial.","L'asabiyya de {groupe_culture} en {region} se consume dans des conflits internes, affaiblissant dangereusement leur cohésion face aux rivaux.","Une série de décisions précipitées prises par les puissants de {region} concernant {enjeu_regional} commence à produire des effets que personne n'avait anticipés."],"ambivalent":["{region} traverse une période d'effervescence où des forces de renouveau et de destruction semblent agir simultanément, sans qu'on puisse encore deviner laquelle dominera.","L'énergie qui parcourt {region} en ce moment pourrait aussi bien être le signe d'un âge nouveau que les prémices d'un embrasement général."]}},"bile_jaune":{"personnage":{"positif":["Un {personnage_type} tranche avec une efficacité redoutable dans {enjeu_local}, allant droit au but là où d'autres se seraient perdus en circonvolutions.","La détermination précise d'un {personnage_type} fait merveille lors {evenement_local}, et son sens de l'action directe commence à forger sa réputation.","Un {personnage_type} fait montre d'une vivacité d'esprit tranchante qui lui permet de résoudre {enjeu_local} avant même que d'autres n'en aient saisi l'ampleur."],"negatif":["L'amertume d'un {personnage_type} envers {cible_locale} s'exprime par des mots de plus en plus acerbes, qui finissent par blesser plus qu'ils ne servent.","Un {personnage_type} se montre d'une dureté inhabituelle concernant {enjeu_local}, et son entourage commence à s'en inquiéter.","La causticité d'un {personnage_type} a fini par lui aliéner {cible_locale}, qui ne supporte plus ses sarcasms répétés."],"ambivalent":["Un {personnage_type} oscille entre une efficacité tranchante et une acrimonie gratuite, et l'on ne sait jamais à quoi s'attendre de sa part concernant {enjeu_local}.","Tantôt précis et redoutablement direct, tantôt acide et blessant, un {personnage_type} déconcerte ceux qui tentent de le cerner."]},"groupe":{"positif":["{groupe_culture} de {lieu} fait preuve d'une efficacité chirurgicale dans {entreprise_collective}, sans se perdre dans les vaines hésitations qui paralysent souvent les grandes décisions.","Une vague de pragmatisme tranchant traverse {groupe_culture}, qui aborde {situation_locale} avec une clarté d'action rare.","{groupe_culture} de {lieu} règle {enjeu_local} avec une rapidité et une précision qui surprennent jusqu'à ses propres membres."],"negatif":["Une aigreur collective s'installe au sein de {groupe_culture}, dont les échanges internes concernant {enjeu_local} tournent de plus en plus à l'hostilité.","{groupe_culture} de {lieu} se montre d'une dureté croissante envers {cible_locale}, et le ton s'envenime à chaque rencontre.","Les décisions de {groupe_culture} concernant {entreprise_collective} se prennent désormais dans une précipitation acide qui inquiète les plus mesurés."],"ambivalent":["{groupe_culture} de {lieu} navigue entre une efficacité remarquable et une véhémence qui menace de tout faire dérailler concernant {enjeu_local}.","L'énergie tranchante qui anime {groupe_culture} pourrait aussi bien permettre de résoudre {situation_locale} que d'envenimer davantage les relations avec {cible_locale}."]},"region":{"positif":["{region} bénéficie d'une administration d'une efficacité redoutable, où {groupe_culture} traite {enjeu_regional} avec une précision qui impressionne les observateurs.","Une dynamique de décisions rapides et tranchantes anime les puissants de {region}, qui avancent sur {enjeu_regional} sans se perdre en tergiversations.","{force_groupe} permet à {groupe_culture} de {region} d'agir avec une vivacité remarquable face à {evenement_declencheur}."],"negatif":["Une vague d'aigreur et de ressentiment traverse {region}, où les rivalités entre {groupe_culture} et leurs voisins s'enveniment dangereusement.","Les tensions concernant {enjeu_regional} dégénèrent en hostilité ouverte dans {region}, et la moindre étincelle pourrait tout embraser.","Une série de décisions précipitées et cassantes prises en {region} concernant {enjeu_regional} commence à produire des ressentiments durables."],"ambivalent":["{region} traverse une période où l'efficacité tranchante de certaines factions côtoie une acrimonie croissante chez d'autres, sans qu'on sache quel courant l'emportera.","La bile qui agite {region} en ce moment pourrait aussi bien accoucher de réformes décisives que d'un conflit ouvert entre {groupe_culture} et leurs rivaux."]}},"terre":{"personnage":{"positif":["Un {personnage_type} fait preuve d'une loyauté exemplaire envers {cible_locale}, et ce sens du devoir commence à forger sa réputation au-delà de {lieu_local}.","Par son sens pratique et son ancrage solide, un {personnage_type} parvient à résoudre {enjeu_local} là où d'autres avaient échoué.","Un {personnage_type} se révèle un pilier inattendu pour {cible_locale}, faisant preuve d'une constance qui inspire confiance."],"negatif":["Un {personnage_type} trahit la confiance de {cible_locale} concernant {enjeu_local}, et la nouvelle commence à se répandre.","Las des contraintes de {situation_locale}, un {personnage_type} se détourne discrètement de ses engagements envers {cible_locale}.","Un {personnage_type} s'enlise dans une inertie inquiétante face à {enjeu_local}, incapable de prendre les décisions qui s'imposeraient."],"ambivalent":["Un {personnage_type} navigue entre fidélité affichée et arrière-pensées troubles concernant {cible_locale}, sans qu'on sache où se situe sa vraie loyauté.","Tantôt pilier fiable, tantôt poids mort, un {personnage_type} déconcerte son entourage par son engagement irrégulier envers {enjeu_local}."]},"groupe":{"positif":["{groupe_culture} de {lieu} resserre ses liens internes face à {evenement_declencheur}, et la {force_groupe} qui les unit s'en trouve renforcée.","Un sens du devoir collectif anime {groupe_culture}, qui s'engage avec constance dans {entreprise_collective}.","{groupe_culture} de {lieu} bâtit méthodiquement les fondations de {entreprise_collective}, avec une patience et une rigueur qui forcent le respect."],"negatif":["Des rumeurs de trahison circulent au sein de {groupe_culture}, où certains membres seraient prêts à rejoindre {cible_locale} en cas de {evenement_declencheur}.","{groupe_culture} de {lieu} s'enlise dans une inertie collective face à {situation_locale}, incapable de se mobiliser malgré l'urgence.","La {force_groupe} qui liait {groupe_culture} commence à s'effriter, et certains parlent déjà ouvertement de faire sécession."],"ambivalent":["{groupe_culture} de {lieu} oscille entre une solidarité affichée et des dissensions internes qui pourraient, selon les événements à venir, se résoudre ou s'aggraver.","L'ancrage de {groupe_culture} dans {lieu} est à la fois sa force et sa lourdeur — il pourrait aussi bien garantir leur résilience que les empêcher de s'adapter à {evenement_declencheur}."]},"region":{"positif":["Une {force_groupe} solide unit les différentes factions de {region}, leur permettant de faire front commun face à {evenement_declencheur}.","{region} connaît une période de stabilité et d'enracinement, où {groupe_culture} consolide méthodiquement ses positions concernant {enjeu_regional}.","Les traditions bien ancrées de {groupe_culture} en {region} leur confèrent une résilience remarquable face aux bouleversements environnants."],"negatif":["Des signes de fragmentation apparaissent dans {region}, où plusieurs factions de {groupe_culture} envisagent ouvertement la sécession concernant {enjeu_regional}.","Une inertie générale paralyse les puissants de {region}, incapables de répondre efficacement à {evenement_declencheur}.","La trahison d'une faction de {groupe_culture} envers ses alliés traditionnels en {region} pourrait précipiter une recomposition douloureuse des équilibres locaux."],"ambivalent":["{region} traverse une période où la solidité de certaines alliances contraste avec la fragilité croissante d'autres liens, sans qu'on sache lesquels résisteront à {evenement_declencheur}.","L'ancrage traditionnel de {groupe_culture} en {region} pourrait aussi bien être le socle d'une résistance efficace que le poids mort qui les empêchera de s'adapter."]}},"bile_noire":{"personnage":{"positif":["Un {personnage_type} fait preuve d'une retenue et d'une lucidité remarquables face à {enjeu_local}, prenant le temps d'évaluer chaque option avant d'agir.","La prudence d'un {personnage_type} lui permet d'anticiper {evenement_local} bien avant que d'autres n'en perçoivent les signes annonciateurs.","Un {personnage_type} traverse {situation_locale} avec un calme et une réflexion qui forcent l'admiration de son entourage."],"negatif":["Un {personnage_type} sombre dans une mélancolie profonde suite à {evenement_local}, et son entourage peine à le tirer de cette grisaille.","Rongé par le doute concernant {enjeu_local}, un {personnage_type} se replie progressivement sur lui-même, désertant ses responsabilités.","Un {personnage_type} bascule dans un pessimisme paralysant face à {situation_locale}, incapable de voir une issue favorable."],"ambivalent":["Un {personnage_type} oscille entre une prudence salutaire et une mélancolie envahissante, sans qu'on sache laquelle dominera face à {enjeu_local}.","Tantôt lucide et mesuré, tantôt accablé par un pessimisme profond, un {personnage_type} traverse une période difficile à déchiffrer."]},"groupe":{"positif":["{groupe_culture} de {lieu} adopte une posture prudente et réfléchie face à {evenement_declencheur}, préférant la patience à la précipitation.","Une sagesse collective semble guider {groupe_culture}, qui anticipe avec lucidité les conséquences de {entreprise_collective}.","{groupe_culture} de {lieu} sait reconnaître ses limites face à {situation_locale}, et cette humilité stratégique pourrait bien s'avérer payante."],"negatif":["Une lassitude profonde gagne {groupe_culture} de {lieu}, qui peine à trouver l'énergie de répondre à {evenement_declencheur}.","Le doute et le désenchantement s'installent au sein de {groupe_culture}, dont l'engagement envers {entreprise_collective} s'effrite peu à peu.","{groupe_culture} de {lieu} bascule dans une résignation collective face à {situation_locale}, abandonnant peu à peu ses ambitions."],"ambivalent":["{groupe_culture} de {lieu} navigue entre une prudence avisée et un découragement croissant, sans qu'on sache lequel l'emportera face à {evenement_declencheur}.","La retenue qui caractérise {groupe_culture} pourrait aussi bien être une sagesse stratégique qu'un signe avant-coureur de résignation face à {entreprise_collective}."]},"region":{"positif":["{region} traverse une période de réflexion stratégique, où les puissants de {groupe_culture} prennent le temps d'évaluer soigneusement {enjeu_regional}.","Une lucidité collective semble guider les décisions concernant {region}, où l'on privilégie la patience face à {evenement_declencheur}.","{groupe_culture} de {region} fait preuve d'une sagesse remarquable en anticipant les conséquences à long terme de {enjeu_regional}."],"negatif":["Une atmosphère de désenchantement s'installe dans {region}, où {groupe_culture} semble avoir perdu l'élan nécessaire pour répondre à {evenement_declencheur}.","Le pessimisme gagne du terrain parmi les puissants de {region}, qui peinent à proposer une vision pour {enjeu_regional}.","Une mélancolie collective s'étend sur {region}, où plusieurs factions de {groupe_culture} semblent résignées face à {situation_locale}."],"ambivalent":["{region} oscille entre des élans de lucidité stratégique et une résignation diffuse, sans qu'on sache quelle tendance finira par dominer.","La prudence qui caractérise actuellement {region} pourrait aussi bien préparer une réponse mesurée à {evenement_declencheur} qu'annoncer un déclin durable."]}},"eau":{"personnage":{"positif":["Un {personnage_type} fait preuve d'une mesure et d'une sagesse remarquables face à {enjeu_local}, résistant aux tentations qui auraient égaré d'autres.","La pondération d'un {personnage_type} lui permet de traverser {situation_locale} sans céder aux excès qui guettent généralement en pareille circonstance.","Un {personnage_type} retrouve un équilibre salutaire après {evenement_local}, et cette sérénité nouvelle se ressent dans toutes ses entreprises."],"negatif":["Un {personnage_type} se dérobe face à {enjeu_local}, préférant fuir plutôt que d'assumer ses responsabilités envers {cible_locale}.","Pris de panique lors {evenement_local}, un {personnage_type} abandonne {cible_locale} à son sort, et cette lâcheté pourrait lui coûter cher.","Un {personnage_type} évite systématiquement toute confrontation concernant {enjeu_local}, au point que son entourage commence à s'en inquiéter."],"ambivalent":["Un {personnage_type} oscille entre une mesure exemplaire et des accès de fuite face à {enjeu_local}, sans qu'on sache sur quel pied il dansera la prochaine fois.","Tantôt pondéré et sage, tantôt prompt à se dérober, un {personnage_type} navigue de façon imprévisible à travers {situation_locale}."]},"groupe":{"positif":["{groupe_culture} de {lieu} fait preuve d'une retenue exemplaire face à {evenement_declencheur}, évitant les écueils où d'autres se seraient précipités.","Une sagesse collective guide {groupe_culture}, qui aborde {entreprise_collective} avec mesure et discernement.","{groupe_culture} de {lieu} sait temporiser face à {situation_locale}, préférant la patience à la précipitation."],"negatif":["Face à {evenement_declencheur}, {groupe_culture} de {lieu} choisit la fuite plutôt que la confrontation, abandonnant {enjeu_local} sans grande résistance.","Une lâcheté collective gagne {groupe_culture}, qui se dérobe face à ses obligations envers {cible_locale}.","{groupe_culture} de {lieu} évite systématiquement {situation_locale}, préférant l'inaction à un engagement qui pourrait coûter cher."],"ambivalent":["{groupe_culture} de {lieu} navigue entre une sagesse prudente et une tendance à la dérobade, sans qu'on sache laquelle prévaudra face à {evenement_declencheur}.","La retenue de {groupe_culture} pourrait aussi bien être une mesure salutaire qu'un signe de lâcheté collective face à {enjeu_local}."]},"region":{"positif":["{region} traverse une période de tempérance politique, où {groupe_culture} privilégie la diplomatie et la mesure face à {enjeu_regional}.","Une sagesse collective semble guider les puissants de {region}, qui évitent soigneusement l'escalade concernant {evenement_declencheur}.","{groupe_culture} de {region} fait preuve d'un sens de la mesure remarquable, désamorçant les tensions avant qu'elles ne dégénèrent."],"negatif":["Une vague de désengagement traverse {region}, où plusieurs factions de {groupe_culture} se dérobent face à leurs obligations concernant {enjeu_regional}.","La lâcheté collective de certains puissants de {region} face à {evenement_declencheur} commence à fragiliser l'ensemble des équilibres locaux.","{region} voit ses défenses s'affaiblir, certaines factions de {groupe_culture} préférant fuir plutôt que d'affronter {situation_locale}."],"ambivalent":["{region} oscille entre une diplomatie mesurée et des signes de dérobade chez certaines factions, sans qu'on sache quelle tendance s'imposera.","La prudence qui caractérise actuellement {region} pourrait aussi bien préserver la paix que masquer un manque de courage collectif face à {enjeu_regional}."]}},"flegme":{"personnage":{"positif":["Un {personnage_type} fait preuve d'une dignité et d'une retenue remarquables face à {enjeu_local}, refusant les compromissions qui auraient tenté d'autres.","La candeur naturelle d'un {personnage_type} lui permet de traverser {situation_locale} sans jamais ternir sa réputation.","Un {personnage_type} gagne en respectabilité après {evenement_local}, sa conduite irréprochable étant désormais citée en exemple."],"negatif":["Un {personnage_type} cède à une avidité croissante concernant {enjeu_local}, accumulant sans plus se soucier des obligations envers {cible_locale}.","Les manières d'un {personnage_type} deviennent de plus en plus dépravées suite à {evenement_local}, et certains commencent à s'en détourner.","Un {personnage_type} se montre d'une rapacité inquiétante face à {situation_locale}, prêt à beaucoup sacrifier pour s'enrichir."],"ambivalent":["Un {personnage_type} oscille entre une dignité affichée et des appétits qu'il peine à dissimuler concernant {enjeu_local}.","Tantôt mesuré et respectable, tantôt avide et calculateur, un {personnage_type} laisse planer le doute sur ses véritables intentions face à {situation_locale}."]},"groupe":{"positif":["{groupe_culture} de {lieu} cultive une réputation de dignité et de retenue, ce qui leur vaut le respect même de leurs rivaux concernant {enjeu_local}.","Une discipline collective remarquable caractérise {groupe_culture}, qui résiste aux tentations de l'enrichissement facile face à {entreprise_collective}.","{groupe_culture} de {lieu} maintient des standards de conduite élevés malgré {evenement_declencheur}, renforçant leur crédibilité."],"negatif":["Une avidité croissante gagne {groupe_culture} de {lieu}, qui privilégie l'accumulation de richesses au détriment de ses obligations envers {cible_locale}.","Des pratiques douteuses se répandent au sein de {groupe_culture}, ternissant leur réputation concernant {enjeu_local}.","{groupe_culture} de {lieu} sacrifie sa dignité collective pour s'assurer un avantage dans {entreprise_collective}, au prix de sa réputation."],"ambivalent":["{groupe_culture} de {lieu} navigue entre une façade respectable et des appétits matériels qui pourraient, à terme, ternir leur image concernant {enjeu_local}.","La retenue affichée par {groupe_culture} masque peut-être une avidité grandissante qui ne demande qu'à se révéler face à {entreprise_collective}."]},"region":{"positif":["{region} jouit d'une réputation de probité, où {groupe_culture} maintient des pratiques commerciales et sociales d'une dignité remarquable.","Les échanges en {region} se distinguent par une retenue et une honnêteté qui inspirent confiance aux partenaires de {groupe_culture}.","{groupe_culture} de {region} résiste collectivement aux tentations de la corruption concernant {enjeu_regional}."],"negatif":["Une rapacité généralisée s'installe dans {region}, où plusieurs factions de {groupe_culture} sacrifient leurs obligations pour s'enrichir face à {enjeu_regional}.","Des pratiques de corruption se répandent en {region}, minant la confiance entre {groupe_culture} et leurs partenaires habituels.","L'avidité de certains puissants de {region} concernant {enjeu_regional} commence à provoquer un ressentiment généralisé."],"ambivalent":["{region} oscille entre des pratiques d'une dignité exemplaire et des dérives vers l'avidité, sans qu'on sache quelle tendance finira par s'imposer.","La réputation de {groupe_culture} en {region} pourrait aussi bien se renforcer que s'effondrer selon l'issue de {enjeu_regional}."]}},"air":{"personnage":{"positif":["Un {personnage_type} fait preuve d'une fidélité et d'une piété remarquables face à {enjeu_local}, et sa droiture commence à être reconnue au-delà de {lieu_local}.","La sincérité d'un {personnage_type} dans ses engagements envers {cible_locale} forge une confiance que peu auraient cru possible.","Un {personnage_type} se révèle un conseiller fiable et inspirant pour {cible_locale}, dont la sagesse guide désormais les décisions."],"negatif":["Un {personnage_type} trahit la confiance de {cible_locale} concernant {enjeu_local}, et cette félonie commence à se savoir.","Les conseils d'un {personnage_type} se révèlent biaisés et intéressés, causant un tort considérable à {cible_locale}.","Un {personnage_type} sème la discorde entre {cible_locale} et ses alliés, par calcul ou par simple malveillance."],"ambivalent":["Un {personnage_type} oscille entre une loyauté affichée et des manœuvres plus troubles concernant {enjeu_local}, sans qu'on sache où se situe sa vraie fidélité.","Tantôt conseiller fiable, tantôt manipulateur habile, un {personnage_type} brouille les pistes quant à ses véritables intentions envers {cible_locale}."]},"groupe":{"positif":["{groupe_culture} de {lieu} cultive des liens de confiance et de fidélité remarquables, ce qui renforce leur cohésion face à {evenement_declencheur}.","Une piété et une droiture exemplaires caractérisent {groupe_culture}, dont la réputation de fiabilité attire de nouveaux soutiens.","{groupe_culture} de {lieu} honore scrupuleusement ses engagements envers {cible_locale}, consolidant des alliances durables."],"negatif":["Des rumeurs de trahison circulent concernant {groupe_culture}, accusé de manœuvres déloyales envers {cible_locale}.","La discorde gagne {groupe_culture} de {lieu}, où les conseils contradictoires sèment la confusion concernant {enjeu_local}.","{groupe_culture} de {lieu} rompt unilatéralement ses engagements envers {cible_locale}, provoquant une rupture de confiance durable."],"ambivalent":["{groupe_culture} de {lieu} navigue entre fidélité affichée et arrière-pensées stratégiques concernant {enjeu_local}, sans qu'on sache sur quel pied danser avec eux.","La réputation de droiture de {groupe_culture} pourrait aussi bien se confirmer que voler en éclats selon l'issue de {entreprise_collective}."]},"region":{"positif":["{region} bénéficie d'un réseau d'alliances solides, où {groupe_culture} honore scrupuleusement ses engagements concernant {enjeu_regional}.","Une atmosphère de confiance mutuelle caractérise les relations entre factions de {region}, facilitant la résolution de {enjeu_regional}.","{groupe_culture} de {region} jouit d'une réputation de fiabilité qui attire respect et soutiens nouveaux."],"negatif":["Un climat de méfiance généralisée s'installe dans {region}, où les accusations de trahison entre {groupe_culture} et leurs rivaux se multiplient.","Des manœuvres déloyales fragilisent les alliances traditionnelles en {region}, et {enjeu_regional} pourrait en pâtir durablement.","La discorde semée par des conseillers intéressés commence à fracturer les équilibres entre factions de {region}."],"ambivalent":["{region} oscille entre des alliances solides et des trahisons larvées, sans qu'on sache quelles relations résisteront à {evenement_declencheur}.","La confiance qui unit certaines factions de {region} pourrait aussi bien se renforcer que voler en éclats selon l'évolution de {enjeu_regional}."]}},"sang":{"personnage":{"positif":["Un {personnage_type} retrouve une espérance et une joie de vivre qui se ressentent dans toutes ses entreprises concernant {enjeu_local}.","Porté par une confiance inébranlable en l'avenir, un {personnage_type} affronte {situation_locale} avec une humilité et une dignité qui inspirent.","Un {personnage_type} traverse {evenement_local} avec une sérénité remarquable, convaincu qu'un dessein favorable se dessine pour lui."],"negatif":["Un {personnage_type} cède à des accès de colère et d'emportement concernant {enjeu_local}, et son entourage redoute désormais ses réactions.","La témérité d'un {personnage_type} le pousse à prendre des risques inconsidérés face à {situation_locale}, au mépris des avertissements reçus.","Un {personnage_type} se laisse emporter par une fureur incontrôlable suite à {evenement_local}, semant l'inquiétude autour de lui."],"ambivalent":["Un {personnage_type} oscille entre une espérance lumineuse et des accès de colère imprévisibles concernant {enjeu_local}.","Tantôt porté par une confiance sereine, tantôt emporté par une témérité dangereuse, un {personnage_type} déconcerte son entourage face à {situation_locale}."]},"groupe":{"positif":["{groupe_culture} de {lieu} retrouve une espérance collective et une joie partagée, galvanisé par {evenement_declencheur}.","Une confiance inébranlable en l'avenir anime {groupe_culture}, qui aborde {entreprise_collective} avec une sérénité remarquable.","{groupe_culture} de {lieu} célèbre {evenement_declencheur} avec une ferveur et un optimisme qui renforcent leur cohésion."],"negatif":["Une colère collective gronde au sein de {groupe_culture}, prête à éclater en violence ouverte concernant {enjeu_local}.","{groupe_culture} de {lieu} se lance dans {entreprise_collective} avec une témérité qui inquiète les plus prudents.","Une fureur incontrôlée traverse {groupe_culture} suite à {evenement_declencheur}, menaçant de dégénérer en affrontement."],"ambivalent":["{groupe_culture} de {lieu} oscille entre un optimisme communicatif et des accès de colère qui pourraient tout faire basculer concernant {enjeu_local}.","L'énergie qui anime {groupe_culture} pourrait aussi bien porter {entreprise_collective} vers le succès que les précipiter dans un conflit ouvert."]},"region":{"positif":["{region} connaît un sursaut d'espérance collective, où {groupe_culture} aborde {enjeu_regional} avec une confiance renouvelée en l'avenir.","Une ferveur et un optimisme remarquables animent les puissants de {region}, galvanisés par {evenement_declencheur}.","{groupe_culture} de {region} célèbre avec dignité et humilité les développements favorables de {enjeu_regional}."],"negatif":["Une colère généralisée gagne {region}, où plusieurs factions de {groupe_culture} menacent de sombrer dans la violence concernant {enjeu_regional}.","Des décisions téméraires prises par les puissants de {region} face à {evenement_declencheur} risquent de précipiter un conflit ouvert.","Une fureur collective traverse {region}, et la moindre étincelle pourrait embraser les tensions accumulées entre {groupe_culture} et leurs rivaux."],"ambivalent":["{region} oscille entre des élans d'espérance collective et des accès de colère qui pourraient tout faire basculer selon l'issue de {enjeu_regional}.","L'énergie qui parcourt {region} en ce moment pourrait aussi bien annoncer un âge de prospérité qu'un embrasement généralisé."]}}};
+const EVT_VARIABLES = {"personnage_type":["marchand influent","jeune savant","ancien militaire","religieux respecté","artisan habile","messager itinérant","notable local","voyageur mystérieux","scribe méticuleux","guérisseur réputé","chef de caravane","poète errant"],"lieu_local":["le quartier des tisserands","la place du marché","le caravansérail","les abords de la mosquée","le quartier des étrangers","les faubourgs","la maison de la sagesse locale","le port","les ruelles basses","l'oasis voisine"],"lieu":["ce territoire","cette cité","cette province","ces terres","ce comptoir","cette vallée","ce district frontalier","cette oasis","ce port"],"region":["la région","ces contrées","ce territoire élargi","cette province","ces terres frontalières","ce vaste district","cette partie du royaume"],"groupe_culture":["les marchands locaux","les tribus de l'asabiyya","les théologiens","les gardiens du savoir","les marins","les nomades","les mercenaires","les explorateurs","les artisans organisés","la congrégation religieuse","les maîtres du siège","les messagers"],"evenement_local":["une altercation imprévue","la visite d'un notable","un différend commercial","une rumeur soudaine","un incident au marché","une cérémonie improvisée","une rencontre fortuite","un litige de voisinage"],"evenement_declencheur":["l'arrivée d'une caravane porteuse de nouvelles inattendues","un différend frontalier resurgi","une prédiction colportée par un voyageur","la nomination contestée d'un nouveau notable","une mauvaise récolte","l'annonce d'une expédition militaire voisine","un afflux soudain de réfugiés","la découverte d'un ancien savoir","un incident lors d'une cérémonie publique","des rumeurs persistantes venues d'au-delà des frontières"],"enjeu_local":["le partage des ressources du quartier","une dette ancienne non réglée","l'attribution d'une charge religieuse","le contrôle d'un point d'eau","une succession contestée","l'organisation d'une cérémonie à venir","un différend de voisinage qui s'éternise"],"enjeu_regional":["le contrôle des routes commerciales","la répartition des terres fertiles","la légitimité d'un nouveau pouvoir local","l'alliance avec une faction voisine","la gestion d'une période de disette","le tribut dû à une puissance lointaine","la défense des frontières","l'accueil ou le rejet de réfugiés","la reconnaissance d'une autorité religieuse contestée"],"entreprise_locale":["la restauration d'un édifice local","l'organisation d'une expédition modeste","la résolution d'un différend de voisinage","un projet d'irrigation","la formation d'un apprenti prometteur"],"entreprise_collective":["la construction d'un nouvel édifice","l'organisation d'une expédition","la négociation d'un accord commercial","la défense d'un territoire menacé","la mise en place d'un nouveau réseau d'échanges","un grand projet d'irrigation","la fondation d'une nouvelle congrégation","une campagne de prosélytisme"],"situation_locale":["une période de tension commerciale","un afflux de nouveaux arrivants","une crise de confiance envers les autorités locales","une saison de récoltes incertaines","des rumeurs persistantes de troubles à venir","un changement dans l'administration locale"],"cible_locale":["une faction rivale","un ancien allié","une autorité voisine","un groupe de nouveaux arrivants","une congrégation concurrente","un partenaire commercial de longue date","les autorités en place"],"force_groupe":["l'asabiyya qui les unit","la silsila qui les enracine dans leur tradition","le nasab qui les relie à leurs ancêtres","la muru'a de l'un des leurs","la solidarité de groupe","leur cohésion ancestrale"]};
+
+/* ══════════════════════════════════════════════
+   GÉNÉRATEUR D'ÉVÉNEMENTS
+   ══════════════════════════════════════════════ */
+
+const EVT_AXES = [
+  {id:'feu',       label:'Feu',        num:1},
+  {id:'bile_jaune',label:'Bile Jaune', num:2},
+  {id:'terre',     label:'Terre',      num:3},
+  {id:'bile_noire',label:'Bile Noire', num:4},
+  {id:'eau',       label:'Eau',        num:5},
+  {id:'flegme',    label:'Flegme',     num:6},
+  {id:'air',       label:'Air',        num:7},
+  {id:'sang',      label:'Sang',       num:8}
+];
+const EVT_ECHELLES = {1:'personnage', 2:'groupe', 3:'region'};
+const EVT_ECHELLE_LABELS = {1:'Personnage', 2:'Groupe', 3:'Région'};
+const EVT_ECHELLE_CERCLE = {1:0, 2:1, 3:2}; // cercle cible par défaut selon échelle (0-indexed, ajusté selon nb cercles réels)
+
+const EvtGen = {
+  envEtat: null,       // état (tokens) de la fiche d'environnement courante
+  selectedAxe: null,
+  currentText: '',
+  currentEchelle: null,
+  currentPolarite: null,
+  targetKey: null,
+
+  async open(){
+    document.getElementById('evt-overlay').classList.add('open');
+    await this.loadEnvEtat();
+    this.buildAxeGrid();
+    this.reset();
+  },
+  close(){
+    document.getElementById('evt-overlay').classList.remove('open');
+  },
+  reset(){
+    this.selectedAxe=null; this.currentText=''; this.targetKey=null;
+    document.getElementById('evt-detail').textContent='';
+    document.getElementById('evt-preview').textContent="Choisis un axe pour générer un événement…";
+    document.getElementById('evt-preview').classList.add('empty');
+    document.getElementById('evt-target').textContent='';
+    document.getElementById('evt-btn-gen').disabled=true;
+    document.getElementById('evt-btn-reject').disabled=true;
+    document.getElementById('evt-btn-accept').disabled=true;
+    document.querySelectorAll('.evt-axe-btn').forEach(b=>b.classList.remove('active'));
+  },
+
+  async loadEnvEtat(){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,{headers:SB.hdrs});
+      const d=await r.json();
+      this.envEtat=d[0]?.etat||null;
+    }catch(e){ this.envEtat=null; }
+  },
+
+  // Compte les jetons blancs/noirs pour un axe donné à partir de etat.tokens
+  countTokens(axeId){
+    if(!this.envEtat||!this.envEtat.tokens) return {white:0, black:0, total:0};
+    let white=0, black=0;
+    for(let i=1;i<=8;i++){
+      const tk=this.envEtat.tokens[`${axeId}_${i}`];
+      if(tk==='white') white++;
+      else if(tk==='black') black++;
+    }
+    return {white, black, total:white+black};
+  },
+
+  buildAxeGrid(){
+    const grid=document.getElementById('evt-axe-grid');
+    grid.innerHTML='';
+    EVT_AXES.forEach(axe=>{
+      const counts=this.countTokens(axe.id);
+      const btn=document.createElement('button');
+      btn.className='evt-axe-btn'+(counts.total<2?' disabled':'');
+      btn.innerHTML=`${axe.label}<br><span style="opacity:.6;">${counts.total} jeton${counts.total>1?'s':''}</span>`;
+      if(counts.total>=2){
+        btn.addEventListener('click',()=>this.selectAxe(axe.id));
+      }
+      grid.appendChild(btn);
+    });
+  },
+
+  selectAxe(axeId){
+    this.selectedAxe=axeId;
+    document.querySelectorAll('.evt-axe-btn').forEach(b=>b.classList.remove('active'));
+    const idx=EVT_AXES.findIndex(a=>a.id===axeId);
+    document.querySelectorAll('.evt-axe-btn')[idx].classList.add('active');
+
+    const counts=this.countTokens(axeId);
+    const echelle=Math.min(3, counts.total);
+    let polarite;
+    if(counts.white>counts.black) polarite='positif';
+    else if(counts.black>counts.white) polarite='negatif';
+    else polarite='ambivalent';
+
+    this.currentEchelle=echelle;
+    this.currentPolarite=polarite;
+
+    const axeLabel=EVT_AXES.find(a=>a.id===axeId).label;
+    document.getElementById('evt-detail').innerHTML=
+      `<b>${axeLabel}</b> — ${counts.white} blanc(s) / ${counts.black} noir(s) → `+
+      `échelle <b>${EVT_ECHELLE_LABELS[echelle]}</b>, polarité <b>${polarite}</b>`+
+      (echelle===3?' <i>(répercussions en cascade sur le groupe et l\'individu)</i>':'');
+
+    document.getElementById('evt-btn-gen').disabled=false;
+    document.getElementById('evt-preview').textContent="Clique sur Générer pour proposer un événement…";
+    document.getElementById('evt-preview').classList.add('empty');
+    document.getElementById('evt-btn-reject').disabled=true;
+    document.getElementById('evt-btn-accept').disabled=true;
+    document.getElementById('evt-target').textContent='';
+  },
+
+  fillTemplate(template){
+    return template.replace(/\{(\w+)\}/g, (match, varName)=>{
+      const vals=EVT_VARIABLES[varName];
+      if(!vals||!vals.length) return match;
+      return vals[Math.floor(Math.random()*vals.length)];
+    });
+  },
+
+  generate(){
+    if(!this.selectedAxe) return;
+    const echKey=EVT_ECHELLES[this.currentEchelle];
+    const pool=EVT_TEMPLATES[this.selectedAxe]?.[echKey]?.[this.currentPolarite]||[];
+    if(!pool.length){
+      document.getElementById('evt-preview').textContent="Aucun template disponible pour cette combinaison.";
+      return;
+    }
+    const template=pool[Math.floor(Math.random()*pool.length)];
+    this.currentText=this.fillTemplate(template);
+
+    const preview=document.getElementById('evt-preview');
+    preview.textContent=this.currentText;
+    preview.classList.remove('empty');
+
+    // Trouver un secteur vide pour le cercle correspondant à l'échelle
+    const target=this.findEmptySlot(this.currentEchelle);
+    this.targetKey=target;
+    const targetEl=document.getElementById('evt-target');
+    if(target){
+      const [ci,si]=target.split('_');
+      targetEl.textContent=`📍 Sera inséré au cercle ${parseInt(ci)+1}, secteur ${parseInt(si)+1}`;
+      document.getElementById('evt-btn-accept').disabled=false;
+    } else {
+      targetEl.textContent=`⚠️ Aucun secteur vide disponible sur le cercle correspondant à cette échelle.`;
+      document.getElementById('evt-btn-accept').disabled=true;
+    }
+    document.getElementById('evt-btn-reject').disabled=false;
+  },
+
+  // Cherche un secteur vide sur le cercle approprié selon l'échelle (réduite=centre, large=périphérie)
+  findEmptySlot(echelle){
+    const nC=state.config.cercles;
+    const nS=state.config.secteurs;
+    // Mapper échelle 1/2/3 -> indice de cercle visé (0=centre ... nC-1=périphérie)
+    let targetCercle;
+    if(nC<=1) targetCercle=0;
+    else targetCercle=Math.min(nC-1, Math.round((echelle-1)/2*(nC-1)));
+
+    // Chercher un secteur vide sur ce cercle, en élargissant aux cercles voisins si besoin
+    const tryCercle=(ci)=>{
+      const candidates=[];
+      for(let si=0;si<nS;si++){
+        const key=`${ci}_${si}`;
+        const slot=state.slots[key];
+        if(!slot||(!slot.titre&&!slot.texte)) candidates.push(key);
+      }
+      if(candidates.length) return candidates[Math.floor(Math.random()*candidates.length)];
+      return null;
+    };
+
+    let result=tryCercle(targetCercle);
+    if(result) return result;
+    // Élargir : chercher sur les cercles adjacents en alternance
+    for(let d=1;d<nC;d++){
+      if(targetCercle-d>=0){ result=tryCercle(targetCercle-d); if(result) return result; }
+      if(targetCercle+d<nC){ result=tryCercle(targetCercle+d); if(result) return result; }
+    }
+    return null;
+  },
+
+  accept(){
+    if(!this.targetKey||!this.currentText) return;
+    ensureSlot(this.targetKey);
+    const axeLabel=EVT_AXES.find(a=>a.id===this.selectedAxe).label;
+    state.slots[this.targetKey].titre=axeLabel+' — événement généré';
+    state.slots[this.targetKey].texte=this.currentText;
+    // Niveau de précision selon l'échelle : plus l'échelle est large, plus le fait est établi
+    state.slots[this.targetKey].niveau=this.currentEchelle;
+    state.slots[this.targetKey].revele_a='aucun';
+    saveState();
+    buildCarte();
+    this.close();
+  }
+};
+
 </script>
 </body>
 </html>
