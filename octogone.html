@@ -267,6 +267,23 @@
     background:#f7f4ee; border-radius:10px; padding:2px 10px;
   }
 
+  /* ── Explications narratives des dés verrouillés ── */
+  .dlock-explain { display:flex; flex-direction:column; gap:.5rem; margin:.6rem 0; }
+  .dlock-block {
+    border-radius:8px; padding:.55rem .7rem;
+    font-family:'Crimson Text',serif; font-size:.78rem; line-height:1.45;
+  }
+  .dlock-block strong {
+    display:block; font-family:'Cinzel',serif; font-size:.68rem;
+    letter-spacing:.04em; margin-bottom:.3rem; font-weight:600;
+  }
+  .dlock-block p { margin:0; font-style:italic; }
+  .dlock-fatigue { background:#f0ede6; border:1px solid #ddd8cc; }
+  .dlock-fatigue strong { color:#6b5d4f; }
+  .dlock-saturation { background:#1a1a1a; border:1px solid #1a1a1a; color:#f0ede6; }
+  .dlock-saturation strong { color:#E24B4A; }
+  .dlock-saturation p { color:#d8d4cc; }
+
   /* Bouton flottant dés */
   #dice-fab {
     position:fixed; bottom:1.2rem; right:1.2rem;
@@ -983,6 +1000,7 @@ async function xferClearRequest(){
       <p class="dice-section-title" id="dice-section-lbl">Fixer des valeurs avant le lancer (optionnel)</p>
       <div class="dice-grid" id="dice-grid"></div>
       <div id="dsuccess-result" class="dsuccess-result" style="display:none;"></div>
+      <div id="dlock-explain" class="dlock-explain" style="display:none;"></div>
       <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
       <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
     <div id="dice-legend" style="display:none;margin-top:.6rem;padding:.5rem .6rem;background:#f0ede6;border-radius:6px;font-size:.72rem;color:#6b5d4f;line-height:1.6;">
@@ -1845,7 +1863,7 @@ function applyRemoteState(saved){
         }
         dSyncSuccessInputs();
         dRenderDice(false);
-        dComputeSuccesses();
+        dComputeSuccesses(); dRenderLockExplanations();
       }
     }
     if(saved.portrait!==undefined){
@@ -1982,7 +2000,7 @@ function selectDiceRole(role){
   }
   dSyncSuccessInputs();
   dRenderDice(false);
-  dComputeSuccesses();
+  dComputeSuccesses(); dRenderLockExplanations();
   dStartRealtime();
 }
 
@@ -2035,7 +2053,7 @@ function dStartRealtime(){
             }
             dSyncSuccessInputs();
             dRenderDice(false);
-            dComputeSuccesses();
+            dComputeSuccesses(); dRenderLockExplanations();
           }
         }
       }catch(err){}
@@ -2147,6 +2165,103 @@ function dUpdateRedMessage(){
 }
 
 // ══════════════════════════════════════════════
+// Explications narratives des dés verrouillés
+// ══════════════════════════════════════════════
+
+// ── Dés dévoyés : fatigue / prise de risque ──
+const DDES_MESSAGES = [
+  "Le corps et l'esprit ont leurs limites. Les efforts déjà engagés, les risques déjà pris, pèsent sur vous — une partie de vos dés échappe désormais à votre volonté, comme une fatigue qui s'impose d'elle-même.",
+  "Vous avez puisé dans vos réserves plus que de raison. Cette prise de risque a un prix : certains de vos dés sont désormais figés, hors d'atteinte de votre contrôle.",
+  "L'épuisement ne se discute pas. Ce que vous avez engagé jusqu'ici vous lie, et quelques dés restent désormais verrouillés, témoins silencieux de cet effort qui vous dépasse.",
+  "Le souffle se fait court. Les risques accumulés ont laissé une empreinte, et certains dés ne répondent plus à votre main — la fatigue a pris le dessus sur la volonté."
+];
+
+function dDesMessageFor(){
+  return DDES_MESSAGES[Math.floor(Math.random()*DDES_MESSAGES.length)];
+}
+
+// ── Dés rouges devenus noirs : saturation d'un axe ──
+const D_SATURATION_MESSAGES = {
+  1: [ // Feu — bile jaune
+    "Une colère sourde s'est installée en vous, brûlant tout sur son passage. Le feu qui anime vos actions échappe à votre contrôle — il dicte, vous ne faites plus que suivre.",
+    "L'embrasement intérieur vous consume plus qu'il ne vous porte. Vous agissez, mais c'est la flamme dévoyée qui choisit, pas vous."
+  ],
+  2: [ // Bile jaune
+    "L'aigreur a pris le pas sur l'élan. Ce dé verrouillé porte la marque d'une bile devenue acide, qui mord plus qu'elle ne tranche.",
+    "Une véhémence que vous ne maîtrisez plus s'impose à cet instant. Votre énergie se retourne, et c'est elle qui décide à votre place."
+  ],
+  3: [ // Terre
+    "Une lourdeur s'est installée, comme si la terre elle-même vous retenait. Ce dé figé est le poids de l'inertie qui s'oppose à votre élan.",
+    "Le pragmatisme a cédé la place à l'enlisement. Vous sentez le sol se faire boue sous vos pas, et ce dé verrouillé en porte la trace."
+  ],
+  4: [ // Bile noire
+    "L'ombre obscurcit votre jugement à cet instant précis. Ce dé verrouillé est le reflet d'une pensée alourdie, qui ne répond plus à votre volonté.",
+    "Une mélancolie sourde a pris le contrôle, le temps de ce jet. Le dé est figé comme l'esprit qui s'enlise dans ses propres pensées."
+  ],
+  5: [ // Eau
+    "Le doute a débordé ses rives. Ce dé verrouillé porte la marque d'une incertitude qui a fini par submerger votre calme habituel.",
+    "Une pression intérieure vous échappe — l'eau qui devait vous porter se fait tourbillon, et ce dé figé en est la preuve silencieuse."
+  ],
+  6: [ // Flegme
+    "Votre sang-froid s'est fissuré l'instant de ce jet. Le flegme dévoyé a cédé la place à une agitation que vous ne contrôlez plus.",
+    "La glace s'est mise à fondre. Ce dé verrouillé témoigne d'une maîtrise qui, pour cette fois, vous a échappé."
+  ],
+  7: [ // Air
+    "Une intuition faussée s'impose à vous, brouillant votre lecture de la situation. Ce dé figé est le souffle contraire qui détourne votre clarté.",
+    "L'air s'est chargé d'interférences. Ce que vous croyiez percevoir vous égare, et ce dé verrouillé porte la marque de cette intuition trahie."
+  ],
+  8: [ // Sang
+    "Une fièvre intérieure prend le dessus sur l'inspiration. Ce dé figé reflète un sang en ébullition, qui échappe à votre gouvernance.",
+    "L'élan spirituel se retourne en agitation. Ce dé verrouillé est la trace de ce moment où l'intuition a cédé à l'emballement."
+  ]
+};
+
+function dSaturationMessageFor(axisNum){
+  const pool=D_SATURATION_MESSAGES[axisNum];
+  if(!pool) return null;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+// Construit et affiche l'explication narrative des dés verrouillés, le cas échéant
+function dRenderLockExplanations(){
+  const container=document.getElementById('dlock-explain');
+  if(!container) return;
+  const s=dS();
+  if(!s.rolled || !s.dice || !s.dice.length){
+    container.style.display='none';
+    container.innerHTML='';
+    return;
+  }
+  const blocks=[];
+
+  // Dés dévoyés (fatigue) : dés verrouillés qui n'ont pas la couleur black_token
+  const hasFatigueLock = s.dice.some(d=>d.locked && d.color!=='black_token');
+  if(hasFatigueLock){
+    blocks.push(`<div class="dlock-block dlock-fatigue"><strong>🔒 Dés dévoyés</strong><p>${dDesMessageFor()}</p></div>`);
+  }
+
+  // Dés saturation (axe plein, majorité noire) : color === black_token
+  const satAxes=new Set();
+  s.dice.forEach(d=>{
+    if(d.color==='black_token' && d.value>=1 && d.value<=8) satAxes.add(d.value);
+  });
+  satAxes.forEach(axisNum=>{
+    const sec=SECTORS.find(x=>x.num===axisNum);
+    const label=sec?sec.label:`Axe ${axisNum}`;
+    const msg=dSaturationMessageFor(axisNum);
+    if(msg) blocks.push(`<div class="dlock-block dlock-saturation"><strong>🔒 Saturation — ${label}</strong><p>${msg}</p></div>`);
+  });
+
+  if(blocks.length===0){
+    container.style.display='none';
+    container.innerHTML='';
+  } else {
+    container.innerHTML=blocks.join('');
+    container.style.display='block';
+  }
+}
+
+// ══════════════════════════════════════════════
 // Valeurs de réussite choisies
 // ══════════════════════════════════════════════
 
@@ -2159,7 +2274,7 @@ function dOnSuccessValChange(){
   s.successVal2=isNaN(v2)?null:Math.max(1,Math.min(10,v2));
   if(s.successVal1!==null) document.getElementById('dsuccess-val1').value=s.successVal1;
   if(s.successVal2!==null) document.getElementById('dsuccess-val2').value=s.successVal2;
-  dComputeSuccesses();
+  dComputeSuccesses(); dRenderLockExplanations();
   dPushState();
 }
 
@@ -2281,7 +2396,7 @@ function dRollDice(){
   document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés libres';
   document.getElementById('dreset-btn').style.display='block';
       const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
-  dRenderDice(true); dComputeSuccesses(); dPushState();
+  dRenderDice(true); dComputeSuccesses(); dRenderLockExplanations(); dPushState();
 }
 
 function dAdjustDie(i,dir){
@@ -2294,7 +2409,7 @@ function dAdjustDie(i,dir){
   const curDes=parseInt(desInput.value)||0;
   state.des=String(curDes+1);
   desInput.value=state.des;
-  dRenderDice(false); dComputeSuccesses(); dPushState();
+  dRenderDice(false); dComputeSuccesses(); dRenderLockExplanations(); dPushState();
 }
 
 function dSetVal(i,v){
@@ -2302,14 +2417,14 @@ function dSetVal(i,v){
   const d=dS().dice[i]; if(!d||d.locked) return;
   let val=parseInt(v); if(isNaN(val)||val<1) val=1; if(val>10) val=10;
   d.value=val; d.modified=false;
-  dRenderDice(false); dComputeSuccesses(); dPushState();
+  dRenderDice(false); dComputeSuccesses(); dRenderLockExplanations(); dPushState();
 }
 
 function dToggleLock(i){
   if(dCurrentRole!=='launcher') return;
   const d=dS().dice[i]; if(!d) return;
   d.locked=!d.locked;
-  dRenderDice(false); dComputeSuccesses(); dPushState();
+  dRenderDice(false); dComputeSuccesses(); dRenderLockExplanations(); dPushState();
 }
 
 function dResetAll(){
@@ -2321,7 +2436,7 @@ function dResetAll(){
   document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés';
   document.getElementById('dreset-btn').style.display='none';
   const dl2=document.getElementById('dice-legend');if(dl2)dl2.style.display='none';
-  dRenderDice(false); dComputeSuccesses(); dPushState();
+  dRenderDice(false); dComputeSuccesses(); dRenderLockExplanations(); dPushState();
 }
 
 function dMakeDieSVG(d,i,animate){
