@@ -283,6 +283,8 @@
   .dlock-saturation { background:#1a1a1a; border:1px solid #1a1a1a; color:#f0ede6; }
   .dlock-saturation strong { color:#E24B4A; }
   .dlock-saturation p { color:#d8d4cc; }
+  .dlock-saturation-positive { background:#fff; border:1px solid #d8e8d8; }
+  .dlock-saturation-positive strong { color:#3a6e3a; }
 
   /* Bouton flottant dés */
   #dice-fab {
@@ -1465,6 +1467,7 @@ function cycleToken(sectorId,idx){
   state.tokens[sectorId][idx]=cur==='empty'?'white':cur==='white'?'black':'empty';
   renderToken(sectorId,idx);
   updateSectorLane(sectorId);
+  if(typeof dRenderLockExplanations==='function') dRenderLockExplanations();
   saveState();
 }
 function renderToken(sectorId,idx){
@@ -1854,7 +1857,7 @@ function applyRemoteState(saved){
           document.getElementById('apt-picker-current').textContent=`${APT_LABELS[s._aptKey]} (${s.whites||0})`;
         }
         document.getElementById('dred-count').textContent=s.reds||0;
-        dUpdateRedMessage();
+        dUpdateRedMessage(); dRenderLockExplanations();
         if(s.rolled){
           document.getElementById('dice-section-lbl').textContent='Dés';
           document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés libres';
@@ -1973,7 +1976,7 @@ function selectDiceRole(role){
   const minReds=dCountSaturatedAxes();
   if((s.reds||0)<minReds) s.reds=minReds;
   document.getElementById('dred-count').textContent=s.reds||0;
-  dUpdateRedMessage();
+  dUpdateRedMessage(); dRenderLockExplanations();
   if(s.rolled){
     document.getElementById('dice-section-lbl').textContent='Dés';
     document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés libres';
@@ -2044,7 +2047,7 @@ function dStartRealtime(){
               document.getElementById('apt-picker-current').textContent=`${APT_LABELS[s._aptKey]} (${s.whites||0})`;
             }
             document.getElementById('dred-count').textContent=s.reds||0;
-            dUpdateRedMessage();
+            dUpdateRedMessage(); dRenderLockExplanations();
             if(s.rolled){
               document.getElementById('dice-section-lbl').textContent='Dés';
               document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés libres';
@@ -2222,35 +2225,103 @@ function dSaturationMessageFor(axisNum){
   return pool[Math.floor(Math.random()*pool.length)];
 }
 
+// ── Saturation positive : axe plein, majorité blanche ──
+const D_SATURATION_POSITIVE_MESSAGES = {
+  1: [ // Feu — bile jaune
+    "Une vigueur ardente vous porte. Le feu en vous est franc, maîtrisé, et son énergie guide chacun de vos gestes avec une force tranquille.",
+    "L'élan brûle juste, sans rien consumer. Vous agissez avec une vivacité qui inspire et entraîne ceux qui vous entourent."
+  ],
+  2: [ // Bile jaune
+    "Votre bile est précise comme une lame bien aiguisée. L'énergie qui vous anime trouve toujours sa cible, sans jamais déborder.",
+    "L'élan qui vous traverse est net et efficace. Vous agissez avec une vigueur qui ne laisse aucune place au doute."
+  ],
+  3: [ // Terre
+    "Vos pieds sont solidement ancrés dans le réel. Le pragmatisme qui vous habite donne à chacune de vos actions une assise inébranlable.",
+    "La terre vous porte plutôt qu'elle ne vous retient. Votre sens du concret transforme chaque obstacle en simple étape à franchir."
+  ],
+  4: [ // Bile noire
+    "Votre lucidité est limpide, sans la moindre ombre. La pensée pratique qui vous habite voit juste, et voit loin.",
+    "L'esprit clair, vous évaluez chaque situation avec une rigueur froide mais salutaire — rien ne vous échappe."
+  ],
+  5: [ // Eau
+    "Un calme profond vous habite, comme une eau dormante mais jamais stagnante. Votre sérénité porte ceux qui s'appuient sur vous.",
+    "Vous traversez la situation avec une maîtrise fluide, sans heurts ni précipitation — un courant sûr qui sait où il va."
+  ],
+  6: [ // Flegme
+    "Votre sang-froid est minéral, presque inébranlable. Rien ne trouble la clarté de votre jugement en cet instant précis.",
+    "Le flegme qui vous habite vous donne une maîtrise totale de vous-même — une glace qui protège plutôt qu'elle n'engourdit."
+  ],
+  7: [ // Air
+    "Votre intuition est d'une justesse rare. L'air qui vous traverse porte une clarté qui éclaire la situation sans la déformer.",
+    "Vous percevez ce que d'autres ne voient pas, avec une acuité qui tient de la grâce — votre lecture du moment est limpide."
+  ],
+  8: [ // Sang
+    "Une inspiration profonde vous anime, sans excès ni vertige. Le sang qui vous porte vous relie à quelque chose de plus grand que vous.",
+    "Votre élan spirituel est pur et mesuré — une vitalité qui élève sans jamais emporter."
+  ]
+};
+
+function dSaturationPositiveMessageFor(axisNum){
+  const pool=D_SATURATION_POSITIVE_MESSAGES[axisNum];
+  if(!pool) return null;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
 // Construit et affiche l'explication narrative des dés verrouillés, le cas échéant
 function dRenderLockExplanations(){
   const container=document.getElementById('dlock-explain');
   if(!container) return;
   const s=dS();
-  if(!s.rolled || !s.dice || !s.dice.length){
-    container.style.display='none';
-    container.innerHTML='';
-    return;
-  }
   const blocks=[];
 
-  // Dés dévoyés (fatigue) : dés verrouillés qui n'ont pas la couleur black_token
-  const hasFatigueLock = s.dice.some(d=>d.locked && d.color!=='black_token');
-  if(hasFatigueLock){
-    blocks.push(`<div class="dlock-block dlock-fatigue"><strong>🔒 Dés dévoyés</strong><p>${dDesMessageFor()}</p></div>`);
-  }
+  if(s.rolled && s.dice && s.dice.length){
+    // ── Mode après lancer : basé sur les dés réels ──
 
-  // Dés saturation (axe plein, majorité noire) : color === black_token
-  const satAxes=new Set();
-  s.dice.forEach(d=>{
-    if(d.color==='black_token' && d.value>=1 && d.value<=8) satAxes.add(d.value);
-  });
-  satAxes.forEach(axisNum=>{
-    const sec=SECTORS.find(x=>x.num===axisNum);
-    const label=sec?sec.label:`Axe ${axisNum}`;
-    const msg=dSaturationMessageFor(axisNum);
-    if(msg) blocks.push(`<div class="dlock-block dlock-saturation"><strong>🔒 Saturation — ${label}</strong><p>${msg}</p></div>`);
-  });
+    // Dés dévoyés (fatigue) : dés verrouillés qui n'ont pas la couleur black_token
+    const hasFatigueLock = s.dice.some(d=>d.locked && d.color!=='black_token');
+    if(hasFatigueLock){
+      blocks.push(`<div class="dlock-block dlock-fatigue"><strong>🔒 Dés dévoyés</strong><p>${dDesMessageFor()}</p></div>`);
+    }
+
+    // Saturation négative (axe plein, majorité noire) : color === black_token
+    const satAxesNeg=new Set();
+    s.dice.forEach(d=>{
+      if(d.color==='black_token' && d.value>=1 && d.value<=8) satAxesNeg.add(d.value);
+    });
+    satAxesNeg.forEach(axisNum=>{
+      const sec=SECTORS.find(x=>x.num===axisNum);
+      const label=sec?sec.label:`Axe ${axisNum}`;
+      const msg=dSaturationMessageFor(axisNum);
+      if(msg) blocks.push(`<div class="dlock-block dlock-saturation"><strong>🔒 Saturation — ${label}</strong><p>${msg}</p></div>`);
+    });
+
+    // Saturation positive (axe plein, majorité blanche) : color==='red' avec _tokenAssigned passé (valeur=numéro d'axe, non verrouillé)
+    // On la retrouve via state.tokens directement, car le flag _tokenAssigned est nettoyé après usage
+    const satAxesPos=dGetSaturatedAxes('white');
+    satAxesPos.forEach(axisNum=>{
+      const sec=SECTORS.find(x=>x.num===axisNum);
+      const label=sec?sec.label:`Axe ${axisNum}`;
+      const msg=dSaturationPositiveMessageFor(axisNum);
+      if(msg) blocks.push(`<div class="dlock-block dlock-saturation-positive"><strong>✦ Saturation — ${label}</strong><p>${msg}</p></div>`);
+    });
+
+  } else {
+    // ── Mode avant lancer : basé directement sur les jetons de l'octogone ──
+    const satAxesNeg=dGetSaturatedAxes('black');
+    satAxesNeg.forEach(axisNum=>{
+      const sec=SECTORS.find(x=>x.num===axisNum);
+      const label=sec?sec.label:`Axe ${axisNum}`;
+      const msg=dSaturationMessageFor(axisNum);
+      if(msg) blocks.push(`<div class="dlock-block dlock-saturation"><strong>⚠ Saturation prévisible — ${label}</strong><p>${msg}</p></div>`);
+    });
+    const satAxesPos=dGetSaturatedAxes('white');
+    satAxesPos.forEach(axisNum=>{
+      const sec=SECTORS.find(x=>x.num===axisNum);
+      const label=sec?sec.label:`Axe ${axisNum}`;
+      const msg=dSaturationPositiveMessageFor(axisNum);
+      if(msg) blocks.push(`<div class="dlock-block dlock-saturation-positive"><strong>✦ Saturation prévisible — ${label}</strong><p>${msg}</p></div>`);
+    });
+  }
 
   if(blocks.length===0){
     container.style.display='none';
@@ -2260,6 +2331,23 @@ function dRenderLockExplanations(){
     container.style.display='block';
   }
 }
+
+// Renvoie la liste des numéros d'axes saturés (total===3) pour une majorité donnée ('white'|'black')
+function dGetSaturatedAxes(majority){
+  const result=[];
+  SECTORS.forEach(sec=>{
+    const tokens=state.tokens[sec.id];
+    if(!tokens) return;
+    const w=tokens.filter(t=>t==='white').length;
+    const b=tokens.filter(t=>t==='black').length;
+    if(w+b!==3) return;
+    if(majority==='white' && w>b) result.push(sec.num);
+    if(majority==='black' && b>w) result.push(sec.num);
+  });
+  return result;
+}
+
+
 
 // ══════════════════════════════════════════════
 // Valeurs de réussite choisies
@@ -2321,7 +2409,7 @@ function dChangeCount(color,delta){
     const minReds=dCountSaturatedAxes(); // axes saturés imposent un plancher
     s.reds=Math.max(minReds,Math.min(2,(s.reds||2)+delta));
     document.getElementById('dred-count').textContent=s.reds;
-    dUpdateRedMessage();
+    dUpdateRedMessage(); dRenderLockExplanations();
   }
   dInitDice(true); dRenderDice(false); dPushState();
 }
