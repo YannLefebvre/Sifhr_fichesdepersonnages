@@ -240,6 +240,10 @@
     color:#6b5d4f; text-align:center; margin:.4rem 0 0; padding:.4rem .5rem;
     background:#f7f4ee; border-radius:6px; line-height:1.4;
   }
+  .dred-warning {
+    display:inline-block; font-style:normal; font-weight:700;
+    color:#8b2020; margin-left:.3em;
+  }
 
   /* ── Valeurs de réussite ── */
   .dsuccess-question {
@@ -254,6 +258,16 @@
     border:1px solid #ddd; border-radius:6px; background:#fff; color:#1a1a1a;
   }
   .dsuccess-input:focus { outline:none; border-color:var(--accent); }
+
+  .dsuccess-picker { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; }
+  .dsuccess-pick-btn {
+    width:28px; height:28px; border-radius:6px; border:1px solid #ddd;
+    background:#fff; color:#1a1a1a; font-size:.78rem; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:background .12s;
+  }
+  .dsuccess-pick-btn:hover { background:#f0ede6; }
+  .dsuccess-pick-btn.dsuccess-pick-active { background:var(--accent); color:#f5f0e8; border-color:var(--accent); }
+  .dsuccess-pick-btn:disabled { opacity:.3; cursor:not-allowed; }
 
   .droll-history {
     margin:.5rem 0; padding:.6rem .7rem; background:#f7f4ee;
@@ -1217,11 +1231,11 @@ async function xferClearRequest(){
         <div class="dsuccess-row">
           <div class="dsuccess-field">
             <span class="dsuccess-label">1ère valeur</span>
-            <input type="number" id="dsuccess-val1" class="dsuccess-input" min="1" max="10" placeholder="—" onchange="dOnSuccessValChange()">
+            <div class="dsuccess-picker" id="dsuccess-picker1"></div>
           </div>
           <div class="dsuccess-field">
             <span class="dsuccess-label">2ème valeur</span>
-            <input type="number" id="dsuccess-val2" class="dsuccess-input" min="1" max="10" placeholder="—" onchange="dOnSuccessValChange()">
+            <div class="dsuccess-picker" id="dsuccess-picker2"></div>
           </div>
         </div>
         <div class="dbm-row">
@@ -1261,7 +1275,7 @@ async function xferClearRequest(){
           </div>
         </div>
       </div>
-      <p class="dice-section-title" id="dice-section-lbl">Fixer des valeurs avant le lancer (optionnel)</p>
+      <p class="dice-section-title" id="dice-section-lbl">Aucun bonus ni malus sélectionné</p>
       <div class="dice-grid" id="dice-grid"></div>
       <div id="droll-history" class="droll-history" style="display:none;"></div>
       <div id="dsuccess-result" class="dsuccess-result" style="display:none;"></div>
@@ -1744,6 +1758,22 @@ function cycleToken(sectorId,idx){
   renderToken(sectorId,idx);
   updateSectorLane(sectorId);
   if(typeof dRenderLockExplanations==='function') dRenderLockExplanations();
+  // Si le panneau dés est ouvert côté lanceur et qu'aucun lancer n'a encore eu lieu,
+  // refléter immédiatement les dés rouges obligatoires imposés par la saturation
+  if(typeof dCurrentRole!=='undefined' && dCurrentRole==='launcher'){
+    const s=dS();
+    if(s && !s.rolled){
+      if(!s.dice||!s.dice.length) dInitDice(false);
+      s.dice.forEach(d=>{ if(!d.locked){ d.value=null; d.modified=false; d.color=d.color==='black_token'?'red':d.color; } });
+      dApplyTokenRules();
+      const minReds=dCountSaturatedAxes();
+      if((s.reds||0)<minReds) s.reds=minReds;
+      const redCountEl=document.getElementById('dred-count');
+      if(redCountEl) redCountEl.textContent=s.reds||0;
+      dUpdateRedMessage();
+      dRenderDice(false);
+    }
+  }
   saveState();
 }
 function renderToken(sectorId,idx){
@@ -2289,10 +2319,11 @@ function selectDiceRole(role){
 }
 
 function dLockControls(){
-  ['apt-picker-toggle','drb-minus','drb-plus','dlaunch-btn','dsuccess-val1','dsuccess-val2',
+  ['apt-picker-toggle','drb-minus','drb-plus','dlaunch-btn',
    'dbm-bonus-1','dbm-bonus-2','dbm-bonus-3','dbm-malus-1','dbm-malus-2','dbm-malus-3'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.disabled=true;
   });
+  dRenderSuccessPickers();
 }
 
 function dSetSync(st,lbl){
@@ -2464,7 +2495,22 @@ function dUpdateRedMessage(){
   if(bm.malus && bm.malus[2]>0){
     text += ' ' + dOppositionMessageFor();
   }
-  el.textContent = text;
+  let html = text;
+  if(s._redBlockedWarning){
+    html += ` <strong class="dred-warning">${dRedBlockedMessageFor()}</strong>`;
+  }
+  el.innerHTML = html;
+}
+
+// ── Avertissement : tentative de réduire les dés rouges sous le plancher imposé par la saturation ──
+const DRED_BLOCKED_MESSAGES = [
+  "Votre saturation émotionnelle et élémentale vous empêche de canaliser votre Souffle.",
+  "Le trop-plein qui vous habite ne se laisse pas contenir — impossible de retenir ce Souffle qui vous échappe.",
+  "Une part de vous-même refuse de se taire : la saturation interdit toute retenue sur ce point."
+];
+function dRedBlockedMessageFor(){
+  const pool=DRED_BLOCKED_MESSAGES;
+  return pool[Math.floor(Math.random()*pool.length)];
 }
 
 // ── Messages narratifs Bonus 2 (Expertise) ──
@@ -2686,25 +2732,41 @@ function dGetSaturatedAxes(majority){
 // Valeurs de réussite choisies
 // ══════════════════════════════════════════════
 
-function dOnSuccessValChange(){
+function dSelectSuccessVal(slot,val){
   if(dCurrentRole!=='launcher') return;
   const s=dS();
-  const v1=parseInt(document.getElementById('dsuccess-val1').value);
-  const v2=parseInt(document.getElementById('dsuccess-val2').value);
-  s.successVal1=isNaN(v1)?null:Math.max(1,Math.min(10,v1));
-  s.successVal2=isNaN(v2)?null:Math.max(1,Math.min(10,v2));
-  if(s.successVal1!==null) document.getElementById('dsuccess-val1').value=s.successVal1;
-  if(s.successVal2!==null) document.getElementById('dsuccess-val2').value=s.successVal2;
+  const other = slot===1 ? s.successVal2 : s.successVal1;
+  if(other===val) return; // une même valeur ne peut pas occuper les deux champs
+  const current = slot===1 ? s.successVal1 : s.successVal2;
+  const newVal = current===val ? null : val; // re-cliquer désélectionne
+  if(slot===1) s.successVal1=newVal; else s.successVal2=newVal;
+  dRenderSuccessPickers();
   dComputeSuccesses(); dRenderLockExplanations();
   dPushState();
 }
 
-function dSyncSuccessInputs(){
+function dRenderSuccessPickers(){
   const s=dS();
-  const i1=document.getElementById('dsuccess-val1');
-  const i2=document.getElementById('dsuccess-val2');
-  if(i1) i1.value=(s.successVal1!==undefined&&s.successVal1!==null)?s.successVal1:'';
-  if(i2) i2.value=(s.successVal2!==undefined&&s.successVal2!==null)?s.successVal2:'';
+  [1,2].forEach(slot=>{
+    const container=document.getElementById(`dsuccess-picker${slot}`);
+    if(!container) return;
+    container.innerHTML='';
+    const current = slot===1 ? s.successVal1 : s.successVal2;
+    const other = slot===1 ? s.successVal2 : s.successVal1;
+    for(let v=1; v<=8; v++){
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='dsuccess-pick-btn'+(current===v?' dsuccess-pick-active':'');
+      btn.textContent=v;
+      btn.disabled = (other===v) || dCurrentRole!=='launcher';
+      btn.addEventListener('click',()=>dSelectSuccessVal(slot,v));
+      container.appendChild(btn);
+    }
+  });
+}
+
+function dSyncSuccessInputs(){
+  dRenderSuccessPickers();
 }
 
 // ══════════════════════════════════════════════
@@ -2807,6 +2869,32 @@ function dSyncBonusMalus(){
       if(btn) btn.classList.toggle('dbm-active', count>0);
     });
   });
+  dUpdateSectionLabel();
+}
+
+const DBM_NAMES = {
+  bonus:{1:'Avantage',2:'Expertise',3:'Maîtrise'},
+  malus:{1:'Relance',2:'Opposition',3:'Négation'}
+};
+
+// Avant le lancer, ce libellé récapitule les bonus/malus actifs plutôt que d'inviter à fixer des dés
+function dUpdateSectionLabel(){
+  const el=document.getElementById('dice-section-lbl');
+  if(!el) return;
+  const s=dS();
+  if(s.rolled){ el.textContent='Dés'; return; }
+  const bm = s.bonusMalus || {};
+  const parts=[];
+  ['bonus','malus'].forEach(type=>{
+    [1,2,3].forEach(level=>{
+      const count=(bm[type] && bm[type][level]) || 0;
+      if(count>0){
+        const name=DBM_NAMES[type][level];
+        parts.push(count>1 ? `${name} ×${count}` : name);
+      }
+    });
+  });
+  el.textContent = parts.length ? `Actifs : ${parts.join(', ')}` : 'Aucun bonus ni malus sélectionné';
 }
 
 function dComputeSuccesses(){
@@ -2927,7 +3015,10 @@ function dChangeCount(color,delta){
   if(color==='white'){ s.whites=Math.max(0,Math.min(10,(s.whites||3)+delta)); document.getElementById('dwhite-count').textContent=s.whites; }
   else{
     const minReds=dCountSaturatedAxes(); // axes saturés imposent un plancher
-    s.reds=Math.max(minReds,Math.min(2,(s.reds||2)+delta));
+    const wanted=(s.reds||2)+delta;
+    const blocked = delta<0 && wanted<minReds;
+    s.reds=Math.max(minReds,Math.min(2,wanted));
+    s._redBlockedWarning = blocked;
     document.getElementById('dred-count').textContent=s.reds;
     dUpdateRedMessage(); dRenderLockExplanations();
   }
@@ -3114,7 +3205,7 @@ function dResetAll(){
   s.negationDice=[];
   s.firstRollSnapshot=null;
   dInitDice(false);
-  document.getElementById('dice-section-lbl').textContent='Fixer des valeurs avant le lancer (optionnel)';
+  dUpdateSectionLabel();
   document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés';
   document.getElementById('dreset-btn').style.display='none';
   const dl2=document.getElementById('dice-legend');if(dl2)dl2.style.display='none';
