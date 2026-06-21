@@ -438,6 +438,13 @@
   }
   #xfer-notif h4 { font-family:'Cinzel',serif; color:var(--accent); font-size:.8rem;
     margin-bottom:.4rem; }
+  .xfer-narrative { margin-top:.6rem; padding-top:.5rem; border-top:1px dashed var(--border2); }
+  .xfer-narrative-modalite {
+    font-style:italic; font-size:.82rem; color:var(--ink2); margin:0 0 .4rem;
+  }
+  .xfer-narrative-signification {
+    font-size:.8rem; color:var(--ink3); margin:0; line-height:1.45;
+  }
   .xfer-notif-btns { display:flex; gap:.5rem; margin-top:.6rem; }
   /* Bouton transfert inter-fiches */
   #xfer-fab {
@@ -664,23 +671,13 @@ function getEnvFicheId(){
 }
 function saveEnvFiche(){
   const val=document.getElementById('env-fiche-input').value.trim();
-  const pwPlayer=document.getElementById('env-fiche-pw').value;
-  const pwGM=document.getElementById('env-fiche-pw-gm').value;
   state.envFiche=val;
-  state.envFichePw=pwPlayer;
-  state.envFichePwGM=pwGM;
   saveState();
   // Forcer le rechargement des iframes si elles étaient déjà ouvertes avec une autre fiche
   const envIframe=document.getElementById('env-iframe');
   const carteIframe=document.getElementById('carte-iframe');
   if(envIframe) envIframe.removeAttribute('data-loaded');
   if(carteIframe) carteIframe.removeAttribute('data-loaded');
-}
-// Construit le suffixe de connexion automatique (&pw=...&gm=1) selon le statut courant
-function buildAutoLoginParams(){
-  const pw = isGM ? (state.envFichePwGM||'') : (state.envFichePw||'');
-  if(!pw) return '';
-  return '&pw='+encodeURIComponent(pw)+(isGM?'&gm=1':'');
 }
 
 // ── Environnement ──
@@ -690,7 +687,7 @@ function toggleEnvPanel(){
   const iframe=document.getElementById('env-iframe');
   const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
   if(!iframe.getAttribute('data-loaded')){
-    iframe.src=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
+    iframe.src=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId());
     iframe.setAttribute('data-loaded','1');
   }
   ol.classList.add('open');
@@ -708,7 +705,7 @@ const CartePanel = {
     if(ol.classList.contains('open')){ this.close(); return; }
     const iframe=document.getElementById('carte-iframe');
     if(!iframe.getAttribute('data-loaded')){
-      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams()+'&pid='+encodeURIComponent(FICHE_ID);
+      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId());
       iframe.setAttribute('data-loaded','1');
     }
     ol.classList.add('open');
@@ -1142,7 +1139,31 @@ function xferShowNotif(req){
   xferPending=req;
   const sec=SECTORS.find(s=>s.id===req.sectorId);
   const body=document.getElementById('xfer-notif-body');
-  body.innerHTML=`<strong>${req.from}</strong> vous envoie un jeton <strong>${req.color==='white'?'blanc':'noir'}</strong> pour l'axe <strong>${sec?sec.label:req.sectorId}</strong>.`;
+  let html=`<strong>${req.from}</strong> vous envoie un jeton <strong>${req.color==='white'?'blanc':'noir'}</strong> pour l'axe <strong>${sec?sec.label:req.sectorId}</strong>.`;
+
+  // Texte narratif : modalité du geste + signification du palier atteint après réception
+  if(typeof buildXferNarrative==='function' && sec){
+    const tokens=state.tokens[req.sectorId]||['empty','empty','empty'];
+    const currentWhites=tokens.filter(t=>t==='white').length;
+    const currentBlacks=tokens.filter(t=>t==='black').length;
+    // Score projeté après réception (plafonné à 3, l'axe ne peut excéder 3 jetons)
+    const projected=Math.min(3,(req.color==='white'?currentWhites:currentBlacks)+1);
+    const narrative=buildXferNarrative({
+      sectorId:req.sectorId,
+      color:req.color,
+      score:projected,
+      fromName:req.from,
+      toName:FICHE_ID
+    });
+    if(narrative){
+      html += `<div class="xfer-narrative">`;
+      if(narrative.modalite) html += `<p class="xfer-narrative-modalite">${narrative.modalite}</p>`;
+      if(narrative.signification) html += `<p class="xfer-narrative-signification">${narrative.signification}</p>`;
+      html += `</div>`;
+    }
+  }
+
+  body.innerHTML=html;
   document.getElementById('xfer-notif').style.display='block';
 }
 
@@ -1387,10 +1408,6 @@ async function xferClearRequest(){
   <span class="gm-bar-label" style="margin-left:.6rem;">Environnement lié</span>
   <input id="env-fiche-input" type="text" placeholder="nom de la fiche environnement"
     style="width:140px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
-  <input id="env-fiche-pw" type="password" placeholder="mdp joueur" autocomplete="off"
-    style="width:90px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
-  <input id="env-fiche-pw-gm" type="password" placeholder="mdp meneur" autocomplete="off"
-    style="width:90px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
   <button class="gm-btn" onclick="saveEnvFiche()">Lier</button>
 </div>
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
@@ -1434,7 +1451,6 @@ const SB = {
 
 // ── Authentification ───────────────────────────
 let authenticated = false;
-let isGM = false;
 
 document.getElementById('modal-pw').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('modal-btn').click();
@@ -1458,7 +1474,6 @@ async function doLogin(tryGM){
         err.textContent = tryGM ? 'Mot de passe meneur incorrect.' : 'Mot de passe incorrect.';
       } else {
         authenticated = true;
-        isGM = tryGM;
         document.getElementById('modal-overlay').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         showDiceFab();
@@ -1517,13 +1532,205 @@ const SECTORS=[
   {id:'sang',   num:8, label:'SANG',       sub1:'espérance', sub2:'témérité',  angle:315},
 ];
 
+// ════════════════════════════════════════════════════════════
+// Module narratif des transferts de jetons (xfer-narratif.js)
+// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// Descriptifs narratifs des transferts de jetons — Octogone
+// Dépend de EH_DATA (elements-humeurs-data.js) et de SECTORS
+// (défini dans octogone.html) pour le mapping secteur → élément.
+// ════════════════════════════════════════════════════════════
+
+// Table de correspondance entre l'id de secteur (SECTORS[].id)
+// et la clé utilisée dans EH_DATA.
+const XFER_ELEMENT_KEY = {
+  feu: 'feu',
+  bile_j: 'bile_jaune',
+  terre: 'terre',
+  bile_n: 'bile_noire',
+  eau: 'eau',
+  flegme: 'flegme',
+  air: 'air',
+  sang: 'sang'
+};
+
+// ────────────────────────────────────────────────────────────
+// Modalités par élément. Chaque modalité est une fonction qui
+// reçoit {from, to} (noms des personnages) et retourne une
+// phrase narrative décrivant le geste de transmission.
+// Plusieurs variantes par élément/couleur pour éviter la
+// répétition d'une fiche à l'autre — une est choisie au hasard
+// d'une manière stable (basée sur from+to+sectorId) pour qu'un
+// même couple de personnages garde une cohérence si on rejoue
+// la scène, sans pour autant être strictement déterministe
+// entre éléments différents.
+// ────────────────────────────────────────────────────────────
+
+const XFER_MODALITIES = {
+
+  feu: {
+    white: [ // force
+      (f,t) => `${f} pose une main ferme sur l'épaule de ${t}, et cette poigne suffit à transmettre une détermination tranquille.`,
+      (f,t) => `D'un ordre lancé sans détour, ${f} insuffle à ${t} l'élan de se redresser et d'agir.`,
+      (f,t) => `${f} empoigne le bras de ${t} un bref instant — un geste sec, presque martial, qui dit tout ce que les mots auraient alourdi.`
+    ],
+    black: [ // envie
+      (f,t) => `${f} darde sur ${t} un regard dur, presque accusateur, et quelque chose de brûlant s'installe entre eux.`,
+      (f,t) => `D'une provocation à peine voilée, ${f} pousse ${t} dans ses retranchements.`,
+      (f,t) => `${f} laisse échapper un mot cinglant à l'adresse de ${t}, comme une étincelle jetée volontairement sur de la poudre.`
+    ]
+  },
+
+  bile_jaune: {
+    white: [ // charité
+      (f,t) => `${f} tend la main vers ${t} et lui offre quelque chose — un objet, un geste, une parole — sans rien attendre en retour.`,
+      (f,t) => `D'une parole de réconfort murmurée à ${t}, ${f} allège un fardeau qui n'était pourtant pas le sien à porter.`,
+      (f,t) => `${f} pose doucement la main sur celle de ${t}, un contact bref mais sincère.`
+    ],
+    black: [ // luxure
+      (f,t) => `${f} adresse à ${t} un sourire enjôleur, un regard qui s'attarde un peu trop longtemps.`,
+      (f,t) => `D'un effleurement qui n'a rien d'innocent, ${f} trouble la contenance de ${t}.`,
+      (f,t) => `${f} glisse à l'oreille de ${t} quelques mots à double sens, savourant le trouble qu'ils provoquent.`
+    ]
+  },
+
+  terre: {
+    white: [ // loyauté
+      (f,t) => `${f} serre fermement la main de ${t}, scellant sans un mot une promesse tacite.`,
+      (f,t) => `${f} retire son bracelet de la Macchina et le referme un instant sur le poignet de ${t}, comme pour sceller un pacte.`,
+      (f,t) => `D'un serment murmuré, à peine audible, ${f} engage sa parole envers ${t}.`
+    ],
+    black: [ // malignité
+      (f,t) => `${f} adresse à ${t} un sourire trop aimable pour être honnête.`,
+      (f,t) => `D'une parole insidieuse glissée à l'oreille de ${t}, ${f} sème un doute qui ne demande qu'à grandir.`,
+      (f,t) => `${f} feint la sollicitude envers ${t}, mais quelque chose dans son regard trahit une tout autre intention.`
+    ]
+  },
+
+  bile_noire: {
+    white: [ // prudence
+      (f,t) => `${f} échange avec ${t} un regard entendu, le genre qui n'a besoin d'aucun mot pour avertir.`,
+      (f,t) => `D'un conseil chuchoté, presque inaudible, ${f} met ${t} en garde.`,
+      (f,t) => `${f} et ${t} partagent un instant de silence appuyé, lourd de sous-entendus prudents.`
+    ],
+    black: [ // acédie
+      (f,t) => `${f} détourne le regard de ${t} dans un soupir, une indifférence qui pèse plus qu'un reproche.`,
+      (f,t) => `D'un geste résigné, ${f} laisse tomber quelque chose entre lui et ${t} — une intention, peut-être, qui ne reviendra pas.`,
+      (f,t) => `${f} hausse les épaules face à ${t}, comme si plus rien ne valait la peine d'être tenté.`
+    ]
+  },
+
+  eau: {
+    white: [ // tempérance
+      (f,t) => `${f} pose une main apaisante sur le bras de ${t}, et la tension retombe d'un cran.`,
+      (f,t) => `${f} et ${t} respirent un instant ensemble, en silence, dans une forme de méditation partagée.`,
+      (f,t) => `D'une parole posée, presque égale, ${f} ramène ${t} vers un calme retrouvé.`
+    ],
+    black: [ // lâcheté
+      (f,t) => `${f} esquive le regard de ${t} et recule d'un pas, comme malgré lui.`,
+      (f,t) => `D'un mot avalé avant d'être prononcé, ${f} laisse ${t} deviner ce qu'il n'a pas eu le courage de dire.`,
+      (f,t) => `${f} se détourne de ${t} sans explication, fuyant ce qu'il aurait dû affronter.`
+    ]
+  },
+
+  flegme: {
+    white: [ // chasteté
+      (f,t) => `${f} garde ses distances avec ${t}, mais sa présence calme suffit à transmettre une retenue rassurante.`,
+      (f,t) => `D'une parole mesurée, choisie avec soin, ${f} s'adresse à ${t} sans jamais en dire trop.`,
+      (f,t) => `${f} incline la tête vers ${t}, un salut sobre et sans ambiguïté.`
+    ],
+    black: [ // avarice
+      (f,t) => `${f} jauge ${t} d'un regard calculateur, mesurant ce qu'il consent à céder.`,
+      (f,t) => `D'une parole retenue à dessein, ${f} laisse ${t} comprendre qu'il n'obtiendra rien de plus.`,
+      (f,t) => `${f} referme la main sur ce qu'il tenait, avant de finalement la rouvrir devant ${t} — à contrecœur.`
+    ]
+  },
+
+  air: {
+    white: [ // foi
+      (f,t) => `${f} lève les yeux vers le ciel aux côtés de ${t}, et un instant de certitude silencieuse les unit.`,
+      (f,t) => `${f} retire son bracelet de la Macchina et le tend à ${t}, comme pour faire passer une conviction qui n'a pas besoin de preuve.`,
+      (f,t) => `D'une parole d'espoir murmurée, ${f} insuffle à ${t} la certitude que tout n'est pas perdu.`
+    ],
+    black: [ // félonie
+      (f,t) => `${f} murmure à ${t} un mensonge enrobé de bonnes manières.`,
+      (f,t) => `D'un regard fuyant, ${f} trahit à ${t} bien plus qu'il ne voudrait l'admettre.`,
+      (f,t) => `${f} promet à ${t} quelque chose qu'il sait déjà ne pas vouloir tenir.`
+    ]
+  },
+
+  sang: {
+    white: [ // espérance
+      (f,t) => `${f} serre ${t} contre lui un bref instant, une étreinte qui dit l'espoir mieux que n'importe quel mot.`,
+      (f,t) => `${f} et ${t} partagent un chant murmuré, presque une méditation collective, qui les relie au-delà du moment présent.`,
+      (f,t) => `D'une parole vibrante, ${f} redonne à ${t} une raison d'y croire encore.`
+    ],
+    black: [ // témérité
+      (f,t) => `${f} lance à ${t} un défi du regard, une provocation à peine déguisée.`,
+      (f,t) => `D'un geste brusque, presque imprudent, ${f} entraîne ${t} vers quelque chose qu'ils n'auraient peut-être pas dû tenter.`,
+      (f,t) => `${f} pousse ${t} à agir sans attendre, sans peser les conséquences.`
+    ]
+  }
+};
+
+// ────────────────────────────────────────────────────────────
+// Sélection stable d'une variante de modalité, pour qu'un même
+// couple expéditeur/destinataire + secteur donne toujours la
+// même phrase (cohérence narrative si la scène est revue).
+// ────────────────────────────────────────────────────────────
+function xferPickVariant(arr, seedStr){
+  let h = 0;
+  for (let i = 0; i < seedStr.length; i++){
+    h = ((h << 5) - h + seedStr.charCodeAt(i)) | 0;
+  }
+  const idx = Math.abs(h) % arr.length;
+  return arr[idx];
+}
+
+// ────────────────────────────────────────────────────────────
+// Fonction principale : construit le descriptif narratif complet
+// pour un transfert donné.
+//
+// params:
+//   sectorId : id du secteur (ex: 'feu', 'bile_j', ...)
+//   color    : 'white' | 'black'
+//   score    : score du destinataire dans ce vice/vertu APRÈS
+//              réception du jeton (1, 2 ou 3) — sert à choisir
+//              le bon palier dans EH_DATA. Si non fourni, on
+//              utilise 1 par défaut.
+//   fromName : nom (ou identifiant) du personnage expéditeur
+//   toName   : nom (ou identifiant) du personnage destinataire
+//
+// retourne : { modalite: string, signification: string } ou null
+//            si les données ne sont pas trouvées.
+// ────────────────────────────────────────────────────────────
+function buildXferNarrative({sectorId, color, score, fromName, toName}){
+  const elKey = XFER_ELEMENT_KEY[sectorId];
+  if (!elKey || typeof EH_DATA === 'undefined' || !EH_DATA[elKey]) return null;
+
+  const s = Math.max(1, Math.min(3, score || 1));
+  const ehKey = color === 'white' ? `${s}b_0n` : `0b_${s}n`;
+  const signification = EH_DATA[elKey][ehKey] || EH_DATA[elKey]['1b_0n'] || '';
+
+  const modalSet = XFER_MODALITIES[elKey];
+  let modalite = '';
+  if (modalSet && modalSet[color] && modalSet[color].length){
+    const variants = modalSet[color];
+    const fn = xferPickVariant(variants, `${fromName}|${toName}|${sectorId}|${color}`);
+    modalite = fn(fromName, toName);
+  }
+
+  return { modalite, signification };
+}
+
+
 const APTITUDES=['Se déplacer','Se mesurer','Occulter','Imaginer','Fabriquer','Dévoiler','Résister','Ravir'];
 const APTITUDE_KEYS=['se_deplacer','se_mesurer','occulter','imaginer','fabriquer','devoiler','resister','ravir'];
 const NUM_TRAITS=10,SQ_PER_APTITUDE=6;
 let wheelRot=0;
 const NUM_EQUIPEMENT=6, NUM_ARTEFACTS=5;
 const NUM_CONFRERIE=4;
-let state={tokens:{},scores:{},aptitudes:{},envFiche:'',envFichePw:'',envFichePwGM:'',
+let state={tokens:{},scores:{},aptitudes:{},envFiche:'',
   traits:Array.from({length:NUM_TRAITS},()=>({title:'',text:''})),
   confrerie:Array.from({length:NUM_CONFRERIE},()=>({title:'',text:''})),
   equipement:Array.from({length:NUM_EQUIPEMENT},()=>({title:'',text:''})),
@@ -2107,16 +2314,6 @@ function applyRemoteState(saved){
       state.envFiche=saved.envFiche;
       const inp=document.getElementById('env-fiche-input');
       if(inp) inp.value=saved.envFiche||'';
-    }
-    if(saved.envFichePw!==undefined){
-      state.envFichePw=saved.envFichePw;
-      const inp=document.getElementById('env-fiche-pw');
-      if(inp) inp.value=saved.envFichePw||'';
-    }
-    if(saved.envFichePwGM!==undefined){
-      state.envFichePwGM=saved.envFichePwGM;
-      const inp=document.getElementById('env-fiche-pw-gm');
-      if(inp) inp.value=saved.envFichePwGM||'';
     }
     if(saved.tokens) Object.entries(saved.tokens).forEach(([sid,arr])=>{
       state.tokens[sid]=arr;
