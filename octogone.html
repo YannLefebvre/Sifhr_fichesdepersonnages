@@ -204,6 +204,7 @@
   }
   .dreset-btn:hover { background:#fde0e0; }
   @keyframes dfadeIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+  @keyframes dSpecialPulse{0%,100%{opacity:.4;stroke-width:1.5}50%{opacity:.95;stroke-width:2.5}}
 
   /* ── Sélecteur d'aptitude (dés blancs) ── */
   .apt-picker-row { align-items:center; }
@@ -636,23 +637,13 @@ function getEnvFicheId(){
 }
 function saveEnvFiche(){
   const val=document.getElementById('env-fiche-input').value.trim();
-  const pwPlayer=document.getElementById('env-fiche-pw').value;
-  const pwGM=document.getElementById('env-fiche-pw-gm').value;
   state.envFiche=val;
-  state.envFichePw=pwPlayer;
-  state.envFichePwGM=pwGM;
   saveState();
   // Forcer le rechargement des iframes si elles étaient déjà ouvertes avec une autre fiche
   const envIframe=document.getElementById('env-iframe');
   const carteIframe=document.getElementById('carte-iframe');
   if(envIframe) envIframe.removeAttribute('data-loaded');
   if(carteIframe) carteIframe.removeAttribute('data-loaded');
-}
-// Construit le suffixe de connexion automatique (&pw=...&gm=1) selon le statut courant
-function buildAutoLoginParams(){
-  const pw = isGM ? (state.envFichePwGM||'') : (state.envFichePw||'');
-  if(!pw) return '';
-  return '&pw='+encodeURIComponent(pw)+(isGM?'&gm=1':'');
 }
 
 // ── Environnement ──
@@ -662,7 +653,7 @@ function toggleEnvPanel(){
   const iframe=document.getElementById('env-iframe');
   const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
   if(!iframe.getAttribute('data-loaded')){
-    iframe.src=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
+    iframe.src=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId());
     iframe.setAttribute('data-loaded','1');
   }
   ol.classList.add('open');
@@ -680,7 +671,7 @@ const CartePanel = {
     if(ol.classList.contains('open')){ this.close(); return; }
     const iframe=document.getElementById('carte-iframe');
     if(!iframe.getAttribute('data-loaded')){
-      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams()+'&pid='+encodeURIComponent(FICHE_ID);
+      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId());
       iframe.setAttribute('data-loaded','1');
     }
     ol.classList.add('open');
@@ -1358,10 +1349,6 @@ async function xferClearRequest(){
   <span class="gm-bar-label" style="margin-left:.6rem;">Environnement lié</span>
   <input id="env-fiche-input" type="text" placeholder="nom de la fiche environnement"
     style="width:140px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
-  <input id="env-fiche-pw" type="password" placeholder="mdp joueur" autocomplete="off"
-    style="width:90px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
-  <input id="env-fiche-pw-gm" type="password" placeholder="mdp meneur" autocomplete="off"
-    style="width:90px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
   <button class="gm-btn" onclick="saveEnvFiche()">Lier</button>
 </div>
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
@@ -1405,7 +1392,6 @@ const SB = {
 
 // ── Authentification ───────────────────────────
 let authenticated = false;
-let isGM = false;
 
 document.getElementById('modal-pw').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('modal-btn').click();
@@ -1429,7 +1415,6 @@ async function doLogin(tryGM){
         err.textContent = tryGM ? 'Mot de passe meneur incorrect.' : 'Mot de passe incorrect.';
       } else {
         authenticated = true;
-        isGM = tryGM;
         document.getElementById('modal-overlay').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         showDiceFab();
@@ -1494,7 +1479,7 @@ const NUM_TRAITS=10,SQ_PER_APTITUDE=6;
 let wheelRot=0;
 const NUM_EQUIPEMENT=6, NUM_ARTEFACTS=5;
 const NUM_CONFRERIE=4;
-let state={tokens:{},scores:{},aptitudes:{},envFiche:'',envFichePw:'',envFichePwGM:'',
+let state={tokens:{},scores:{},aptitudes:{},envFiche:'',
   traits:Array.from({length:NUM_TRAITS},()=>({title:'',text:''})),
   confrerie:Array.from({length:NUM_CONFRERIE},()=>({title:'',text:''})),
   equipement:Array.from({length:NUM_EQUIPEMENT},()=>({title:'',text:''})),
@@ -2063,16 +2048,6 @@ function applyRemoteState(saved){
       const inp=document.getElementById('env-fiche-input');
       if(inp) inp.value=saved.envFiche||'';
     }
-    if(saved.envFichePw!==undefined){
-      state.envFichePw=saved.envFichePw;
-      const inp=document.getElementById('env-fiche-pw');
-      if(inp) inp.value=saved.envFichePw||'';
-    }
-    if(saved.envFichePwGM!==undefined){
-      state.envFichePwGM=saved.envFichePwGM;
-      const inp=document.getElementById('env-fiche-pw-gm');
-      if(inp) inp.value=saved.envFichePwGM||'';
-    }
     if(saved.tokens) Object.entries(saved.tokens).forEach(([sid,arr])=>{
       state.tokens[sid]=arr;
       arr.forEach((_,i)=>renderToken(sid,i));
@@ -2464,7 +2439,51 @@ function dUpdateRedMessage(){
     const aptText = APT_DATA[s._aptKey][String(lvl)];
     if(aptText) text += ' ' + aptText;
   }
+  const bm = s.bonusMalus || {};
+  const aptLabel = s._aptKey && APT_LABELS[s._aptKey] ? APT_LABELS[s._aptKey] : 'cette aptitude';
+  if(bm.bonus && bm.bonus[2]>0){
+    text += ' ' + dExpertiseMessageFor(aptLabel);
+  }
+  if(bm.bonus && bm.bonus[3]>0){
+    text += ' ' + dMaitriseMessageFor();
+  }
+  if(bm.malus && bm.malus[2]>0){
+    text += ' ' + dOppositionMessageFor();
+  }
   el.textContent = text;
+}
+
+// ── Messages narratifs Bonus 2 (Expertise) ──
+const DEXPERTISE_MESSAGES = [
+  (apt)=>`Vous bénéficiez d'une expertise dans ${apt} qui vous permet d'asseoir votre réussite.`,
+  (apt)=>`Votre expertise en ${apt} vous laisse le loisir de choisir, avant même de lancer, ce que le sort ne devra pas décider.`,
+  (apt)=>`Forgée par l'expérience, votre maîtrise de ${apt} vous autorise à fixer d'avance ce que d'autres laisseraient au hasard.`
+];
+function dExpertiseMessageFor(aptLabel){
+  const pool=DEXPERTISE_MESSAGES;
+  return pool[Math.floor(Math.random()*pool.length)](aptLabel.toLowerCase());
+}
+
+// ── Messages narratifs Bonus 3 (Maîtrise) ──
+const DMAITRISE_MESSAGES = [
+  "Votre maîtrise est une garantie de réduire les résultats trop hasardeux.",
+  "Une maîtrise sereine vous permet de corriger, après coup, ce que le hasard aurait mal disposé.",
+  "Rien n'est jamais tout à fait laissé au sort quand la maîtrise veille — vous pourrez en décider le moment venu."
+];
+function dMaitriseMessageFor(){
+  const pool=DMAITRISE_MESSAGES;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+// ── Messages narratifs Malus 2 (Opposition) ──
+const DOPPOSITION_MESSAGES = [
+  "La difficulté qui s'impose à vous vous contraint à une forte opposition qui vous empêche de viser les résultats escomptés.",
+  "Quelque chose résiste à votre intention — une force contraire s'immisce et détourne une partie de vos efforts.",
+  "L'adversité ne se contente pas de freiner : elle impose son propre résultat, à rebours de ce que vous cherchiez."
+];
+function dOppositionMessageFor(){
+  const pool=DOPPOSITION_MESSAGES;
+  return pool[Math.floor(Math.random()*pool.length)];
 }
 
 // ══════════════════════════════════════════════
@@ -2684,15 +2703,81 @@ function dbmClick(type,level){
   if(!s.bonusMalus) s.bonusMalus={bonus:{1:0,2:0,3:0},malus:{1:0,2:0,3:0}};
   if(!s.bonusMalus[type]) s.bonusMalus[type]={1:0,2:0,3:0};
   s.bonusMalus[type][level]=(s.bonusMalus[type][level]||0)+1;
+
+  if(type==='bonus' && level===1){
+    // Avantage : ajoute immédiatement un dé blanc supplémentaire
+    s.whites=(s.whites||0)+1;
+    dInitDice(true);
+    // Si le lancer a déjà eu lieu, ce nouveau dé doit être lancé immédiatement
+    if(s.rolled){
+      const newDie=s.dice.find(d=>d.color==='white'&&d.value===null&&!d.setAside&&!d.locked);
+      if(newDie && newDie.value===null) newDie.value=Math.ceil(Math.random()*10);
+    }
+  } else if(type==='bonus' && level===2){
+    dAssignSpecialDie('expertise');
+  } else if(type==='bonus' && level===3){
+    dAssignSpecialDie('maitrise');
+  }
+
   dSyncBonusMalus();
+  dRenderDice(false);
+  dUpdateRedMessage();
   dPushState();
+}
+
+// Désigne un dé blanc encore libre (non verrouillé, non déjà spécialisé) pour Expertise ou Maîtrise
+function dAssignSpecialDie(kind){
+  const s=dS();
+  if(!s.dice||!s.dice.length) dInitDice(false);
+  if(!s.specialDice) s.specialDice={}; // { idx: 'expertise'|'maitrise' }
+  const idx=s.dice.findIndex((d,i)=>d.color==='white' && !d.locked && !s.specialDice[i]);
+  if(idx===-1) return; // plus aucun dé blanc libre
+  s.specialDice[idx]=kind;
+  if(kind==='maitrise'){
+    // Le dé de maîtrise est mis de côté : il ne participera pas au lancer aléatoire
+    s.dice[idx].setAside=true;
+  }
 }
 
 function dResetBonusMalusOne(type,level){
   if(dCurrentRole!=='launcher') return;
   const s=dS();
-  if(s.bonusMalus && s.bonusMalus[type]) s.bonusMalus[type][level]=0;
+  if(!s.bonusMalus || !s.bonusMalus[type]) { dSyncBonusMalus(); return; }
+  const prevCount=s.bonusMalus[type][level]||0;
+  s.bonusMalus[type][level]=0;
+
+  if(type==='bonus' && level===1){
+    // Retirer les dés blancs supplémentaires ajoutés par Avantage (jusqu'à prevCount, et au minimum 0)
+    s.whites=Math.max(0,(s.whites||0)-prevCount);
+    dInitDice(true);
+  } else if(type==='bonus' && level===2 || type==='bonus' && level===3){
+    const kind = level===2?'expertise':'maitrise';
+    if(s.specialDice){
+      Object.keys(s.specialDice).forEach(idx=>{
+        if(s.specialDice[idx]===kind){
+          if(kind==='maitrise' && s.dice[idx]) delete s.dice[idx].setAside;
+          delete s.specialDice[idx];
+        }
+      });
+    }
+  } else if(type==='malus' && level===2){
+    // Annuler les dés fixés en opposition
+    if(s.oppositionDice){
+      s.oppositionDice.forEach(idx=>{
+        if(s.dice[idx]){ s.dice[idx].locked=false; s.dice[idx].value=null; s.dice[idx].color='red'; }
+      });
+    }
+    s.oppositionDice=[];
+  } else if(type==='malus' && level===1){
+    s.relanceUsed=false;
+  } else if(type==='malus' && level===3){
+    s.negationActive=false;
+  }
+
   dSyncBonusMalus();
+  dRenderDice(false);
+  dComputeSuccesses();
+  dUpdateRedMessage();
   dPushState();
 }
 
@@ -2752,12 +2837,19 @@ function dChangeCount(color,delta){
 
 function dInitDice(preserve){
   const s=dS();
-  const total=(s.whites||3)+(s.reds||2);
+  const numWhites=s.whites||3, numReds=s.reds||2;
+  const total=numWhites+numReds;
+  const oldDice=s.dice||[];
+  const oldWhites=oldDice.filter(d=>d.color==='white');
+  const oldReds=oldDice.filter(d=>d.color==='red'||d.color==='black_token');
   const nd=[];
-  for(let i=0;i<total;i++){
-    const color=i<(s.whites||3)?'white':'red';
-    const ex=preserve&&s.dice&&s.dice[i]&&s.dice[i].color===color?s.dice[i]:null;
-    nd.push(ex||{color,value:null,locked:false,modified:false});
+  for(let i=0;i<numWhites;i++){
+    const ex=preserve&&oldWhites[i]?oldWhites[i]:null;
+    nd.push(ex||{color:'white',value:null,locked:false,modified:false});
+  }
+  for(let i=0;i<numReds;i++){
+    const ex=preserve&&oldReds[i]?oldReds[i]:null;
+    nd.push(ex||{color:'red',value:null,locked:false,modified:false});
   }
   s.dice=nd;
 }
@@ -2801,14 +2893,66 @@ function dRollDice(){
   const s=dS();
   s.rolled=true;
   if(!s.dice||!s.dice.length) dInitDice(false);
-  // Remettre à null les dés non verrouillés (pour relancer proprement)
-  s.dice.forEach(d=>{ if(!d.locked){ d.value=null; d.modified=false; d.color=d.color==='black_token'?'red':d.color; } });
+  const special = s.specialDice || {};
+  // Remettre à null les dés non verrouillés, non mis de côté (Maîtrise) et non déjà fixés (Expertise)
+  s.dice.forEach((d,i)=>{
+    if(d.locked) return;
+    if(special[i]==='maitrise') return; // ne sera jamais lancé, attend une valeur manuelle après
+    if(special[i]==='expertise' && d.value!==null) return; // déjà fixé par le joueur avant le lancer
+    d.value=null; d.modified=false; d.color=d.color==='black_token'?'red':d.color;
+  });
   // Appliquer les règles des jetons avant le lancer
   dApplyTokenRules();
-  // Lancer les dés non verrouillés et sans valeur
-  s.dice.forEach(d=>{
-    if(d.value===null) d.value=Math.ceil(Math.random()*10); // tous les dés sans valeur, verrouillés ou non
+  // Lancer les dés non verrouillés et sans valeur (les dés "maîtrise" restent à null : mis de côté)
+  s.dice.forEach((d,i)=>{
+    if(special[i]==='maitrise') return;
+    if(d.value===null) d.value=Math.ceil(Math.random()*10);
   });
+
+  // ── Malus 3 : Négation — aucune valeur de réussite ne peut subsister, relance en boucle ──
+  const bm = s.bonusMalus || {};
+  const negationOn = bm.malus && bm.malus[3] > 0;
+  const v1=s.successVal1, v2=s.successVal2;
+  const isSuccessVal=(v)=> (v1!=null && v===v1) || (v2!=null && v===v2);
+  if(negationOn && (v1!=null || v2!=null)){
+    let guard=0;
+    s.dice.forEach((d,i)=>{
+      if(special[i]==='maitrise' || d.locked) return;
+      while(isSuccessVal(d.value) && guard<200){
+        d.value=Math.ceil(Math.random()*10);
+        guard++;
+      }
+    });
+  }
+
+  // ── Malus 1 : Relance — chaque dé à valeur de réussite est relancé une seule fois ──
+  const relanceOn = bm.malus && bm.malus[1] > 0;
+  if(relanceOn && !negationOn && (v1!=null || v2!=null)){
+    s.dice.forEach((d,i)=>{
+      if(special[i]==='maitrise' || d.locked) return;
+      if(isSuccessVal(d.value)) d.value=Math.ceil(Math.random()*10);
+    });
+  }
+
+  // ── Malus 2 : Opposition — fixe N dés blancs à la valeur opposée sur l'octogone ──
+  const oppositionCount = (bm.malus && bm.malus[2]) || 0;
+  s.oppositionDice = s.oppositionDice || [];
+  if(oppositionCount>0 && (v1!=null || v2!=null)){
+    const refVals=[v1,v2].filter(v=>v!=null);
+    let assigned=0;
+    for(let i=0;i<s.dice.length && assigned<oppositionCount;i++){
+      const d=s.dice[i];
+      if(d.color!=='white' || d.locked || special[i]) continue;
+      if(s.oppositionDice.includes(i)) continue;
+      const refVal=refVals[assigned % refVals.length];
+      if(refVal<1 || refVal>8) continue; // pas d'opposé défini hors 1-8
+      const opposed = refVal<=4 ? refVal+4 : refVal-4;
+      d.value=opposed; d.locked=true; d.modified=true;
+      s.oppositionDice.push(i);
+      assigned++;
+    }
+  }
+
   // Compter les 9 obtenus et incrémenter occultation
   const nines=s.dice.filter(d=>d.value===9).length;
   if(nines>0){
@@ -2873,11 +3017,17 @@ function dMakeDieSVG(d,i,animate){
   svg.setAttribute('style','display:block');
   const isBlackToken=d.color==='black_token';
   const isModified=d.modified,isLocked=d.locked,isWhite=d.color==='white',hasValue=d.value!==null;
+  const s=dS();
+  const specialKind = (s.specialDice && s.specialDice[i]) || null; // 'expertise' | 'maitrise' | null
+  const isSetAside = d.setAside===true;
   let bodyFill,bodyStroke,ridgeStroke,textFill,labelFill,inputLineColor;
   if(isBlackToken){bodyFill='#1a1a1a';bodyStroke='#444';ridgeStroke='#555';textFill='#fff';labelFill='#888';inputLineColor='#666';}
   else if(isModified){bodyFill='#1a1a1a';bodyStroke='#444';ridgeStroke='#555';textFill='#fff';labelFill='#888';inputLineColor='#666';}
   else if(isWhite){bodyFill='#f2f2f2';bodyStroke='#bbb';ridgeStroke='#ccc';textFill='#1a1a1a';labelFill='#aaa';inputLineColor='#bbb';}
   else{bodyFill='#E24B4A';bodyStroke='#a83030';ridgeStroke='#a02828';textFill='#fff';labelFill='#f7b0b0';inputLineColor='#f09090';}
+  // Distinction visuelle Expertise (vert) / Maîtrise (doré) : liseré coloré autour du dé
+  if(specialKind==='expertise'){ bodyStroke='#5fa86a'; }
+  else if(specialKind==='maitrise'){ bodyStroke='#c8973a'; }
   const cx=45,cy=50;
   function polyPts(cx,cy,rO,rI,off){
     const p=[];
@@ -2888,9 +3038,21 @@ function dMakeDieSVG(d,i,animate){
   shadow.setAttribute('points',polyPts(cx+2,cy+3,40,22,-90));
   shadow.setAttribute('fill',isBlackToken||isModified?'#000':isWhite?'#ccc':'#a02020');
   shadow.setAttribute('opacity','0.35'); svg.appendChild(shadow);
+  // Halo animé pour signaler un dé spécial (expertise/maîtrise) en attente d'action
+  if(specialKind && (specialKind==='expertise' ? !hasValue : isSetAside)){
+    const halo=document.createElementNS(ns,'polygon');
+    halo.setAttribute('points',polyPts(cx,cy,44,24,-90));
+    halo.setAttribute('fill','none');
+    halo.setAttribute('stroke',specialKind==='expertise'?'#5fa86a':'#c8973a');
+    halo.setAttribute('stroke-width','2');
+    halo.setAttribute('opacity','0.8');
+    halo.style.cssText='animation:dSpecialPulse 1.4s ease-in-out infinite';
+    svg.appendChild(halo);
+  }
   const body=document.createElementNS(ns,'polygon');
   body.setAttribute('points',polyPts(cx,cy,40,22,-90));
-  body.setAttribute('fill',bodyFill);body.setAttribute('stroke',bodyStroke);body.setAttribute('stroke-width','1');
+  body.setAttribute('fill',bodyFill);body.setAttribute('stroke',bodyStroke);
+  body.setAttribute('stroke-width',specialKind?'2':'1');
   svg.appendChild(body);
   for(let k=0;k<10;k+=2){
     const angle=((k*36)-90)*Math.PI/180;
@@ -2909,7 +3071,8 @@ function dMakeDieSVG(d,i,animate){
   lbl.setAttribute('x',cx);lbl.setAttribute('y',18);lbl.setAttribute('text-anchor','middle');
   lbl.setAttribute('font-size','9');lbl.setAttribute('fill',labelFill);
   lbl.setAttribute('font-family','-apple-system,BlinkMacSystemFont,sans-serif');
-  lbl.textContent=`#${i+1}`; svg.appendChild(lbl);
+  lbl.textContent = specialKind==='expertise' ? `#${i+1} ★` : specialKind==='maitrise' ? `#${i+1} ◆` : `#${i+1}`;
+  svg.appendChild(lbl);
   if(hasValue){
     const fs=d.value===10?22:26;
     const valT=document.createElementNS(ns,'text');
@@ -2919,8 +3082,17 @@ function dMakeDieSVG(d,i,animate){
     valT.setAttribute('font-family','-apple-system,BlinkMacSystemFont,sans-serif');
     if(animate&&!isLocked) valT.style.cssText='animation:dfadeIn .35s ease-out';
     valT.textContent=String(d.value); svg.appendChild(valT);
+  } else if(isSetAside){
+    const waitT=document.createElementNS(ns,'text');
+    waitT.setAttribute('x',cx);waitT.setAttribute('y',cy+6);
+    waitT.setAttribute('text-anchor','middle');waitT.setAttribute('font-size','10');
+    waitT.setAttribute('fill','#c8973a');
+    waitT.setAttribute('font-family','-apple-system,BlinkMacSystemFont,sans-serif');
+    waitT.textContent='en attente'; svg.appendChild(waitT);
   }
-  if(!isLocked&&dCurrentRole==='launcher'){
+  // Champ de saisie : dés non verrouillés normaux, OU dés mis de côté (maîtrise) même sans valeur
+  const showInput = (!isLocked || isSetAside) && dCurrentRole==='launcher';
+  if(showInput){
     const lineY=H-10;
     const inputLine=document.createElementNS(ns,'line');
     inputLine.setAttribute('x1',cx-18);inputLine.setAttribute('y1',lineY);
@@ -2931,6 +3103,7 @@ function dMakeDieSVG(d,i,animate){
     fo.setAttribute('x',cx-18);fo.setAttribute('y',H-18);fo.setAttribute('width','36');fo.setAttribute('height','16');
     const inp=document.createElement('input');
     inp.type='number';inp.min=1;inp.max=10;
+    if(d.value!==null) inp.value=d.value;
     inp.style.cssText=`width:100%;text-align:center;font-size:10px;border:none;background:transparent;color:${inputLineColor};outline:none;padding:0;`;
     inp.addEventListener('change',()=>dSetVal(i,inp.value));
     fo.appendChild(inp); svg.appendChild(fo);
