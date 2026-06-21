@@ -256,12 +256,15 @@
   .dsuccess-input:focus { outline:none; border-color:var(--accent); }
 
   .droll-history {
-    margin:.5rem 0; padding:.5rem .7rem; background:#f7f4ee;
-    border:1px dashed #d8d4c8; border-radius:8px; font-size:.75rem; color:#6b5d4f;
+    margin:.5rem 0; padding:.6rem .7rem; background:#f7f4ee;
+    border:1px dashed #d8d4c8; border-radius:8px;
   }
-  .droll-history-line { display:flex; gap:6px; align-items:baseline; padding:2px 0; flex-wrap:wrap; }
-  .droll-history-line strong { font-family:'Cinzel',serif; font-size:.65rem; letter-spacing:.04em; color:#888; min-width:80px; }
-  .droll-history-vals { font-family:'Cinzel',serif; }
+  .droll-history-line { display:flex; flex-direction:column; gap:5px; padding:5px 0; }
+  .droll-history-line + .droll-history-line { border-top:1px dashed #e0dccf; margin-top:3px; }
+  .droll-history-line strong { font-family:'Cinzel',serif; font-size:.65rem; letter-spacing:.04em; color:#888; }
+  .droll-mini-row { display:flex; gap:6px; flex-wrap:wrap; }
+  .droll-mini-die { width:34px; flex-shrink:0; opacity:.75; transition:opacity .15s; }
+  .droll-mini-die.droll-mini-changed { opacity:1; filter:drop-shadow(0 0 3px rgba(139,32,32,0.35)); }
 
   .dsuccess-result {
     margin:.6rem 0; padding:.6rem .7rem; background:#fff;
@@ -2844,18 +2847,78 @@ function dRenderRollHistory(){
   if(!s.rolled || !s.firstRollSnapshot || !anyMechanicActive){
     el.style.display='none'; el.innerHTML=''; return;
   }
-  const firstVals = s.firstRollSnapshot.map(d=>d.value).filter(v=>v!==null);
-  const finalVals = s.dice.map(d=>d.value).filter(v=>v!==null);
-  const sameLength = firstVals.length===finalVals.length;
-  const identical = sameLength && firstVals.every((v,idx)=>v===finalVals[idx]);
+  const firstDice = s.firstRollSnapshot;
+  const finalDice = s.dice;
+  const sameLength = firstDice.length===finalDice.length;
+  const identical = sameLength && firstDice.every((d,idx)=>d.value===finalDice[idx].value);
   if(identical){
     el.style.display='none'; el.innerHTML=''; return;
   }
-  el.innerHTML = `
-    <div class="droll-history-line"><strong>1er jet</strong><span class="droll-history-vals">${firstVals.join(' · ')}</span></div>
-    <div class="droll-history-line"><strong>Résultat final</strong><span class="droll-history-vals">${finalVals.join(' · ')}</span></div>
-  `;
+  el.innerHTML='';
   el.style.display='block';
+
+  const buildRow=(label,diceArr,highlightChanged)=>{
+    const wrap=document.createElement('div'); wrap.className='droll-history-line';
+    const lbl=document.createElement('strong'); lbl.textContent=label; wrap.appendChild(lbl);
+    const row=document.createElement('div'); row.className='droll-mini-row';
+    diceArr.forEach((d,idx)=>{
+      const changed = highlightChanged && finalDice[idx] && d.value!==finalDice[idx].value;
+      const mini=document.createElement('div');
+      mini.className='droll-mini-die'+(changed?' droll-mini-changed':'');
+      mini.appendChild(dMakeMiniDieSVG(d,idx));
+      row.appendChild(mini);
+    });
+    wrap.appendChild(row);
+    return wrap;
+  };
+
+  el.appendChild(buildRow('1er jet', firstDice, true));
+  el.appendChild(buildRow('Résultat final', finalDice, false));
+}
+
+// Version simplifiée de dMakeDieSVG pour l'historique : pas de contrôles, juste valeur + liseré
+function dMakeMiniDieSVG(d,i){
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 90 96');
+  svg.setAttribute('width','100%');
+  svg.setAttribute('style','display:block');
+  const s=dS();
+  const isBlackToken=d.color==='black_token';
+  const isModified=d.modified,isWhite=d.color==='white',hasValue=d.value!==null;
+  const specialKind = (s.specialDice && s.specialDice[i]) || null;
+  const isOppositionDie = (s.oppositionDice||[]).includes(i);
+  const isNegationDie = (s.negationDice||[]).includes(i);
+  const isRelanceDie = (s.relanceDice||[]).includes(i);
+  let bodyFill,bodyStroke,textFill;
+  if(isBlackToken||isModified){bodyFill='#1a1a1a';bodyStroke='#444';textFill='#fff';}
+  else if(isWhite){bodyFill='#f2f2f2';bodyStroke='#bbb';textFill='#1a1a1a';}
+  else{bodyFill='#E24B4A';bodyStroke='#a83030';textFill='#fff';}
+  if(specialKind==='expertise'){ bodyStroke='#5fa86a'; }
+  else if(specialKind==='maitrise'){ bodyStroke='#2d6e38'; }
+  else if(isOppositionDie){ bodyStroke='#c85a52'; }
+  else if(isNegationDie){ bodyStroke='#8b2020'; }
+  else if(isRelanceDie){ bodyStroke='#e8a3a0'; }
+  const cx=45,cy=50;
+  function polyPts(cx,cy,rO,rI,off){
+    const p=[];
+    for(let k=0;k<10;k++){const a=((k*36)+off)*Math.PI/180;const r=k%2===0?rO:rI;p.push(`${(cx+r*Math.cos(a)).toFixed(2)},${(cy+r*Math.sin(a)).toFixed(2)}`);}
+    return p.join(' ');
+  }
+  const body=document.createElementNS(ns,'polygon');
+  body.setAttribute('points',polyPts(cx,cy,40,22,-90));
+  body.setAttribute('fill',bodyFill);body.setAttribute('stroke',bodyStroke);body.setAttribute('stroke-width','2');
+  svg.appendChild(body);
+  if(hasValue){
+    const fs=d.value===10?22:26;
+    const valT=document.createElementNS(ns,'text');
+    valT.setAttribute('x',cx);valT.setAttribute('y',cy+9);
+    valT.setAttribute('text-anchor','middle');valT.setAttribute('font-size',fs);
+    valT.setAttribute('font-weight','500');valT.setAttribute('fill',textFill);
+    valT.setAttribute('font-family','-apple-system,BlinkMacSystemFont,sans-serif');
+    valT.textContent=String(d.value); svg.appendChild(valT);
+  }
+  return svg;
 }
 
 function dChangeCount(color,delta){
