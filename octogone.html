@@ -189,6 +189,7 @@
     display:flex; align-items:center; justify-content:center; transition:background .12s;
   }
   .lock-btn.locked { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
+  .lock-btn:disabled { opacity:.2; cursor:not-allowed; }
   .ten-note { font-size:.6rem; color:#aaa; text-align:center; }
   .dlaunch-btn {
     width:100%; padding:9px; background:#fff; border:.5px solid #ddd;
@@ -253,6 +254,15 @@
     border:1px solid #ddd; border-radius:6px; background:#fff; color:#1a1a1a;
   }
   .dsuccess-input:focus { outline:none; border-color:var(--accent); }
+
+  .droll-history {
+    margin:.5rem 0; padding:.5rem .7rem; background:#f7f4ee;
+    border:1px dashed #d8d4c8; border-radius:8px; font-size:.75rem; color:#6b5d4f;
+  }
+  .droll-history-line { display:flex; gap:6px; align-items:baseline; padding:2px 0; flex-wrap:wrap; }
+  .droll-history-line strong { font-family:'Cinzel',serif; font-size:.65rem; letter-spacing:.04em; color:#888; min-width:80px; }
+  .droll-history-vals { font-family:'Cinzel',serif; }
+
   .dsuccess-result {
     margin:.6rem 0; padding:.6rem .7rem; background:#fff;
     border:1px solid #e0e0d8; border-radius:8px;
@@ -1250,6 +1260,7 @@ async function xferClearRequest(){
       </div>
       <p class="dice-section-title" id="dice-section-lbl">Fixer des valeurs avant le lancer (optionnel)</p>
       <div class="dice-grid" id="dice-grid"></div>
+      <div id="droll-history" class="droll-history" style="display:none;"></div>
       <div id="dsuccess-result" class="dsuccess-result" style="display:none;"></div>
       <div id="dlock-explain" class="dlock-explain" style="display:none;"></div>
       <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
@@ -2798,6 +2809,7 @@ function dSyncBonusMalus(){
 function dComputeSuccesses(){
   const s=dS();
   const resultEl=document.getElementById('dsuccess-result');
+  dRenderRollHistory();
   if(!resultEl) return;
   const v1=s.successVal1, v2=s.successVal2;
   if(!s.rolled || !s.dice || !s.dice.length || (v1==null && v2==null)){
@@ -2820,6 +2832,30 @@ function dComputeSuccesses(){
     row.innerHTML=`<span class="dsuccess-result-label">Réussites sur ${v2}</span><span class="dsuccess-result-count">${count}</span>`;
     resultEl.appendChild(row);
   }
+}
+
+// Affiche « 1er jet » puis « Résultat final » quand Relance, Opposition ou Négation ont modifié le lancer initial
+function dRenderRollHistory(){
+  const el=document.getElementById('droll-history');
+  if(!el) return;
+  const s=dS();
+  const bm = s.bonusMalus || {};
+  const anyMechanicActive = (bm.malus && (bm.malus[1]>0 || bm.malus[2]>0 || bm.malus[3]>0));
+  if(!s.rolled || !s.firstRollSnapshot || !anyMechanicActive){
+    el.style.display='none'; el.innerHTML=''; return;
+  }
+  const firstVals = s.firstRollSnapshot.map(d=>d.value).filter(v=>v!==null);
+  const finalVals = s.dice.map(d=>d.value).filter(v=>v!==null);
+  const sameLength = firstVals.length===finalVals.length;
+  const identical = sameLength && firstVals.every((v,idx)=>v===finalVals[idx]);
+  if(identical){
+    el.style.display='none'; el.innerHTML=''; return;
+  }
+  el.innerHTML = `
+    <div class="droll-history-line"><strong>1er jet</strong><span class="droll-history-vals">${firstVals.join(' · ')}</span></div>
+    <div class="droll-history-line"><strong>Résultat final</strong><span class="droll-history-vals">${finalVals.join(' · ')}</span></div>
+  `;
+  el.style.display='block';
 }
 
 function dChangeCount(color,delta){
@@ -2909,15 +2945,20 @@ function dRollDice(){
     if(d.value===null) d.value=Math.ceil(Math.random()*10);
   });
 
+  // Capture du premier jet, avant toute correction Relance/Opposition/Négation
+  s.firstRollSnapshot = s.dice.map(d=>({color:d.color,value:d.value}));
+
   // ── Malus 3 : Négation — aucune valeur de réussite ne peut subsister, relance en boucle ──
   const bm = s.bonusMalus || {};
   const negationOn = bm.malus && bm.malus[3] > 0;
   const v1=s.successVal1, v2=s.successVal2;
   const isSuccessVal=(v)=> (v1!=null && v===v1) || (v2!=null && v===v2);
+  s.negationDice=[];
   if(negationOn && (v1!=null || v2!=null)){
     let guard=0;
     s.dice.forEach((d,i)=>{
       if(special[i]==='maitrise' || d.locked) return;
+      if(isSuccessVal(d.value)) s.negationDice.push(i);
       while(isSuccessVal(d.value) && guard<200){
         d.value=Math.ceil(Math.random()*10);
         guard++;
@@ -2927,10 +2968,14 @@ function dRollDice(){
 
   // ── Malus 1 : Relance — chaque dé à valeur de réussite est relancé une seule fois ──
   const relanceOn = bm.malus && bm.malus[1] > 0;
+  s.relanceDice=[];
   if(relanceOn && !negationOn && (v1!=null || v2!=null)){
     s.dice.forEach((d,i)=>{
       if(special[i]==='maitrise' || d.locked) return;
-      if(isSuccessVal(d.value)) d.value=Math.ceil(Math.random()*10);
+      if(isSuccessVal(d.value)){
+        s.relanceDice.push(i);
+        d.value=Math.ceil(Math.random()*10);
+      }
     });
   }
 
@@ -3000,6 +3045,11 @@ function dResetAll(){
   if(!confirm('Réinitialiser les dés ?')) return;
   const s=dS(); s.rolled=false; s.dice=[];
   s.bonusMalus={bonus:{1:0,2:0,3:0},malus:{1:0,2:0,3:0}};
+  s.specialDice={};
+  s.oppositionDice=[];
+  s.relanceDice=[];
+  s.negationDice=[];
+  s.firstRollSnapshot=null;
   dInitDice(false);
   document.getElementById('dice-section-lbl').textContent='Fixer des valeurs avant le lancer (optionnel)';
   document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés';
@@ -3025,9 +3075,17 @@ function dMakeDieSVG(d,i,animate){
   else if(isModified){bodyFill='#1a1a1a';bodyStroke='#444';ridgeStroke='#555';textFill='#fff';labelFill='#888';inputLineColor='#666';}
   else if(isWhite){bodyFill='#f2f2f2';bodyStroke='#bbb';ridgeStroke='#ccc';textFill='#1a1a1a';labelFill='#aaa';inputLineColor='#bbb';}
   else{bodyFill='#E24B4A';bodyStroke='#a83030';ridgeStroke='#a02828';textFill='#fff';labelFill='#f7b0b0';inputLineColor='#f09090';}
-  // Distinction visuelle Expertise (vert) / Maîtrise (doré) : liseré coloré autour du dé
+  // Liseré coloré : même palette que les boutons Bonus/Malus
+  // Bonus 1 #a8d5ad / Bonus 2 #5fa86a / Bonus 3 #2d6e38
+  // Malus 1 #e8a3a0 / Malus 2 #c85a52 / Malus 3 #8b2020
+  const isOppositionDie = (s.oppositionDice||[]).includes(i);
+  const isRelanceDie = (s.relanceDice||[]).includes(i);
+  const isNegationDie = (s.negationDice||[]).includes(i);
   if(specialKind==='expertise'){ bodyStroke='#5fa86a'; }
-  else if(specialKind==='maitrise'){ bodyStroke='#c8973a'; }
+  else if(specialKind==='maitrise'){ bodyStroke='#2d6e38'; }
+  else if(isOppositionDie){ bodyStroke='#c85a52'; }
+  else if(isNegationDie){ bodyStroke='#8b2020'; }
+  else if(isRelanceDie){ bodyStroke='#e8a3a0'; }
   const cx=45,cy=50;
   function polyPts(cx,cy,rO,rI,off){
     const p=[];
@@ -3043,7 +3101,7 @@ function dMakeDieSVG(d,i,animate){
     const halo=document.createElementNS(ns,'polygon');
     halo.setAttribute('points',polyPts(cx,cy,44,24,-90));
     halo.setAttribute('fill','none');
-    halo.setAttribute('stroke',specialKind==='expertise'?'#5fa86a':'#c8973a');
+    halo.setAttribute('stroke',specialKind==='expertise'?'#5fa86a':'#2d6e38');
     halo.setAttribute('stroke-width','2');
     halo.setAttribute('opacity','0.8');
     halo.style.cssText='animation:dSpecialPulse 1.4s ease-in-out infinite';
@@ -3086,12 +3144,12 @@ function dMakeDieSVG(d,i,animate){
     const waitT=document.createElementNS(ns,'text');
     waitT.setAttribute('x',cx);waitT.setAttribute('y',cy+6);
     waitT.setAttribute('text-anchor','middle');waitT.setAttribute('font-size','10');
-    waitT.setAttribute('fill','#c8973a');
+    waitT.setAttribute('fill','#2d6e38');
     waitT.setAttribute('font-family','-apple-system,BlinkMacSystemFont,sans-serif');
     waitT.textContent='en attente'; svg.appendChild(waitT);
   }
-  // Champ de saisie : dés non verrouillés normaux, OU dés mis de côté (maîtrise) même sans valeur
-  const showInput = (!isLocked || isSetAside) && dCurrentRole==='launcher';
+  // Champ de saisie directe : réservé aux dés Expertise/Maîtrise, et au cas obligatoire de la valeur 10
+  const showInput = dCurrentRole==='launcher' && !isLocked && (specialKind==='expertise' || specialKind==='maitrise' || d.value===10);
   if(showInput){
     const lineY=H-10;
     const inputLine=document.createElementNS(ns,'line');
@@ -3123,16 +3181,30 @@ function dRenderDice(animate){
     svgWrap.appendChild(dMakeDieSVG(d,i,animate));
     wrap.appendChild(svgWrap);
     if(dCurrentRole==='launcher'){
+      const special = (s.specialDice && s.specialDice[i]) || null;
+      const isMechanicLock = d.color==='black_token' || (s.oppositionDice||[]).includes(i);
       const ctrl=document.createElement('div'); ctrl.className='die-controls-row';
       const adj=d.value!==null?D_ADJ_MAP[d.value]:undefined;
-      const canAdj=s.rolled&&d.value!==null&&adj&&adj!=='ten'&&!d.locked;
-      const btnM=document.createElement('button'); btnM.className='adj-btn'; btnM.textContent='−'; btnM.disabled=!canAdj;
-      if(canAdj) btnM.title=`→ ${adj[0]}`; btnM.onclick=()=>dAdjustDie(i,'minus');
+      const subjectToTen = adj && adj!=='ten';
+      const canAdj=s.rolled&&d.value!==null&&subjectToTen&&!d.locked;
+      // Boutons ±1 (règle du 10) : visibles uniquement sur les dés soumis à cette règle
+      if(subjectToTen || d.value===null){
+        const btnM=document.createElement('button'); btnM.className='adj-btn'; btnM.textContent='−'; btnM.disabled=!canAdj;
+        if(canAdj) btnM.title=`→ ${adj[0]}`; btnM.onclick=()=>dAdjustDie(i,'minus');
+        ctrl.appendChild(btnM);
+      }
+      // Verrou : désactivé sur les dés qui n'en ont plus l'usage (ordinaires, Expertise, Maîtrise)
+      const lockNeeded = isMechanicLock || special!==null;
       const lockBtn=document.createElement('button'); lockBtn.className='lock-btn'+(d.locked?' locked':'');
-      lockBtn.innerHTML=d.locked?'🔒':'🔓'; lockBtn.onclick=()=>dToggleLock(i);
-      const btnP=document.createElement('button'); btnP.className='adj-btn'; btnP.textContent='+'; btnP.disabled=!canAdj;
-      if(canAdj) btnP.title=`→ ${adj[1]}`; btnP.onclick=()=>dAdjustDie(i,'plus');
-      ctrl.appendChild(btnM); ctrl.appendChild(lockBtn); ctrl.appendChild(btnP);
+      lockBtn.innerHTML=d.locked?'🔒':'🔓';
+      lockBtn.disabled=!lockNeeded;
+      if(lockNeeded) lockBtn.onclick=()=>dToggleLock(i);
+      ctrl.appendChild(lockBtn);
+      if(subjectToTen || d.value===null){
+        const btnP=document.createElement('button'); btnP.className='adj-btn'; btnP.textContent='+'; btnP.disabled=!canAdj;
+        if(canAdj) btnP.title=`→ ${adj[1]}`; btnP.onclick=()=>dAdjustDie(i,'plus');
+        ctrl.appendChild(btnP);
+      }
       wrap.appendChild(ctrl);
     }
     // Bouton transfert octogone : dés rouges avec valeur 1-8 seulement
