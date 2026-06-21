@@ -42,7 +42,7 @@ function pneuRenderButtons(){
   pneuInit();
   const revealed=state.pneumato.zonesRevealed||{};
 
-  ['valeurs','polarite','direction','dynamique'].forEach(zone=>{
+  ['valeurs','polarite','dynamique'].forEach(zone=>{
     const revealBtn=document.getElementById(`pneu-reveal-${zone}`);
     if(revealBtn){
       if(isGM){
@@ -72,7 +72,7 @@ function pneuRenderButtons(){
     });
   });
 
-  ['direction','dynamique'].forEach(zone=>{
+  ['dynamique'].forEach(zone=>{
     const showToPlayer=!isGM&&revealed[zone];
     [1,2,3].forEach(lvl=>{
       const btn=document.querySelector(`.pneu-btn[data-zone="${zone}"][data-level="${lvl}"]`);
@@ -499,6 +499,35 @@ async function gmReset(){
   .pneu-act-btn.danger { border-color:#c0392b; color:#c0392b; }
   .pneu-act-btn.danger:hover { background:#fde0e0; }
 
+  /* ── Occultation : tirage pondéré des événements ── */
+  #occulte-overlay { position:fixed; inset:0; background:rgba(26,21,16,0.7); display:none; align-items:center; justify-content:center; z-index:165; }
+  #occulte-overlay.open { display:flex; }
+  #occulte-box { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:1.5rem; max-width:480px; width:94vw; max-height:88vh; overflow-y:auto; box-shadow:0 6px 32px rgba(0,0,0,0.4); position:relative; }
+  #occulte-box h3 { font-family:'Cinzel',serif; color:var(--accent); font-size:.95rem; letter-spacing:.1em; margin-bottom:.4rem; padding-right:2rem; }
+  .occulte-close { position:absolute; top:10px; right:12px; background:none; border:none; font-size:1.1rem; cursor:pointer; color:#888; }
+  .occulte-close:hover { color:var(--ink); }
+  .occulte-sub { font-size:.78rem; color:var(--ink3); font-style:italic; margin-bottom:.8rem; }
+  #occulte-axis-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.4rem; }
+  #occulte-meta { font-size:.78rem; color:var(--ink3); margin-bottom:.7rem; }
+  #occulte-results-list { display:flex; flex-direction:column; gap:.5rem; }
+  .occulte-item { border:1px solid var(--border2); border-radius:6px; padding:.6rem .7rem; background:var(--section-bg); }
+  .occulte-item.sorted { border-color:var(--accent); background:#2a2008; }
+  .occulte-item-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:.3rem; }
+  .occulte-item-title { font-family:'Cinzel',serif; font-size:.8rem; color:var(--ink); }
+  .occulte-item-poids { font-size:.72rem; color:var(--ink3); }
+  .occulte-item-text { font-size:.82rem; color:var(--ink2); line-height:1.5; margin-bottom:.4rem; }
+  .occulte-item-foot { display:flex; justify-content:space-between; align-items:center; gap:.5rem; flex-wrap:wrap; }
+  .occulte-item-chance { font-size:.7rem; color:var(--ink3); }
+  .occulte-reveal-btn { font-family:'Cinzel',serif; font-size:.68rem; padding:3px 9px; border:1px solid var(--border); border-radius:3px; background:var(--input-bg); color:var(--ink2); cursor:pointer; }
+  .occulte-reveal-btn:hover { background:var(--border2); }
+  .occulte-reveal-btn.on { border-color:#3a7a4a; color:#5a9a6a; background:#1a2a14; }
+  .occulte-back-btn { font-family:'Cinzel',serif; font-size:.72rem; padding:4px 10px; border:1px solid var(--border); border-radius:3px; background:var(--input-bg); color:var(--ink2); cursor:pointer; margin-bottom:.8rem; }
+  .occulte-back-btn:hover { background:var(--border2); }
+  .evt-axe-btn { padding:.5rem .3rem; border:1px solid var(--border); border-radius:5px; background:var(--input-bg); color:var(--ink2); font-family:'Cinzel',serif; font-size:.72rem; cursor:pointer; text-align:center; transition:all .15s; }
+  .evt-axe-btn:hover { border-color:var(--accent); }
+  .evt-axe-btn.disabled { opacity:.35; cursor:not-allowed; }
+  .evt-axe-btn.disabled:hover { border-color:var(--border); }
+
   /* Jetons fantômes */
   .ghost-token { pointer-events:none; }
 
@@ -636,19 +665,11 @@ async function gmReset(){
         </div>
       </div>
       <div class="pneumato-zone">
-        <div class="pneumato-zone-title">Direction<button class="pneu-zone-reveal-btn" id="pneu-reveal-direction" onclick="pneuToggleZoneReveal('direction')" style="display:none;">👁</button></div>
-        <div class="pneumato-btns" id="pneu-direction-btns">
-          <button class="pneu-btn" data-zone="direction" data-level="1" onclick="pneuOpenText('direction',1)">
-            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
-            <span class="pneu-label">I</span>
-          </button>
-          <button class="pneu-btn" data-zone="direction" data-level="2" onclick="pneuOpenText('direction',2)">
-            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
-            <span class="pneu-label">II</span>
-          </button>
-          <button class="pneu-btn" data-zone="direction" data-level="3" onclick="pneuOpenText('direction',3)">
-            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/></svg>
-            <span class="pneu-label">III</span>
+        <div class="pneumato-zone-title">Occultation</div>
+        <div class="pneumato-btns" id="pneu-occultation-btns">
+          <button class="pneu-btn" onclick="OcculteGen.openAxisChooser()" style="width:auto;padding:0 .8rem;">
+            <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/><circle cx="12" cy="12" r="3"/></svg>
+            <span class="pneu-label">Percer le voile</span>
           </button>
         </div>
       </div>
@@ -734,8 +755,8 @@ async function gmReset(){
 <button id="xfer-fab" onclick="toggleXfer()" title="Transfert de jeton">↗</button>
 
 <script>
-const SUPABASE_URL   = 'https://qyifamxfvswcglvrzduf.supabase.co';
-const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
+const SUPABASE_URL = 'SUPABASE_URL';
+const SUPABASE_KEY = 'SUPABASE_ANON_KEY';
 
 const params   = new URLSearchParams(location.search);
 const FICHE_ID = params.get('fiche') || 'env-test';
@@ -1348,6 +1369,191 @@ async function xferClearRequest(){
     await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:FICHE_ID,etat})});
   }catch(e){console.error(e);}
 }
+</script>
+<!-- Occultation -->
+<div id="occulte-overlay">
+  <div id="occulte-box">
+    <button class="occulte-close" onclick="OcculteGen.close()">✕</button>
+    <h3>🌫️ Percer le voile de l'occultation</h3>
+
+    <div id="occulte-step-axes">
+      <div class="occulte-sub">Choisis un axe pour révéler les événements de la carte qui lui sont liés.</div>
+      <div id="occulte-axis-grid"></div>
+    </div>
+
+    <div id="occulte-step-results" style="display:none;">
+      <button class="occulte-back-btn" onclick="OcculteGen.backToAxes()">← Choisir un autre axe</button>
+      <h3 id="occulte-results-title" style="margin-bottom:.3rem;"></h3>
+      <div id="occulte-meta"></div>
+      <div id="occulte-results-list"></div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+
+/* ══════════════════════════════════════════════
+   OCCULTATION — tirage pondéré des événements de carte.html
+   ══════════════════════════════════════════════ */
+
+const OCCULTE_AXES = [
+  {id:'feu',       label:'Feu',        num:1},
+  {id:'bile_jaune',label:'Bile Jaune', num:2},
+  {id:'terre',     label:'Terre',      num:3},
+  {id:'bile_noire',label:'Bile Noire', num:4},
+  {id:'eau',       label:'Eau',        num:5},
+  {id:'flegme',    label:'Flegme',     num:6},
+  {id:'air',       label:'Air',        num:7},
+  {id:'sang',      label:'Sang',       num:8}
+];
+
+const OcculteGen = {
+  carteSlots: null,
+
+  async openAxisChooser(){
+    document.getElementById('occulte-overlay').classList.add('open');
+    document.getElementById('occulte-step-axes').style.display='block';
+    document.getElementById('occulte-step-results').style.display='none';
+    await this.loadCarteSlots();
+  },
+
+  close(){
+    document.getElementById('occulte-overlay').classList.remove('open');
+  },
+
+  async loadCarteSlots(){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=carte`,{headers:SB.headers});
+      const d=await r.json();
+      this.carteSlots=d[0]?.carte?.slots||{};
+    }catch(e){ this.carteSlots={}; }
+    this.buildAxisGrid();
+  },
+
+  // Compte les événements liés à un axe donné (non vides)
+  eventsForAxis(axeNum){
+    if(!this.carteSlots) return [];
+    return Object.entries(this.carteSlots)
+      .filter(([key,slot])=>{
+        if(!slot||(!slot.titre&&!slot.texte)) return false;
+        const axes=Array.isArray(slot.axes)?slot.axes:[];
+        return axes.includes(axeNum);
+      })
+      .map(([key,slot])=>({key, slot}));
+  },
+
+  buildAxisGrid(){
+    const grid=document.getElementById('occulte-axis-grid');
+    grid.innerHTML='';
+    OCCULTE_AXES.forEach(axe=>{
+      const events=this.eventsForAxis(axe.num);
+      const btn=document.createElement('button');
+      btn.className='evt-axe-btn'+(events.length===0?' disabled':'');
+      btn.innerHTML=`${axe.label}<br><span style="opacity:.6;">${events.length} événement${events.length>1?'s':''}</span>`;
+      if(events.length>0){
+        btn.addEventListener('click',()=>this.drawForAxis(axe));
+      }
+      grid.appendChild(btn);
+    });
+  },
+
+  // Calcule la probabilité de sortie d'un événement selon son poids, l'occultation et l'éther
+  // Poids faible = sort facilement. Poids élevé = sort rarement, mais jamais impossible.
+  // Occultation élevée = réduit toutes les chances. Éther élevé = compense l'occultation.
+  computeProbability(poids){
+    const occult=parseFloat(state.occultation)||0;
+    const ether=parseFloat(state.ether)||0;
+    const voile=Math.max(0, occult-ether); // voile net après compensation de l'éther
+    // Base : un poids 1 a une forte chance, un poids 5 une chance faible
+    const base=1/(poids*poids); // 1=>1, 2=>0.25, 3=>0.11, 4=>0.0625, 5=>0.04
+    // Le voile réduit la probabilité de façon exponentielle douce, mais ne l'annule jamais (plancher 2%)
+    const facteurVoile=1/(1+voile*0.15);
+    const proba=Math.max(0.02, Math.min(0.95, base*4*facteurVoile));
+    return proba;
+  },
+
+  drawForAxis(axe){
+    const events=this.eventsForAxis(axe.num);
+    const results=events.map(ev=>{
+      const poids=ev.slot.poids||1;
+      const proba=this.computeProbability(poids);
+      const sorted=Math.random()<proba;
+      return {...ev, poids, proba, sorted};
+    });
+    this.lastAxe=axe;
+    this.lastResults=results;
+    this.renderResults(axe, results);
+  },
+
+  renderResults(axe, results){
+    document.getElementById('occulte-step-axes').style.display='none';
+    document.getElementById('occulte-step-results').style.display='block';
+    document.getElementById('occulte-results-title').textContent=`${axe.label} — voile percé`;
+
+    const occult=parseFloat(state.occultation)||0;
+    const ether=parseFloat(state.ether)||0;
+    document.getElementById('occulte-meta').innerHTML=
+      `Occultation : <b>${occult}</b> / Éther : <b>${ether}</b>`;
+
+    const list=document.getElementById('occulte-results-list');
+    list.innerHTML='';
+
+    const sortedResults=[...results].sort((a,b)=>(b.sorted-a.sorted)||(a.poids-b.poids));
+
+    if(!sortedResults.length){
+      list.innerHTML='<div style="text-align:center;color:var(--ink3);font-style:italic;padding:1rem;">Aucun événement lié à cet axe.</div>';
+      return;
+    }
+
+    sortedResults.forEach(r=>{
+      const item=document.createElement('div');
+      item.className='occulte-item'+(r.sorted?' sorted':'');
+      const isRevealed=r.slot.revele_a==='tous'||(Array.isArray(r.slot.revele_a)&&r.slot.revele_a.length>0);
+      item.innerHTML=`
+        <div class="occulte-item-head">
+          <span class="occulte-item-title">${r.slot.titre||'(sans titre)'}</span>
+          <span class="occulte-item-poids">⚖️ ${r.poids}</span>
+        </div>
+        <div class="occulte-item-text">${(r.slot.texte||'').substring(0,140)}${(r.slot.texte||'').length>140?'…':''}</div>
+        <div class="occulte-item-foot">
+          <span class="occulte-item-chance">${r.sorted?'✨ Perce le voile':'🌫️ Reste occulté'} (${Math.round(r.proba*100)}% de chance)</span>
+          <button class="occulte-reveal-btn${isRevealed?' on':''}" data-key="${r.key}">${isRevealed?'Révélé aux joueurs':'Révéler aux joueurs'}</button>
+        </div>`;
+      item.querySelector('.occulte-reveal-btn').addEventListener('click', async (e)=>{
+        await this.toggleReveal(r.key, e.target);
+      });
+      list.appendChild(item);
+    });
+  },
+
+  // Bascule le statut de révélation d'un événement directement dans la fiche carte liée
+  async toggleReveal(key, btnEl){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=carte`,{headers:SB.headers});
+      const d=await r.json();
+      const carte=d[0]?.carte||{slots:{}};
+      if(!carte.slots) carte.slots={};
+      if(!carte.slots[key]) return;
+      const isRevealed=carte.slots[key].revele_a==='tous';
+      carte.slots[key].revele_a=isRevealed?'aucun':'tous';
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+        method:'POST',
+        headers:{...SB.headers,'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({id:FICHE_ID, carte})
+      });
+      this.carteSlots=carte.slots;
+      btnEl.classList.toggle('on', !isRevealed);
+      btnEl.textContent=!isRevealed?'Révélé aux joueurs':'Révéler aux joueurs';
+    }catch(e){ console.error('Erreur révélation événement', e); }
+  },
+
+  backToAxes(){
+    document.getElementById('occulte-step-axes').style.display='block';
+    document.getElementById('occulte-step-results').style.display='none';
+  }
+};
+
 </script>
 </body>
 </html>

@@ -273,6 +273,9 @@ const COULEURS = [
   {hex:'#4a7a8a', name:'Lapis'}
 ];
 
+// ── Noms des axes de l'octogone (index 0 = axe 1, etc.) ──
+const AXES_NOMS = ['Feu','Bile Jaune','Terre','Bile Noire','Eau','Flegme','Air','Sang'];
+
 // ── État ──
 let authenticated = false, isGM = false;
 let playerId = ''; // identifiant fiche du joueur connecté
@@ -776,10 +779,53 @@ function openSector(key,ci,si){
     revRow.appendChild(btnTous); revRow.appendChild(btnAucun); revRow.appendChild(ficheInp);
     mjSec.body.appendChild(revRow);
 
-    // Lier à un axe octogone (futur)
-    const axeRow=document.createElement('div'); axeRow.style.cssText='margin-top:.4rem;font-size:.75rem;color:var(--ink3);';
-    axeRow.textContent='🔗 Liaison axe octogone : '+(slot.axe||'non définie');
+    // Lier à un ou plusieurs axes de l'octogone
+    const axeLabel=document.createElement('div'); axeLabel.style.cssText='margin-top:.5rem;font-size:.72rem;font-family:Cinzel,serif;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;';
+    axeLabel.textContent='🔗 Axes liés';
+    mjSec.body.appendChild(axeLabel);
+    const axeRow=document.createElement('div'); axeRow.style.cssText='display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.3rem;';
+    const linkedAxes=Array.isArray(slot.axes)?slot.axes:[];
+    AXES_NOMS.forEach((nom,idx)=>{
+      const num=idx+1;
+      const b=document.createElement('button');
+      b.type='button';
+      b.textContent=num;
+      b.title=nom;
+      const isOn=linkedAxes.includes(num);
+      b.style.cssText='width:26px;height:26px;border-radius:50%;border:1px solid '+(isOn?'var(--accent)':'var(--border)')+';background:'+(isOn?'#2a1a04':'var(--input-bg)')+';color:'+(isOn?'var(--accent)':'var(--ink3)')+';font-family:Cinzel,serif;font-size:.75rem;cursor:pointer;';
+      b.addEventListener('click',()=>{
+        ensureSlot(key);
+        if(!Array.isArray(state.slots[key].axes)) state.slots[key].axes=[];
+        const arr=state.slots[key].axes;
+        const i=arr.indexOf(num);
+        if(i>=0) arr.splice(i,1); else arr.push(num);
+        saveState();
+        openSector(key,ci,si); // rafraîchir le panneau
+      });
+      axeRow.appendChild(b);
+    });
     mjSec.body.appendChild(axeRow);
+
+    // Poids de l'événement (module la facilité de révélation via Occultation)
+    const poidsLabel=document.createElement('div'); poidsLabel.style.cssText='margin-top:.6rem;font-size:.72rem;font-family:Cinzel,serif;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;';
+    poidsLabel.textContent='⚖️ Poids (1 = anodin, 5 = capital)';
+    mjSec.body.appendChild(poidsLabel);
+    const poidsRow=document.createElement('div'); poidsRow.style.cssText='display:flex;gap:.3rem;margin-top:.3rem;';
+    const curPoids=slot.poids||1;
+    for(let p=1;p<=5;p++){
+      const pb=document.createElement('button');
+      pb.type='button'; pb.textContent=p;
+      const isOn=p===curPoids;
+      pb.style.cssText='width:28px;height:26px;border-radius:4px;border:1px solid '+(isOn?'var(--accent)':'var(--border)')+';background:'+(isOn?'#2a1a04':'var(--input-bg)')+';color:'+(isOn?'var(--accent)':'var(--ink3)')+';font-family:Cinzel,serif;font-size:.78rem;cursor:pointer;';
+      pb.addEventListener('click',()=>{
+        ensureSlot(key);
+        state.slots[key].poids=p;
+        saveState();
+        openSector(key,ci,si);
+      });
+      poidsRow.appendChild(pb);
+    }
+    mjSec.body.appendChild(poidsRow);
 
     content.appendChild(mjSec.section);
   } else if(visible){
@@ -890,7 +936,9 @@ function makeTA(val,placeholder){
 function autoResize(ta){ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; }
 
 function ensureSlot(key){
-  if(!state.slots[key]) state.slots[key]={titre:'',texte:'',niveau:1,revele_a:'aucun',image:null,axe:null};
+  if(!state.slots[key]) state.slots[key]={titre:'',texte:'',niveau:1,revele_a:'aucun',image:null,axes:[],poids:1};
+  if(!Array.isArray(state.slots[key].axes)) state.slots[key].axes=[];
+  if(!state.slots[key].poids) state.slots[key].poids=1;
 }
 function ensureHypo(key){
   if(!state.hypotheses[key]) state.hypotheses[key]={};
@@ -1109,11 +1157,16 @@ const EvtGen = {
     if(!this.targetKey||!this.currentText) return;
     ensureSlot(this.targetKey);
     const axeLabel=EVT_AXES.find(a=>a.id===this.selectedAxe).label;
+    const axeNum=EVT_AXES.find(a=>a.id===this.selectedAxe).num;
     state.slots[this.targetKey].titre=axeLabel+' — événement généré';
     state.slots[this.targetKey].texte=this.currentText;
     // Niveau de précision selon l'échelle : plus l'échelle est large, plus le fait est établi
     state.slots[this.targetKey].niveau=this.currentEchelle;
     state.slots[this.targetKey].revele_a='aucun';
+    // Lie automatiquement l'événement à l'axe qui l'a généré
+    state.slots[this.targetKey].axes=[axeNum];
+    // Poids par défaut proportionnel à l'échelle (un événement régional pèse plus lourd)
+    state.slots[this.targetKey].poids=this.currentEchelle*2-1; // 1=>1, 2=>3, 3=>5
     saveState();
     buildCarte();
     this.close();
