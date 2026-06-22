@@ -389,6 +389,15 @@ async function gmReset(){
   /* Zones de texte accordéon dans le panneau axe */
   .axis-section { margin-bottom:1rem; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
   .axis-section-title { font-family:'Cinzel',serif; font-size:.75rem; letter-spacing:.08em; color:var(--accent); text-transform:uppercase; padding:.5rem .75rem; background:var(--section-bg); border-bottom:1px solid var(--border2); display:flex; align-items:center; gap:.5rem; cursor:pointer; }
+  /* Événements liés à un axe */
+  .axis-event-item { padding:.5rem .6rem; border:1px solid var(--border2); border-radius:5px; margin-bottom:.4rem; background:#f8f4ee; }
+  .axis-event-title { font-family:'Cinzel',serif; font-size:.78rem; color:var(--accent); margin-bottom:.2rem; }
+  .axis-event-text { font-size:.83rem; color:var(--ink2); line-height:1.5; margin-bottom:.35rem; }
+  .axis-event-meta { font-size:.68rem; color:var(--ink3); display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+  .axis-event-carte-btn { font-family:'Cinzel',serif; font-size:.65rem; padding:2px 8px; border:1px solid var(--border); border-radius:3px; background:var(--input-bg); color:var(--ink2); cursor:pointer; }
+  .axis-event-carte-btn:hover { background:var(--border2); }
+  .axis-events-empty { font-size:.82rem; color:var(--ink3); font-style:italic; padding:.4rem .2rem; }
+  .axis-events-loading { font-size:.78rem; color:var(--ink3); padding:.4rem; }
   .axis-section-title .sec-toggle { font-size:.6rem; transition:transform .2s; }
   .axis-section-title .sec-toggle.open { transform:rotate(90deg); }
   .axis-section-body { max-height:0; overflow:hidden; transition:max-height .25s ease, opacity .2s; opacity:0; }
@@ -445,6 +454,17 @@ async function gmReset(){
   #xfer-notif h4 { font-family:'Cinzel',serif; color:var(--accent); font-size:.8rem; margin-bottom:.4rem; }
   .xfer-notif-btns { display:flex; gap:.5rem; margin-top:.6rem; }
   #xfer-fab { position:fixed; bottom:1.2rem; right:1.2rem; width:52px; height:52px; border-radius:50%; background:#3d342a; color:#f5f0e8; border:none; font-size:1.1rem; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.3); display:none; align-items:center; justify-content:center; z-index:190; transition:background .15s; }
+  #carte-env-fab { position:fixed; bottom:1.2rem; right:5.4rem; width:52px; height:52px; border-radius:50%; background:#1a6b4a; color:#f5f0e8; border:1px solid #2a9a6a; font-size:1.1rem; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.3); display:none; align-items:center; justify-content:center; z-index:190; transition:background .15s; }
+  #carte-env-fab:hover { background:#0a4a2a; }
+  #carte-env-fab.open { background:#0a3a1a; }
+  .carte-env-overlay { position:fixed; inset:0; background:rgba(26,21,16,0.88); display:none; align-items:center; justify-content:center; z-index:195; }
+  .carte-env-overlay.open { display:flex; }
+  .carte-env-box { background:#1a1208; border:1px solid #4a3218; border-radius:10px; width:96vw; height:92vh; max-width:820px; position:relative; box-shadow:0 8px 40px rgba(0,0,0,0.6); overflow:hidden; display:flex; flex-direction:column; }
+  .carte-env-header { display:flex; align-items:center; justify-content:space-between; padding:.5rem .8rem; background:#241a0c; border-bottom:1px solid #4a3218; flex-shrink:0; }
+  .carte-env-header-title { font-family:'Cinzel',serif; font-size:.82rem; color:#c8860a; letter-spacing:.08em; text-transform:uppercase; }
+  .carte-env-close { background:none; border:none; font-size:1.1rem; cursor:pointer; color:#888; padding:0 4px; }
+  .carte-env-close:hover { color:#f5f0e8; }
+  .carte-env-box iframe { flex:1; border:none; width:100%; background:#1a1208; }
   #xfer-fab:hover { background:#1a1510; }
   #xfer-fab.open { background:var(--accent); }
 
@@ -604,6 +624,16 @@ async function gmReset(){
         </div>
       </div>
     </div>
+    <!-- Zone événements depuis carte.html -->
+    <div class="axis-section" id="axis-events-section">
+      <div class="axis-section-title" onclick="toggleAxisSection('events')">
+        <span class="sec-toggle" id="sec-toggle-events">▶</span>
+        Événements
+      </div>
+      <div class="axis-section-body" id="axis-events-body">
+        <div id="axis-events-list" style="padding:.3rem 0;"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -667,7 +697,7 @@ async function gmReset(){
       <div class="pneumato-zone">
         <div class="pneumato-zone-title">Occultation</div>
         <div class="pneumato-btns" id="pneu-occultation-btns">
-          <button class="pneu-btn" onclick="OcculteGen.openAxisChooser()" style="width:auto;padding:0 .8rem;">
+          <button class="pneu-btn" id="btn-occultation-gm" onclick="OcculteGen.openAxisChooser()" style="width:auto;padding:0 .8rem;display:none;">
             <svg class="pneu-oct-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#6b5d4f" stroke-width="1.5"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/><circle cx="12" cy="12" r="3"/></svg>
             <span class="pneu-label">Percer le voile</span>
           </button>
@@ -753,6 +783,29 @@ async function gmReset(){
   </div>
 </div>
 <button id="xfer-fab" onclick="toggleXfer()" title="Transfert de jeton">↗</button>
+<button id="carte-env-fab" onclick="CarteEnvPanel.toggle()" title="Carte de l'environnement">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="10" stroke="#f5f0e8" stroke-width="1" opacity="0.8"/>
+    <circle cx="12" cy="12" r="7" stroke="#f5f0e8" stroke-width="0.8" opacity="0.7"/>
+    <circle cx="12" cy="12" r="4" stroke="#f5f0e8" stroke-width="0.8" opacity="0.6"/>
+    <circle cx="12" cy="12" r="1.5" fill="#f5f0e8" opacity="0.8"/>
+    <line x1="12" y1="2" x2="12" y2="22" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
+    <line x1="2" y1="12" x2="22" y2="12" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
+    <line x1="4.9" y1="4.9" x2="19.1" y2="19.1" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
+    <line x1="19.1" y1="4.9" x2="4.9" y2="19.1" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
+  </svg>
+</button>
+
+<!-- Panneau flottant Carte -->
+<div id="carte-env-overlay" class="carte-env-overlay">
+  <div class="carte-env-box">
+    <div class="carte-env-header">
+      <span class="carte-env-header-title">🗺️ Carte de l'environnement</span>
+      <button class="carte-env-close" onclick="CarteEnvPanel.close()">✕</button>
+    </div>
+    <iframe id="carte-env-iframe" src="about:blank" title="Carte"></iframe>
+  </div>
+</div>
 
 <script>
 const SUPABASE_URL = 'https://qyifamxfvswcglvrzduf.supabase.co';
@@ -1098,6 +1151,9 @@ function openAxisPanel(sec){
   // Ouvrir les deux sections
   setTimeout(()=>{ autoResizeTa(gmTa); autoResizeTa(plTa); },50);
 
+  // Section événements (chargée depuis carte.html via Supabase)
+  loadAxisEvents(sec.num);
+
   document.getElementById('axis-overlay').classList.add('open');
 }
 
@@ -1266,7 +1322,11 @@ async function doLoginWithPw(pw, tryGM){
         document.getElementById('modal-overlay').style.display='none';
         document.getElementById('app').style.display='block';
         document.getElementById('xfer-fab').style.display='flex';
-        if(tryGM) document.getElementById('gm-bar').style.display='flex';
+        document.getElementById('carte-env-fab').style.display='flex';
+        if(tryGM){
+          document.getElementById('gm-bar').style.display='flex';
+          document.getElementById('btn-occultation-gm').style.display='flex';
+        }
         // Charger d'abord l'état Supabase, PUIS initialiser l'UI
         if(row.etat&&Object.keys(row.etat).length>0){
           applyRemoteState(row.etat);
@@ -1553,6 +1613,103 @@ const OcculteGen = {
     document.getElementById('occulte-step-results').style.display='none';
   }
 };
+
+/* ── Panneau flottant Carte depuis Environnement ── */
+const CarteEnvPanel = {
+  toggle(){
+    const ol=document.getElementById('carte-env-overlay');
+    if(ol.classList.contains('open')){ this.close(); return; }
+    const iframe=document.getElementById('carte-env-iframe');
+    if(!iframe.getAttribute('data-loaded')){
+      const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
+      const pw=isGM?(state.envFichePwGM||''):(state.envFichePw||'');
+      let url=base+'carte.html?fiche='+encodeURIComponent(FICHE_ID);
+      if(pw) url+='&pw='+encodeURIComponent(pw)+(isGM?'&gm=1':'');
+      iframe.src=url;
+      iframe.setAttribute('data-loaded','1');
+    }
+    ol.classList.add('open');
+    document.getElementById('carte-env-fab').classList.add('open');
+  },
+  openToSector(key){
+    const ol=document.getElementById('carte-env-overlay');
+    const iframe=document.getElementById('carte-env-iframe');
+    const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
+    const pw=isGM?(state.envFichePwGM||''):(state.envFichePw||'');
+    let url=base+'carte.html?fiche='+encodeURIComponent(FICHE_ID)+'&sector='+encodeURIComponent(key);
+    if(pw) url+='&pw='+encodeURIComponent(pw)+(isGM?'&gm=1':'');
+    iframe.src=url;
+    iframe.setAttribute('data-loaded','1');
+    ol.classList.add('open');
+    document.getElementById('carte-env-fab').classList.add('open');
+  },
+  close(){
+    document.getElementById('carte-env-overlay').classList.remove('open');
+    document.getElementById('carte-env-fab').classList.remove('open');
+    document.getElementById('carte-env-iframe').removeAttribute('data-loaded');
+  }
+};
+
+/* ── Événements liés à un axe (depuis carte.html via Supabase) ── */
+const AXIS_NOMS_ENV=['Feu','Bile Jaune','Terre','Bile Noire','Eau','Flegme','Air','Sang'];
+const NIVEAU_LABELS=['Rumeur','Indice','Fait établi'];
+
+async function loadAxisEvents(axeNum){
+  const list=document.getElementById('axis-events-list');
+  list.innerHTML='<div class="axis-events-loading">Chargement des événements…</div>';
+  // Ouvrir automatiquement la section
+  const body=document.getElementById('axis-events-body');
+  const tog=document.getElementById('sec-toggle-events');
+  if(body) body.classList.add('open');
+  if(tog) tog.classList.add('open');
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=carte`,{headers:SB.headers});
+    const d=await r.json();
+    const slots=d[0]?.carte?.slots||{};
+    // Filtrer les événements liés à cet axe ET révélés (ou MJ)
+    const events=Object.entries(slots).filter(([key,slot])=>{
+      if(!slot||(!slot.titre&&!slot.texte)) return false;
+      const axes=Array.isArray(slot.axes)?slot.axes:[];
+      if(!axes.includes(axeNum)) return false;
+      if(isGM) return true;
+      // Joueur : seulement si révélé
+      const ra=slot.revele_a;
+      return ra==='tous'||(Array.isArray(ra)&&ra.length>0);
+    });
+    renderAxisEvents(list, events);
+  }catch(e){
+    list.innerHTML='<div class="axis-events-empty">Impossible de charger les événements.</div>';
+  }
+}
+
+function renderAxisEvents(list, events){
+  list.innerHTML='';
+  if(!events.length){
+    list.innerHTML='<div class="axis-events-empty">Aucun événement lié à cet axe.</div>';
+    return;
+  }
+  events.forEach(([key,slot])=>{
+    const item=document.createElement('div');
+    item.className='axis-event-item';
+    const niv=slot.niveau?NIVEAU_LABELS[slot.niveau-1]||'':'' ;
+    const poids=slot.poids?` · Poids ${slot.poids}`:'';
+    const axes=(slot.axes||[]).map(n=>AXIS_NOMS_ENV[n-1]||n).join(', ');
+    item.innerHTML=`
+      <div class="axis-event-title">${slot.titre||'(sans titre)'}</div>
+      <div class="axis-event-text">${slot.texte||''}</div>
+      <div class="axis-event-meta">
+        ${niv?`<span>${niv}</span>`:''}
+        ${axes?`<span>Axes : ${axes}</span>`:''}
+        ${poids?`<span>${poids}</span>`:''}
+        <button class="axis-event-carte-btn" data-key="${key}">🗺️ Voir sur la carte</button>
+      </div>`;
+    item.querySelector('.axis-event-carte-btn').addEventListener('click',()=>{
+      closeAxisPanel();
+      CarteEnvPanel.openToSector(key);
+    });
+    list.appendChild(item);
+  });
+}
 
 </script>
 </body>

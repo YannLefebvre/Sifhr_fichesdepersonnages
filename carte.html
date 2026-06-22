@@ -305,11 +305,26 @@ document.getElementById('modal-pw').addEventListener('keydown',e=>{ if(e.key==='
 // Permet de passer directement de octogone.html à carte.html sans ressaisir le mot de passe
 (function tryAutoLogin(){
   const autoPw = params.get('pw');
+  const autoSector = params.get('sector');
   if(autoPw){
     const autoGM = params.get('gm')==='1';
     const autoPid = params.get('pid')||'';
     if(autoPid) document.getElementById('modal-player-id').value=autoPid;
-    setTimeout(()=>doLoginWithPw(autoPw, autoGM, autoPid), 50);
+    // Après connexion, ouvrir automatiquement le secteur demandé si présent
+    setTimeout(()=>{
+      doLoginWithPw(autoPw, autoGM, autoPid).then(()=>{
+        if(autoSector){
+          // Attendre que la carte soit construite
+          setTimeout(()=>{
+            const parts=autoSector.split('_');
+            if(parts.length===2){
+              const ci=parseInt(parts[0]), si=parseInt(parts[1]);
+              openSector(autoSector, ci, si);
+            }
+          }, 400);
+        }
+      });
+    }, 50);
   }
 })();
 
