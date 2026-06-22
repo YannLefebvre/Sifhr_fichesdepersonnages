@@ -216,6 +216,66 @@
     transition:background .15s;
   }
   .apt-picker-toggle:hover { background:#ebebeb; }
+
+  /* ── Grille de boutons aptitude ── */
+  .apt-btn-grid { display:flex; flex-direction:column; gap:4px; margin:.4rem 0 .6rem; }
+  .apt-btn {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:6px 9px; border-radius:6px; border:1px solid #e0e0d8;
+    background:#f9f9f5; cursor:pointer; font-size:.8rem; color:#3d342a;
+    transition:background .12s;
+  }
+  .apt-btn:hover { background:#f0ede6; }
+  .apt-btn.selected { background:#e6f1fb; border-color:#185FA5; color:#185FA5; font-weight:600; }
+  .apt-btn:disabled { opacity:.35; cursor:not-allowed; }
+  .apt-btn-score {
+    font-family:'Cinzel',serif; font-size:.7rem; padding:1px 7px;
+    border-radius:10px; background:#e8e4dc; color:#666;
+  }
+  .apt-btn.selected .apt-btn-score { background:#185FA5; color:#fff; }
+
+  /* ── Sélecteur unifié valeurs de réussite ── */
+  .dsuccess-unified { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin:.2rem 0; }
+  .dsuccess-unified-btn {
+    height:36px; border-radius:7px; border:1.5px solid #e0e0d8;
+    background:#f9f9f5; cursor:pointer; font-size:.85rem; font-family:'Cinzel',serif;
+    color:#3d342a; transition:background .12s, border-color .12s;
+    display:flex; align-items:center; justify-content:center; position:relative;
+  }
+  .dsuccess-unified-btn:hover { background:#f0ede6; }
+  .dsuccess-unified-btn.sel1 { background:var(--accent); border-color:var(--accent); color:#f5f0e8; }
+  .dsuccess-unified-btn.sel2 { background:#1a4a6e; border-color:#1a4a6e; color:#f5f0e8; }
+  .dsuccess-unified-btn .dsucc-badge {
+    position:absolute; top:-6px; right:-4px; font-size:.55rem;
+    font-family:'Cinzel',serif; padding:1px 4px; border-radius:8px;
+    color:#fff; display:none;
+  }
+  .dsuccess-unified-btn.sel1 .dsucc-badge { display:block; background:var(--accent); content:'1'; }
+  .dsuccess-unified-btn.sel2 .dsucc-badge { display:block; background:#1a4a6e; content:'2'; }
+  .dsuccess-hint { font-family:'Crimson Text',serif; font-style:italic; font-size:.72rem; color:#aaa; font-weight:400; }
+
+  /* ── Pavé numérique universel ── */
+  #dval-keypad-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:500; align-items:center; justify-content:center; }
+  #dval-keypad-overlay.open { display:flex; }
+  #dval-keypad-box {
+    background:var(--bg); border-radius:10px; padding:1.1rem 1.2rem;
+    box-shadow:0 6px 30px rgba(0,0,0,0.35); min-width:220px;
+  }
+  .dval-keypad-label {
+    font-family:'Cinzel',serif; font-size:.72rem; color:var(--accent);
+    letter-spacing:.05em; text-align:center; margin-bottom:.6rem;
+  }
+  .dval-keypad-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:.7rem; }
+  .dval-keypad-btn {
+    height:40px; border-radius:7px; border:1.5px solid #e0e0d8;
+    background:#f9f9f5; cursor:pointer; font-size:.9rem; font-family:'Cinzel',serif;
+    color:#3d342a; transition:background .12s;
+  }
+  .dval-keypad-btn:hover { background:#f0ede6; }
+  .dval-keypad-cancel {
+    width:100%; padding:5px; border:1px solid #e0e0d8; border-radius:6px;
+    background:#fff; cursor:pointer; font-size:.75rem; color:#888;
+  }
   .apt-picker-list {
     display:flex; flex-direction:column; gap:3px;
     margin:0 0 .6rem 0; padding:.4rem; background:#fff;
@@ -1111,11 +1171,9 @@ async function xferSend(){
     if(!d||!d.length){ errEl.textContent='Fiche introuvable.'; return; }
   } catch(e){ errEl.textContent='Erreur réseau.'; return; }
 
-  // Retirer le jeton de la fiche expéditrice
+  // Le jeton reste sur la fiche expéditrice pendant l'attente de réponse
+  // Il ne sera retiré que si le destinataire accepte
   const {sectorId,idx,color}=xferSelected;
-  state.tokens[sectorId][idx]='empty';
-  renderToken(sectorId,idx);
-  updateSectorLane(sectorId);
 
   // Écrire la demande dans la colonne etat de la fiche cible
   // On lit d'abord l'état cible, on y insère la demande
@@ -1124,7 +1182,7 @@ async function xferSend(){
     const r2=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(target)}&select=etat`,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
     const d2=await r2.json();
     const targetEtat=d2[0]?.etat||{};
-    targetEtat._xferRequest={from:FICHE_ID,sectorId,color,ts:Date.now()};
+    targetEtat._xferRequest={from:FICHE_ID,sectorId,idx,color,ts:Date.now()};
     await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
       method:'POST',
       headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
@@ -1193,10 +1251,11 @@ function xferShowNotif(req){
 
 function xferAccept(){
   if(!xferPending) return;
-  const {sectorId,color,from}=xferPending;
+  const {sectorId,color,from,idx}=xferPending;
   addToken(sectorId,color);
   saveState();
-  xferSendResponse(from,sectorId,color,'accepted');
+  // Notifier l'expéditeur : accepté → il doit retirer son jeton
+  xferSendResponse(from,sectorId,idx,color,'accepted');
   xferClearRequest();
   document.getElementById('xfer-notif').style.display='none';
   xferPending=null;
@@ -1204,20 +1263,28 @@ function xferAccept(){
 
 function xferRefuse(){
   if(!xferPending) return;
-  const {sectorId,color,from}=xferPending;
-  xferSendResponse(from,sectorId,color,'refused');
+  const {sectorId,color,from,idx}=xferPending;
+  // Notifier l'expéditeur : refusé → il garde son jeton (rien à retirer)
+  xferSendResponse(from,sectorId,idx,color,'refused');
   xferClearRequest();
   document.getElementById('xfer-notif').style.display='none';
   xferPending=null;
 }
 
 // Écrit un retour dans la fiche de l'expéditeur, pour qu'il soit notifié de la décision
-async function xferSendResponse(senderFicheId,sectorId,color,decision){
+async function xferSendResponse(senderFicheId,sectorId,idx,color,decision){
   try {
     const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(senderFicheId)}&select=etat`,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
     const d=await r.json();
     const senderEtat=d[0]?.etat||{};
-    senderEtat._xferResponse={by:FICHE_ID,sectorId,color,decision,ts:Date.now()};
+    senderEtat._xferResponse={by:FICHE_ID,sectorId,idx,color,decision,ts:Date.now()};
+    // Si accepté : retirer le jeton de la fiche expéditrice
+    if(decision==='accepted'){
+      if(!senderEtat.tokens) senderEtat.tokens={};
+      if(senderEtat.tokens[sectorId]){
+        senderEtat.tokens[sectorId][idx]='empty';
+      }
+    }
     await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
       method:'POST',
       headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
@@ -1308,12 +1375,9 @@ async function xferClearRequest(){
       <div class="setup-card" id="dice-setup">
         <div class="setup-row apt-picker-row">
           <span class="color-dot dot-white"></span>
-          <span class="setup-label">Dés blancs — aptitude</span>
-          <button class="apt-picker-toggle" id="apt-picker-toggle" onclick="dToggleAptPicker()">
-            <span id="apt-picker-current">Choisir…</span> ▾
-          </button>
+          <span class="setup-label">Aptitude</span>
         </div>
-        <div id="apt-picker-list" class="apt-picker-list" style="display:none;"></div>
+        <div id="apt-btn-grid" class="apt-btn-grid"></div>
         <div class="setup-row">
           <span class="color-dot dot-red"></span>
           <span class="setup-label">Dés rouges — souffle</span>
@@ -1326,17 +1390,8 @@ async function xferClearRequest(){
         <p class="dred-message" id="dred-message"></p>
       </div>
       <div class="setup-card" id="dsuccess-setup">
-        <p class="dsuccess-question">Quelles sont les valeurs de réussite choisies ?</p>
-        <div class="dsuccess-row">
-          <div class="dsuccess-field">
-            <span class="dsuccess-label">1ère valeur</span>
-            <div class="dsuccess-picker" id="dsuccess-picker1"></div>
-          </div>
-          <div class="dsuccess-field">
-            <span class="dsuccess-label">2ème valeur</span>
-            <div class="dsuccess-picker" id="dsuccess-picker2"></div>
-          </div>
-        </div>
+        <p class="dsuccess-question">Valeurs de réussite <span id="dsuccess-hint" class="dsuccess-hint">(choisissez 1 ou 2 valeurs)</span></p>
+        <div id="dsuccess-unified" class="dsuccess-unified"></div>
         <div class="dbm-row">
           <div class="dbm-group">
             <span class="dbm-group-label">Bonus</span>
@@ -2455,9 +2510,7 @@ function applyRemoteState(saved){
       state.dice=saved.dice;
       if(dCurrentRole){
         const s=dS();
-        if(s._aptKey && APT_LABELS[s._aptKey]!==undefined){
-          document.getElementById('apt-picker-current').textContent=`${APT_LABELS[s._aptKey]} (${s.whites||0})`;
-        }
+        dRenderAptGrid();
         document.getElementById('dred-count').textContent=s.reds||0;
         dUpdateRedMessage(); dRenderLockExplanations();
         if(s.rolled){
@@ -2466,7 +2519,7 @@ function applyRemoteState(saved){
           document.getElementById('dreset-btn').style.display='block';
       const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
         }
-        dSyncSuccessInputs(); dSyncBonusMalus();
+        dSyncSuccessInputs(); dSyncBonusMalus(); dRenderAptGrid();
         dRenderDice(false);
         dComputeSuccesses(); dRenderLockExplanations();
       }
@@ -2586,11 +2639,7 @@ function selectDiceRole(role){
   if(role==='viewer') dLockControls();
   // Charger état actuel
   const s=dS();
-  if(s._aptKey && APT_LABELS[s._aptKey]!==undefined){
-    document.getElementById('apt-picker-current').textContent=`${APT_LABELS[s._aptKey]} (${s.whites||0})`;
-  } else {
-    document.getElementById('apt-picker-current').textContent='Choisir…';
-  }
+  dRenderAptGrid();
   // Appliquer le plancher de dés rouges imposé par les axes saturés
   const minReds=dCountSaturatedAxes();
   if((s.reds||0)<minReds) s.reds=minReds;
@@ -2620,18 +2669,19 @@ function selectDiceRole(role){
       });
     }
   }
-  dSyncSuccessInputs(); dSyncBonusMalus();
+  dSyncSuccessInputs(); dSyncBonusMalus(); dRenderAptGrid();
   dRenderDice(false);
   dComputeSuccesses(); dRenderLockExplanations();
   dStartRealtime();
 }
 
 function dLockControls(){
-  ['apt-picker-toggle','drb-minus','drb-plus','dlaunch-btn',
+  ['drb-minus','drb-plus','dlaunch-btn',
    'dbm-bonus-1','dbm-bonus-2','dbm-bonus-3','dbm-malus-1','dbm-malus-2','dbm-malus-3'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.disabled=true;
   });
-  dRenderSuccessPickers();
+  dRenderAptGrid();
+  dRenderSuccessUnified();
 }
 
 function dSetSync(st,lbl){
@@ -2664,9 +2714,7 @@ function dStartRealtime(){
           if(newEtat?.dice){
             state.dice=newEtat.dice;
             const s=dS();
-            if(s._aptKey && APT_LABELS[s._aptKey]!==undefined){
-              document.getElementById('apt-picker-current').textContent=`${APT_LABELS[s._aptKey]} (${s.whites||0})`;
-            }
+            dRenderAptGrid();
             document.getElementById('dred-count').textContent=s.reds||0;
             dUpdateRedMessage(); dRenderLockExplanations();
             if(s.rolled){
@@ -2675,7 +2723,7 @@ function dStartRealtime(){
               document.getElementById('dreset-btn').style.display='block';
       const dl=document.getElementById('dice-legend');if(dl)dl.style.display='block';
             }
-            dSyncSuccessInputs(); dSyncBonusMalus();
+            dSyncSuccessInputs(); dSyncBonusMalus(); dRenderAptGrid();
             dRenderDice(false);
             dComputeSuccesses(); dRenderLockExplanations();
           }
@@ -2714,21 +2762,22 @@ function aptitudeScore(ai){
   return filled;
 }
 
-function dToggleAptPicker(){
-  if(dCurrentRole!=='launcher') return;
-  const list=document.getElementById('apt-picker-list');
-  const isOpen=list.style.display!=='none';
-  if(isOpen){ list.style.display='none'; return; }
-  list.innerHTML='';
+function dRenderAptGrid(){
+  const grid=document.getElementById('apt-btn-grid');
+  if(!grid) return;
+  grid.innerHTML='';
+  const s=dS();
+  const isLauncher=dCurrentRole==='launcher';
   APTITUDE_KEYS.forEach((key,ai)=>{
     const score=aptitudeScore(ai);
-    const item=document.createElement('div');
-    item.className='apt-picker-item'+((dS().whites===score && dS()._aptKey===key)?' selected':'');
-    item.innerHTML=`<span>${APT_LABELS[key]}</span><span class="apt-picker-score">${score}</span>`;
-    item.addEventListener('click',()=>dSelectAptitude(key,score));
-    list.appendChild(item);
+    const selected=(s._aptKey===key);
+    const btn=document.createElement('button');
+    btn.className='apt-btn'+(selected?' selected':'');
+    btn.disabled=!isLauncher;
+    btn.innerHTML=`<span>${APT_LABELS[key]}</span><span class="apt-btn-score">${score}</span>`;
+    btn.addEventListener('click',()=>dSelectAptitude(key,score));
+    grid.appendChild(btn);
   });
-  list.style.display='flex';
 }
 
 function dSelectAptitude(key,score){
@@ -2736,9 +2785,8 @@ function dSelectAptitude(key,score){
   const s=dS();
   s.whites=score;
   s._aptKey=key;
-  document.getElementById('apt-picker-current').textContent=`${APT_LABELS[key]} (${score})`;
-  document.getElementById('apt-picker-list').style.display='none';
-  dInitDice(true); dRenderDice(false); dPushState();
+  dRenderAptGrid();
+  dInitDice(true); dRenderDice(false); dUpdateRedMessage(); dPushState();
 }
 
 // ── Saturation des axes : impose un minimum de dés rouges ──
@@ -3040,41 +3088,91 @@ function dGetSaturatedAxes(majority){
 // Valeurs de réussite choisies
 // ══════════════════════════════════════════════
 
-function dSelectSuccessVal(slot,val){
+function dClickSuccessUnified(val){
   if(dCurrentRole!=='launcher') return;
   const s=dS();
-  const other = slot===1 ? s.successVal2 : s.successVal1;
-  if(other===val) return; // une même valeur ne peut pas occuper les deux champs
-  const current = slot===1 ? s.successVal1 : s.successVal2;
-  const newVal = current===val ? null : val; // re-cliquer désélectionne
-  if(slot===1) s.successVal1=newVal; else s.successVal2=newVal;
-  dRenderSuccessPickers();
+  const v1=s.successVal1, v2=s.successVal2;
+  if(v1===val){
+    // Désélectionner val1 ; si val2 existe, le promouvoir en val1
+    s.successVal1=v2||null; s.successVal2=null;
+  } else if(v2===val){
+    s.successVal2=null;
+  } else if(v1===null){
+    s.successVal1=val;
+  } else if(v2===null){
+    s.successVal2=val;
+  } else {
+    // Les deux slots sont pris : remplacer val1 et décaler
+    s.successVal1=v2; s.successVal2=val;
+  }
+  dRenderSuccessUnified();
   dComputeSuccesses(); dRenderLockExplanations();
   dPushState();
 }
 
-function dRenderSuccessPickers(){
+function dRenderSuccessUnified(){
+  const container=document.getElementById('dsuccess-unified');
+  if(!container) return;
   const s=dS();
-  [1,2].forEach(slot=>{
-    const container=document.getElementById(`dsuccess-picker${slot}`);
-    if(!container) return;
-    container.innerHTML='';
-    const current = slot===1 ? s.successVal1 : s.successVal2;
-    const other = slot===1 ? s.successVal2 : s.successVal1;
-    for(let v=1; v<=8; v++){
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='dsuccess-pick-btn'+(current===v?' dsuccess-pick-active':'');
-      btn.textContent=v;
-      btn.disabled = (other===v) || dCurrentRole!=='launcher';
-      btn.addEventListener('click',()=>dSelectSuccessVal(slot,v));
-      container.appendChild(btn);
-    }
-  });
+  const v1=s.successVal1, v2=s.successVal2;
+  const isLauncher=dCurrentRole==='launcher';
+  container.innerHTML='';
+  for(let v=1;v<=8;v++){
+    const btn=document.createElement('button');
+    btn.type='button';
+    const isSel1=(v1===v), isSel2=(v2===v);
+    btn.className='dsuccess-unified-btn'+(isSel1?' sel1':isSel2?' sel2':'');
+    btn.disabled=!isLauncher;
+    const badge=document.createElement('span');
+    badge.className='dsucc-badge';
+    badge.textContent=isSel1?'①':isSel2?'②':'';
+    btn.textContent=v;
+    btn.appendChild(badge);
+    btn.addEventListener('click',()=>dClickSuccessUnified(v));
+    container.appendChild(btn);
+  }
+  // Mise à jour du hint
+  const hint=document.getElementById('dsuccess-hint');
+  if(hint){
+    if(v1!==null && v2!==null) hint.textContent=`${v1} et ${v2} sélectionnées`;
+    else if(v1!==null) hint.textContent=`${v1} sélectionnée — choisissez une 2e valeur`;
+    else hint.textContent='choisissez 1 ou 2 valeurs';
+  }
 }
 
 function dSyncSuccessInputs(){
-  dRenderSuccessPickers();
+  dRenderSuccessUnified();
+}
+
+// ══════════════════════════════════════════════
+// Pavé numérique universel (1-8)
+// ══════════════════════════════════════════════
+
+let dKeypadCallback=null;
+
+function dShowValueKeypad(label, callback){
+  dKeypadCallback=callback;
+  const lbl=document.getElementById('dval-keypad-label');
+  if(lbl) lbl.textContent=label||'Choisir une valeur';
+  const grid=document.getElementById('dval-keypad-grid');
+  if(grid){
+    grid.innerHTML='';
+    for(let v=1;v<=8;v++){
+      const btn=document.createElement('button');
+      btn.className='dval-keypad-btn';
+      btn.textContent=v;
+      btn.addEventListener('click',()=>{ dHideValueKeypad(); if(dKeypadCallback) dKeypadCallback(v); });
+      grid.appendChild(btn);
+    }
+  }
+  const overlay=document.getElementById('dval-keypad-overlay');
+  if(overlay) overlay.classList.add('open');
+}
+
+function dHideValueKeypad(){
+  const overlay=document.getElementById('dval-keypad-overlay');
+  if(overlay) overlay.classList.remove('open');
+  dKeypadCallback=null;
 }
 
 // ══════════════════════════════════════════════
@@ -3613,20 +3711,23 @@ function dMakeDieSVG(d,i,animate){
   // Champ de saisie directe : réservé aux dés Expertise/Maîtrise, et au cas obligatoire de la valeur 10
   const showInput = dCurrentRole==='launcher' && !isLocked && (specialKind==='expertise' || specialKind==='maitrise' || d.value===10);
   if(showInput){
-    const lineY=H-10;
-    const inputLine=document.createElementNS(ns,'line');
-    inputLine.setAttribute('x1',cx-18);inputLine.setAttribute('y1',lineY);
-    inputLine.setAttribute('x2',cx+18);inputLine.setAttribute('y2',lineY);
-    inputLine.setAttribute('stroke',inputLineColor);inputLine.setAttribute('stroke-width','0.8');
-    svg.appendChild(inputLine);
-    const fo=document.createElementNS(ns,'foreignObject');
-    fo.setAttribute('x',cx-18);fo.setAttribute('y',H-18);fo.setAttribute('width','36');fo.setAttribute('height','16');
-    const inp=document.createElement('input');
-    inp.type='number';inp.min=1;inp.max=10;
-    if(d.value!==null) inp.value=d.value;
-    inp.style.cssText=`width:100%;text-align:center;font-size:10px;border:none;background:transparent;color:${inputLineColor};outline:none;padding:0;`;
-    inp.addEventListener('change',()=>dSetVal(i,inp.value));
-    fo.appendChild(inp); svg.appendChild(fo);
+    // Zone cliquable en bas du dé — ouvre le pavé numérique universel
+    const tapRect=document.createElementNS(ns,'rect');
+    tapRect.setAttribute('x',cx-22);tapRect.setAttribute('y',H-20);
+    tapRect.setAttribute('width','44');tapRect.setAttribute('height','18');
+    tapRect.setAttribute('fill','transparent');tapRect.setAttribute('stroke','none');
+    tapRect.style.cursor='pointer';
+    const tapLabel=document.createElementNS(ns,'text');
+    tapLabel.setAttribute('x',cx);tapLabel.setAttribute('y',H-9);
+    tapLabel.setAttribute('text-anchor','middle');tapLabel.setAttribute('font-size','8');
+    tapLabel.setAttribute('fill',inputLineColor);tapLabel.setAttribute('font-family','-apple-system,sans-serif');
+    tapLabel.textContent=d.value!==null?`▸ ${d.value}`:'▸ fixer';
+    const kindLabel=specialKind==='expertise'?'Expertise':'Maîtrise';
+    const keypadLabel=d.value===10?'Résolution du 10':`${kindLabel} — dé #${i+1}`;
+    const dieIdx=i;
+    tapRect.addEventListener('click',()=>dShowValueKeypad(keypadLabel,(v)=>dSetVal(dieIdx,v)));
+    tapLabel.addEventListener('click',()=>dShowValueKeypad(keypadLabel,(v)=>dSetVal(dieIdx,v)));
+    svg.appendChild(tapRect); svg.appendChild(tapLabel);
   }
   return svg;
 }
@@ -3835,6 +3936,14 @@ function dTransferToOctogone(dieIdx){
   <line x1="4.9" y1="4.9" x2="19.1" y2="19.1" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
   <line x1="19.1" y1="4.9" x2="4.9" y2="19.1" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
 </svg></button>
+<!-- Pavé numérique universel (1-8) -->
+<div id="dval-keypad-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center;">
+  <div id="dval-keypad-box">
+    <p id="dval-keypad-label" class="dval-keypad-label"></p>
+    <div id="dval-keypad-grid" class="dval-keypad-grid"></div>
+    <button class="dval-keypad-cancel" onclick="dHideValueKeypad()">Annuler</button>
+  </div>
+</div>
 
 </body>
 </html>
