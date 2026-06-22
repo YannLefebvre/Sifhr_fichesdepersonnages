@@ -445,6 +445,7 @@
   .xfer-narrative-signification {
     font-size:.8rem; color:var(--ink3); margin:0; line-height:1.45;
   }
+  .xfer-feedback-refused { color:#8b2020; }
   .xfer-notif-btns { display:flex; gap:.5rem; margin-top:.6rem; }
   /* Bouton transfert inter-fiches */
   #xfer-fab {
@@ -1118,6 +1119,7 @@ async function xferSend(){
 
   // Écrire la demande dans la colonne etat de la fiche cible
   // On lit d'abord l'état cible, on y insère la demande
+  let senderNarrative=null;
   try {
     const r2=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(target)}&select=etat`,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
     const d2=await r2.json();
@@ -1128,10 +1130,32 @@ async function xferSend(){
       headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
       body:JSON.stringify({id:target,etat:targetEtat})
     });
+    // Narration côté expéditeur : modalité du geste, depuis sa propre perspective
+    if(typeof buildXferNarrative==='function'){
+      const targetTokens=(targetEtat.tokens && targetEtat.tokens[sectorId]) || ['empty','empty','empty'];
+      const targetWhites=targetTokens.filter(t=>t==='white').length;
+      const targetBlacks=targetTokens.filter(t=>t==='black').length;
+      const projected=Math.min(3,(color==='white'?targetWhites:targetBlacks)+1);
+      senderNarrative=buildXferNarrative({sectorId,color,score:projected,fromName:FICHE_ID,toName:target});
+    }
   } catch(e){ console.error('xferSend error',e); }
 
   saveState();
+  xferRenderSentNarrative(senderNarrative, target);
   xferShowStep(3);
+}
+
+// Affiche la modalité du geste côté expéditeur, juste après l'envoi
+function xferRenderSentNarrative(narrative, target){
+  const el=document.getElementById('xfer-step3-narrative');
+  if(!el) return;
+  if(narrative && narrative.modalite){
+    el.innerHTML=`<p class="xfer-narrative-modalite">${narrative.modalite}</p>`;
+    el.style.display='block';
+  } else {
+    el.innerHTML='';
+    el.style.display='none';
+  }
 }
 
 // Réception d'une demande de transfert
@@ -1169,18 +1193,62 @@ function xferShowNotif(req){
 
 function xferAccept(){
   if(!xferPending) return;
-  const {sectorId,color}=xferPending;
+  const {sectorId,color,from}=xferPending;
   addToken(sectorId,color);
   saveState();
+  xferSendResponse(from,sectorId,color,'accepted');
   xferClearRequest();
   document.getElementById('xfer-notif').style.display='none';
   xferPending=null;
 }
 
 function xferRefuse(){
+  if(!xferPending) return;
+  const {sectorId,color,from}=xferPending;
+  xferSendResponse(from,sectorId,color,'refused');
   xferClearRequest();
   document.getElementById('xfer-notif').style.display='none';
   xferPending=null;
+}
+
+// Écrit un retour dans la fiche de l'expéditeur, pour qu'il soit notifié de la décision
+async function xferSendResponse(senderFicheId,sectorId,color,decision){
+  try {
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(senderFicheId)}&select=etat`,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const senderEtat=d[0]?.etat||{};
+    senderEtat._xferResponse={by:FICHE_ID,sectorId,color,decision,ts:Date.now()};
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({id:senderFicheId,etat:senderEtat})
+    });
+  } catch(e){ console.error('xferSendResponse error',e); }
+}
+
+let xferLastResponseSeen=null;
+
+// Court feedback narratif côté expéditeur, à réception de la décision du destinataire
+const XFER_FEEDBACK_ACCEPTED = [
+  (t)=>`${t} accueille votre geste sans hésiter.`,
+  (t)=>`${t} referme la main sur ce que vous lui offrez — c'est accepté.`,
+  (t)=>`Un signe de tête de ${t} suffit : votre geste a été reçu.`
+];
+const XFER_FEEDBACK_REFUSED = [
+  (t)=>`${t} détourne le regard et décline votre geste.`,
+  (t)=>`${t} n'est pas prêt à recevoir cela — pas maintenant, pas ainsi.`,
+  (t)=>`D'un mouvement net, ${t} repousse ce que vous tentiez de lui transmettre.`
+];
+function xferShowResponseFeedback(resp){
+  const el=document.getElementById('xfer-step3-feedback');
+  if(!el) return;
+  const pool = resp.decision==='accepted' ? XFER_FEEDBACK_ACCEPTED : XFER_FEEDBACK_REFUSED;
+  const text = pool[Math.floor(Math.random()*pool.length)](resp.by);
+  el.innerHTML = `<p class="xfer-narrative-modalite${resp.decision==='refused'?' xfer-feedback-refused':''}">${text}</p>`;
+  el.style.display='block';
+  // Rafraîchir le statut affiché à l'étape 3, si elle est visible
+  const waitMsg=document.querySelector('#xfer-step3 p span');
+  if(waitMsg) waitMsg.textContent = resp.decision==='accepted' ? 'Jeton accepté.' : 'Jeton refusé.';
 }
 
 async function xferClearRequest(){
@@ -2412,6 +2480,23 @@ function applyRemoteState(saved){
       // Afficher la notification seulement si pas déjà affichée pour ce timestamp
       if(!xferPending||xferPending.ts!==req.ts){
         xferShowNotif(req);
+      }
+    }
+    if(saved._xferResponse){
+      const resp=saved._xferResponse;
+      if(typeof xferShowResponseFeedback==='function' && (!xferLastResponseSeen||xferLastResponseSeen!==resp.ts)){
+        xferLastResponseSeen=resp.ts;
+        xferShowResponseFeedback(resp);
+        // Nettoyer _xferResponse de notre propre fiche pour ne pas le rejouer
+        (async()=>{
+          try{
+            const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+            const d=await r.json();
+            const etat=d[0]?.etat||{};
+            delete etat._xferResponse;
+            await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:FICHE_ID,etat})});
+          }catch(e){}
+        })();
       }
     }
     if(saved.accordion){
@@ -3654,6 +3739,8 @@ function dTransferToOctogone(dieIdx){
         ✓ Jeton envoyé.<br>
         <span style="font-size:.8rem;color:var(--ink3);">En attente de réponse du destinataire…</span>
       </p>
+      <div id="xfer-step3-narrative" style="display:none;"></div>
+      <div id="xfer-step3-feedback" style="display:none;"></div>
       <div class="xfer-btn-row">
         <button class="xfer-btn primary" onclick="closeXfer()">Fermer</button>
       </div>
