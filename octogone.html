@@ -190,6 +190,7 @@
   }
   .lock-btn.locked { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
   .lock-btn:disabled { opacity:.2; cursor:not-allowed; }
+  .fix-btn { background:#f0ede6; border-color:#c8b89a; color:#6b5d4f; font-size:11px; }
   .ten-note { font-size:.6rem; color:#aaa; text-align:center; }
   .dlaunch-btn {
     width:100%; padding:9px; background:#fff; border:.5px solid #ddd;
@@ -3711,23 +3712,14 @@ function dMakeDieSVG(d,i,animate){
   // Champ de saisie directe : réservé aux dés Expertise/Maîtrise, et au cas obligatoire de la valeur 10
   const showInput = dCurrentRole==='launcher' && !isLocked && (specialKind==='expertise' || specialKind==='maitrise' || d.value===10);
   if(showInput){
-    // Zone cliquable en bas du dé — ouvre le pavé numérique universel
-    const tapRect=document.createElementNS(ns,'rect');
-    tapRect.setAttribute('x',cx-22);tapRect.setAttribute('y',H-20);
-    tapRect.setAttribute('width','44');tapRect.setAttribute('height','18');
-    tapRect.setAttribute('fill','transparent');tapRect.setAttribute('stroke','none');
-    tapRect.style.cursor='pointer';
+    // Juste afficher la valeur actuelle avec un indicateur visuel (le bouton est dans ctrl)
     const tapLabel=document.createElementNS(ns,'text');
     tapLabel.setAttribute('x',cx);tapLabel.setAttribute('y',H-9);
     tapLabel.setAttribute('text-anchor','middle');tapLabel.setAttribute('font-size','8');
     tapLabel.setAttribute('fill',inputLineColor);tapLabel.setAttribute('font-family','-apple-system,sans-serif');
-    tapLabel.textContent=d.value!==null?`▸ ${d.value}`:'▸ fixer';
-    const kindLabel=specialKind==='expertise'?'Expertise':'Maîtrise';
-    const keypadLabel=d.value===10?'Résolution du 10':`${kindLabel} — dé #${i+1}`;
-    const dieIdx=i;
-    tapRect.addEventListener('click',()=>dShowValueKeypad(keypadLabel,(v)=>dSetVal(dieIdx,v)));
-    tapLabel.addEventListener('click',()=>dShowValueKeypad(keypadLabel,(v)=>dSetVal(dieIdx,v)));
-    svg.appendChild(tapRect); svg.appendChild(tapLabel);
+    tapLabel.setAttribute('pointer-events','none');
+    tapLabel.textContent=d.value!==null?`= ${d.value}`:'— à fixer —';
+    svg.appendChild(tapLabel);
   }
   return svg;
 }
@@ -3767,6 +3759,18 @@ function dRenderDice(animate){
         const btnP=document.createElement('button'); btnP.className='adj-btn'; btnP.textContent='+'; btnP.disabled=!canAdj;
         if(canAdj) btnP.title=`→ ${adj[1]}`; btnP.onclick=()=>dAdjustDie(i,'plus');
         ctrl.appendChild(btnP);
+      }
+      // Bouton Fixer : pour dés Expertise, Maîtrise ou valeur 10
+      const needsFix = !d.locked && (special==='expertise' || special==='maitrise' || d.value===10);
+      if(needsFix){
+        const fixBtn=document.createElement('button');
+        fixBtn.className='adj-btn fix-btn';
+        fixBtn.textContent='✎';
+        fixBtn.title='Fixer la valeur';
+        const dieIdx=i;
+        const kindLabel=special==='expertise'?'Expertise':special==='maitrise'?'Maîtrise':'Résolution du 10';
+        fixBtn.onclick=()=>dShowValueKeypad(`${kindLabel} — dé #${dieIdx+1}`,(v)=>dSetVal(dieIdx,v));
+        ctrl.appendChild(fixBtn);
       }
       wrap.appendChild(ctrl);
     }
@@ -3937,7 +3941,7 @@ function dTransferToOctogone(dieIdx){
   <line x1="19.1" y1="4.9" x2="4.9" y2="19.1" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
 </svg></button>
 <!-- Pavé numérique universel (1-8) -->
-<div id="dval-keypad-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center;">
+<div id="dval-keypad-overlay">
   <div id="dval-keypad-box">
     <p id="dval-keypad-label" class="dval-keypad-label"></p>
     <div id="dval-keypad-grid" class="dval-keypad-grid"></div>
