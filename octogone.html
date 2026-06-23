@@ -3162,7 +3162,7 @@ function dShowValueKeypad(label, callback){
       const btn=document.createElement('button');
       btn.className='dval-keypad-btn';
       btn.textContent=v;
-      btn.addEventListener('click',()=>{ dHideValueKeypad(); if(dKeypadCallback) dKeypadCallback(v); });
+      btn.addEventListener('click',()=>{ const cb=dKeypadCallback; dHideValueKeypad(); if(cb) cb(v); });
       grid.appendChild(btn);
     }
   }
