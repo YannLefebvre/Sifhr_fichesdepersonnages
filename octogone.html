@@ -508,6 +508,43 @@
   }
   .xfer-feedback-refused { color:#8b2020; }
   .xfer-notif-btns { display:flex; gap:.5rem; margin-top:.6rem; }
+
+  /* ── Notification Occultation (jetons reçus après un 9) ── */
+  #occ-overlay {
+    position:fixed; inset:0; background:rgba(26,21,16,0.82);
+    display:none; align-items:center; justify-content:center; z-index:225;
+  }
+  #occ-overlay.open { display:flex; }
+  #occ-box {
+    background:var(--bg); border:2px solid var(--accent); border-radius:8px;
+    padding:1.5rem; max-width:400px; width:94vw; max-height:88vh; overflow-y:auto;
+    box-shadow:0 6px 32px rgba(0,0,0,0.5); position:relative;
+  }
+  #occ-box h3 { font-family:'Cinzel',serif; color:var(--accent); font-size:.95rem;
+    letter-spacing:.08em; margin-bottom:.4rem; }
+  .occ-intro { font-size:.82rem; color:var(--ink3); font-style:italic; margin-bottom:1rem; line-height:1.5; }
+  .occ-token-item { border:1px solid var(--border2); border-radius:6px; padding:.7rem .8rem;
+    margin-bottom:.6rem; background:var(--section-bg); }
+  .occ-token-head { display:flex; align-items:center; gap:.5rem; margin-bottom:.4rem; }
+  .occ-tok-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+  .occ-tok-dot.white { background:#f0ead8; border:1px solid #b8a88a; }
+  .occ-tok-dot.black { background:#1a1510; border:1px solid #6b5d4f; }
+  .occ-token-label { font-family:'Cinzel',serif; font-size:.8rem; color:var(--ink); }
+  .occ-token-narrative { font-size:.82rem; color:var(--ink2); line-height:1.5;
+    font-style:italic; margin:.3rem 0 .5rem; border-left:2px solid var(--border2); padding-left:.6rem; }
+  .occ-token-refuse { font-size:.72rem; color:var(--ink3); display:flex; align-items:center; gap:.5rem; }
+  .occ-refuse-btn { font-family:'Cinzel',serif; font-size:.68rem; padding:2px 8px;
+    border:1px solid #8b2020; border-radius:3px; background:none; color:#8b2020; cursor:pointer; }
+  .occ-refuse-btn:hover { background:#2a0808; }
+  .occ-refuse-btn:disabled { opacity:.4; cursor:not-allowed; }
+  .occ-refused-label { color:#8b2020; font-style:italic; }
+  .occ-btn-row { display:flex; gap:.5rem; margin-top:1rem; }
+  .occ-btn { flex:1; padding:.45rem; border:1px solid var(--border); border-radius:4px;
+    background:var(--input-bg); font-family:'Cinzel',serif; font-size:.75rem;
+    cursor:pointer; color:var(--ink2); letter-spacing:.04em; }
+  .occ-btn:hover { background:var(--border2); }
+  .occ-btn.primary { background:var(--accent); color:#f5f0e8; border-color:var(--accent); }
+  .occ-btn.primary:hover { background:#6e1a1a; }
   /* Bouton transfert inter-fiches */
   #xfer-fab {
     position:fixed; bottom:1.2rem; left:4.8rem;
@@ -733,22 +770,13 @@ function getEnvFicheId(){
 }
 function saveEnvFiche(){
   const val=document.getElementById('env-fiche-input').value.trim();
-  const pwPlayer=document.getElementById('env-fiche-pw').value;
-  const pwGM=document.getElementById('env-fiche-pw-gm').value;
   state.envFiche=val;
-  state.envFichePw=pwPlayer;
-  state.envFichePwGM=pwGM;
   saveState();
+  // Forcer le rechargement des iframes si elles étaient déjà ouvertes avec une autre fiche
   const envIframe=document.getElementById('env-iframe');
   const carteIframe=document.getElementById('carte-iframe');
   if(envIframe) envIframe.removeAttribute('data-loaded');
   if(carteIframe) carteIframe.removeAttribute('data-loaded');
-}
-// Construit le suffixe de connexion automatique selon le statut courant
-function buildAutoLoginParams(){
-  const pw=isGM?(state.envFichePwGM||''):(state.envFichePw||'');
-  if(!pw) return '';
-  return '&pw='+encodeURIComponent(pw)+(isGM?'&gm=1':'');
 }
 
 // ── Environnement ──
@@ -758,7 +786,7 @@ function toggleEnvPanel(){
   const iframe=document.getElementById('env-iframe');
   const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
   if(!iframe.getAttribute('data-loaded')){
-    iframe.src=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
+    iframe.src=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId());
     iframe.setAttribute('data-loaded','1');
   }
   ol.classList.add('open');
@@ -776,7 +804,7 @@ const CartePanel = {
     if(ol.classList.contains('open')){ this.close(); return; }
     const iframe=document.getElementById('carte-iframe');
     if(!iframe.getAttribute('data-loaded')){
-      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams()+'&pid='+encodeURIComponent(FICHE_ID);
+      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId());
       iframe.setAttribute('data-loaded','1');
     }
     ol.classList.add('open');
@@ -1541,10 +1569,6 @@ async function xferClearRequest(){
   <span class="gm-bar-label" style="margin-left:.6rem;">Environnement lié</span>
   <input id="env-fiche-input" type="text" placeholder="nom de la fiche environnement"
     style="width:140px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
-  <input id="env-fiche-pw" type="password" placeholder="mdp joueur" autocomplete="off"
-    style="width:90px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
-  <input id="env-fiche-pw-gm" type="password" placeholder="mdp meneur" autocomplete="off"
-    style="width:90px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
   <button class="gm-btn" onclick="saveEnvFiche()">Lier</button>
 </div>
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
@@ -1588,7 +1612,6 @@ const SB = {
 
 // ── Authentification ───────────────────────────
 let authenticated = false;
-let isGM = false;
 
 document.getElementById('modal-pw').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('modal-btn').click();
@@ -1612,7 +1635,6 @@ async function doLogin(tryGM){
         err.textContent = tryGM ? 'Mot de passe meneur incorrect.' : 'Mot de passe incorrect.';
       } else {
         authenticated = true;
-        isGM = tryGM;
         document.getElementById('modal-overlay').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         showDiceFab();
@@ -1869,7 +1891,7 @@ const NUM_TRAITS=10,SQ_PER_APTITUDE=6;
 let wheelRot=0;
 const NUM_EQUIPEMENT=6, NUM_ARTEFACTS=5;
 const NUM_CONFRERIE=4;
-let state={tokens:{},scores:{},aptitudes:{},envFiche:'',envFichePw:'',envFichePwGM:'',
+let state={tokens:{},scores:{},aptitudes:{},envFiche:'',
   traits:Array.from({length:NUM_TRAITS},()=>({title:'',text:''})),
   confrerie:Array.from({length:NUM_CONFRERIE},()=>({title:'',text:''})),
   equipement:Array.from({length:NUM_EQUIPEMENT},()=>({title:'',text:''})),
@@ -2453,16 +2475,6 @@ function applyRemoteState(saved){
       state.envFiche=saved.envFiche;
       const inp=document.getElementById('env-fiche-input');
       if(inp) inp.value=saved.envFiche||'';
-    }
-    if(saved.envFichePw!==undefined){
-      state.envFichePw=saved.envFichePw;
-      const inp=document.getElementById('env-fiche-pw');
-      if(inp) inp.value=saved.envFichePw||'';
-    }
-    if(saved.envFichePwGM!==undefined){
-      state.envFichePwGM=saved.envFichePwGM;
-      const inp=document.getElementById('env-fiche-pw-gm');
-      if(inp) inp.value=saved.envFichePwGM||'';
     }
     if(saved.tokens) Object.entries(saved.tokens).forEach(([sid,arr])=>{
       state.tokens[sid]=arr;
@@ -3590,6 +3602,8 @@ function dRollDice(){
     const curOcc=parseInt(occultationInput.value)||0;
     state.occultation=String(curOcc+nines);
     occultationInput.value=state.occultation;
+    // Déclencher la fenêtre d'occultation (jetons reçus + envoi vers env)
+    OccNotif.trigger(nines, s);
   }
   document.getElementById('dice-section-lbl').textContent='Dés';
   document.getElementById('dlaunch-btn').textContent='🎲 Lancer les dés libres';
@@ -3974,5 +3988,286 @@ function dTransferToOctogone(dieIdx){
   </div>
 </div>
 
+<!-- Fenêtre Occultation — jetons reçus après un 9 -->
+<div id="occ-overlay">
+  <div id="occ-box">
+    <h3>🌫️ Voile de l'Occultation</h3>
+    <p class="occ-intro" id="occ-intro-text"></p>
+    <div id="occ-tokens-list"></div>
+    <div class="occ-btn-row">
+      <button class="occ-btn primary" onclick="OccNotif.confirm()">Accepter tous les jetons restants</button>
+      <button class="occ-btn" onclick="OccNotif.close()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   MODULE OCCULTATION — Jetons reçus lors d'un 9 au lanceur
+   ══════════════════════════════════════════════════════════ */
+
+const OCC_SECTORS = [
+  {id:'feu',       num:1, label:'Feu'},
+  {id:'bile_jaune',num:2, label:'Bile Jaune'},
+  {id:'terre',     num:3, label:'Terre'},
+  {id:'bile_noire',num:4, label:'Bile Noire'},
+  {id:'eau',       num:5, label:'Eau'},
+  {id:'flegme',    num:6, label:'Flegme'},
+  {id:'air',       num:7, label:'Air'},
+  {id:'sang',      num:8, label:'Sang'}
+];
+
+// Clé EH_DATA : mapping id -> clé dans elements-humeurs-data.js
+const OCC_EH_KEY = {
+  feu:'feu', bile_jaune:'bile_jaune', terre:'terre', bile_noire:'bile_noire',
+  eau:'eau', flegme:'flegme', air:'air', sang:'sang'
+};
+
+const OccNotif = {
+  pending: [],   // [{axeId, polarite, narrative, refused}]
+  envEtat: null,
+
+  // Point d'entrée principal, appelé après chaque lancer
+  async trigger(nines, diceState){
+    if(nines<=0||!authenticated) return;
+    this.envEtat = await this.fetchEnvEtat();
+    const proposals = this.buildProposals(nines, diceState);
+    if(!proposals.length) return;
+    this.pending = proposals.map(p=>({...p, refused:false}));
+    this.render();
+    document.getElementById('occ-overlay').classList.add('open');
+  },
+
+  // Récupère l'état de la fiche d'environnement liée
+  async fetchEnvEtat(){
+    const envId = getEnvFicheId();
+    if(!envId||envId===FICHE_ID) return null;
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,{
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+      });
+      const d=await r.json();
+      return d[0]?.etat||null;
+    }catch(e){ return null; }
+  },
+
+  // Construit les propositions de jetons (un par 9 obtenu)
+  buildProposals(nines, s){
+    const redDice = s.dice.filter(d=>
+      (d.color==='red'||d.color==='black_token') && d.value>=1 && d.value<=8
+    );
+    const proposals = [];
+    const usedAxes = new Set();
+
+    for(let i=0; i<nines; i++){
+      let axe = null;
+      // Priorité : dés rouges pas encore utilisés
+      const availRed = redDice.filter(d=>!usedAxes.has(d.value));
+      if(availRed.length>0){
+        const chosen = availRed[Math.floor(Math.random()*availRed.length)];
+        axe = OCC_SECTORS.find(sec=>sec.num===chosen.value)||null;
+      }
+      // Fallback : axe majoritaire de l'environnement non encore utilisé
+      if(!axe&&this.envEtat){
+        axe = this.getMajorityAxis(usedAxes);
+      }
+      // Dernier recours : axe aléatoire
+      if(!axe){
+        const available = OCC_SECTORS.filter(sec=>!usedAxes.has(sec.num));
+        if(available.length) axe = available[Math.floor(Math.random()*available.length)];
+      }
+      if(!axe) continue;
+      usedAxes.add(axe.num);
+      const polarite = this.computePolarite(axe, s);
+      const narrative = this.getNarrative(axe, polarite, s);
+      proposals.push({axe, polarite, narrative});
+    }
+    return proposals;
+  },
+
+  // Trouve l'axe majoritaire (le plus de jetons) dans l'octogone d'environnement
+  getMajorityAxis(usedAxes){
+    if(!this.envEtat||!this.envEtat.tokens) return null;
+    let best = null, bestCount = 0;
+    OCC_SECTORS.forEach(sec=>{
+      if(usedAxes.has(sec.num)) return;
+      const arr = this.envEtat.tokens[sec.id]||[];
+      const count = arr.filter(t=>t==='white'||t==='black').length;
+      if(count>bestCount){ bestCount=count; best=sec; }
+    });
+    return best;
+  },
+
+  // Calcule la polarité du jeton selon les règles définies
+  computePolarite(axe, s){
+    // Regarder l'axe dans l'environnement
+    if(this.envEtat&&this.envEtat.tokens){
+      const arr = this.envEtat.tokens[axe.id]||[];
+      const whites = arr.filter(t=>t==='white').length;
+      const blacks = arr.filter(t=>t==='black').length;
+      if(whites>blacks) return 'white';
+      if(blacks>whites) return 'black';
+    }
+    // Égalité ou pas de données : regarder la majorité des dés du lancer
+    const whiteCount = s.dice.filter(d=>d.color==='white').length;
+    const redCount = s.dice.filter(d=>d.color==='red'||d.color==='black_token').length;
+    return whiteCount>=redCount ? 'white' : 'black';
+  },
+
+  // Génère le texte narratif depuis EH_DATA
+  getNarrative(axe, polarite, s){
+    if(typeof EH_DATA==='undefined') return '';
+    const key = OCC_EH_KEY[axe.id];
+    const data = EH_DATA[key];
+    if(!data) return '';
+    // Compter blancs/noirs dans le lancer pour construire la clé EH
+    const whites = s.dice.filter(d=>d.color==='white').length;
+    const reds = s.dice.filter(d=>d.color==='red'||d.color==='black_token').length;
+    const b = Math.min(3, whites);
+    const n = Math.min(3, reds);
+    const ehKey = `${b}b_${n}n`;
+    const text = data[ehKey]||data[Object.keys(data)[0]]||'';
+    return text;
+  },
+
+  // Rendu de la fenêtre
+  render(){
+    const ether = parseFloat(state.ether)||0;
+    document.getElementById('occ-intro-text').textContent =
+      `${this.pending.length} jeton${this.pending.length>1?'s':''} surgissent du voile de l'occultation. `+
+      `Vous pouvez en refuser chacun en dépensant 1 point d'éther (éther disponible : ${ether}).`;
+    const list = document.getElementById('occ-tokens-list');
+    list.innerHTML = '';
+    this.pending.forEach((item,idx)=>{
+      const div = document.createElement('div');
+      div.className = 'occ-token-item';
+      div.id = `occ-item-${idx}`;
+      div.innerHTML = `
+        <div class="occ-token-head">
+          <div class="occ-tok-dot ${item.polarite}"></div>
+          <span class="occ-token-label">${item.axe.label} — jeton ${item.polarite==='white'?'blanc':'noir'}</span>
+        </div>
+        <div class="occ-token-narrative">${item.narrative}</div>
+        <div class="occ-token-refuse">
+          <button class="occ-refuse-btn" id="occ-refuse-${idx}" onclick="OccNotif.refuse(${idx})">
+            Refuser (1 éther)
+          </button>
+          <span id="occ-refused-lbl-${idx}"></span>
+        </div>`;
+      list.appendChild(div);
+      this.updateRefuseBtn(idx);
+    });
+  },
+
+  updateRefuseBtn(idx){
+    const btn = document.getElementById(`occ-refuse-${idx}`);
+    const lbl = document.getElementById(`occ-refused-lbl-${idx}`);
+    if(!btn||!lbl) return;
+    const item = this.pending[idx];
+    const ether = parseFloat(state.ether)||0;
+    if(item.refused){
+      btn.style.display='none';
+      lbl.className='occ-refused-label';
+      lbl.textContent='Refusé — 1 éther dépensé';
+    } else {
+      btn.disabled = ether<1;
+      btn.title = ether<1 ? "Pas assez d'éther" : '';
+    }
+  },
+
+  refuse(idx){
+    const ether = parseFloat(state.ether)||0;
+    if(ether<1) return;
+    this.pending[idx].refused = true;
+    // Décrémenter l'éther
+    const newEther = Math.max(0, ether-1);
+    state.ether = String(newEther);
+    document.getElementById('ether-val').value = state.ether;
+    saveState();
+    // Rafraîchir l'interface
+    this.render();
+    // Re-afficher la mise à jour du compteur d'éther dans l'intro
+    document.getElementById('occ-intro-text').textContent =
+      `${this.pending.length} jeton${this.pending.length>1?'s':''} surgissent du voile de l'occultation. `+
+      `Vous pouvez en refuser chacun en dépensant 1 point d'éther (éther disponible : ${newEther}).`;
+  },
+
+  async confirm(){
+    const accepted = this.pending.filter(p=>!p.refused);
+    // 1. Appliquer les jetons acceptés sur l'octogone du joueur
+    accepted.forEach(p=>{
+      const tokens = state.tokens[p.axe.id];
+      if(!tokens) return;
+      // Trouver le premier emplacement vide
+      const emptyIdx = tokens.indexOf('empty');
+      if(emptyIdx>=0) tokens[emptyIdx] = p.polarite==='white'?'white':'black';
+    });
+    // Forcer le rendu de la roue
+    SECTORS.forEach(sec=>{
+      const arr = state.tokens[sec.id]||[];
+      arr.forEach((_,i)=>renderToken(sec.id,i));
+      updateSectorLane(sec.id);
+    });
+    rebuildLabels();
+    saveState();
+    // 2. Envoyer les jetons des dés rouges vers l'environnement
+    await this.pushTokensToEnv();
+    this.close();
+  },
+
+  // Envoie les jetons des dés rouges vers l'octogone d'environnement
+  async pushTokensToEnv(){
+    const envId = getEnvFicheId();
+    if(!envId||envId===FICHE_ID||!this.envEtat) return;
+    const s = dS();
+    const redDice = s.dice.filter(d=>
+      (d.color==='red'||d.color==='black_token') && d.value>=1 && d.value<=8
+    );
+    if(!redDice.length) return;
+    // Cloner l'état de l'env pour modification
+    const envTokens = JSON.parse(JSON.stringify(this.envEtat.tokens||{}));
+    // Initialiser les axes manquants
+    OCC_SECTORS.forEach(sec=>{
+      if(!envTokens[sec.id]) envTokens[sec.id]=['empty','empty','empty'];
+    });
+    let modified = false;
+    redDice.forEach(d=>{
+      const sec = OCC_SECTORS.find(s=>s.num===d.value);
+      if(!sec) return;
+      // Règle : envoyer seulement si env a moins de jetons sur cet axe que le joueur
+      const envArr = envTokens[sec.id]||[];
+      const playerArr = state.tokens[sec.id]||[];
+      const envCount = envArr.filter(t=>t!=='empty').length;
+      const playerCount = playerArr.filter(t=>t!=='empty').length;
+      if(envCount>=playerCount) return;
+      // Polarité : black_token → noir, red → blanc
+      const pol = d.color==='black_token'?'black':'white';
+      const emptyIdx = envArr.indexOf('empty');
+      if(emptyIdx<0) return;
+      envArr[emptyIdx] = pol;
+      envTokens[sec.id] = envArr;
+      modified = true;
+    });
+    if(!modified) return;
+    try{
+      const newEtat = {...this.envEtat, tokens:envTokens};
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+        method:'POST',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+          'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({id:envId, etat:newEtat})
+      });
+    }catch(e){ console.error('Erreur push env tokens:', e); }
+  },
+
+  close(){
+    document.getElementById('occ-overlay').classList.remove('open');
+    this.pending = [];
+    this.envEtat = null;
+  }
+};
+
+</script>
 </body>
 </html>
