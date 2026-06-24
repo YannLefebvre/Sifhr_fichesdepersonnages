@@ -171,6 +171,43 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);
 .evt-btn.accept{background:#2a5a3a;color:#e8f5e8;border-color:#3a7a4a;}
 .evt-btn.reject{background:#5a2a2a;color:#f5e8e8;border-color:#7a3a3a;}
 .evt-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  /* ── Bulle de prévisualisation ── */
+  #star-bubble{position:fixed;background:rgba(26,18,8,0.95);border:1px solid var(--accent);
+    border-radius:7px;padding:.6rem .8rem;max-width:260px;pointer-events:none;
+    z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.4);}
+  #star-bubble.open{display:block;}
+  .bubble-title{font-family:'Cinzel',serif;font-size:.82rem;color:var(--accent);
+    margin-bottom:.3rem;letter-spacing:.05em;}
+  .bubble-niveau{font-size:.68rem;font-family:'Cinzel',serif;letter-spacing:.05em;
+    margin-bottom:.25rem;}
+  .bubble-niveau.n1{color:#9a7a5a;font-style:italic;}
+  .bubble-niveau.n2{color:var(--accent);}
+  .bubble-niveau.n3{color:#c8e0f0;}
+  .bubble-text{font-size:.8rem;color:var(--ink2);line-height:1.4;}
+  .bubble-hint{font-size:.65rem;color:var(--ink3);margin-top:.4rem;font-style:italic;
+    border-top:1px solid var(--border2);padding-top:.3rem;}
+
+  /* ── Share panel amélioré ── */
+  #share-bar{position:fixed;top:3rem;right:0;z-index:48;
+    background:rgba(26,18,8,0.95);border:1px solid var(--border);
+    border-radius:6px 0 0 6px;padding:.6rem;min-width:240px;
+    display:none;flex-direction:column;gap:.4rem;}
+  #share-bar.open{display:flex;}
+  .share-section-title{font-family:'Cinzel',serif;font-size:.68rem;color:var(--accent);
+    letter-spacing:.06em;text-transform:uppercase;margin-bottom:.2rem;}
+  .share-player-row{display:flex;align-items:center;gap:.4rem;padding:.25rem 0;
+    border-bottom:1px solid var(--border2);}
+  .share-player-name{font-size:.78rem;color:var(--ink2);flex:1;}
+  .share-toggle-btn{font-family:'Cinzel',serif;font-size:.62rem;padding:2px 6px;
+    border:1px solid var(--border);border-radius:3px;background:var(--input-bg);
+    color:var(--ink3);cursor:pointer;white-space:nowrap;}
+  .share-toggle-btn.on{border-color:#3a7a4a;color:#5a9a6a;}
+  .share-toggle-btn.blocked{border-color:#7a3a2a;color:#c06050;}
+  .share-vis-btn{font-family:'Cinzel',serif;font-size:.62rem;padding:2px 6px;
+    border:1px solid var(--border);border-radius:3px;background:var(--input-bg);
+    color:var(--ink3);cursor:pointer;}
+  .share-vis-btn.on{border-color:var(--accent);color:var(--accent);}
 </style>
 </head>
 <body>
@@ -587,14 +624,15 @@ function buildOtherConstellations(){
 // ── Drag & Drop ──
 function setupStarInteraction(gEl,key){
   let dragging=false,startX=0,startY=0,startPos={};
+  let moved=false;
+  let tapTimer=null,lastTap=0;
   const pos=getMyPositions();
+  const MOVE_THRESHOLD=6; // px avant de considérer que c'est un drag
 
   const onStart=(ex,ey)=>{
-    if(currentMode==='link'){
-      handleLinkClick(key);return;
-    }
-    dragging=true;
-    startX=ex;startY=ey;
+    if(currentMode==='link'){ handleLinkClick(key); return; }
+    dragging=true; moved=false;
+    startX=ex; startY=ey;
     const p=pos[key]||initSlotPos(key);
     startPos={x:p.x,y:p.y};
     gEl.style.cursor='grabbing';
@@ -602,29 +640,100 @@ function setupStarInteraction(gEl,key){
   const onMove=(ex,ey)=>{
     if(!dragging) return;
     const dx=ex-startX,dy=ey-startY;
+    if(!moved&&Math.sqrt(dx*dx+dy*dy)<MOVE_THRESHOLD) return;
+    moved=true;
+    hideBubble();
     pos[key]={x:startPos.x+dx,y:startPos.y+dy};
     updateStarPos(gEl,key,pos[key]);
     updateLinksForKey(key);
   };
-  const onEnd=(ex,ey)=>{
+  const onEnd=()=>{
     if(!dragging) return;
     dragging=false;
     gEl.style.cursor='grab';
-    saveState();
+    if(moved) saveState();
   };
-  const onTap=(ex,ey)=>{ if(!dragging) openEvtPanel(key); };
 
-  // Mouse
-  gEl.addEventListener('mousedown',e=>{e.preventDefault();onStart(e.clientX,e.clientY);
-    const up=(ev)=>{onEnd(ev.clientX,ev.clientY);onTap(ev.clientX,ev.clientY);window.removeEventListener('mouseup',up);window.removeEventListener('mousemove',mv);};
+  // ── Survol souris → bulle ──
+  gEl.addEventListener('mouseenter',e=>{ if(!moved) showBubble(key,e.clientX,e.clientY); });
+  gEl.addEventListener('mousemove',e=>{ if(!moved) moveBubble(e.clientX,e.clientY); });
+  gEl.addEventListener('mouseleave',()=>hideBubble());
+
+  // ── Mouse : drag + clic simple ignoré en mode move/link, double-clic → panneau ──
+  gEl.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    onStart(e.clientX,e.clientY);
+    const up=(ev)=>{
+      onEnd();
+      window.removeEventListener('mouseup',up);
+      window.removeEventListener('mousemove',mv);
+    };
     const mv=(ev)=>onMove(ev.clientX,ev.clientY);
-    window.addEventListener('mouseup',up);window.addEventListener('mousemove',mv);
+    window.addEventListener('mouseup',up);
+    window.addEventListener('mousemove',mv);
   });
-  // Touch
-  gEl.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];onStart(t.clientX,t.clientY);},{passive:false});
-  gEl.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];onMove(t.clientX,t.clientY);},{passive:false});
-  gEl.addEventListener('touchend',e=>{e.preventDefault();onEnd(0,0);if(!dragging)openEvtPanel(key);},{passive:false});
+  gEl.addEventListener('dblclick',e=>{
+    e.preventDefault();
+    if(currentMode==='link') return;
+    hideBubble();
+    openEvtPanel(key);
+  });
+
+  // ── Touch : tap court → bulle, double-tap → panneau, long press → panneau ──
+  let touchTimer=null;
+  gEl.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    onStart(t.clientX,t.clientY);
+    // Long press → panneau complet
+    touchTimer=setTimeout(()=>{
+      if(!moved){ hideBubble(); openEvtPanel(key); }
+    },600);
+  },{passive:false});
+  gEl.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    clearTimeout(touchTimer);
+    const t=e.touches[0];
+    onMove(t.clientX,t.clientY);
+  },{passive:false});
+  gEl.addEventListener('touchend',e=>{
+    e.preventDefault();
+    clearTimeout(touchTimer);
+    onEnd();
+    if(!moved){
+      // Double-tap → panneau complet
+      const now=Date.now();
+      if(now-lastTap<350){ hideBubble(); openEvtPanel(key); lastTap=0; }
+      else{ lastTap=now; showBubble(key,startX,startY); }
+    }
+  },{passive:false});
 }
+
+// ── Bulle de prévisualisation ──
+function showBubble(key,cx,cy){
+  const slot=state.slots[key];
+  if(!slot||(currentMode==='link')) return;
+  const bubble=document.getElementById('star-bubble');
+  document.getElementById('bubble-title').textContent=slot.titre||'(sans titre)';
+  const niv=slot.niveau||1;
+  const nLabel=['Rumeur','Indice','Fait établi'][niv-1];
+  const nEl=document.getElementById('bubble-niveau');
+  nEl.textContent=nLabel; nEl.className='bubble-niveau n'+niv;
+  const txt=slot.texte||'';
+  document.getElementById('bubble-text').textContent=txt.length>120?txt.substring(0,120)+'…':txt;
+  moveBubble(cx,cy);
+  bubble.classList.add('open');
+}
+function moveBubble(cx,cy){
+  const bubble=document.getElementById('star-bubble');
+  if(!bubble.classList.contains('open')) return;
+  const margin=12,bw=270,bh=120;
+  let left=cx+margin,top=cy+margin;
+  if(left+bw>window.innerWidth) left=cx-bw-margin;
+  if(top+bh>window.innerHeight) top=cy-bh-margin;
+  bubble.style.left=left+'px'; bubble.style.top=top+'px';
+}
+function hideBubble(){document.getElementById('star-bubble').classList.remove('open');}
 
 function updateStarPos(gEl,key,pos){
   gEl.querySelectorAll('polygon').forEach(p=>p.setAttribute('points',starPath(pos.x,pos.y,state.slots[key]?.poids||1)));
@@ -673,28 +782,72 @@ function deleteLien(idx){
 
 // ── Partage ──
 function toggleSharePanel(){document.getElementById('share-bar').classList.toggle('open');buildSharePanel();}
+
 function buildSharePanel(){
   const list=document.getElementById('share-list');list.innerHTML='';
-  if(!isGM) return;
-  Object.entries(state.carte.players||{}).forEach(([pid,pdata])=>{
-    if(pid===playerId) return;
-    const item=document.createElement('div');item.className='share-player-item'+(pdata.shared?' active':'');
-    const dot=document.createElement('span');dot.className='share-dot';
-    const name=document.createElement('span');name.textContent=pid+(pdata.shared?' (partagé)':'');
-    item.appendChild(dot);item.appendChild(name);
-    item.addEventListener('click',()=>{
-      if(visiblePlayers.includes(pid))visiblePlayers=visiblePlayers.filter(p=>p!==pid);
-      else visiblePlayers.push(pid);
-      buildMap();buildSharePanel();
+  const players=state.carte.players||{};
+
+  if(isGM){
+    // Section MJ : voir/bloquer les cartes des joueurs
+    const t1=document.createElement('div');t1.className='share-section-title';t1.textContent='Cartes des joueurs';
+    list.appendChild(t1);
+    Object.entries(players).forEach(([pid,pdata])=>{
+      if(pid===playerId||pid==='__mj__') return;
+      const row=document.createElement('div');row.className='share-player-row';
+      const name=document.createElement('span');name.className='share-player-name';name.textContent=pid;
+      // Bouton visibilité (MJ voit ou non cette carte)
+      const visBtn=document.createElement('button');visBtn.className='share-vis-btn'+(visiblePlayers.includes(pid)?' on':'');
+      visBtn.textContent=visiblePlayers.includes(pid)?'👁 Visible':'👁 Masqué';
+      visBtn.addEventListener('click',()=>{
+        if(visiblePlayers.includes(pid)) visiblePlayers=visiblePlayers.filter(p=>p!==pid);
+        else visiblePlayers.push(pid);
+        buildMap();buildSharePanel();
+      });
+      // Bouton bloquer le partage de ce joueur (MJ peut empêcher un joueur de partager)
+      const blocked=pdata.shareBlocked||false;
+      const blockBtn=document.createElement('button');blockBtn.className='share-toggle-btn'+(blocked?' blocked':'');
+      blockBtn.textContent=blocked?'🔒 Bloqué':'Bloquer';
+      blockBtn.addEventListener('click',()=>{
+        if(!state.carte.players[pid]) return;
+        state.carte.players[pid].shareBlocked=!blocked;
+        saveState();buildSharePanel();
+      });
+      row.appendChild(name);row.appendChild(visBtn);row.appendChild(blockBtn);
+      list.appendChild(row);
     });
-    list.appendChild(item);
-  });
+  } else {
+    // Section joueur : voir les cartes des autres joueurs qui ont partagé
+    const t1=document.createElement('div');t1.className='share-section-title';t1.textContent='Cartes partagées';
+    list.appendChild(t1);
+    Object.entries(players).forEach(([pid,pdata])=>{
+      if(pid===playerId) return;
+      if(!pdata.shared) return; // pas partagé → invisible
+      const row=document.createElement('div');row.className='share-player-row';
+      const name=document.createElement('span');name.className='share-player-name';
+      name.textContent=pid==='__mj__'?'Meneur':pid;
+      const visBtn=document.createElement('button');visBtn.className='share-vis-btn'+(visiblePlayers.includes(pid)?' on':'');
+      visBtn.textContent=visiblePlayers.includes(pid)?'👁 Visible':'Afficher';
+      visBtn.addEventListener('click',()=>{
+        if(visiblePlayers.includes(pid)) visiblePlayers=visiblePlayers.filter(p=>p!==pid);
+        else visiblePlayers.push(pid);
+        buildMap();buildSharePanel();
+      });
+      row.appendChild(name);row.appendChild(visBtn);
+      list.appendChild(row);
+    });
+  }
 }
 
 function toggleMyShare(){
   if(!state.carte.players[playerId]) state.carte.players[playerId]={positions:{},liens:[],shared:false};
-  state.carte.players[playerId].shared=!state.carte.players[playerId].shared;
-  document.getElementById('btn-share-mine').classList.toggle('active',state.carte.players[playerId].shared);
+  const pdata=state.carte.players[playerId];
+  // Vérifier que le MJ n'a pas bloqué ce joueur
+  if(pdata.shareBlocked&&!isGM){
+    alert('Le meneur a désactivé le partage de votre carte.');return;
+  }
+  pdata.shared=!pdata.shared;
+  document.getElementById('btn-share-mine').classList.toggle('active',pdata.shared);
+  document.getElementById('btn-share-mine').textContent=pdata.shared?'Ne plus partager':'Partager ma carte';
   saveState();
 }
 
@@ -712,7 +865,11 @@ function openEvtPanel(key){
   if(isGM){
     const mjSec=makeSec('Informations du meneur','MJ');
     // Titre
-    const titreInp=makeInput('text',slot.titre||'','Titre court');
+    const titreLbl=document.createElement('div');
+    titreLbl.style.cssText='font-size:.72rem;font-family:Cinzel,serif;color:var(--accent);margin-bottom:.3rem;';
+    titreLbl.textContent='Titre';
+    mjSec.body.appendChild(titreLbl);
+    const titreInp=makeInput('text',slot.titre||'','Titre de l\'événement (affiché sur la carte)');
     titreInp.addEventListener('input',()=>{ensureSlot(key);state.slots[key].titre=titreInp.value;saveState();buildMap();});
     mjSec.body.appendChild(titreInp);
     // Niveau
@@ -1076,5 +1233,13 @@ function openGenerator(){
 }
 
 </script>
+
+<!-- Bulle prévisualisation étoile -->
+<div id="star-bubble">
+  <div class="bubble-title" id="bubble-title"></div>
+  <div class="bubble-niveau" id="bubble-niveau"></div>
+  <div class="bubble-text" id="bubble-text"></div>
+  <div class="bubble-hint">Double-clic / tap long pour ouvrir</div>
+</div>
 </body>
 </html>
