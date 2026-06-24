@@ -242,8 +242,8 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);
     <span class="ctrl-title">🌙 Carte</span>
     <button class="ctrl-btn" id="btn-mode-move" onclick="setMode('move')">✥ Déplacer</button>
     <button class="ctrl-btn" id="btn-mode-link" onclick="setMode('link')">— Relier</button>
-    <button class="ctrl-btn gm-only safe" id="btn-gen" onclick="openGenerator()">🎲 Générer</button>
-    <button class="ctrl-btn gm-only" id="btn-share-panel" onclick="toggleSharePanel()">👁 Cartes</button>
+    <button class="ctrl-btn gm-only" id="btn-gen" onclick="openGenerator()" style="display:none;">🎲 Générer</button>
+    <button class="ctrl-btn" id="btn-share-panel" onclick="toggleSharePanel()">👁 Cartes</button>
     <button class="ctrl-btn" id="btn-share-mine" onclick="toggleMyShare()">Partager ma carte</button>
     <span id="save-msg"></span>
   </div>
@@ -333,9 +333,8 @@ async function doLoginWithPw(pw,tryGM,pidOverride){
         document.getElementById('modal-overlay').style.display='none';
         document.getElementById('app').style.display='block';
         if(isGM){
-          document.querySelectorAll('.gm-only').forEach(el=>el.style.display='inline-flex'||'block');
+          document.querySelectorAll('.gm-only').forEach(el=>el.style.display='inline-block');
           document.getElementById('btn-gen').style.display='inline-block';
-          document.getElementById('btn-share-panel').style.display='inline-block';
         }
         if(row.carte&&Object.keys(row.carte).length>0) applyRemoteState(row.carte);
         else buildMap();
@@ -788,25 +787,29 @@ function buildSharePanel(){
   const players=state.carte.players||{};
 
   if(isGM){
-    // Section MJ : voir/bloquer les cartes des joueurs
+    // MJ : voir/bloquer toutes les cartes des joueurs
     const t1=document.createElement('div');t1.className='share-section-title';t1.textContent='Cartes des joueurs';
     list.appendChild(t1);
-    Object.entries(players).forEach(([pid,pdata])=>{
-      if(pid===playerId||pid==='__mj__') return;
+    const entries=Object.entries(players).filter(([pid])=>pid!==playerId&&pid!=='__mj__');
+    if(!entries.length){
+      const empty=document.createElement('div');empty.style.cssText='font-size:.75rem;color:var(--ink3);font-style:italic;padding:.2rem 0;';
+      empty.textContent='Aucun joueur connecté pour l\'instant.';list.appendChild(empty);
+    }
+    entries.forEach(([pid,pdata])=>{
       const row=document.createElement('div');row.className='share-player-row';
-      const name=document.createElement('span');name.className='share-player-name';name.textContent=pid;
-      // Bouton visibilité (MJ voit ou non cette carte)
+      const name=document.createElement('span');name.className='share-player-name';
+      name.textContent=pid+(pdata.shared?' ✓':'');
       const visBtn=document.createElement('button');visBtn.className='share-vis-btn'+(visiblePlayers.includes(pid)?' on':'');
-      visBtn.textContent=visiblePlayers.includes(pid)?'👁 Visible':'👁 Masqué';
+      visBtn.textContent=visiblePlayers.includes(pid)?'👁 Visible':'Afficher';
       visBtn.addEventListener('click',()=>{
         if(visiblePlayers.includes(pid)) visiblePlayers=visiblePlayers.filter(p=>p!==pid);
         else visiblePlayers.push(pid);
         buildMap();buildSharePanel();
       });
-      // Bouton bloquer le partage de ce joueur (MJ peut empêcher un joueur de partager)
       const blocked=pdata.shareBlocked||false;
       const blockBtn=document.createElement('button');blockBtn.className='share-toggle-btn'+(blocked?' blocked':'');
-      blockBtn.textContent=blocked?'🔒 Bloqué':'Bloquer';
+      blockBtn.textContent=blocked?'🔒':'Bloquer';
+      blockBtn.title=blocked?'Débloquer ce joueur':'Empêcher ce joueur de partager';
       blockBtn.addEventListener('click',()=>{
         if(!state.carte.players[pid]) return;
         state.carte.players[pid].shareBlocked=!blocked;
@@ -816,17 +819,21 @@ function buildSharePanel(){
       list.appendChild(row);
     });
   } else {
-    // Section joueur : voir les cartes des autres joueurs qui ont partagé
-    const t1=document.createElement('div');t1.className='share-section-title';t1.textContent='Cartes partagées';
+    // Joueur : voir toutes les constellations disponibles (partagées ou non = affiche le statut)
+    const t1=document.createElement('div');t1.className='share-section-title';t1.textContent='Constellations disponibles';
     list.appendChild(t1);
-    Object.entries(players).forEach(([pid,pdata])=>{
-      if(pid===playerId) return;
-      if(!pdata.shared) return; // pas partagé → invisible
+    const others=Object.entries(players).filter(([pid])=>pid!==playerId);
+    if(!others.length){
+      const empty=document.createElement('div');empty.style.cssText='font-size:.75rem;color:var(--ink3);font-style:italic;padding:.2rem 0;';
+      empty.textContent='Aucune constellation partagée pour l\'instant.';list.appendChild(empty);
+    }
+    others.forEach(([pid,pdata])=>{
+      if(!pdata.shared) return; // Uniquement les cartes partagées sont visibles aux joueurs
       const row=document.createElement('div');row.className='share-player-row';
       const name=document.createElement('span');name.className='share-player-name';
       name.textContent=pid==='__mj__'?'Meneur':pid;
       const visBtn=document.createElement('button');visBtn.className='share-vis-btn'+(visiblePlayers.includes(pid)?' on':'');
-      visBtn.textContent=visiblePlayers.includes(pid)?'👁 Visible':'Afficher';
+      visBtn.textContent=visiblePlayers.includes(pid)?'👁 Masquer':'Afficher';
       visBtn.addEventListener('click',()=>{
         if(visiblePlayers.includes(pid)) visiblePlayers=visiblePlayers.filter(p=>p!==pid);
         else visiblePlayers.push(pid);
