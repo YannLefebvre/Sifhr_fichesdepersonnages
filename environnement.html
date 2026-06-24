@@ -827,6 +827,7 @@ const SB = {
 // ── État ──
 let authenticated=false;
 let isGM=false;
+let playerId='joueur';
 let applyingRemote=false;
 
 const SECTORS=[
@@ -1304,7 +1305,7 @@ async function doLogin(tryGM){
   return doLoginWithPw(pwInput, tryGM);
 }
 
-async function doLoginWithPw(pw, tryGM){
+async function doLoginWithPw(pw, tryGM, resolvedPid){
   const err=document.getElementById('modal-err');
   err.textContent='';
   if(!pw){err.textContent='Saisis un mot de passe.';return;}
@@ -1319,6 +1320,10 @@ async function doLoginWithPw(pw, tryGM){
         err.textContent=tryGM?'Mot de passe meneur incorrect.':'Mot de passe incorrect.';
       } else {
         authenticated=true; isGM=tryGM;
+        // Utiliser l'identité vérifiée du joueur si fournie, sinon fallback
+        if(resolvedPid) playerId=resolvedPid;
+        else playerId=tryGM?'__mj__':'joueur';
+        if(!tryGM&&window._envLoginPw) window._playerPw=window._envLoginPw;
         document.getElementById('modal-overlay').style.display='none';
         document.getElementById('app').style.display='block';
         document.getElementById('xfer-fab').style.display='flex';
@@ -1345,10 +1350,26 @@ async function doLoginWithPw(pw, tryGM){
 // Permet de passer directement de octogone.html à environnement.html sans ressaisir le mot de passe
 (function tryAutoLogin(){
   const autoPw = params.get('pw');
+  const playerFiche = params.get('player_fiche');
+  const playerPw = params.get('player_pw');
   if(autoPw){
     const autoGM = params.get('gm')==='1';
-    // Léger délai pour laisser le DOM se stabiliser avant la tentative
-    setTimeout(()=>doLoginWithPw(autoPw, autoGM), 50);
+    setTimeout(async ()=>{
+      // Vérifier l'identité du joueur via sa propre fiche si fournie
+      let resolvedPid = null;
+      if(!autoGM && playerFiche && playerPw){
+        try{
+          const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(playerFiche)}&select=mot_de_passe`,{
+            headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+          });
+          const d=await r.json();
+          if(d[0]&&d[0].mot_de_passe===playerPw){
+            resolvedPid=playerFiche; // Identité joueur vérifiée
+          }
+        }catch(e){}
+      }
+      doLoginWithPw(autoPw, autoGM, resolvedPid);
+    }, 50);
   }
 })();
 
@@ -1616,16 +1637,25 @@ const OcculteGen = {
 
 /* ── Panneau flottant Carte depuis Environnement ── */
 const CarteEnvPanel = {
+  _buildUrl(base, sector){
+    const pw=isGM?(state.envFichePwGM||''):(state.envFichePw||'');
+    let url=base+'carte.html?fiche='+encodeURIComponent(FICHE_ID);
+    if(sector) url+='&sector='+encodeURIComponent(sector);
+    if(pw) url+='&pw='+encodeURIComponent(pw)+(isGM?'&gm=1':'');
+    // Transmettre l'identité du joueur pour sa constellation propre
+    if(!isGM&&playerId&&playerId!=='joueur'){
+      url+='&player_fiche='+encodeURIComponent(playerId);
+      if(window._playerPw) url+='&player_pw='+encodeURIComponent(window._playerPw);
+    }
+    return url;
+  },
   toggle(){
     const ol=document.getElementById('carte-env-overlay');
     if(ol.classList.contains('open')){ this.close(); return; }
     const iframe=document.getElementById('carte-env-iframe');
     if(!iframe.getAttribute('data-loaded')){
       const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
-      const pw=isGM?(state.envFichePwGM||''):(state.envFichePw||'');
-      let url=base+'carte.html?fiche='+encodeURIComponent(FICHE_ID);
-      if(pw) url+='&pw='+encodeURIComponent(pw)+(isGM?'&gm=1':'');
-      iframe.src=url;
+      iframe.src=this._buildUrl(base, null);
       iframe.setAttribute('data-loaded','1');
     }
     ol.classList.add('open');
@@ -1635,10 +1665,7 @@ const CarteEnvPanel = {
     const ol=document.getElementById('carte-env-overlay');
     const iframe=document.getElementById('carte-env-iframe');
     const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
-    const pw=isGM?(state.envFichePwGM||''):(state.envFichePw||'');
-    let url=base+'carte.html?fiche='+encodeURIComponent(FICHE_ID)+'&sector='+encodeURIComponent(key);
-    if(pw) url+='&pw='+encodeURIComponent(pw)+(isGM?'&gm=1':'');
-    iframe.src=url;
+    iframe.src=this._buildUrl(base, key);
     iframe.setAttribute('data-loaded','1');
     ol.classList.add('open');
     document.getElementById('carte-env-fab').classList.add('open');
