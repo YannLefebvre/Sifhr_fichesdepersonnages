@@ -616,7 +616,7 @@ function buildOtherConstellations(){
     if(!visiblePlayers.includes(pid)) return; // non sélectionnée dans le panneau
     const otherPos=pdata.positions||{};
 
-    // ── Étoiles de cet autre joueur (semi-transparentes) ──
+    // ── Étoiles de cet autre joueur (pleine opacité) ──
     Object.keys(state.slots).forEach(key=>{
       if(!isVisible(key)) return;
       const pos=otherPos[key];
@@ -625,7 +625,6 @@ function buildOtherConstellations(){
       const poids=slot.poids||1;
       const myCoul=(pdata.couleurs||{})[key]; // couleur de liaison de cet autre joueur
       const gEl=document.createElementNS(ns,'g');
-      gEl.setAttribute('opacity','0.45');
       gEl.setAttribute('pointer-events','none');
 
       const poly=document.createElementNS(ns,'polygon');
@@ -650,14 +649,17 @@ function buildOtherConstellations(){
         gEl.insertBefore(matchHalo,poly);
       }
 
-      // Petit label du joueur
-      const lbl=document.createElementNS(ns,'text');
-      lbl.setAttribute('x',pos.x);lbl.setAttribute('y',pos.y+(12+poids*5)+10);
-      lbl.setAttribute('text-anchor','middle');lbl.setAttribute('font-family','Cinzel,serif');
-      lbl.setAttribute('font-size','8');lbl.setAttribute('fill','#9a7a5a');
-      lbl.setAttribute('pointer-events','none');
-      lbl.textContent=pid==='__mj__'?'MJ':pid.substring(0,6);
-      gEl.appendChild(lbl);
+      // Titre de l'événement (plutôt que le nom du joueur)
+      if(slot.titre){
+        const lbl=document.createElementNS(ns,'text');
+        lbl.setAttribute('x',pos.x);lbl.setAttribute('y',pos.y+(12+poids*5)+12);
+        lbl.setAttribute('text-anchor','middle');lbl.setAttribute('font-family','Cinzel,serif');
+        lbl.setAttribute('font-size','9');lbl.setAttribute('fill','#d4b896');
+        lbl.setAttribute('pointer-events','none');
+        const titre=slot.titre.substring(0,20)+(slot.titre.length>20?'…':'');
+        lbl.textContent=titre;
+        gEl.appendChild(lbl);
+      }
 
       starG.appendChild(gEl);
     });
