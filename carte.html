@@ -600,14 +600,47 @@ function buildLinks(){
 
 function buildOtherConstellations(){
   const ns='http://www.w3.org/2000/svg';
-  const g=document.getElementById('layer-etoiles');
+  const starG=document.getElementById('layer-etoiles');
+  const lienG=document.getElementById('layer-liens');
+
   Object.entries(state.carte.players||{}).forEach(([pid,pdata])=>{
-    if(pid===playerId||!pdata.shared) return;
-    if(!visiblePlayers.includes(pid)&&!isGM) return;
-    // Liens de ce joueur
-    const lienG=document.getElementById('layer-liens');
+    if(pid===playerId) return;
+    if(!pdata.shared) return; // non partagée → invisible pour tous
+    if(!visiblePlayers.includes(pid)) return; // non sélectionnée dans le panneau
+    const otherPos=pdata.positions||{};
+
+    // ── Étoiles de cet autre joueur (semi-transparentes) ──
+    Object.keys(state.slots).forEach(key=>{
+      if(!isVisible(key)) return;
+      const pos=otherPos[key];
+      if(!pos) return;
+      const slot=state.slots[key];
+      const poids=slot.poids||1;
+      const myCoul=(pdata.couleurs||{})[key]; // couleur de liaison de cet autre joueur
+      const gEl=document.createElementNS(ns,'g');
+      gEl.setAttribute('opacity','0.45');
+      gEl.setAttribute('pointer-events','none');
+
+      const poly=document.createElementNS(ns,'polygon');
+      poly.setAttribute('points',starPath(pos.x,pos.y,poids));
+      poly.setAttribute('fill',myCoul!==undefined?COULEURS[myCoul].hex:'#c8a060');
+      gEl.appendChild(poly);
+
+      // Petit label du joueur
+      const lbl=document.createElementNS(ns,'text');
+      lbl.setAttribute('x',pos.x);lbl.setAttribute('y',pos.y+(12+poids*5)+10);
+      lbl.setAttribute('text-anchor','middle');lbl.setAttribute('font-family','Cinzel,serif');
+      lbl.setAttribute('font-size','8');lbl.setAttribute('fill','#9a7a5a');
+      lbl.setAttribute('pointer-events','none');
+      lbl.textContent=pid==='__mj__'?'MJ':pid.substring(0,6);
+      gEl.appendChild(lbl);
+
+      starG.appendChild(gEl);
+    });
+
+    // ── Liens de cet autre joueur ──
     (pdata.liens||[]).forEach(lien=>{
-      const posA=pdata.positions[lien.from];const posB=pdata.positions[lien.to];
+      const posA=otherPos[lien.from];const posB=otherPos[lien.to];
       if(!posA||!posB) return;
       const col=lien.couleurIdx!==undefined?COULEURS[lien.couleurIdx].hex:'#c8860a';
       const line=document.createElementNS(ns,'line');
@@ -615,6 +648,7 @@ function buildOtherConstellations(){
       line.setAttribute('x2',posB.x);line.setAttribute('y2',posB.y);
       line.setAttribute('stroke',col);line.setAttribute('stroke-width','1');
       line.setAttribute('opacity','0.35');line.setAttribute('stroke-dasharray','3,4');
+      line.setAttribute('pointer-events','none');
       lienG.appendChild(line);
     });
   });
