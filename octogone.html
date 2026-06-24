@@ -801,9 +801,9 @@ function toggleEnvPanel(){
   if(ol.classList.contains('open')){ closeEnvPanel(); return; }
   const iframe=document.getElementById('env-iframe');
   const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
-  if(!iframe.getAttribute('data-loaded')){
-    iframe.src=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
-    iframe.setAttribute('data-loaded','1');
+  const url=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
+  if(iframe.src!==url){
+    iframe.src=url;
   }
   ol.classList.add('open');
   document.getElementById('env-fab').classList.add('open');
@@ -819,9 +819,10 @@ const CartePanel = {
     const ol=document.getElementById('carte-overlay');
     if(ol.classList.contains('open')){ this.close(); return; }
     const iframe=document.getElementById('carte-iframe');
-    if(!iframe.getAttribute('data-loaded')){
-      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
-      iframe.setAttribute('data-loaded','1');
+    // Toujours reconstruire l'URL pour refléter les derniers paramètres (mots de passe, fiche)
+    const url=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
+    if(iframe.src!==url){
+      iframe.src=url;
     }
     ol.classList.add('open');
     document.getElementById('carte-fab').classList.add('open');
