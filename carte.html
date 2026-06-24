@@ -300,6 +300,7 @@ let currentMode='move'; // 'move' | 'link'
 let linkStart=null;     // slotKey en cours de liaison
 let visiblePlayers=[]; // players dont on affiche la constellation
 let selectedViewPlayer=null; // null = propre carte, sinon playerId
+let recognizedKeys=new Set(); // étoiles "reconnues" localement (tap court sur sa propre carte en mode comparaison)
 
 // ── Supabase ──
 const SB = {
@@ -529,21 +530,27 @@ function buildStars(){
     gEl.setAttribute('data-key',key);
     gEl.style.cursor=currentMode==='link'?'crosshair':'grab';
 
-    // Halo (sélection en mode lien)
+    // Opacité réduite de mes étoiles quand je compare avec un autre joueur
+    const inCompareMode=visiblePlayers.length>0;
+    const isRecognized=recognizedKeys.has(key);
+    const myOpacity=inCompareMode&&!isRecognized?'0.3':'0.92';
+
+    // Halo (sélection en mode lien ou reconnaissance)
     const halo=document.createElementNS(ns,'circle');
     halo.setAttribute('cx',pos.x);halo.setAttribute('cy',pos.y);
     halo.setAttribute('r',20+poids*4);halo.setAttribute('fill','none');
-    halo.setAttribute('stroke',myCoul!==undefined?COULEURS[myCoul].hex:'#c8860a');
-    halo.setAttribute('stroke-width','1');halo.setAttribute('opacity','0');
+    halo.setAttribute('stroke',isRecognized?'#f5e8c8':myCoul!==undefined?COULEURS[myCoul].hex:'#c8860a');
+    halo.setAttribute('stroke-width',isRecognized?'2':'1');
+    halo.setAttribute('opacity',isRecognized?'0.7':'0');
     halo.setAttribute('class','star-halo');
     gEl.appendChild(halo);
 
     // Étoile
     const poly=document.createElementNS(ns,'polygon');
     poly.setAttribute('points',starPath(pos.x,pos.y,poids));
-    poly.setAttribute('fill',myCoul!==undefined?COULEURS[myCoul].hex:'#e8d5a0');
+    poly.setAttribute('fill',isRecognized?'#f5e8c8':myCoul!==undefined?COULEURS[myCoul].hex:'#e8d5a0');
     poly.setAttribute('filter','url(#star-glow)');
-    poly.setAttribute('opacity','0.92');
+    poly.setAttribute('opacity',myOpacity);
     gEl.appendChild(poly);
 
     // Titre (si pas trop petit)
@@ -623,8 +630,25 @@ function buildOtherConstellations(){
 
       const poly=document.createElementNS(ns,'polygon');
       poly.setAttribute('points',starPath(pos.x,pos.y,poids));
-      poly.setAttribute('fill',myCoul!==undefined?COULEURS[myCoul].hex:'#c8a060');
+      poly.setAttribute('fill',myCoul!==undefined?COULEURS[myCoul].hex:'#e8d5a0');
+      poly.setAttribute('filter','url(#star-glow)');
       gEl.appendChild(poly);
+
+      // Halo doré si titre commun avec une de mes étoiles reconnues
+      const myMatchingKey=[...recognizedKeys].find(k=>
+        state.slots[k]&&state.slots[key]&&
+        state.slots[k].titre&&state.slots[key].titre&&
+        state.slots[k].titre.trim()===state.slots[key].titre.trim()
+      );
+      if(myMatchingKey){
+        const matchHalo=document.createElementNS(ns,'circle');
+        matchHalo.setAttribute('cx',pos.x);matchHalo.setAttribute('cy',pos.y);
+        matchHalo.setAttribute('r',(20+poids*4+4).toString());
+        matchHalo.setAttribute('fill','none');matchHalo.setAttribute('stroke','#f5e0a0');
+        matchHalo.setAttribute('stroke-width','2');matchHalo.setAttribute('opacity','0.8');
+        matchHalo.setAttribute('stroke-dasharray','4,3');
+        gEl.insertBefore(matchHalo,poly);
+      }
 
       // Petit label du joueur
       const lbl=document.createElementNS(ns,'text');
@@ -734,10 +758,24 @@ function setupStarInteraction(gEl,key){
     clearTimeout(touchTimer);
     onEnd();
     if(!moved){
-      // Double-tap → panneau complet
       const now=Date.now();
-      if(now-lastTap<350){ hideBubble(); openEvtPanel(key); lastTap=0; }
-      else{ lastTap=now; showBubble(key,startX,startY); }
+      if(visiblePlayers.length>0){
+        // Mode comparaison : tap simple → reconnaître/déreconnaître l'étoile
+        // Double-tap → panneau complet
+        if(now-lastTap<350){
+          hideBubble(); openEvtPanel(key); lastTap=0;
+        } else {
+          lastTap=now;
+          // Tap simple : basculer la reconnaissance
+          if(recognizedKeys.has(key)) recognizedKeys.delete(key);
+          else recognizedKeys.add(key);
+          buildMap(); // redessiner avec le nouvel état
+        }
+      } else {
+        // Mode normal : tap simple → bulle, double-tap → panneau
+        if(now-lastTap<350){ hideBubble(); openEvtPanel(key); lastTap=0; }
+        else{ lastTap=now; showBubble(key,startX,startY); }
+      }
     }
   },{passive:false});
 }
@@ -754,6 +792,8 @@ function showBubble(key,cx,cy){
   nEl.textContent=nLabel; nEl.className='bubble-niveau n'+niv;
   const txt=slot.texte||'';
   document.getElementById('bubble-text').textContent=txt.length>120?txt.substring(0,120)+'…':txt;
+  const hint=document.getElementById('bubble-hint');
+  if(hint) hint.textContent=visiblePlayers.length>0?'Tap : reconnaître cet événement | Double-tap : ouvrir':'Double-clic / tap long pour ouvrir';
   moveBubble(cx,cy);
   bubble.classList.add('open');
 }
@@ -836,7 +876,7 @@ function buildSharePanel(){
       const visBtn=document.createElement('button');visBtn.className='share-vis-btn'+(visiblePlayers.includes(pid)?' on':'');
       visBtn.textContent=visiblePlayers.includes(pid)?'👁 Visible':'Afficher';
       visBtn.addEventListener('click',()=>{
-        if(visiblePlayers.includes(pid)) visiblePlayers=visiblePlayers.filter(p=>p!==pid);
+        if(visiblePlayers.includes(pid)){ visiblePlayers=visiblePlayers.filter(p=>p!==pid); if(!visiblePlayers.length) recognizedKeys.clear(); }
         else visiblePlayers.push(pid);
         buildMap();buildSharePanel();
       });
@@ -869,7 +909,7 @@ function buildSharePanel(){
       const visBtn=document.createElement('button');visBtn.className='share-vis-btn'+(visiblePlayers.includes(pid)?' on':'');
       visBtn.textContent=visiblePlayers.includes(pid)?'👁 Masquer':'Afficher';
       visBtn.addEventListener('click',()=>{
-        if(visiblePlayers.includes(pid)) visiblePlayers=visiblePlayers.filter(p=>p!==pid);
+        if(visiblePlayers.includes(pid)){ visiblePlayers=visiblePlayers.filter(p=>p!==pid); if(!visiblePlayers.length) recognizedKeys.clear(); }
         else visiblePlayers.push(pid);
         buildMap();buildSharePanel();
       });
@@ -1280,7 +1320,7 @@ function openGenerator(){
   <div class="bubble-title" id="bubble-title"></div>
   <div class="bubble-niveau" id="bubble-niveau"></div>
   <div class="bubble-text" id="bubble-text"></div>
-  <div class="bubble-hint">Double-clic / tap long pour ouvrir</div>
+  <div class="bubble-hint" id="bubble-hint">Double-clic / tap long pour ouvrir</div>
 </div>
 </body>
 </html>
