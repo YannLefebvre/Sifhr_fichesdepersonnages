@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Carte — Octogone</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
@@ -10,96 +10,118 @@
   --bg:#1a1208; --ink:#f5e8c8; --ink2:#d4b896; --ink3:#9a7a5a;
   --accent:#c8860a; --accent2:#1a6b8a; --border:#4a3218; --border2:#3a2810;
   --panel-bg:#241a0c; --input-bg:#2a1e0e;
-  --c1:#c8860a; --c2:#1a8a6b; --c3:#8b1a2a; --c4:#1a4a8a;
-  --c5:#6b3a8a; --c6:#8a6b1a; --c7:#2a7a3a; --c8:#8a3a1a;
+  --star-color:#e8d5a0;
   --radius:4px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden;}
+body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);
+  min-height:100vh;overflow:hidden;user-select:none;}
 
-/* ── Modal auth ── */
-#modal-overlay{position:fixed;inset:0;background:rgba(10,7,3,0.92);display:flex;align-items:center;justify-content:center;z-index:100;}
-#modal-box{background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;padding:2rem;max-width:340px;width:90%;text-align:center;box-shadow:0 4px 32px rgba(0,0,0,0.6);}
-#modal-box h2{font-family:'Cinzel',serif;color:var(--accent);margin-bottom:.4rem;font-size:1.1rem;letter-spacing:.1em;}
+/* ── Auth modal ── */
+#modal-overlay{position:fixed;inset:0;background:rgba(10,7,3,0.92);display:flex;
+  align-items:center;justify-content:center;z-index:100;}
+#modal-box{background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;
+  padding:2rem;max-width:340px;width:90%;text-align:center;
+  box-shadow:0 4px 32px rgba(0,0,0,0.6);}
+#modal-box h2{font-family:'Cinzel',serif;color:var(--accent);margin-bottom:.4rem;
+  font-size:1.1rem;letter-spacing:.1em;}
 #modal-box p{font-size:.9rem;color:var(--ink3);margin-bottom:1rem;font-style:italic;}
-.modal-pw{width:100%;padding:.5rem;border:1px solid var(--border);border-radius:3px;font-family:'Cinzel',serif;font-size:.95rem;text-align:center;margin-bottom:.5rem;outline:none;background:var(--input-bg);color:var(--ink);}
+.modal-pw{width:100%;padding:.5rem;border:1px solid var(--border);border-radius:3px;
+  font-family:'Cinzel',serif;font-size:.95rem;text-align:center;margin-bottom:.5rem;
+  outline:none;background:var(--input-bg);color:var(--ink);}
 .modal-pw:focus{border-color:var(--accent);}
-.modal-btn{font-family:'Cinzel',serif;font-size:.82rem;padding:.5rem 1.2rem;border-radius:3px;border:none;cursor:pointer;margin:.2rem;letter-spacing:.05em;}
+.modal-btn{font-family:'Cinzel',serif;font-size:.82rem;padding:.5rem 1.2rem;
+  border-radius:3px;border:none;cursor:pointer;margin:.2rem;letter-spacing:.05em;}
 .modal-btn.primary{background:var(--accent);color:#1a1208;}
 .modal-btn.primary:hover{background:#e09a0c;}
 .modal-btn.secondary{background:var(--panel-bg);color:var(--ink2);border:1px solid var(--border);}
-.modal-btn.secondary:hover{background:var(--border2);}
 #modal-err{color:#e06050;font-size:.8rem;margin-top:.4rem;min-height:1em;font-style:italic;}
 
 /* ── App ── */
-#app{display:none;}
-
-/* ── Header ── */
-.carte-header{text-align:center;padding:1rem 1rem .4rem;position:relative;}
-.carte-header h1{font-family:'Cinzel',serif;color:var(--accent);font-size:1.2rem;letter-spacing:.15em;text-transform:uppercase;}
-.carte-header .subtitle{font-size:.8rem;color:var(--ink3);font-style:italic;}
-.save-info{text-align:center;font-size:.72rem;color:var(--ink3);font-style:italic;margin:.2rem 0 .5rem;}
-.save-info.saved{color:#5a9a4a;}
-.save-info.error{color:#c05040;}
-
-/* ── Config bar (MJ only) ── */
-#config-bar{display:none;max-width:700px;margin:0 auto .6rem;padding:.4rem .7rem;background:var(--panel-bg);border:1px solid var(--border);border-radius:var(--radius);display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;}
-.cfg-label{font-family:'Cinzel',serif;font-size:.68rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase;}
-.cfg-inp{width:48px;background:var(--input-bg);border:1px solid var(--border);border-radius:2px;font-family:'Cinzel',serif;font-size:.85rem;color:var(--ink);text-align:center;padding:2px 4px;outline:none;}
-.cfg-inp:focus{border-color:var(--accent);}
-.cfg-btn{font-family:'Cinzel',serif;font-size:.68rem;padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--ink2);cursor:pointer;letter-spacing:.04em;}
-.cfg-btn:hover{background:var(--border);}
+#app{display:none;width:100vw;height:100vh;position:relative;overflow:hidden;}
 
 /* ── Carte SVG ── */
-#carte-wrap{display:flex;justify-content:center;align-items:center;padding:.5rem;touch-action:none;}
-#carte-svg{max-width:min(90vw,700px);width:100%;height:auto;cursor:pointer;}
+#carte-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;}
 
-/* ── Secteur hover ── */
-.carte-sector{transition:opacity .15s;}
-.carte-sector:hover .sector-bg{opacity:.85;}
-.sector-bg{transition:opacity .15s;}
+/* ── Barre de contrôle ── */
+#ctrl-bar{position:fixed;top:0;left:0;right:0;z-index:50;
+  background:rgba(26,18,8,0.92);backdrop-filter:blur(4px);
+  border-bottom:1px solid var(--border);padding:.4rem .7rem;
+  display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;}
+.ctrl-title{font-family:'Cinzel',serif;font-size:.8rem;color:var(--accent);
+  letter-spacing:.08em;margin-right:.3rem;}
+.ctrl-btn{font-family:'Cinzel',serif;font-size:.68rem;padding:3px 9px;
+  border:1px solid var(--border);border-radius:3px;background:var(--input-bg);
+  color:var(--ink2);cursor:pointer;letter-spacing:.04em;}
+.ctrl-btn:hover{background:var(--border2);}
+.ctrl-btn.active{border-color:var(--accent);color:var(--accent);}
+.ctrl-btn.gm-only{display:none;}
+.ctrl-btn.safe{border-color:#3a7a4a;color:#5a9a6a;}
+.ctrl-btn.danger{border-color:#7a3a2a;color:#c06050;}
+#save-msg{font-size:.7rem;color:var(--ink3);font-style:italic;margin-left:auto;}
+#save-msg.saved{color:#5a9a4a;}
+#save-msg.error{color:#c05040;}
 
-/* ── Panneau secteur ── */
-#sector-overlay{position:fixed;inset:0;background:rgba(10,7,3,0.85);display:none;align-items:center;justify-content:center;z-index:150;}
-#sector-overlay.open{display:flex;}
-#sector-box{background:var(--panel-bg);border:1px solid var(--border);border-radius:10px;padding:1.2rem;max-width:480px;width:94vw;max-height:90vh;overflow-y:auto;box-shadow:0 6px 32px rgba(0,0,0,0.6);position:relative;}
-.sector-close{position:absolute;top:10px;right:12px;background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);}
-.sector-close:hover{color:var(--ink);}
-.sector-title{font-family:'Cinzel',serif;color:var(--accent);font-size:.95rem;letter-spacing:.08em;margin-bottom:.8rem;padding-right:1.5rem;}
+/* ── Mode badge ── */
+#mode-badge{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);
+  background:rgba(26,18,8,0.85);border:1px solid var(--border);border-radius:20px;
+  padding:.3rem .8rem;font-family:'Cinzel',serif;font-size:.68rem;color:var(--ink3);
+  letter-spacing:.06em;z-index:50;pointer-events:none;}
+#mode-badge.link-mode{border-color:var(--accent);color:var(--accent);}
 
-/* ── Section MJ dans panneau ── */
-.sector-section{margin-bottom:.9rem;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
-.sector-section-head{display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;background:var(--border2);font-family:'Cinzel',serif;font-size:.7rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;}
-.sector-section-body{padding:.6rem;}
-.mj-badge{font-size:.6rem;padding:1px 5px;border-radius:8px;background:var(--accent);color:#1a1208;margin-left:auto;}
+/* ── Partage cartes ── */
+#share-bar{position:fixed;top:3rem;right:0;z-index:48;
+  background:rgba(26,18,8,0.88);border:1px solid var(--border);
+  border-radius:6px 0 0 6px;padding:.5rem;max-width:220px;
+  display:none;flex-direction:column;gap:.3rem;}
+#share-bar.open{display:flex;}
+.share-player-item{font-size:.75rem;color:var(--ink2);display:flex;
+  align-items:center;gap:.4rem;cursor:pointer;}
+.share-player-item .share-dot{width:8px;height:8px;border-radius:50%;
+  background:var(--ink3);flex-shrink:0;}
+.share-player-item.active .share-dot{background:var(--accent);}
 
-/* ── Niveau de précision ── */
+/* ── Panneau événement ── */
+#evt-overlay{position:fixed;inset:0;background:rgba(10,7,3,0.85);display:none;
+  align-items:center;justify-content:center;z-index:150;}
+#evt-overlay.open{display:flex;}
+#evt-box{background:var(--panel-bg);border:1px solid var(--border);border-radius:10px;
+  padding:1.2rem;max-width:480px;width:94vw;max-height:90vh;overflow-y:auto;
+  box-shadow:0 6px 32px rgba(0,0,0,0.6);position:relative;}
+.evt-close{position:absolute;top:10px;right:12px;background:none;border:none;
+  font-size:1.1rem;cursor:pointer;color:var(--ink3);}
+.evt-close:hover{color:var(--ink);}
+.evt-panel-title{font-family:'Cinzel',serif;color:var(--accent);font-size:.95rem;
+  letter-spacing:.08em;margin-bottom:.8rem;padding-right:1.5rem;}
+.evt-section{margin-bottom:.8rem;border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+.evt-section-head{display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;
+  background:var(--border2);font-family:'Cinzel',serif;font-size:.7rem;
+  color:var(--accent);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;}
+.evt-section-body{padding:.6rem;}
+.mj-badge{font-size:.6rem;padding:1px 5px;border-radius:8px;background:var(--accent);
+  color:#1a1208;margin-left:auto;}
 .niveau-btns{display:flex;gap:.4rem;margin-bottom:.5rem;}
-.niv-btn{flex:1;padding:4px 6px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--ink3);font-size:.72rem;font-family:'Cinzel',serif;cursor:pointer;text-align:center;transition:all .15s;}
-.niv-btn.active.n1{border-color:#9a7a5a;color:#9a7a5a;background:#2a1e0e;}
-.niv-btn.active.n2{border-color:var(--accent);color:var(--accent);background:#2a1a04;}
-.niv-btn.active.n3{border-color:#c8e0f0;color:#c8e0f0;background:#0a1a24;}
-
-/* ── Textarea ── */
-.sector-ta{width:100%;background:var(--input-bg);border:none;border-left:2px solid var(--border);font-family:'Crimson Text',serif;font-size:.88rem;color:var(--ink2);padding:4px 6px;outline:none;resize:none;min-height:3em;line-height:1.5;overflow:hidden;}
-.sector-ta:focus{border-left-color:var(--accent);background:#2a1e0e;}
-.sector-ta:disabled{opacity:.5;cursor:default;}
-
-/* ── Image upload ── */
-.img-zone{border:1px dashed var(--border);border-radius:4px;padding:.5rem;text-align:center;cursor:pointer;margin-top:.4rem;font-size:.78rem;color:var(--ink3);}
+.niv-btn{flex:1;padding:4px 6px;border:1px solid var(--border);border-radius:3px;
+  background:var(--input-bg);color:var(--ink3);font-size:.72rem;
+  font-family:'Cinzel',serif;cursor:pointer;text-align:center;}
+.niv-btn.active.n1{border-color:#9a7a5a;color:#9a7a5a;}
+.niv-btn.active.n2{border-color:var(--accent);color:var(--accent);}
+.niv-btn.active.n3{border-color:#c8e0f0;color:#c8e0f0;}
+.evt-ta{width:100%;background:var(--input-bg);border:none;border-left:2px solid var(--border);
+  font-family:'Crimson Text',serif;font-size:.88rem;color:var(--ink2);
+  padding:4px 6px;outline:none;resize:none;min-height:3em;line-height:1.5;overflow:hidden;}
+.evt-ta:focus{border-left-color:var(--accent);}
+.img-zone{border:1px dashed var(--border);border-radius:4px;padding:.5rem;
+  text-align:center;cursor:pointer;margin-top:.4rem;font-size:.78rem;color:var(--ink3);}
 .img-zone:hover{border-color:var(--accent);}
 .img-preview{max-width:100%;max-height:200px;border-radius:4px;margin-top:.4rem;display:block;}
-
-/* ── Révélation ── */
 .reveal-row{display:flex;align-items:center;gap:.5rem;margin-top:.4rem;flex-wrap:wrap;}
-.reveal-btn{font-family:'Cinzel',serif;font-size:.68rem;padding:3px 9px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--ink2);cursor:pointer;}
-.reveal-btn:hover{background:var(--border);}
+.reveal-btn{font-family:'Cinzel',serif;font-size:.68rem;padding:3px 9px;
+  border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--ink2);cursor:pointer;}
 .reveal-btn.active{border-color:var(--accent2);color:var(--accent2);}
-.reveal-fiches-inp{flex:1;min-width:120px;background:var(--input-bg);border:1px solid var(--border);border-radius:2px;font-family:'Crimson Text',serif;font-size:.82rem;color:var(--ink);padding:2px 5px;outline:none;}
-.reveal-fiches-inp:focus{border-color:var(--accent);}
-
-/* ── Contenu révélé joueur ── */
-.revealed-content{padding:.4rem .6rem;}
+.reveal-fiches-inp{flex:1;min-width:120px;background:var(--input-bg);
+  border:1px solid var(--border);border-radius:2px;font-family:'Crimson Text',serif;
+  font-size:.82rem;color:var(--ink);padding:2px 5px;outline:none;}
 .rc-niveau{font-size:.68rem;font-family:'Cinzel',serif;letter-spacing:.05em;margin-bottom:.3rem;}
 .rc-niveau.n1{color:#9a7a5a;font-style:italic;}
 .rc-niveau.n2{color:var(--accent);}
@@ -107,74 +129,53 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 .rc-text.n1{font-style:italic;color:var(--ink3);}
 .rc-text.n2{color:var(--ink2);}
 .rc-text.n3{font-weight:600;color:var(--ink);}
-
-/* ── Couleurs joueur ── */
-.couleur-row{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.4rem;}
-.couleur-dot{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:border-color .15s;flex-shrink:0;}
-.couleur-dot.selected{border-color:#fff;}
-.couleur-dot:hover{opacity:.8;}
-.couleur-none{width:24px;height:24px;border-radius:50%;cursor:pointer;background:none;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--ink3);}
-.couleur-none:hover{border-color:var(--ink3);}
-
-/* ── Hypothèses ── */
+.poids-row{display:flex;gap:.3rem;margin-top:.3rem;}
+.poids-btn{width:28px;height:26px;border-radius:4px;border:1px solid var(--border);
+  background:var(--input-bg);color:var(--ink3);font-family:'Cinzel',serif;
+  font-size:.78rem;cursor:pointer;}
+.poids-btn.on{border-color:var(--accent);color:var(--accent);background:#2a1a04;}
+.axe-row{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.3rem;}
+.axe-num-btn{width:26px;height:26px;border-radius:50%;border:1px solid var(--border);
+  background:var(--input-bg);color:var(--ink3);font-family:'Cinzel',serif;
+  font-size:.75rem;cursor:pointer;}
+.axe-num-btn.on{border-color:var(--accent);color:var(--accent);background:#2a1a04;}
 .hypo-item{margin-bottom:.5rem;padding:.4rem .6rem;background:var(--border2);border-radius:3px;font-size:.85rem;}
 .hypo-author{font-family:'Cinzel',serif;font-size:.65rem;color:var(--accent);margin-bottom:.2rem;}
-.hypo-share-btn{font-size:.65rem;padding:1px 6px;border:1px solid var(--border);border-radius:2px;background:none;color:var(--ink3);cursor:pointer;margin-top:.2rem;}
+.hypo-share-btn{font-size:.65rem;padding:1px 6px;border:1px solid var(--border);
+  border-radius:2px;background:none;color:var(--ink3);cursor:pointer;margin-top:.2rem;}
 .hypo-share-btn.shared{color:var(--accent2);border-color:var(--accent2);}
+.couleur-row{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.4rem;}
+.couleur-dot{width:24px;height:24px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;}
+.couleur-dot.selected{border-color:#fff;}
+.couleur-none{width:24px;height:24px;border-radius:50%;cursor:pointer;background:none;
+  border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;
+  font-size:.65rem;color:var(--ink3);}
 
-/* ── Légende couleurs ── */
-#couleur-legend{max-width:700px;margin:.4rem auto;display:none;padding:.4rem .7rem;background:var(--panel-bg);border:1px solid var(--border);border-radius:var(--radius);flex-wrap:wrap;gap:.5rem;align-items:center;}
-.legend-item{display:flex;align-items:center;gap:.3rem;font-size:.75rem;color:var(--ink3);}
-.legend-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
-.legend-name{max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-
-/* ── Indicateur de titre dans secteur ── */
-.sector-label-text{font-size:10px;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none;font-family:'Cinzel',serif;}
-
-/* ── Boutons GM ── */
-.gm-bar{display:none;max-width:700px;margin:0 auto .6rem;padding:.4rem .7rem;background:var(--panel-bg);border:1px solid var(--border);border-radius:var(--radius);gap:.5rem;align-items:center;flex-wrap:wrap;}
-.gm-bar-label{font-family:'Cinzel',serif;font-size:.68rem;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase;}
-.gm-btn{font-family:'Cinzel',serif;font-size:.68rem;padding:3px 10px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--ink2);cursor:pointer;}
-.gm-btn:hover{background:var(--border);}
-.gm-btn.safe{border-color:#4a8a3a;color:#7aba6a;}
-.gm-btn.safe:hover{background:#1a2a14;}
-.gm-btn.danger{border-color:#8a3a2a;color:#c06050;}
-.gm-btn.danger:hover{background:#2a1410;}
-
-/* ── Générateur d'événements ── */
-.gm-btn.generate{border-color:#8a6b1a;color:#d4a83a;}
-.gm-btn.generate:hover{background:#2a2010;}
-#evt-overlay{position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:160;}
-#evt-overlay.open{display:flex;}
-#evt-box{background:var(--panel-bg);border:1px solid var(--border);border-radius:10px;padding:1.2rem;max-width:480px;width:94vw;max-height:90vh;overflow-y:auto;box-shadow:0 6px 32px rgba(0,0,0,0.6);position:relative;}
-.evt-close{position:absolute;top:10px;right:12px;background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);}
-.evt-close:hover{color:var(--ink);}
-.evt-title{font-family:'Cinzel',serif;color:var(--accent);font-size:.95rem;letter-spacing:.08em;margin-bottom:.8rem;padding-right:1.5rem;}
+/* ── Générateur ── */
 .evt-axe-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-bottom:.8rem;}
-.evt-axe-btn{padding:.5rem .3rem;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--ink2);font-family:'Cinzel',serif;font-size:.72rem;cursor:pointer;text-align:center;transition:all .15s;}
+.evt-axe-btn{padding:.5rem .3rem;border:1px solid var(--border);border-radius:5px;
+  background:var(--input-bg);color:var(--ink2);font-family:'Cinzel',serif;
+  font-size:.72rem;cursor:pointer;text-align:center;}
 .evt-axe-btn:hover{border-color:var(--accent);}
 .evt-axe-btn.active{border-color:var(--accent);background:#2a1a04;color:var(--accent);}
 .evt-axe-btn.disabled{opacity:.35;cursor:not-allowed;}
-.evt-axe-btn.disabled:hover{border-color:var(--border);}
 .evt-info-row{font-size:.8rem;color:var(--ink3);margin-bottom:.6rem;line-height:1.6;}
-.evt-info-row b{color:var(--ink2);}
-.evt-preview{padding:.8rem;background:var(--border2);border-left:3px solid var(--accent);border-radius:4px;font-size:.9rem;color:var(--ink2);line-height:1.6;margin-bottom:.8rem;min-height:3em;}
-.evt-preview.empty{color:var(--ink3);font-style:italic;text-align:center;}
-.evt-target-row{font-size:.78rem;color:var(--ink3);margin-bottom:.8rem;}
+.evt-preview{padding:.8rem;background:var(--border2);border-left:3px solid var(--accent);
+  border-radius:4px;font-size:.9rem;color:var(--ink2);line-height:1.6;margin-bottom:.8rem;min-height:3em;}
+.evt-preview.empty{color:var(--ink3);font-style:italic;}
 .evt-btns{display:flex;gap:.5rem;}
-.evt-btn{flex:1;font-family:'Cinzel',serif;font-size:.78rem;padding:.5rem;border-radius:4px;border:1px solid var(--border);cursor:pointer;letter-spacing:.04em;}
+.evt-btn{flex:1;font-family:'Cinzel',serif;font-size:.78rem;padding:.5rem;
+  border-radius:4px;border:1px solid var(--border);cursor:pointer;}
 .evt-btn.gen{background:var(--input-bg);color:var(--ink2);}
-.evt-btn.gen:hover{background:var(--border);}
 .evt-btn.accept{background:#2a5a3a;color:#e8f5e8;border-color:#3a7a4a;}
-.evt-btn.accept:hover{background:#3a7a4a;}
 .evt-btn.reject{background:#5a2a2a;color:#f5e8e8;border-color:#7a3a3a;}
-.evt-btn.reject:hover{background:#7a3a3a;}
 .evt-btn:disabled{opacity:.4;cursor:not-allowed;}
 </style>
 </head>
 <body>
 
-<!-- Auth modal -->
+<!-- Auth -->
 <div id="modal-overlay">
   <div id="modal-box">
     <h2>Carte — Octogone</h2>
@@ -183,165 +184,106 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     <br>
     <button class="modal-btn primary" id="modal-btn-player">Entrer (joueur)</button>
     <button class="modal-btn secondary" id="modal-btn-gm">Entrer (meneur)</button>
-    <p style="font-size:.75rem;color:var(--ink3);margin-top:.4rem;font-style:italic;">ID joueur (pour révélations ciblées) :</p>
+    <p style="font-size:.75rem;color:var(--ink3);margin-top:.4rem;font-style:italic;">ID joueur :</p>
     <input id="modal-player-id" class="modal-pw" type="text" placeholder="Votre identifiant de fiche" style="margin-top:.2rem;">
     <div id="modal-err"></div>
   </div>
 </div>
 
-<!-- Panneau secteur -->
-<div id="sector-overlay">
-  <div id="sector-box">
-    <button class="sector-close" onclick="closeSector()">✕</button>
-    <div class="sector-title" id="sector-title">Secteur</div>
-    <div id="sector-content"></div>
-  </div>
-</div>
-
-<!-- Générateur d'événements -->
+<!-- Panneau événement -->
 <div id="evt-overlay">
   <div id="evt-box">
-    <button class="evt-close" onclick="EvtGen.close()">✕</button>
-    <div class="evt-title">🎲 Générateur d'événements</div>
-    <div class="evt-info-row">Choisis un axe ayant au moins <b>2 jetons</b> remplis sur l'octogone de cette fiche d'environnement.</div>
-    <div class="evt-axe-grid" id="evt-axe-grid"></div>
-    <div class="evt-info-row" id="evt-detail"></div>
-    <div class="evt-preview empty" id="evt-preview">Choisis un axe pour générer un événement…</div>
-    <div class="evt-target-row" id="evt-target"></div>
-    <div class="evt-btns">
-      <button class="evt-btn gen" id="evt-btn-gen" onclick="EvtGen.generate()" disabled>🎲 Générer</button>
-      <button class="evt-btn reject" id="evt-btn-reject" onclick="EvtGen.generate()" disabled>↻ Refuser</button>
-      <button class="evt-btn accept" id="evt-btn-accept" onclick="EvtGen.accept()" disabled>✓ Accepter</button>
-    </div>
+    <button class="evt-close" onclick="closeEvtPanel()">✕</button>
+    <div class="evt-panel-title" id="evt-panel-title">Événement</div>
+    <div id="evt-panel-content"></div>
   </div>
 </div>
 
 <div id="app">
-  <div class="carte-header">
-    <h1>🌙 Carte de l'Environnement</h1>
-    <div class="subtitle" id="carte-subtitle"></div>
-  </div>
-  <p class="save-info" id="save-msg">Synchronisation en cours…</p>
-
-  <!-- Config bar (MJ only) -->
-  <div id="config-bar" style="display:none;">
-    <span class="cfg-label">MJ</span>
-    <span class="cfg-label" style="margin-left:.5rem;">Cercles</span>
-    <input class="cfg-inp" type="number" id="cfg-cercles" min="1" max="8" value="4">
-    <span class="cfg-label">Secteurs</span>
-    <input class="cfg-inp" type="number" id="cfg-secteurs" min="4" max="36" value="20">
-    <button class="cfg-btn" onclick="applyConfig()">Appliquer</button>
+  <!-- Barre de contrôle -->
+  <div id="ctrl-bar">
+    <span class="ctrl-title">🌙 Carte</span>
+    <button class="ctrl-btn" id="btn-mode-move" onclick="setMode('move')">✥ Déplacer</button>
+    <button class="ctrl-btn" id="btn-mode-link" onclick="setMode('link')">— Relier</button>
+    <button class="ctrl-btn gm-only safe" id="btn-gen" onclick="openGenerator()">🎲 Générer</button>
+    <button class="ctrl-btn gm-only" id="btn-share-panel" onclick="toggleSharePanel()">👁 Cartes</button>
+    <button class="ctrl-btn" id="btn-share-mine" onclick="toggleMyShare()">Partager ma carte</button>
+    <span id="save-msg"></span>
   </div>
 
-  <!-- GM bar -->
-  <div class="gm-bar" id="gm-bar" style="display:none;">
-    <span class="gm-bar-label">MJ</span>
-    <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
-    <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser</button>
-    <button class="gm-btn generate" onclick="EvtGen.open()">🎲 Générer un événement</button>
-  </div>
+  <!-- Canvas carte -->
+  <svg id="carte-canvas" xmlns="http://www.w3.org/2000/svg">
+    <!-- Fond rosace islamique (discret) -->
+    <g id="fond-rosace" opacity="0.08"></g>
+    <!-- Liens -->
+    <g id="layer-liens"></g>
+    <!-- Étoiles -->
+    <g id="layer-etoiles"></g>
+  </svg>
 
-  <!-- Carte SVG -->
-  <div id="carte-wrap">
-    <svg id="carte-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-  </div>
+  <!-- Badge mode -->
+  <div id="mode-badge">Mode : Déplacer</div>
 
-  <!-- Légende couleurs -->
-  <div id="couleur-legend" style="display:none;"></div>
+  <!-- Panneau partage -->
+  <div id="share-bar">
+    <div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--accent);margin-bottom:.3rem;">Cartes partagées</div>
+    <div id="share-list"></div>
+  </div>
 </div>
 
 <script>
-const SUPABASE_URL   = 'https://qyifamxfvswcglvrzduf.supabase.co';
-const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
-
-
+const SUPABASE_URL = 'https://qyifamxfvswcglvrzduf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
 const params = new URLSearchParams(location.search);
 const FICHE_ID = params.get('fiche') || 'env-test';
-
 document.getElementById('modal-fiche-name').textContent = FICHE_ID;
-document.getElementById('carte-subtitle').textContent = FICHE_ID;
 
-// ── Couleurs disponibles (palette islamique médiévale) ──
 const COULEURS = [
-  {hex:'#c8860a', name:'Or'},
-  {hex:'#1a8a6b', name:'Turquoise'},
-  {hex:'#8b1a2a', name:'Vermillon'},
-  {hex:'#1a4a8a', name:'Outremer'},
-  {hex:'#6b3a8a', name:'Aubergine'},
-  {hex:'#5a8a1a', name:'Émeraude'},
-  {hex:'#8a3a1a', name:'Brique'},
-  {hex:'#4a7a8a', name:'Lapis'}
+  {hex:'#c8860a',name:'Or'},{hex:'#1a8a6b',name:'Turquoise'},
+  {hex:'#8b1a2a',name:'Vermillon'},{hex:'#1a4a8a',name:'Outremer'},
+  {hex:'#6b3a8a',name:'Aubergine'},{hex:'#5a8a1a',name:'Émeraude'},
+  {hex:'#8a3a1a',name:'Brique'},{hex:'#4a7a8a',name:'Lapis'}
 ];
-
-// ── Noms des axes de l'octogone (index 0 = axe 1, etc.) ──
 const AXES_NOMS = ['Feu','Bile Jaune','Terre','Bile Noire','Eau','Flegme','Air','Sang'];
 
 // ── État ──
-let authenticated = false, isGM = false;
-let playerId = ''; // identifiant fiche du joueur connecté
-let applyingRemote = false;
-
+let authenticated=false, isGM=false, playerId='';
+let applyingRemote=false;
 let state = {
-  config: {cercles: 4, secteurs: 20},
-  slots: {},      // {key: {titre, texte, niveau, revele_a, image}}
-  // revele_a: 'tous' | 'aucun' | ['fiche1','fiche2']
-  hypotheses: {}, // {key: {playerId: {texte, partage}}}
-  couleurs: {}    // {playerId: {key: couleurIdx}}
+  slots:{},      // source de vérité des événements (titre,texte,niveau,revele_a,image,axes,poids)
+  hypotheses:{}, // {slotKey:{playerId:{texte,partage}}}
+  couleurs:{},   // {playerId:{slotKey:idx}}
+  carte:{        // nouveau : constellations
+    positions:{},  // positions MJ {slotKey:{x,y}} (base commune)
+    players:{}     // {playerId:{positions:{},liens:[{from,to,couleurIdx}],shared:bool}}
+  }
 };
+let saveTimer=null;
+let currentMode='move'; // 'move' | 'link'
+let linkStart=null;     // slotKey en cours de liaison
+let visiblePlayers=[]; // players dont on affiche la constellation
+let selectedViewPlayer=null; // null = propre carte, sinon playerId
 
-// ── Supabase helpers ──
+// ── Supabase ──
 const SB = {
-  hdrs: {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
-  async get(id){ const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(id)}&select=*`,{headers:this.hdrs}); const d=await r.json(); return d[0]||null; },
-  async upsert(id,carte){ const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',headers:{...this.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id,carte})}); return r.ok; }
+  hdrs:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+  async get(id){const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(id)}&select=*`,{headers:this.hdrs});const d=await r.json();return d[0]||null;},
+  async upsert(id,carte){const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',headers:{...this.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id,carte})});return r.ok;}
 };
 
 // ── Auth ──
 document.getElementById('modal-btn-player').addEventListener('click',()=>doLogin(false));
 document.getElementById('modal-btn-gm').addEventListener('click',()=>doLogin(true));
-document.getElementById('modal-pw').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(false); });
+document.getElementById('modal-pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin(false);});
 
-// ── Connexion automatique via paramètres d'URL (?pw=...&gm=1&pid=...) ──
-// Permet de passer directement de octogone.html à carte.html sans ressaisir le mot de passe
-(function tryAutoLogin(){
-  const autoPw = params.get('pw');
-  const autoSector = params.get('sector');
-  if(autoPw){
-    const autoGM = params.get('gm')==='1';
-    const autoPid = params.get('pid')||'';
-    if(autoPid) document.getElementById('modal-player-id').value=autoPid;
-    // Après connexion, ouvrir automatiquement le secteur demandé si présent
-    setTimeout(()=>{
-      doLoginWithPw(autoPw, autoGM, autoPid).then(()=>{
-        if(autoSector){
-          // Attendre que la carte soit construite
-          setTimeout(()=>{
-            const parts=autoSector.split('_');
-            if(parts.length===2){
-              const ci=parseInt(parts[0]), si=parseInt(parts[1]);
-              openSector(autoSector, ci, si);
-            }
-          }, 400);
-        }
-      });
-    }, 50);
-  }
-})();
+async function doLogin(tryGM){return doLoginWithPw(document.getElementById('modal-pw').value.trim(),tryGM,document.getElementById('modal-player-id').value.trim());}
 
-
-async function doLogin(tryGM){
-  const pw=document.getElementById('modal-pw').value.trim();
-  const pid=document.getElementById('modal-player-id').value.trim();
-  return doLoginWithPw(pw, tryGM, pid);
-}
-
-async function doLoginWithPw(pw, tryGM, pidOverride){
+async function doLoginWithPw(pw,tryGM,pidOverride){
   const pid=pidOverride!==undefined?pidOverride:document.getElementById('modal-player-id').value.trim();
-  const err=document.getElementById('modal-err');
-  err.textContent='';
+  const err=document.getElementById('modal-err');err.textContent='';
   if(!pw){err.textContent='Saisis un mot de passe.';return;}
   const btn=document.getElementById(tryGM?'modal-btn-gm':'modal-btn-player');
-  const orig=btn.textContent; btn.textContent='…'; btn.disabled=true;
+  const orig=btn.textContent;btn.textContent='…';btn.disabled=true;
   try{
     const row=await SB.get(FICHE_ID);
     if(!row){err.textContent='Fiche introuvable : «'+FICHE_ID+'»';}
@@ -349,343 +291,147 @@ async function doLoginWithPw(pw, tryGM, pidOverride){
       const pwField=tryGM?'mot_de_passe_mj':'mot_de_passe';
       if(row[pwField]!==pw){err.textContent=tryGM?'Mot de passe meneur incorrect.':'Mot de passe incorrect.';}
       else{
-        authenticated=true; isGM=tryGM;
+        authenticated=true;isGM=tryGM;
         playerId=tryGM?'__mj__':(pid||'joueur');
         document.getElementById('modal-overlay').style.display='none';
         document.getElementById('app').style.display='block';
         if(isGM){
-          document.getElementById('config-bar').style.display='flex';
-          document.getElementById('gm-bar').style.display='flex';
+          document.querySelectorAll('.gm-only').forEach(el=>el.style.display='inline-flex'||'block');
+          document.getElementById('btn-gen').style.display='inline-block';
+          document.getElementById('btn-share-panel').style.display='inline-block';
         }
         if(row.carte&&Object.keys(row.carte).length>0) applyRemoteState(row.carte);
-        else buildCarte();
+        else buildMap();
+        buildFondRosace();
         startRealtime();
       }
     }
   }catch(e){err.textContent='Erreur réseau.';}
-  btn.textContent=orig; btn.disabled=false;
+  btn.textContent=orig;btn.disabled=false;
 }
 
-// ── Apply remote state ──
+// Auto-login
+(function tryAutoLogin(){
+  const autoPw=params.get('pw');
+  if(autoPw){
+    const autoGM=params.get('gm')==='1';
+    const autoPid=params.get('pid')||'';
+    if(autoPid)document.getElementById('modal-player-id').value=autoPid;
+    setTimeout(()=>doLoginWithPw(autoPw,autoGM,autoPid),50);
+  }
+})();
+
 function applyRemoteState(saved){
   applyingRemote=true;
   try{
-    if(saved.config) state.config=saved.config;
     if(saved.slots) state.slots=saved.slots;
     if(saved.hypotheses) state.hypotheses=saved.hypotheses;
     if(saved.couleurs) state.couleurs=saved.couleurs;
-    document.getElementById('cfg-cercles').value=state.config.cercles;
-    document.getElementById('cfg-secteurs').value=state.config.secteurs;
-    buildCarte();
+    if(saved.carte) state.carte=Object.assign({positions:{},players:{}},saved.carte);
+    buildMap();
   }catch(e){console.error(e);}
   applyingRemote=false;
 }
 
-// ── Realtime ──
-function startRealtime(){
-  const wsUrl=SUPABASE_URL.replace('https://','wss://').replace('http://','ws://')+'/realtime/v1/websocket?apikey='+SUPABASE_KEY+'&vsn=1.0.0';
-  let ws,hb;
-  function connect(){
-    ws=new WebSocket(wsUrl);
-    ws.onopen=()=>{
-      ws.send(JSON.stringify({topic:'realtime:public:fiches:id=eq.'+FICHE_ID,event:'phx_join',payload:{},ref:'c1'}));
-      hb=setInterval(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hbc'})),25000);
-    };
-    ws.onmessage=(e)=>{
-      try{
-        const m=JSON.parse(e.data);
-        if(m.event==='UPDATE'||m.event==='INSERT'){
-          const nc=m.payload?.record?.carte;
-          if(nc&&!applyingRemote) applyRemoteState(nc);
-        }
-      }catch(err){}
-    };
-    ws.onclose=()=>{ clearInterval(hb); setTimeout(connect,3000); };
-    ws.onerror=()=>ws.close();
-  }
-  connect();
-}
-
-// ── Save ──
-let saveTimer=null;
 function saveState(){
-  if(applyingRemote||!authenticated) return;
+  if(applyingRemote||!authenticated)return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     const msg=document.getElementById('save-msg');
     try{
       const ok=await SB.upsert(FICHE_ID,JSON.parse(JSON.stringify(state)));
-      if(ok){msg.textContent='Sauvegardé ✓';msg.className='save-info saved';setTimeout(()=>{msg.textContent='';msg.className='save-info';},2000);}
-      else{msg.textContent='Erreur';msg.className='save-info error';}
-    }catch(e){msg.textContent='Hors-ligne';msg.className='save-info error';}
+      if(ok){msg.textContent='Sauvegardé ✓';msg.className='save-msg saved';setTimeout(()=>{msg.textContent='';msg.className='';},2000);}
+      else{msg.textContent='Erreur';msg.className='save-msg error';}
+    }catch(e){msg.textContent='Hors-ligne';msg.className='save-msg error';}
   },600);
 }
 
-// ── GM actions ──
-async function gmSaveOrigin(){
-  if(!confirm("Sauvegarder l'état actuel comme état d'origine ?")) return;
-  try{
-    await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',headers:{...SB.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:FICHE_ID,etat_origine:JSON.parse(JSON.stringify(state))})});
-  }catch(e){}
-}
-async function gmReset(){
-  if(!confirm("Réinitialiser à l'état d'origine ?")) return;
-  try{
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat_origine`,{headers:SB.hdrs});
-    const d=await r.json();
-    if(d[0]?.etat_origine) applyRemoteState(d[0].etat_origine);
-  }catch(e){}
-}
-function applyConfig(){
-  const c=parseInt(document.getElementById('cfg-cercles').value)||4;
-  const s=parseInt(document.getElementById('cfg-secteurs').value)||20;
-  state.config.cercles=Math.min(8,Math.max(1,c));
-  state.config.secteurs=Math.min(36,Math.max(4,s));
-  buildCarte();
-  saveState();
+// ── Realtime ──
+function startRealtime(){
+  const wsUrl=SUPABASE_URL.replace('https://','wss://')+'/realtime/v1/websocket?apikey='+SUPABASE_KEY+'&vsn=1.0.0';
+  let ws,hb;
+  function connect(){
+    ws=new WebSocket(wsUrl);
+    ws.onopen=()=>{ws.send(JSON.stringify({topic:'realtime:public:fiches:id=eq.'+FICHE_ID,event:'phx_join',payload:{},ref:'c1'}));hb=setInterval(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'})),25000);};
+    ws.onmessage=(e)=>{try{const m=JSON.parse(e.data);if((m.event==='UPDATE'||m.event==='INSERT')&&m.payload?.record?.carte&&!applyingRemote)applyRemoteState(m.payload.record.carte);}catch(err){}};
+    ws.onclose=()=>{clearInterval(hb);setTimeout(connect,3000);};ws.onerror=()=>ws.close();
+  }connect();
 }
 
-// ══════════════════════════════════
-// CONSTRUCTION DE LA ROSACE
-// ══════════════════════════════════
-const SVG_NS='http://www.w3.org/2000/svg';
-const CX=350, CY=350;
-const R_MIN=45, R_MAX=310;
-
-function svgEl(tag,attrs={},parent=null){
-  const el=document.createElementNS(SVG_NS,tag);
-  Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));
-  if(parent) parent.appendChild(el);
-  return el;
-}
-function polar(cx,cy,r,deg){
-  const a=(deg-90)*Math.PI/180;
-  return {x:cx+r*Math.cos(a), y:cy+r*Math.sin(a)};
-}
-function arcPath(cx,cy,r1,r2,startDeg,endDeg){
-  const s1=polar(cx,cy,r1,startDeg), e1=polar(cx,cy,r1,endDeg);
-  const s2=polar(cx,cy,r2,startDeg), e2=polar(cx,cy,r2,endDeg);
-  const large=(endDeg-startDeg)>180?1:0;
-  return `M${s1.x.toFixed(2)},${s1.y.toFixed(2)} A${r1},${r1},0,${large},1,${e1.x.toFixed(2)},${e1.y.toFixed(2)} L${e2.x.toFixed(2)},${e2.y.toFixed(2)} A${r2},${r2},0,${large},0,${s2.x.toFixed(2)},${s2.y.toFixed(2)} Z`;
-}
-
-// Dessine motif géométrique islamique en étoile au centre
-function drawIslamicCenter(parent, r){
-  const n=8;
+// ── Fond rosace (très discret) ──
+function buildFondRosace(){
+  const g=document.getElementById('fond-rosace');
+  g.innerHTML='';
+  const W=window.innerWidth,H=window.innerHeight;
+  const cx=W/2,cy=H/2;
+  const rmax=Math.min(W,H)*0.48;
+  const ns='http://www.w3.org/2000/svg';
+  [0.25,0.5,0.75,1].forEach(f=>{
+    const c=document.createElementNS(ns,'circle');
+    c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',rmax*f);
+    c.setAttribute('fill','none');c.setAttribute('stroke','#c8860a');c.setAttribute('stroke-width','0.8');
+    g.appendChild(c);
+  });
+  for(let i=0;i<8;i++){
+    const a=(i*45-90)*Math.PI/180;
+    const l=document.createElementNS(ns,'line');
+    l.setAttribute('x1',cx);l.setAttribute('y1',cy);
+    l.setAttribute('x2',(cx+Math.cos(a)*rmax).toFixed(1));l.setAttribute('y2',(cy+Math.sin(a)*rmax).toFixed(1));
+    l.setAttribute('stroke','#c8860a');l.setAttribute('stroke-width','0.5');
+    g.appendChild(l);
+  }
+  // Étoile centrale à 8 branches
   const pts=[];
-  for(let i=0;i<n*2;i++){
-    const deg=(i*360/(n*2))-90;
-    const ri=i%2===0?r:r*0.38;
-    const p=polar(CX,CY,ri,deg);
-    pts.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`);
-  }
-  svgEl('polygon',{points:pts.join(' '),fill:'none',stroke:'#c8860a','stroke-width':'1.2',opacity:'0.7'},parent);
-  // Cercle intérieur
-  svgEl('circle',{cx:CX,cy:CY,r:(r*0.28).toFixed(1),fill:'none',stroke:'#c8860a','stroke-width':'0.8',opacity:'0.5'},parent);
+  for(let i=0;i<16;i++){const a=(i*22.5-90)*Math.PI/180;const r=i%2===0?rmax*0.06:rmax*0.025;pts.push(`${(cx+Math.cos(a)*r).toFixed(1)},${(cy+Math.sin(a)*r).toFixed(1)}`);}
+  const poly=document.createElementNS(ns,'polygon');
+  poly.setAttribute('points',pts.join(' '));poly.setAttribute('fill','#c8860a');poly.setAttribute('stroke','none');
+  g.appendChild(poly);
 }
 
-// Arabesque sur un arc
-function drawArabesque(parent,r,startDeg,endDeg,strokeColor){
-  const mid=(startDeg+endDeg)/2;
-  const rInner=r-6, rOuter=r+6;
-  for(let t=0;t<=1;t+=0.25){
-    const deg=startDeg+t*(endDeg-startDeg);
-    const p1=polar(CX,CY,rInner,deg);
-    const p2=polar(CX,CY,rOuter,deg);
-    svgEl('line',{x1:p1.x.toFixed(2),y1:p1.y.toFixed(2),x2:p2.x.toFixed(2),y2:p2.y.toFixed(2),stroke:strokeColor,'stroke-width':'0.5',opacity:'0.4'},parent);
+// ── Étoile SVG selon poids ──
+function starPath(cx,cy,poids){
+  const outerR=8+poids*5; // 1=>13, 5=>33
+  const innerR=outerR*0.42;
+  const branches=4+poids; // 1=>5, 5=>9
+  const pts=[];
+  for(let i=0;i<branches*2;i++){
+    const a=(i*Math.PI/branches)-Math.PI/2;
+    const r=i%2===0?outerR:innerR;
+    pts.push(`${(cx+Math.cos(a)*r).toFixed(2)},${(cy+Math.sin(a)*r).toFixed(2)}`);
   }
+  return pts.join(' ');
 }
 
-// Couleur de remplissage selon cercle (dégradé islamique du plus proche au plus loin)
-function ringColor(ci,nCercles){
-  const pct=ci/(nCercles-1);
-  if(pct<0.33) return '#2a1a06';
-  if(pct<0.66) return '#1a1a2a';
-  return '#0a1a1a';
+// ── Positions ──
+function getMyPositions(){
+  if(!state.carte.players[playerId]) state.carte.players[playerId]={positions:{},liens:[],shared:false};
+  return state.carte.players[playerId].positions;
 }
-function ringStroke(ci,nCercles){
-  const pct=ci/(nCercles-1);
-  if(pct<0.33) return '#c8860a';
-  if(pct<0.66) return '#1a6b8a';
-  return '#2a8a6b';
+function getMyLiens(){
+  if(!state.carte.players[playerId]) state.carte.players[playerId]={positions:{},liens:[],shared:false};
+  return state.carte.players[playerId].liens;
 }
-
-function buildCarte(){
-  const svg=document.getElementById('carte-svg');
-  while(svg.firstChild) svg.removeChild(svg.firstChild);
-  svg.setAttribute('viewBox','0 0 700 700');
-
-  const nC=state.config.cercles;
-  const nS=state.config.secteurs;
-  const degPerSector=360/nS;
-  const rStep=(R_MAX-R_MIN)/nC;
-
-  // ── Fond ──
-  svgEl('rect',{x:0,y:0,width:700,height:700,fill:'#100a04'},svg);
-
-  // ── Motif géométrique de fond (petites étoiles) ──
-  for(let gi=0;gi<7;gi++){
-    for(let gj=0;gj<7;gj++){
-      const gx=50+gi*100, gy=50+gj*100;
-      const dist=Math.sqrt((gx-CX)**2+(gy-CY)**2);
-      if(dist>340) continue;
-      const g=svgEl('g',{opacity:'0.12'},svg);
-      for(let k=0;k<6;k++){
-        const ka=(k*60-90)*Math.PI/180;
-        const p1={x:gx+8*Math.cos(ka),y:gy+8*Math.sin(ka)};
-        const p2={x:gx,y:gy};
-        svgEl('line',{x1:p1.x.toFixed(1),y1:p1.y.toFixed(1),x2:p2.x.toFixed(1),y2:p2.y.toFixed(1),stroke:'#c8860a','stroke-width':'0.5'},g);
-      }
-      svgEl('circle',{cx:gx,cy:gy,r:'3',fill:'none',stroke:'#c8860a','stroke-width':'0.4'},g);
-    }
-  }
-
-  // ── Groupes des secteurs ──
-  const sectorsGroup=svgEl('g',{},svg);
-
-  for(let ci=0;ci<nC;ci++){
-    const r1=R_MIN+ci*rStep;
-    const r2=R_MIN+(ci+1)*rStep;
-    const rMid=(r1+r2)/2;
-    const fill=ringColor(ci,nC);
-    const stroke=ringStroke(ci,nC);
-
-    for(let si=0;si<nS;si++){
-      const startDeg=si*degPerSector;
-      const endDeg=(si+1)*degPerSector;
-      const key=`${ci}_${si}`;
-      const slot=state.slots[key]||{};
-
-      // Visible au joueur ?
-      const visible=isGM||isSlotVisible(key);
-      const hasContent=slot.titre||slot.texte;
-
-      const g=svgEl('g',{'class':'carte-sector','data-key':key},sectorsGroup);
-
-      // Couleur si slot a contenu et est visible
-      let bgFill=fill;
-      if(hasContent&&visible&&slot.niveau){
-        const nivAlpha=[0.08,0.14,0.22][slot.niveau-1]||0.08;
-        bgFill=fill; // on utilisera une surcouche
-      }
-
-      // Fond du secteur
-      const path=svgEl('path',{
-        d:arcPath(CX,CY,r1+0.5,r2-0.5,startDeg,endDeg),
-        'class':'sector-bg',
-        fill:bgFill,
-        stroke:stroke,
-        'stroke-width':'0.8',
-        opacity:'0.9'
-      },g);
-
-      // Surcouche contenu
-      if(hasContent&&visible&&slot.niveau){
-        const nivColors=['#c8860a','#1a6b8a','#c8e0f0'];
-        const nivAlpha=[0.12,0.18,0.25][slot.niveau-1];
-        svgEl('path',{
-          d:arcPath(CX,CY,r1+0.5,r2-0.5,startDeg,endDeg),
-          fill:nivColors[slot.niveau-1],
-          'fill-opacity':nivAlpha.toFixed(2),
-          stroke:'none'
-        },g);
-      }
-
-      // Couleur association joueur
-      const myCouleur=state.couleurs[playerId]?.[key];
-      if(myCouleur!==undefined&&myCouleur!==null){
-        svgEl('path',{
-          d:arcPath(CX,CY,r1+1,r2-1,startDeg+0.5,endDeg-0.5),
-          fill:COULEURS[myCouleur].hex,
-          'fill-opacity':'0.28',
-          stroke:COULEURS[myCouleur].hex,
-          'stroke-width':'1.5',
-          'stroke-opacity':'0.6'
-        },g);
-      }
-
-      // Arabesque décorative
-      drawArabesque(g,r2,startDeg,endDeg,stroke);
-
-      // Titre court (si visible et ci==0 ou petit nombre de secteurs)
-      if(hasContent&&visible&&slot.titre&&nS<=24){
-        const midDeg=(startDeg+endDeg)/2;
-        const pos=polar(CX,CY,rMid,midDeg);
-        const title=slot.titre.substring(0,6)+(slot.titre.length>6?'…':'');
-        const t=svgEl('text',{
-          x:pos.x.toFixed(2),y:pos.y.toFixed(2),
-          'text-anchor':'middle','dominant-baseline':'central',
-          'font-family':'Cinzel,serif','font-size':(Math.min(9,rStep*0.35)).toFixed(1),
-          'fill':'#f5e8c8','opacity':'0.85','pointer-events':'none',
-          transform:`rotate(${(midDeg).toFixed(1)},${pos.x.toFixed(2)},${pos.y.toFixed(2)})`
-        },g);
-        t.textContent=title;
-      }
-
-      // Indicateur de niveau (petit point)
-      if(hasContent&&visible&&slot.niveau){
-        const midDeg=(startDeg+endDeg)/2;
-        const dotR=r2-4;
-        const dp=polar(CX,CY,dotR,midDeg);
-        const dotColors=['#c8860a','#1a6b8a','#c8e0f0'];
-        svgEl('circle',{cx:dp.x.toFixed(2),cy:dp.y.toFixed(2),r:'3',fill:dotColors[slot.niveau-1],'pointer-events':'none'},g);
-      }
-
-      // Indicateur hypothèse joueur
-      const myHypo=state.hypotheses[key]?.[playerId]?.texte;
-      if(myHypo&&!isGM){
-        const midDeg=(startDeg+endDeg)/2;
-        const hp=polar(CX,CY,r1+5,midDeg);
-        svgEl('circle',{cx:hp.x.toFixed(2),cy:hp.y.toFixed(2),r:'2.5',fill:'#6b8a3a','pointer-events':'none'},g);
-      }
-
-      // Click handler
-      g.addEventListener('click',()=>openSector(key,ci,si));
-    }
-  }
-
-  // ── Cercles de séparation décoratifs ──
-  for(let ci=0;ci<=nC;ci++){
-    const r=R_MIN+ci*rStep;
-    const col=ci===0||ci===nC?'#c8860a':ringStroke(Math.min(ci,nC-1),nC);
-    svgEl('circle',{cx:CX,cy:CY,r:r.toFixed(1),fill:'none',stroke:col,'stroke-width':ci===0||ci===nC?'1.5':'0.8',opacity:'0.6'},svg);
-  }
-
-  // ── Lignes radiales décoratives ──
-  for(let si=0;si<nS;si++){
-    const deg=si*degPerSector;
-    const p1=polar(CX,CY,R_MIN,deg);
-    const p2=polar(CX,CY,R_MAX,deg);
-    svgEl('line',{x1:p1.x.toFixed(2),y1:p1.y.toFixed(2),x2:p2.x.toFixed(2),y2:p2.y.toFixed(2),stroke:'#3a2810','stroke-width':'0.5',opacity:'0.5'},svg);
-  }
-
-  // ── Numéros de cercle (labels) ──
-  const labelsDeg=((nS>0?0.5/nS:0)*360)-90;
-  for(let ci=0;ci<nC;ci++){
-    const r=(R_MIN+(ci+0.5)*rStep);
-    const lPos=polar(CX,CY,r,0);
-    const lt=svgEl('text',{x:(CX-R_MIN+2).toFixed(1),y:(CY-r+8).toFixed(1),'font-family':'Cinzel,serif','font-size':'8','fill':'#9a7a5a',opacity:'0.6','text-anchor':'middle'},svg);
-    lt.textContent=String(ci+1);
-  }
-
-  // ── Étoile islamique centrale ──
-  drawIslamicCenter(svg, R_MIN-2);
-
-  // ── Calligraphie décorative autour (texte courbé) ──
-  const deco=svgEl('g',{opacity:'0.2'},svg);
-  for(let i=0;i<nS;i++){
-    const deg=i*degPerSector+(degPerSector/2);
-    const p=polar(CX,CY,R_MAX+18,deg);
-    svgEl('circle',{cx:p.x.toFixed(2),cy:p.y.toFixed(2),r:'1.5',fill:'#c8860a'},deco);
-  }
-
-  // ── Légende couleurs ──
-  buildCouleurLegend();
+function initSlotPos(key){
+  const pos=getMyPositions();
+  if(pos[key]) return pos[key];
+  // Position aléatoire dans la zone centrale par défaut
+  const W=window.innerWidth,H=window.innerHeight;
+  const cx=W/2,cy=H/2,spread=Math.min(W,H)*0.3;
+  pos[key]={x:cx+(Math.random()-.5)*spread*2,y:cy+(Math.random()-.5)*spread*2};
+  return pos[key];
 }
 
-function isSlotVisible(key){
+// ── Construction de la carte ──
+function buildMap(){
+  buildStars();
+  buildLinks();
+  buildSharePanel();
+}
+
+function isVisible(key){
   const slot=state.slots[key];
   if(!slot) return false;
+  if(isGM) return !!(slot.titre||slot.texte);
   const ra=slot.revele_a;
   if(!ra||ra==='aucun') return false;
   if(ra==='tous') return true;
@@ -693,294 +439,393 @@ function isSlotVisible(key){
   return false;
 }
 
-// ══════════════════════════════════
-// PANNEAU SECTEUR
-// ══════════════════════════════════
-let currentKey=null;
+function buildStars(){
+  const g=document.getElementById('layer-etoiles');
+  g.innerHTML='';
+  const ns='http://www.w3.org/2000/svg';
+  const myPos=getMyPositions();
+  const visKeys=Object.keys(state.slots).filter(k=>isVisible(k));
 
-function openSector(key,ci,si){
-  currentKey=key;
-  const nC=state.config.cercles;
-  const nS=state.config.secteurs;
+  visKeys.forEach(key=>{
+    const slot=state.slots[key];
+    const pos=initSlotPos(key);
+    const poids=slot.poids||1;
+    const myCoul=state.couleurs[playerId]?.[key];
+
+    const gEl=document.createElementNS(ns,'g');
+    gEl.setAttribute('class','star-group');
+    gEl.setAttribute('data-key',key);
+    gEl.style.cursor=currentMode==='link'?'crosshair':'grab';
+
+    // Halo (sélection en mode lien)
+    const halo=document.createElementNS(ns,'circle');
+    halo.setAttribute('cx',pos.x);halo.setAttribute('cy',pos.y);
+    halo.setAttribute('r',20+poids*4);halo.setAttribute('fill','none');
+    halo.setAttribute('stroke',myCoul!==undefined?COULEURS[myCoul].hex:'#c8860a');
+    halo.setAttribute('stroke-width','1');halo.setAttribute('opacity','0');
+    halo.setAttribute('class','star-halo');
+    gEl.appendChild(halo);
+
+    // Étoile
+    const poly=document.createElementNS(ns,'polygon');
+    poly.setAttribute('points',starPath(pos.x,pos.y,poids));
+    poly.setAttribute('fill',myCoul!==undefined?COULEURS[myCoul].hex:'#e8d5a0');
+    poly.setAttribute('filter','url(#star-glow)');
+    poly.setAttribute('opacity','0.92');
+    gEl.appendChild(poly);
+
+    // Titre (si pas trop petit)
+    if(slot.titre){
+      const txt=document.createElementNS(ns,'text');
+      txt.setAttribute('x',pos.x);txt.setAttribute('y',pos.y+(12+poids*5)+12);
+      txt.setAttribute('text-anchor','middle');txt.setAttribute('font-family','Cinzel,serif');
+      txt.setAttribute('font-size','10');txt.setAttribute('fill','#d4b896');
+      txt.setAttribute('pointer-events','none');
+      txt.textContent=slot.titre.substring(0,20)+(slot.titre.length>20?'…':'');
+      gEl.appendChild(txt);
+    }
+
+    // Interactions
+    setupStarInteraction(gEl, key);
+    g.appendChild(gEl);
+  });
+
+  // Filtre lueur pour les étoiles
+  if(!document.getElementById('star-glow')){
+    const defs=document.createElementNS(ns,'defs');
+    defs.innerHTML=`<filter id="star-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>`;
+    document.getElementById('carte-canvas').insertBefore(defs,document.getElementById('carte-canvas').firstChild);
+  }
+
+  // Constellations des autres joueurs (partagées)
+  buildOtherConstellations();
+}
+
+function buildLinks(){
+  const g=document.getElementById('layer-liens');
+  g.innerHTML='';
+  const ns='http://www.w3.org/2000/svg';
+  const myPos=getMyPositions();
+  const liens=getMyLiens();
+
+  liens.forEach((lien,idx)=>{
+    const posA=myPos[lien.from];const posB=myPos[lien.to];
+    if(!posA||!posB) return;
+    const col=lien.couleurIdx!==undefined?COULEURS[lien.couleurIdx].hex:'#c8860a';
+    const line=document.createElementNS(ns,'line');
+    line.setAttribute('x1',posA.x);line.setAttribute('y1',posA.y);
+    line.setAttribute('x2',posB.x);line.setAttribute('y2',posB.y);
+    line.setAttribute('stroke',col);line.setAttribute('stroke-width','1.5');
+    line.setAttribute('opacity','0.6');line.setAttribute('stroke-dasharray','6,3');
+    line.setAttribute('cursor','pointer');
+    line.addEventListener('click',()=>deleteLien(idx));
+    g.appendChild(line);
+  });
+}
+
+function buildOtherConstellations(){
+  const ns='http://www.w3.org/2000/svg';
+  const g=document.getElementById('layer-etoiles');
+  Object.entries(state.carte.players||{}).forEach(([pid,pdata])=>{
+    if(pid===playerId||!pdata.shared) return;
+    if(!visiblePlayers.includes(pid)&&!isGM) return;
+    // Liens de ce joueur
+    const lienG=document.getElementById('layer-liens');
+    (pdata.liens||[]).forEach(lien=>{
+      const posA=pdata.positions[lien.from];const posB=pdata.positions[lien.to];
+      if(!posA||!posB) return;
+      const col=lien.couleurIdx!==undefined?COULEURS[lien.couleurIdx].hex:'#c8860a';
+      const line=document.createElementNS(ns,'line');
+      line.setAttribute('x1',posA.x);line.setAttribute('y1',posA.y);
+      line.setAttribute('x2',posB.x);line.setAttribute('y2',posB.y);
+      line.setAttribute('stroke',col);line.setAttribute('stroke-width','1');
+      line.setAttribute('opacity','0.35');line.setAttribute('stroke-dasharray','3,4');
+      lienG.appendChild(line);
+    });
+  });
+}
+
+// ── Drag & Drop ──
+function setupStarInteraction(gEl,key){
+  let dragging=false,startX=0,startY=0,startPos={};
+  const pos=getMyPositions();
+
+  const onStart=(ex,ey)=>{
+    if(currentMode==='link'){
+      handleLinkClick(key);return;
+    }
+    dragging=true;
+    startX=ex;startY=ey;
+    const p=pos[key]||initSlotPos(key);
+    startPos={x:p.x,y:p.y};
+    gEl.style.cursor='grabbing';
+  };
+  const onMove=(ex,ey)=>{
+    if(!dragging) return;
+    const dx=ex-startX,dy=ey-startY;
+    pos[key]={x:startPos.x+dx,y:startPos.y+dy};
+    updateStarPos(gEl,key,pos[key]);
+    updateLinksForKey(key);
+  };
+  const onEnd=(ex,ey)=>{
+    if(!dragging) return;
+    dragging=false;
+    gEl.style.cursor='grab';
+    saveState();
+  };
+  const onTap=(ex,ey)=>{ if(!dragging) openEvtPanel(key); };
+
+  // Mouse
+  gEl.addEventListener('mousedown',e=>{e.preventDefault();onStart(e.clientX,e.clientY);
+    const up=(ev)=>{onEnd(ev.clientX,ev.clientY);onTap(ev.clientX,ev.clientY);window.removeEventListener('mouseup',up);window.removeEventListener('mousemove',mv);};
+    const mv=(ev)=>onMove(ev.clientX,ev.clientY);
+    window.addEventListener('mouseup',up);window.addEventListener('mousemove',mv);
+  });
+  // Touch
+  gEl.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];onStart(t.clientX,t.clientY);},{passive:false});
+  gEl.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];onMove(t.clientX,t.clientY);},{passive:false});
+  gEl.addEventListener('touchend',e=>{e.preventDefault();onEnd(0,0);if(!dragging)openEvtPanel(key);},{passive:false});
+}
+
+function updateStarPos(gEl,key,pos){
+  gEl.querySelectorAll('polygon').forEach(p=>p.setAttribute('points',starPath(pos.x,pos.y,state.slots[key]?.poids||1)));
+  gEl.querySelectorAll('text').forEach(t=>{t.setAttribute('x',pos.x);t.setAttribute('y',pos.y+(12+(state.slots[key]?.poids||1)*5)+12);});
+  gEl.querySelectorAll('circle').forEach(c=>{c.setAttribute('cx',pos.x);c.setAttribute('cy',pos.y);});
+}
+
+function updateLinksForKey(key){buildLinks();}
+
+// ── Mode liaison ──
+function setMode(m){
+  currentMode=m;linkStart=null;
+  document.getElementById('btn-mode-move').classList.toggle('active',m==='move');
+  document.getElementById('btn-mode-link').classList.toggle('active',m==='link');
+  document.getElementById('mode-badge').textContent=m==='move'?'Mode : Déplacer':'Mode : Relier — cliquez deux étoiles';
+  document.getElementById('mode-badge').classList.toggle('link-mode',m==='link');
+  document.querySelectorAll('.star-group').forEach(g=>{g.style.cursor=m==='link'?'crosshair':'grab';});
+}
+
+function handleLinkClick(key){
+  if(!linkStart){
+    linkStart=key;
+    // Montrer le halo
+    document.querySelector(`.star-group[data-key="${key}"] .star-halo`)?.setAttribute('opacity','0.5');
+  } else {
+    if(linkStart===key){linkStart=null;clearHalos();return;}
+    // Créer le lien
+    const liens=getMyLiens();
+    const exists=liens.find(l=>(l.from===linkStart&&l.to===key)||(l.from===key&&l.to===linkStart));
+    if(!exists){
+      liens.push({from:linkStart,to:key,couleurIdx:0}); // couleur par défaut
+      saveState();
+    }
+    linkStart=null;clearHalos();buildLinks();
+  }
+}
+
+function clearHalos(){document.querySelectorAll('.star-halo').forEach(h=>h.setAttribute('opacity','0'));}
+
+function deleteLien(idx){
+  const liens=getMyLiens();
+  liens.splice(idx,1);
+  buildLinks();
+  saveState();
+}
+
+// ── Partage ──
+function toggleSharePanel(){document.getElementById('share-bar').classList.toggle('open');buildSharePanel();}
+function buildSharePanel(){
+  const list=document.getElementById('share-list');list.innerHTML='';
+  if(!isGM) return;
+  Object.entries(state.carte.players||{}).forEach(([pid,pdata])=>{
+    if(pid===playerId) return;
+    const item=document.createElement('div');item.className='share-player-item'+(pdata.shared?' active':'');
+    const dot=document.createElement('span');dot.className='share-dot';
+    const name=document.createElement('span');name.textContent=pid+(pdata.shared?' (partagé)':'');
+    item.appendChild(dot);item.appendChild(name);
+    item.addEventListener('click',()=>{
+      if(visiblePlayers.includes(pid))visiblePlayers=visiblePlayers.filter(p=>p!==pid);
+      else visiblePlayers.push(pid);
+      buildMap();buildSharePanel();
+    });
+    list.appendChild(item);
+  });
+}
+
+function toggleMyShare(){
+  if(!state.carte.players[playerId]) state.carte.players[playerId]={positions:{},liens:[],shared:false};
+  state.carte.players[playerId].shared=!state.carte.players[playerId].shared;
+  document.getElementById('btn-share-mine').classList.toggle('active',state.carte.players[playerId].shared);
+  saveState();
+}
+
+// ── Panneau événement ──
+let currentEvtKey=null;
+function closeEvtPanel(){document.getElementById('evt-overlay').classList.remove('open');currentEvtKey=null;}
+
+function openEvtPanel(key){
+  currentEvtKey=key;
   const slot=state.slots[key]||{};
-  const visible=isGM||isSlotVisible(key);
+  const visible=isGM||isVisible(key);
+  document.getElementById('evt-panel-title').textContent=slot.titre||'Événement';
+  const content=document.getElementById('evt-panel-content');content.innerHTML='';
 
-  // Titre du panneau
-  const cercleNames=['Proche','Intermédiaire','Distant','Lointain','Très lointain','Horizon','Cosmos','Infini'];
-  document.getElementById('sector-title').textContent=`${cercleNames[ci]||'Cercle '+(ci+1)} — Secteur ${si+1}`;
-
-  const content=document.getElementById('sector-content');
-  content.innerHTML='';
-
-  // ── Zone MJ ──
   if(isGM){
-    const mjSec=makeSection('Informations du meneur','MJ');
-
+    const mjSec=makeSec('Informations du meneur','MJ');
     // Titre
-    const titreRow=document.createElement('div');
-    titreRow.style.cssText='margin-bottom:.4rem;';
-    const titreInp=document.createElement('input');
-    titreInp.type='text'; titreInp.placeholder='Titre court (affiché dans le secteur)';
-    titreInp.value=slot.titre||'';
-    titreInp.style.cssText='width:100%;background:var(--input-bg);border:none;border-left:2px solid var(--border);color:var(--ink);font-family:Cinzel,serif;font-size:.82rem;padding:4px 6px;outline:none;';
-    titreInp.addEventListener('input',()=>{ ensureSlot(key); state.slots[key].titre=titreInp.value; saveState(); buildCarte(); });
-    titreRow.appendChild(titreInp);
-    mjSec.body.appendChild(titreRow);
-
-    // Niveau de précision
-    const nivRow=document.createElement('div'); nivRow.className='niveau-btns';
+    const titreInp=makeInput('text',slot.titre||'','Titre court');
+    titreInp.addEventListener('input',()=>{ensureSlot(key);state.slots[key].titre=titreInp.value;saveState();buildMap();});
+    mjSec.body.appendChild(titreInp);
+    // Niveau
+    const nivRow=document.createElement('div');nivRow.className='niveau-btns';
     ['Rumeur','Indice','Fait établi'].forEach((n,i)=>{
-      const b=document.createElement('button');
-      b.className='niv-btn n'+(i+1)+(slot.niveau===i+1?' active':'');
+      const b=document.createElement('button');b.className='niv-btn n'+(i+1)+(slot.niveau===i+1?' active':'');
       b.textContent=n;
-      b.addEventListener('click',()=>{
-        ensureSlot(key); state.slots[key].niveau=i+1;
-        nivRow.querySelectorAll('.niv-btn').forEach((bb,j)=>bb.classList.toggle('active',j===i));
-        saveState(); buildCarte();
-      });
+      b.addEventListener('click',()=>{ensureSlot(key);state.slots[key].niveau=i+1;nivRow.querySelectorAll('.niv-btn').forEach((bb,j)=>bb.classList.toggle('active',j===i));saveState();});
       nivRow.appendChild(b);
     });
     mjSec.body.appendChild(nivRow);
-
     // Texte
-    const ta=makeTA(slot.texte||'','Contenu de l\'information…');
-    ta.addEventListener('input',()=>{ ensureSlot(key); state.slots[key].texte=ta.value; autoResize(ta); saveState(); });
-    mjSec.body.appendChild(ta); setTimeout(()=>autoResize(ta),10);
-
+    const ta=makeTa(slot.texte||'','Contenu…');
+    ta.addEventListener('input',()=>{ensureSlot(key);state.slots[key].texte=ta.value;autoR(ta);saveState();});
+    mjSec.body.appendChild(ta);setTimeout(()=>autoR(ta),10);
     // Image
-    const imgBtn=document.createElement('div'); imgBtn.className='img-zone';
-    imgBtn.innerHTML='📎 Ajouter une image';
-    const imgInp=document.createElement('input'); imgInp.type='file'; imgInp.accept='image/*'; imgInp.style.display='none';
-    if(slot.image){
-      const img=document.createElement('img'); img.src=slot.image; img.className='img-preview';
-      imgBtn.innerHTML=''; imgBtn.appendChild(img);
-    }
-    imgBtn.addEventListener('click',()=>imgInp.click());
-    imgInp.addEventListener('change',()=>{
-      const file=imgInp.files[0]; if(!file) return;
-      const reader=new FileReader();
-      reader.onload=(e)=>{
-        ensureSlot(key); state.slots[key].image=e.target.result;
-        const img=document.createElement('img'); img.src=e.target.result; img.className='img-preview';
-        imgBtn.innerHTML=''; imgBtn.appendChild(img);
-        saveState();
-      };
-      reader.readAsDataURL(file);
-    });
-    mjSec.body.appendChild(imgBtn); mjSec.body.appendChild(imgInp);
-
-    // Révélation
-    const revRow=document.createElement('div'); revRow.className='reveal-row';
-    const ra=slot.revele_a||'aucun';
-    const btnTous=document.createElement('button'); btnTous.className='reveal-btn'+(ra==='tous'?' active':''); btnTous.textContent='👁 Tous';
-    const btnAucun=document.createElement('button'); btnAucun.className='reveal-btn'+(ra==='aucun'?' active':''); btnAucun.textContent='🙈 Aucun';
-    const ficheInp=document.createElement('input'); ficheInp.className='reveal-fiches-inp'; ficheInp.placeholder='fiches spécifiques (séparées par virgule)';
-    ficheInp.value=Array.isArray(ra)?ra.join(', '):'';
-
-    btnTous.addEventListener('click',()=>{
-      ensureSlot(key); state.slots[key].revele_a='tous';
-      btnTous.classList.add('active'); btnAucun.classList.remove('active'); saveState(); buildCarte();
-    });
-    btnAucun.addEventListener('click',()=>{
-      ensureSlot(key); state.slots[key].revele_a='aucun';
-      btnAucun.classList.add('active'); btnTous.classList.remove('active'); saveState(); buildCarte();
-    });
-    ficheInp.addEventListener('input',()=>{
-      const fiches=ficheInp.value.split(',').map(s=>s.trim()).filter(Boolean);
-      ensureSlot(key); state.slots[key].revele_a=fiches.length?fiches:'aucun';
-      btnTous.classList.remove('active'); btnAucun.classList.toggle('active',!fiches.length);
-      saveState(); buildCarte();
-    });
-    revRow.appendChild(btnTous); revRow.appendChild(btnAucun); revRow.appendChild(ficheInp);
-    mjSec.body.appendChild(revRow);
-
-    // Lier à un ou plusieurs axes de l'octogone
-    const axeLabel=document.createElement('div'); axeLabel.style.cssText='margin-top:.5rem;font-size:.72rem;font-family:Cinzel,serif;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;';
-    axeLabel.textContent='🔗 Axes liés';
-    mjSec.body.appendChild(axeLabel);
-    const axeRow=document.createElement('div'); axeRow.style.cssText='display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.3rem;';
+    const imgZone=document.createElement('div');imgZone.className='img-zone';
+    imgZone.innerHTML=slot.image?`<img src="${slot.image}" class="img-preview">`:'📎 Ajouter une image';
+    const imgInp=document.createElement('input');imgInp.type='file';imgInp.accept='image/*';imgInp.style.display='none';
+    imgZone.addEventListener('click',()=>imgInp.click());
+    imgInp.addEventListener('change',()=>{const f=imgInp.files[0];if(!f)return;const r=new FileReader();r.onload=(e)=>{ensureSlot(key);state.slots[key].image=e.target.result;imgZone.innerHTML=`<img src="${e.target.result}" class="img-preview">`;saveState();};r.readAsDataURL(f);});
+    mjSec.body.appendChild(imgZone);mjSec.body.appendChild(imgInp);
+    // Poids
+    const pl=document.createElement('div');pl.style.cssText='font-size:.72rem;font-family:Cinzel,serif;color:var(--accent);margin-top:.6rem;';pl.textContent='⚖️ Poids';
+    mjSec.body.appendChild(pl);
+    const pr=document.createElement('div');pr.className='poids-row';
+    const curP=slot.poids||1;
+    for(let p=1;p<=5;p++){const pb=document.createElement('button');pb.type='button';pb.className='poids-btn'+(p===curP?' on':'');pb.textContent=p;pb.addEventListener('click',()=>{ensureSlot(key);state.slots[key].poids=p;saveState();openEvtPanel(key);});pr.appendChild(pb);}
+    mjSec.body.appendChild(pr);
+    // Axes liés
+    const al=document.createElement('div');al.style.cssText='font-size:.72rem;font-family:Cinzel,serif;color:var(--accent);margin-top:.6rem;';al.textContent='🔗 Axes liés';
+    mjSec.body.appendChild(al);
+    const ar=document.createElement('div');ar.className='axe-row';
     const linkedAxes=Array.isArray(slot.axes)?slot.axes:[];
-    AXES_NOMS.forEach((nom,idx)=>{
-      const num=idx+1;
-      const b=document.createElement('button');
-      b.type='button';
-      b.textContent=num;
-      b.title=nom;
-      const isOn=linkedAxes.includes(num);
-      b.style.cssText='width:26px;height:26px;border-radius:50%;border:1px solid '+(isOn?'var(--accent)':'var(--border)')+';background:'+(isOn?'#2a1a04':'var(--input-bg)')+';color:'+(isOn?'var(--accent)':'var(--ink3)')+';font-family:Cinzel,serif;font-size:.75rem;cursor:pointer;';
+    AXES_NOMS.forEach((nom,i)=>{
+      const num=i+1;const isOn=linkedAxes.includes(num);
+      const b=document.createElement('button');b.type='button';b.className='axe-num-btn'+(isOn?' on':'');
+      b.textContent=num;b.title=nom;
       b.addEventListener('click',()=>{
-        ensureSlot(key);
-        if(!Array.isArray(state.slots[key].axes)) state.slots[key].axes=[];
-        const arr=state.slots[key].axes;
-        const i=arr.indexOf(num);
-        if(i>=0) arr.splice(i,1); else arr.push(num);
-        saveState();
-        openSector(key,ci,si); // rafraîchir le panneau
+        ensureSlot(key);if(!Array.isArray(state.slots[key].axes))state.slots[key].axes=[];
+        const arr=state.slots[key].axes;const i2=arr.indexOf(num);
+        if(i2>=0)arr.splice(i2,1);else arr.push(num);
+        saveState();openEvtPanel(key);
       });
-      axeRow.appendChild(b);
+      ar.appendChild(b);
     });
-    mjSec.body.appendChild(axeRow);
-
-    // Poids de l'événement (module la facilité de révélation via Occultation)
-    const poidsLabel=document.createElement('div'); poidsLabel.style.cssText='margin-top:.6rem;font-size:.72rem;font-family:Cinzel,serif;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;';
-    poidsLabel.textContent='⚖️ Poids (1 = anodin, 5 = capital)';
-    mjSec.body.appendChild(poidsLabel);
-    const poidsRow=document.createElement('div'); poidsRow.style.cssText='display:flex;gap:.3rem;margin-top:.3rem;';
-    const curPoids=slot.poids||1;
-    for(let p=1;p<=5;p++){
-      const pb=document.createElement('button');
-      pb.type='button'; pb.textContent=p;
-      const isOn=p===curPoids;
-      pb.style.cssText='width:28px;height:26px;border-radius:4px;border:1px solid '+(isOn?'var(--accent)':'var(--border)')+';background:'+(isOn?'#2a1a04':'var(--input-bg)')+';color:'+(isOn?'var(--accent)':'var(--ink3)')+';font-family:Cinzel,serif;font-size:.78rem;cursor:pointer;';
-      pb.addEventListener('click',()=>{
-        ensureSlot(key);
-        state.slots[key].poids=p;
-        saveState();
-        openSector(key,ci,si);
-      });
-      poidsRow.appendChild(pb);
-    }
-    mjSec.body.appendChild(poidsRow);
-
+    mjSec.body.appendChild(ar);
+    // Révélation
+    const ra=slot.revele_a||'aucun';
+    const revRow=document.createElement('div');revRow.className='reveal-row';revRow.style.marginTop='.6rem';
+    const btnT=document.createElement('button');btnT.className='reveal-btn'+(ra==='tous'?' active':'');btnT.textContent='👁 Tous';
+    const btnA=document.createElement('button');btnA.className='reveal-btn'+(ra==='aucun'?' active':'');btnA.textContent='🙈 Aucun';
+    const fInp=document.createElement('input');fInp.className='reveal-fiches-inp';fInp.placeholder='fiches spécifiques…';fInp.value=Array.isArray(ra)?ra.join(', '):'';
+    btnT.addEventListener('click',()=>{ensureSlot(key);state.slots[key].revele_a='tous';btnT.classList.add('active');btnA.classList.remove('active');saveState();});
+    btnA.addEventListener('click',()=>{ensureSlot(key);state.slots[key].revele_a='aucun';btnA.classList.add('active');btnT.classList.remove('active');saveState();});
+    fInp.addEventListener('input',()=>{const fs=fInp.value.split(',').map(s=>s.trim()).filter(Boolean);ensureSlot(key);state.slots[key].revele_a=fs.length?fs:'aucun';saveState();});
+    revRow.appendChild(btnT);revRow.appendChild(btnA);revRow.appendChild(fInp);
+    mjSec.body.appendChild(revRow);
     content.appendChild(mjSec.section);
   } else if(visible){
-    // Contenu révélé au joueur
-    const rc=document.createElement('div'); rc.className='revealed-content';
-    const nLevel=['Rumeur','Indice','Fait établi'][slot.niveau-1]||'';
     const nClass=['n1','n2','n3'][(slot.niveau||1)-1];
-    const nivEl=document.createElement('div'); nivEl.className='rc-niveau '+nClass; nivEl.textContent=nLevel;
-    rc.appendChild(nivEl);
+    const nLabel=['Rumeur','Indice','Fait établi'][(slot.niveau||1)-1];
+    const rc=document.createElement('div');rc.style.padding='.4rem 0';
+    const nEl=document.createElement('div');nEl.className='rc-niveau '+nClass;nEl.textContent=nLabel;rc.appendChild(nEl);
     if(slot.image){const img=document.createElement('img');img.src=slot.image;img.className='img-preview';rc.appendChild(img);}
-    const txt=document.createElement('div'); txt.className='rc-text '+nClass; txt.textContent=slot.texte||'';
-    rc.appendChild(txt);
+    const txt=document.createElement('div');txt.className='rc-text '+nClass;txt.textContent=slot.texte||'';rc.appendChild(txt);
     content.appendChild(rc);
   }
 
-  // ── Zone hypothèses joueur ──
+  // Hypothèse joueur
   if(!isGM){
-    const hypSec=makeSection('Mon hypothèse','');
-    const myHypo=state.hypotheses[key]?.[playerId]||{texte:'',partage:false};
-    const ta=makeTA(myHypo.texte,'Votre hypothèse sur ce secteur…');
-    ta.addEventListener('input',()=>{
-      ensureHypo(key); state.hypotheses[key][playerId].texte=ta.value;
-      autoResize(ta); saveState(); buildCarte();
-    });
-    hypSec.body.appendChild(ta); setTimeout(()=>autoResize(ta),10);
-    const shareBtn=document.createElement('button'); shareBtn.className='hypo-share-btn'+(myHypo.partage?' shared':'');
-    shareBtn.textContent=myHypo.partage?'✓ Partagée':'Partager avec les joueurs';
-    shareBtn.addEventListener('click',()=>{
-      ensureHypo(key); state.hypotheses[key][playerId].partage=!state.hypotheses[key][playerId].partage;
-      shareBtn.classList.toggle('shared',state.hypotheses[key][playerId].partage);
-      shareBtn.textContent=state.hypotheses[key][playerId].partage?'✓ Partagée':'Partager avec les joueurs';
-      saveState();
-    });
-    hypSec.body.appendChild(shareBtn);
-    content.appendChild(hypSec.section);
+    const hySec=makeSec('Mon hypothèse','');
+    const myH=state.hypotheses[key]?.[playerId]||{texte:'',partage:false};
+    const ta=makeTa(myH.texte,'Votre hypothèse…');
+    ta.addEventListener('input',()=>{ensureHypo(key);state.hypotheses[key][playerId].texte=ta.value;autoR(ta);saveState();});
+    hySec.body.appendChild(ta);setTimeout(()=>autoR(ta),10);
+    const sb=document.createElement('button');sb.className='hypo-share-btn'+(myH.partage?' shared':'');
+    sb.textContent=myH.partage?'✓ Partagée':'Partager';
+    sb.addEventListener('click',()=>{ensureHypo(key);state.hypotheses[key][playerId].partage=!state.hypotheses[key][playerId].partage;sb.classList.toggle('shared',state.hypotheses[key][playerId].partage);sb.textContent=state.hypotheses[key][playerId].partage?'✓ Partagée':'Partager';saveState();});
+    hySec.body.appendChild(sb);content.appendChild(hySec.section);
   }
 
-  // ── Hypothèses partagées des autres joueurs ──
-  const sharedHypos=Object.entries(state.hypotheses[key]||{})
-    .filter(([pid,h])=>pid!==playerId&&h.partage&&h.texte);
-  if(sharedHypos.length){
-    const shSec=makeSection('Hypothèses partagées','');
-    sharedHypos.forEach(([pid,h])=>{
-      const item=document.createElement('div'); item.className='hypo-item';
-      const auth=document.createElement('div'); auth.className='hypo-author'; auth.textContent=pid;
-      const txt=document.createElement('div'); txt.textContent=h.texte;
-      item.appendChild(auth); item.appendChild(txt);
-      shSec.body.appendChild(item);
-    });
+  // Hypothèses partagées des autres
+  const shared=Object.entries(state.hypotheses[key]||{}).filter(([pid,h])=>pid!==playerId&&h.partage&&h.texte);
+  if(shared.length){
+    const shSec=makeSec('Hypothèses partagées','');
+    shared.forEach(([pid,h])=>{const item=document.createElement('div');item.className='hypo-item';const a=document.createElement('div');a.className='hypo-author';a.textContent=pid;const t=document.createElement('div');t.textContent=h.texte;item.appendChild(a);item.appendChild(t);shSec.body.appendChild(item);});
     content.appendChild(shSec.section);
   }
 
-  // ── Couleurs d'association ──
-  const coulSec=makeSection('Association','');
-  const cRow=document.createElement('div'); cRow.className='couleur-row';
+  // Couleur de liaison
+  const cSec=makeSec('Couleur de liaison','');
+  const cRow=document.createElement('div');cRow.className='couleur-row';
   const myCoul=state.couleurs[playerId]?.[key];
-  const noneBtn=document.createElement('div'); noneBtn.className='couleur-none'; noneBtn.textContent='✕';
-  noneBtn.title='Aucune couleur';
-  noneBtn.addEventListener('click',()=>{
-    if(!state.couleurs[playerId]) state.couleurs[playerId]={};
-    delete state.couleurs[playerId][key];
-    saveState(); buildCarte(); openSector(key,ci,si);
-  });
-  cRow.appendChild(noneBtn);
+  const none=document.createElement('div');none.className='couleur-none';none.textContent='✕';
+  none.addEventListener('click',()=>{if(!state.couleurs[playerId])state.couleurs[playerId]={};delete state.couleurs[playerId][key];saveState();buildMap();openEvtPanel(key);});
+  cRow.appendChild(none);
   COULEURS.forEach((c,idx)=>{
-    const dot=document.createElement('div'); dot.className='couleur-dot'+(myCoul===idx?' selected':'');
-    dot.style.background=c.hex; dot.title=c.name;
-    dot.addEventListener('click',()=>{
-      if(!state.couleurs[playerId]) state.couleurs[playerId]={};
-      state.couleurs[playerId][key]=idx;
-      saveState(); buildCarte(); openSector(key,ci,si);
-    });
+    const dot=document.createElement('div');dot.className='couleur-dot'+(myCoul===idx?' selected':'');
+    dot.style.background=c.hex;dot.title=c.name;
+    dot.addEventListener('click',()=>{if(!state.couleurs[playerId])state.couleurs[playerId]={};state.couleurs[playerId][key]=idx;saveState();buildMap();openEvtPanel(key);});
     cRow.appendChild(dot);
   });
-  coulSec.body.appendChild(cRow);
-  content.appendChild(coulSec.section);
+  cSec.body.appendChild(cRow);content.appendChild(cSec.section);
 
-  document.getElementById('sector-overlay').classList.add('open');
+  document.getElementById('evt-overlay').classList.add('open');
 }
 
-function closeSector(){
-  document.getElementById('sector-overlay').classList.remove('open');
-  currentKey=null;
-}
-
-function makeSection(title,badge){
-  const section=document.createElement('div'); section.className='sector-section';
-  const head=document.createElement('div'); head.className='sector-section-head';
+// ── Helpers UI ──
+function makeSec(title,badge){
+  const section=document.createElement('div');section.className='evt-section';
+  const head=document.createElement('div');head.className='evt-section-head';
   head.innerHTML=`<span>▶</span><span>${title}</span>`;
   if(badge){const b=document.createElement('span');b.className='mj-badge';b.textContent=badge;head.appendChild(b);}
-  const body=document.createElement('div'); body.className='sector-section-body';
-  // Toggle
-  head.addEventListener('click',()=>{
-    const isOpen=body.style.display!=='none';
-    body.style.display=isOpen?'none':'block';
-    head.querySelector('span').textContent=isOpen?'▶':'▼';
-  });
-  section.appendChild(head); section.appendChild(body);
+  const body=document.createElement('div');body.className='evt-section-body';
+  head.addEventListener('click',()=>{const o=body.style.display!=='none';body.style.display=o?'none':'block';head.querySelector('span').textContent=o?'▶':'▼';});
+  section.appendChild(head);section.appendChild(body);
   return {section,body};
 }
+function makeInput(type,val,ph){const i=document.createElement('input');i.type=type;i.value=val;i.placeholder=ph;i.style.cssText='width:100%;background:var(--input-bg);border:none;border-left:2px solid var(--border);color:var(--ink);font-family:Cinzel,serif;font-size:.82rem;padding:4px 6px;outline:none;';return i;}
+function makeTa(val,ph){const ta=document.createElement('textarea');ta.className='evt-ta';ta.value=val;ta.placeholder=ph;return ta;}
+function autoR(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
+function ensureSlot(key){if(!state.slots[key])state.slots[key]={titre:'',texte:'',niveau:1,revele_a:'aucun',image:null,axes:[],poids:1};if(!Array.isArray(state.slots[key].axes))state.slots[key].axes=[];if(!state.slots[key].poids)state.slots[key].poids=1;}
+function ensureHypo(key){if(!state.hypotheses[key])state.hypotheses[key]={};if(!state.hypotheses[key][playerId])state.hypotheses[key][playerId]={texte:'',partage:false};}
 
-function makeTA(val,placeholder){
-  const ta=document.createElement('textarea');
-  ta.className='sector-ta'; ta.value=val; ta.placeholder=placeholder;
-  return ta;
-}
+// Aide CSS var manquante dans setAttribute
+function var_(name,fallback){try{return getComputedStyle(document.documentElement).getPropertyValue(name)||fallback;}catch(e){return fallback;}}
 
-function autoResize(ta){ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; }
-
-function ensureSlot(key){
-  if(!state.slots[key]) state.slots[key]={titre:'',texte:'',niveau:1,revele_a:'aucun',image:null,axes:[],poids:1};
-  if(!Array.isArray(state.slots[key].axes)) state.slots[key].axes=[];
-  if(!state.slots[key].poids) state.slots[key].poids=1;
-}
-function ensureHypo(key){
-  if(!state.hypotheses[key]) state.hypotheses[key]={};
-  if(!state.hypotheses[key][playerId]) state.hypotheses[key][playerId]={texte:'',partage:false};
-}
-
-// ── Légende couleurs ──
-function buildCouleurLegend(){
-  const leg=document.getElementById('couleur-legend');
-  leg.innerHTML='';
-  // Afficher les couleurs utilisées par ce joueur
-  const myCoul=state.couleurs[playerId]||{};
-  const used=Object.values(myCoul);
-  if(!used.length){leg.style.display='none';return;}
-  leg.style.display='flex';
-  const unique=[...new Set(used)];
-  unique.forEach(idx=>{
-    const c=COULEURS[idx];
-    const item=document.createElement('div'); item.className='legend-item';
-    const dot=document.createElement('div'); dot.className='legend-dot'; dot.style.background=c.hex;
-    const name=document.createElement('span'); name.className='legend-name'; name.textContent=c.name;
-    item.appendChild(dot); item.appendChild(name);
-    leg.appendChild(item);
-  });
-}
+// Redimensionnement
+window.addEventListener('resize',()=>{buildFondRosace();buildMap();});
 </script>
 
+<!-- Générateur d'événements -->
+<div id="gen-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:160;">
+  <div style="background:var(--panel-bg);border:1px solid var(--border);border-radius:10px;padding:1.2rem;max-width:480px;width:94vw;max-height:90vh;overflow-y:auto;position:relative;">
+    <button onclick="document.getElementById('gen-overlay').style.display='none'" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:1.1rem;cursor:pointer;color:#888;">✕</button>
+    <div style="font-family:'Cinzel',serif;color:var(--accent);font-size:.95rem;letter-spacing:.08em;margin-bottom:.8rem;">🎲 Générateur d'événements</div>
+    <div style="font-size:.8rem;color:var(--ink3);margin-bottom:.7rem;line-height:1.5;">Choisis un axe ayant au moins <b>2 jetons</b> sur l'octogone de cette fiche.</div>
+    <div class="evt-axe-grid" id="evt-axe-grid"></div>
+    <div style="font-size:.8rem;color:var(--ink3);margin-bottom:.6rem;line-height:1.6;" id="evt-detail"></div>
+    <div class="evt-preview empty" id="evt-preview">Choisis un axe pour générer un événement…</div>
+    <div style="font-size:.78rem;color:var(--ink3);margin:.4rem 0 .7rem;" id="evt-target"></div>
+    <div class="evt-btns">
+      <button class="evt-btn gen" id="evt-btn-gen" onclick="EvtGen.generate()" disabled>🎲 Générer</button>
+      <button class="evt-btn reject" id="evt-btn-reject" onclick="EvtGen.generate()" disabled>↻ Refuser</button>
+      <button class="evt-btn accept" id="evt-btn-accept" onclick="EvtGen.accept()" disabled>✓ Accepter</button>
+    </div>
+  </div>
+</div>
 <script>
 const EVT_TEMPLATES = {"feu":{"personnage":{"positif":["Un {personnage_type} de {lieu_local} fait preuve d'un courage inattendu lors {evenement_local}, et son geste commence déjà à être colporté de bouche à oreille.","Saisi d'une impulsion soudaine, un {personnage_type} prend une décision audacieuse concernant {enjeu_local} — l'avenir dira si cette spontanéité était sagesse ou folie.","Un {personnage_type} retrouve une vigueur qu'on ne lui connaissait plus, et se lance avec une énergie renouvelée dans {entreprise_locale}."],"negatif":["Un {personnage_type} cède à un accès de colère lors {evenement_local}, et les conséquences de cet emportement risquent de le poursuivre longtemps.","La rancœur d'un {personnage_type} envers {cible_locale} a fini par s'embraser, et son comportement devient de plus en plus imprévisible.","Un {personnage_type} agit avec une précipitation dangereuse concernant {enjeu_local}, négligeant les conseils de prudence qu'on a pu lui prodiguer."],"ambivalent":["Un {personnage_type} traverse une période d'instabilité où des élans d'énergie remarquable alternent avec des sautes d'humeur qui inquiètent son entourage.","Tantôt porté par une vivacité salutaire, tantôt emporté par un emballement regrettable, un {personnage_type} devient difficile à cerner ces derniers temps."]},"groupe":{"positif":["{groupe_culture} de {lieu} retrouve une vigueur collective inattendue, galvanisé par {evenement_declencheur}, et porte désormais ses projets avec une énergie renouvelée.","Une vague d'enthousiasme traverse {groupe_culture}, qui se mobilise avec une détermination remarquable autour de {entreprise_collective}.","{groupe_culture} fait preuve d'une réactivité exemplaire face à {situation_locale}, tranchant et agissant là où d'autres auraient tergiversé."],"negatif":["Une colère sourde gagne {groupe_culture} de {lieu}, attisée par {evenement_declencheur}, et les esprits s'échauffent dangereusement.","Des tensions internes embrasent {groupe_culture}, qui se divise en factions rivales prêtes à en découdre pour {enjeu_local}.","{groupe_culture} se précipite vers {entreprise_collective} avec une impatience qui inquiète les plus avisés, négligeant toute prudence."],"ambivalent":["{groupe_culture} de {lieu} oscille entre des élans de mobilisation remarquables et des emportements destructeurs, sans qu'on sache lequel l'emportera.","L'énergie qui anime {groupe_culture} est aussi précieuse qu'instable — elle pourrait aussi bien porter {entreprise_collective} que la faire échouer dans la précipitation."]},"region":{"positif":["Une dynamique de renouveau traverse {region}, où {force_groupe} insuffle une vigueur nouvelle aux entreprises de {groupe_culture}.","{region} connaît un sursaut d'activité et de détermination collective, porté par {evenement_declencheur}, qui pourrait redessiner les équilibres en place.","Un esprit de conquête anime soudain plusieurs factions de {region}, décidées à agir avec audace concernant {enjeu_regional}."],"negatif":["Des troubles éclatent dans {region}, attisés par {evenement_declencheur}, et la violence menace de s'étendre au-delà de son foyer initial.","L'asabiyya de {groupe_culture} en {region} se consume dans des conflits internes, affaiblissant dangereusement leur cohésion face aux rivaux.","Une série de décisions précipitées prises par les puissants de {region} concernant {enjeu_regional} commence à produire des effets que personne n'avait anticipés."],"ambivalent":["{region} traverse une période d'effervescence où des forces de renouveau et de destruction semblent agir simultanément, sans qu'on puisse encore deviner laquelle dominera.","L'énergie qui parcourt {region} en ce moment pourrait aussi bien être le signe d'un âge nouveau que les prémices d'un embrasement général."]}},"bile_jaune":{"personnage":{"positif":["Un {personnage_type} tranche avec une efficacité redoutable dans {enjeu_local}, allant droit au but là où d'autres se seraient perdus en circonvolutions.","La détermination précise d'un {personnage_type} fait merveille lors {evenement_local}, et son sens de l'action directe commence à forger sa réputation.","Un {personnage_type} fait montre d'une vivacité d'esprit tranchante qui lui permet de résoudre {enjeu_local} avant même que d'autres n'en aient saisi l'ampleur."],"negatif":["L'amertume d'un {personnage_type} envers {cible_locale} s'exprime par des mots de plus en plus acerbes, qui finissent par blesser plus qu'ils ne servent.","Un {personnage_type} se montre d'une dureté inhabituelle concernant {enjeu_local}, et son entourage commence à s'en inquiéter.","La causticité d'un {personnage_type} a fini par lui aliéner {cible_locale}, qui ne supporte plus ses sarcasms répétés."],"ambivalent":["Un {personnage_type} oscille entre une efficacité tranchante et une acrimonie gratuite, et l'on ne sait jamais à quoi s'attendre de sa part concernant {enjeu_local}.","Tantôt précis et redoutablement direct, tantôt acide et blessant, un {personnage_type} déconcerte ceux qui tentent de le cerner."]},"groupe":{"positif":["{groupe_culture} de {lieu} fait preuve d'une efficacité chirurgicale dans {entreprise_collective}, sans se perdre dans les vaines hésitations qui paralysent souvent les grandes décisions.","Une vague de pragmatisme tranchant traverse {groupe_culture}, qui aborde {situation_locale} avec une clarté d'action rare.","{groupe_culture} de {lieu} règle {enjeu_local} avec une rapidité et une précision qui surprennent jusqu'à ses propres membres."],"negatif":["Une aigreur collective s'installe au sein de {groupe_culture}, dont les échanges internes concernant {enjeu_local} tournent de plus en plus à l'hostilité.","{groupe_culture} de {lieu} se montre d'une dureté croissante envers {cible_locale}, et le ton s'envenime à chaque rencontre.","Les décisions de {groupe_culture} concernant {entreprise_collective} se prennent désormais dans une précipitation acide qui inquiète les plus mesurés."],"ambivalent":["{groupe_culture} de {lieu} navigue entre une efficacité remarquable et une véhémence qui menace de tout faire dérailler concernant {enjeu_local}.","L'énergie tranchante qui anime {groupe_culture} pourrait aussi bien permettre de résoudre {situation_locale} que d'envenimer davantage les relations avec {cible_locale}."]},"region":{"positif":["{region} bénéficie d'une administration d'une efficacité redoutable, où {groupe_culture} traite {enjeu_regional} avec une précision qui impressionne les observateurs.","Une dynamique de décisions rapides et tranchantes anime les puissants de {region}, qui avancent sur {enjeu_regional} sans se perdre en tergiversations.","{force_groupe} permet à {groupe_culture} de {region} d'agir avec une vivacité remarquable face à {evenement_declencheur}."],"negatif":["Une vague d'aigreur et de ressentiment traverse {region}, où les rivalités entre {groupe_culture} et leurs voisins s'enveniment dangereusement.","Les tensions concernant {enjeu_regional} dégénèrent en hostilité ouverte dans {region}, et la moindre étincelle pourrait tout embraser.","Une série de décisions précipitées et cassantes prises en {region} concernant {enjeu_regional} commence à produire des ressentiments durables."],"ambivalent":["{region} traverse une période où l'efficacité tranchante de certaines factions côtoie une acrimonie croissante chez d'autres, sans qu'on sache quel courant l'emportera.","La bile qui agite {region} en ce moment pourrait aussi bien accoucher de réformes décisives que d'un conflit ouvert entre {groupe_culture} et leurs rivaux."]}},"terre":{"personnage":{"positif":["Un {personnage_type} fait preuve d'une loyauté exemplaire envers {cible_locale}, et ce sens du devoir commence à forger sa réputation au-delà de {lieu_local}.","Par son sens pratique et son ancrage solide, un {personnage_type} parvient à résoudre {enjeu_local} là où d'autres avaient échoué.","Un {personnage_type} se révèle un pilier inattendu pour {cible_locale}, faisant preuve d'une constance qui inspire confiance."],"negatif":["Un {personnage_type} trahit la confiance de {cible_locale} concernant {enjeu_local}, et la nouvelle commence à se répandre.","Las des contraintes de {situation_locale}, un {personnage_type} se détourne discrètement de ses engagements envers {cible_locale}.","Un {personnage_type} s'enlise dans une inertie inquiétante face à {enjeu_local}, incapable de prendre les décisions qui s'imposeraient."],"ambivalent":["Un {personnage_type} navigue entre fidélité affichée et arrière-pensées troubles concernant {cible_locale}, sans qu'on sache où se situe sa vraie loyauté.","Tantôt pilier fiable, tantôt poids mort, un {personnage_type} déconcerte son entourage par son engagement irrégulier envers {enjeu_local}."]},"groupe":{"positif":["{groupe_culture} de {lieu} resserre ses liens internes face à {evenement_declencheur}, et la {force_groupe} qui les unit s'en trouve renforcée.","Un sens du devoir collectif anime {groupe_culture}, qui s'engage avec constance dans {entreprise_collective}.","{groupe_culture} de {lieu} bâtit méthodiquement les fondations de {entreprise_collective}, avec une patience et une rigueur qui forcent le respect."],"negatif":["Des rumeurs de trahison circulent au sein de {groupe_culture}, où certains membres seraient prêts à rejoindre {cible_locale} en cas de {evenement_declencheur}.","{groupe_culture} de {lieu} s'enlise dans une inertie collective face à {situation_locale}, incapable de se mobiliser malgré l'urgence.","La {force_groupe} qui liait {groupe_culture} commence à s'effriter, et certains parlent déjà ouvertement de faire sécession."],"ambivalent":["{groupe_culture} de {lieu} oscille entre une solidarité affichée et des dissensions internes qui pourraient, selon les événements à venir, se résoudre ou s'aggraver.","L'ancrage de {groupe_culture} dans {lieu} est à la fois sa force et sa lourdeur — il pourrait aussi bien garantir leur résilience que les empêcher de s'adapter à {evenement_declencheur}."]},"region":{"positif":["Une {force_groupe} solide unit les différentes factions de {region}, leur permettant de faire front commun face à {evenement_declencheur}.","{region} connaît une période de stabilité et d'enracinement, où {groupe_culture} consolide méthodiquement ses positions concernant {enjeu_regional}.","Les traditions bien ancrées de {groupe_culture} en {region} leur confèrent une résilience remarquable face aux bouleversements environnants."],"negatif":["Des signes de fragmentation apparaissent dans {region}, où plusieurs factions de {groupe_culture} envisagent ouvertement la sécession concernant {enjeu_regional}.","Une inertie générale paralyse les puissants de {region}, incapables de répondre efficacement à {evenement_declencheur}.","La trahison d'une faction de {groupe_culture} envers ses alliés traditionnels en {region} pourrait précipiter une recomposition douloureuse des équilibres locaux."],"ambivalent":["{region} traverse une période où la solidité de certaines alliances contraste avec la fragilité croissante d'autres liens, sans qu'on sache lesquels résisteront à {evenement_declencheur}.","L'ancrage traditionnel de {groupe_culture} en {region} pourrait aussi bien être le socle d'une résistance efficace que le poids mort qui les empêchera de s'adapter."]}},"bile_noire":{"personnage":{"positif":["Un {personnage_type} fait preuve d'une retenue et d'une lucidité remarquables face à {enjeu_local}, prenant le temps d'évaluer chaque option avant d'agir.","La prudence d'un {personnage_type} lui permet d'anticiper {evenement_local} bien avant que d'autres n'en perçoivent les signes annonciateurs.","Un {personnage_type} traverse {situation_locale} avec un calme et une réflexion qui forcent l'admiration de son entourage."],"negatif":["Un {personnage_type} sombre dans une mélancolie profonde suite à {evenement_local}, et son entourage peine à le tirer de cette grisaille.","Rongé par le doute concernant {enjeu_local}, un {personnage_type} se replie progressivement sur lui-même, désertant ses responsabilités.","Un {personnage_type} bascule dans un pessimisme paralysant face à {situation_locale}, incapable de voir une issue favorable."],"ambivalent":["Un {personnage_type} oscille entre une prudence salutaire et une mélancolie envahissante, sans qu'on sache laquelle dominera face à {enjeu_local}.","Tantôt lucide et mesuré, tantôt accablé par un pessimisme profond, un {personnage_type} traverse une période difficile à déchiffrer."]},"groupe":{"positif":["{groupe_culture} de {lieu} adopte une posture prudente et réfléchie face à {evenement_declencheur}, préférant la patience à la précipitation.","Une sagesse collective semble guider {groupe_culture}, qui anticipe avec lucidité les conséquences de {entreprise_collective}.","{groupe_culture} de {lieu} sait reconnaître ses limites face à {situation_locale}, et cette humilité stratégique pourrait bien s'avérer payante."],"negatif":["Une lassitude profonde gagne {groupe_culture} de {lieu}, qui peine à trouver l'énergie de répondre à {evenement_declencheur}.","Le doute et le désenchantement s'installent au sein de {groupe_culture}, dont l'engagement envers {entreprise_collective} s'effrite peu à peu.","{groupe_culture} de {lieu} bascule dans une résignation collective face à {situation_locale}, abandonnant peu à peu ses ambitions."],"ambivalent":["{groupe_culture} de {lieu} navigue entre une prudence avisée et un découragement croissant, sans qu'on sache lequel l'emportera face à {evenement_declencheur}.","La retenue qui caractérise {groupe_culture} pourrait aussi bien être une sagesse stratégique qu'un signe avant-coureur de résignation face à {entreprise_collective}."]},"region":{"positif":["{region} traverse une période de réflexion stratégique, où les puissants de {groupe_culture} prennent le temps d'évaluer soigneusement {enjeu_regional}.","Une lucidité collective semble guider les décisions concernant {region}, où l'on privilégie la patience face à {evenement_declencheur}.","{groupe_culture} de {region} fait preuve d'une sagesse remarquable en anticipant les conséquences à long terme de {enjeu_regional}."],"negatif":["Une atmosphère de désenchantement s'installe dans {region}, où {groupe_culture} semble avoir perdu l'élan nécessaire pour répondre à {evenement_declencheur}.","Le pessimisme gagne du terrain parmi les puissants de {region}, qui peinent à proposer une vision pour {enjeu_regional}.","Une mélancolie collective s'étend sur {region}, où plusieurs factions de {groupe_culture} semblent résignées face à {situation_locale}."],"ambivalent":["{region} oscille entre des élans de lucidité stratégique et une résignation diffuse, sans qu'on sache quelle tendance finira par dominer.","La prudence qui caractérise actuellement {region} pourrait aussi bien préparer une réponse mesurée à {evenement_declencheur} qu'annoncer un déclin durable."]}},"eau":{"personnage":{"positif":["Un {personnage_type} fait preuve d'une mesure et d'une sagesse remarquables face à {enjeu_local}, résistant aux tentations qui auraient égaré d'autres.","La pondération d'un {personnage_type} lui permet de traverser {situation_locale} sans céder aux excès qui guettent généralement en pareille circonstance.","Un {personnage_type} retrouve un équilibre salutaire après {evenement_local}, et cette sérénité nouvelle se ressent dans toutes ses entreprises."],"negatif":["Un {personnage_type} se dérobe face à {enjeu_local}, préférant fuir plutôt que d'assumer ses responsabilités envers {cible_locale}.","Pris de panique lors {evenement_local}, un {personnage_type} abandonne {cible_locale} à son sort, et cette lâcheté pourrait lui coûter cher.","Un {personnage_type} évite systématiquement toute confrontation concernant {enjeu_local}, au point que son entourage commence à s'en inquiéter."],"ambivalent":["Un {personnage_type} oscille entre une mesure exemplaire et des accès de fuite face à {enjeu_local}, sans qu'on sache sur quel pied il dansera la prochaine fois.","Tantôt pondéré et sage, tantôt prompt à se dérober, un {personnage_type} navigue de façon imprévisible à travers {situation_locale}."]},"groupe":{"positif":["{groupe_culture} de {lieu} fait preuve d'une retenue exemplaire face à {evenement_declencheur}, évitant les écueils où d'autres se seraient précipités.","Une sagesse collective guide {groupe_culture}, qui aborde {entreprise_collective} avec mesure et discernement.","{groupe_culture} de {lieu} sait temporiser face à {situation_locale}, préférant la patience à la précipitation."],"negatif":["Face à {evenement_declencheur}, {groupe_culture} de {lieu} choisit la fuite plutôt que la confrontation, abandonnant {enjeu_local} sans grande résistance.","Une lâcheté collective gagne {groupe_culture}, qui se dérobe face à ses obligations envers {cible_locale}.","{groupe_culture} de {lieu} évite systématiquement {situation_locale}, préférant l'inaction à un engagement qui pourrait coûter cher."],"ambivalent":["{groupe_culture} de {lieu} navigue entre une sagesse prudente et une tendance à la dérobade, sans qu'on sache laquelle prévaudra face à {evenement_declencheur}.","La retenue de {groupe_culture} pourrait aussi bien être une mesure salutaire qu'un signe de lâcheté collective face à {enjeu_local}."]},"region":{"positif":["{region} traverse une période de tempérance politique, où {groupe_culture} privilégie la diplomatie et la mesure face à {enjeu_regional}.","Une sagesse collective semble guider les puissants de {region}, qui évitent soigneusement l'escalade concernant {evenement_declencheur}.","{groupe_culture} de {region} fait preuve d'un sens de la mesure remarquable, désamorçant les tensions avant qu'elles ne dégénèrent."],"negatif":["Une vague de désengagement traverse {region}, où plusieurs factions de {groupe_culture} se dérobent face à leurs obligations concernant {enjeu_regional}.","La lâcheté collective de certains puissants de {region} face à {evenement_declencheur} commence à fragiliser l'ensemble des équilibres locaux.","{region} voit ses défenses s'affaiblir, certaines factions de {groupe_culture} préférant fuir plutôt que d'affronter {situation_locale}."],"ambivalent":["{region} oscille entre une diplomatie mesurée et des signes de dérobade chez certaines factions, sans qu'on sache quelle tendance s'imposera.","La prudence qui caractérise actuellement {region} pourrait aussi bien préserver la paix que masquer un manque de courage collectif face à {enjeu_regional}."]}},"flegme":{"personnage":{"positif":["Un {personnage_type} fait preuve d'une dignité et d'une retenue remarquables face à {enjeu_local}, refusant les compromissions qui auraient tenté d'autres.","La candeur naturelle d'un {personnage_type} lui permet de traverser {situation_locale} sans jamais ternir sa réputation.","Un {personnage_type} gagne en respectabilité après {evenement_local}, sa conduite irréprochable étant désormais citée en exemple."],"negatif":["Un {personnage_type} cède à une avidité croissante concernant {enjeu_local}, accumulant sans plus se soucier des obligations envers {cible_locale}.","Les manières d'un {personnage_type} deviennent de plus en plus dépravées suite à {evenement_local}, et certains commencent à s'en détourner.","Un {personnage_type} se montre d'une rapacité inquiétante face à {situation_locale}, prêt à beaucoup sacrifier pour s'enrichir."],"ambivalent":["Un {personnage_type} oscille entre une dignité affichée et des appétits qu'il peine à dissimuler concernant {enjeu_local}.","Tantôt mesuré et respectable, tantôt avide et calculateur, un {personnage_type} laisse planer le doute sur ses véritables intentions face à {situation_locale}."]},"groupe":{"positif":["{groupe_culture} de {lieu} cultive une réputation de dignité et de retenue, ce qui leur vaut le respect même de leurs rivaux concernant {enjeu_local}.","Une discipline collective remarquable caractérise {groupe_culture}, qui résiste aux tentations de l'enrichissement facile face à {entreprise_collective}.","{groupe_culture} de {lieu} maintient des standards de conduite élevés malgré {evenement_declencheur}, renforçant leur crédibilité."],"negatif":["Une avidité croissante gagne {groupe_culture} de {lieu}, qui privilégie l'accumulation de richesses au détriment de ses obligations envers {cible_locale}.","Des pratiques douteuses se répandent au sein de {groupe_culture}, ternissant leur réputation concernant {enjeu_local}.","{groupe_culture} de {lieu} sacrifie sa dignité collective pour s'assurer un avantage dans {entreprise_collective}, au prix de sa réputation."],"ambivalent":["{groupe_culture} de {lieu} navigue entre une façade respectable et des appétits matériels qui pourraient, à terme, ternir leur image concernant {enjeu_local}.","La retenue affichée par {groupe_culture} masque peut-être une avidité grandissante qui ne demande qu'à se révéler face à {entreprise_collective}."]},"region":{"positif":["{region} jouit d'une réputation de probité, où {groupe_culture} maintient des pratiques commerciales et sociales d'une dignité remarquable.","Les échanges en {region} se distinguent par une retenue et une honnêteté qui inspirent confiance aux partenaires de {groupe_culture}.","{groupe_culture} de {region} résiste collectivement aux tentations de la corruption concernant {enjeu_regional}."],"negatif":["Une rapacité généralisée s'installe dans {region}, où plusieurs factions de {groupe_culture} sacrifient leurs obligations pour s'enrichir face à {enjeu_regional}.","Des pratiques de corruption se répandent en {region}, minant la confiance entre {groupe_culture} et leurs partenaires habituels.","L'avidité de certains puissants de {region} concernant {enjeu_regional} commence à provoquer un ressentiment généralisé."],"ambivalent":["{region} oscille entre des pratiques d'une dignité exemplaire et des dérives vers l'avidité, sans qu'on sache quelle tendance finira par s'imposer.","La réputation de {groupe_culture} en {region} pourrait aussi bien se renforcer que s'effondrer selon l'issue de {enjeu_regional}."]}},"air":{"personnage":{"positif":["Un {personnage_type} fait preuve d'une fidélité et d'une piété remarquables face à {enjeu_local}, et sa droiture commence à être reconnue au-delà de {lieu_local}.","La sincérité d'un {personnage_type} dans ses engagements envers {cible_locale} forge une confiance que peu auraient cru possible.","Un {personnage_type} se révèle un conseiller fiable et inspirant pour {cible_locale}, dont la sagesse guide désormais les décisions."],"negatif":["Un {personnage_type} trahit la confiance de {cible_locale} concernant {enjeu_local}, et cette félonie commence à se savoir.","Les conseils d'un {personnage_type} se révèlent biaisés et intéressés, causant un tort considérable à {cible_locale}.","Un {personnage_type} sème la discorde entre {cible_locale} et ses alliés, par calcul ou par simple malveillance."],"ambivalent":["Un {personnage_type} oscille entre une loyauté affichée et des manœuvres plus troubles concernant {enjeu_local}, sans qu'on sache où se situe sa vraie fidélité.","Tantôt conseiller fiable, tantôt manipulateur habile, un {personnage_type} brouille les pistes quant à ses véritables intentions envers {cible_locale}."]},"groupe":{"positif":["{groupe_culture} de {lieu} cultive des liens de confiance et de fidélité remarquables, ce qui renforce leur cohésion face à {evenement_declencheur}.","Une piété et une droiture exemplaires caractérisent {groupe_culture}, dont la réputation de fiabilité attire de nouveaux soutiens.","{groupe_culture} de {lieu} honore scrupuleusement ses engagements envers {cible_locale}, consolidant des alliances durables."],"negatif":["Des rumeurs de trahison circulent concernant {groupe_culture}, accusé de manœuvres déloyales envers {cible_locale}.","La discorde gagne {groupe_culture} de {lieu}, où les conseils contradictoires sèment la confusion concernant {enjeu_local}.","{groupe_culture} de {lieu} rompt unilatéralement ses engagements envers {cible_locale}, provoquant une rupture de confiance durable."],"ambivalent":["{groupe_culture} de {lieu} navigue entre fidélité affichée et arrière-pensées stratégiques concernant {enjeu_local}, sans qu'on sache sur quel pied danser avec eux.","La réputation de droiture de {groupe_culture} pourrait aussi bien se confirmer que voler en éclats selon l'issue de {entreprise_collective}."]},"region":{"positif":["{region} bénéficie d'un réseau d'alliances solides, où {groupe_culture} honore scrupuleusement ses engagements concernant {enjeu_regional}.","Une atmosphère de confiance mutuelle caractérise les relations entre factions de {region}, facilitant la résolution de {enjeu_regional}.","{groupe_culture} de {region} jouit d'une réputation de fiabilité qui attire respect et soutiens nouveaux."],"negatif":["Un climat de méfiance généralisée s'installe dans {region}, où les accusations de trahison entre {groupe_culture} et leurs rivaux se multiplient.","Des manœuvres déloyales fragilisent les alliances traditionnelles en {region}, et {enjeu_regional} pourrait en pâtir durablement.","La discorde semée par des conseillers intéressés commence à fracturer les équilibres entre factions de {region}."],"ambivalent":["{region} oscille entre des alliances solides et des trahisons larvées, sans qu'on sache quelles relations résisteront à {evenement_declencheur}.","La confiance qui unit certaines factions de {region} pourrait aussi bien se renforcer que voler en éclats selon l'évolution de {enjeu_regional}."]}},"sang":{"personnage":{"positif":["Un {personnage_type} retrouve une espérance et une joie de vivre qui se ressentent dans toutes ses entreprises concernant {enjeu_local}.","Porté par une confiance inébranlable en l'avenir, un {personnage_type} affronte {situation_locale} avec une humilité et une dignité qui inspirent.","Un {personnage_type} traverse {evenement_local} avec une sérénité remarquable, convaincu qu'un dessein favorable se dessine pour lui."],"negatif":["Un {personnage_type} cède à des accès de colère et d'emportement concernant {enjeu_local}, et son entourage redoute désormais ses réactions.","La témérité d'un {personnage_type} le pousse à prendre des risques inconsidérés face à {situation_locale}, au mépris des avertissements reçus.","Un {personnage_type} se laisse emporter par une fureur incontrôlable suite à {evenement_local}, semant l'inquiétude autour de lui."],"ambivalent":["Un {personnage_type} oscille entre une espérance lumineuse et des accès de colère imprévisibles concernant {enjeu_local}.","Tantôt porté par une confiance sereine, tantôt emporté par une témérité dangereuse, un {personnage_type} déconcerte son entourage face à {situation_locale}."]},"groupe":{"positif":["{groupe_culture} de {lieu} retrouve une espérance collective et une joie partagée, galvanisé par {evenement_declencheur}.","Une confiance inébranlable en l'avenir anime {groupe_culture}, qui aborde {entreprise_collective} avec une sérénité remarquable.","{groupe_culture} de {lieu} célèbre {evenement_declencheur} avec une ferveur et un optimisme qui renforcent leur cohésion."],"negatif":["Une colère collective gronde au sein de {groupe_culture}, prête à éclater en violence ouverte concernant {enjeu_local}.","{groupe_culture} de {lieu} se lance dans {entreprise_collective} avec une témérité qui inquiète les plus prudents.","Une fureur incontrôlée traverse {groupe_culture} suite à {evenement_declencheur}, menaçant de dégénérer en affrontement."],"ambivalent":["{groupe_culture} de {lieu} oscille entre un optimisme communicatif et des accès de colère qui pourraient tout faire basculer concernant {enjeu_local}.","L'énergie qui anime {groupe_culture} pourrait aussi bien porter {entreprise_collective} vers le succès que les précipiter dans un conflit ouvert."]},"region":{"positif":["{region} connaît un sursaut d'espérance collective, où {groupe_culture} aborde {enjeu_regional} avec une confiance renouvelée en l'avenir.","Une ferveur et un optimisme remarquables animent les puissants de {region}, galvanisés par {evenement_declencheur}.","{groupe_culture} de {region} célèbre avec dignité et humilité les développements favorables de {enjeu_regional}."],"negatif":["Une colère généralisée gagne {region}, où plusieurs factions de {groupe_culture} menacent de sombrer dans la violence concernant {enjeu_regional}.","Des décisions téméraires prises par les puissants de {region} face à {evenement_declencheur} risquent de précipiter un conflit ouvert.","Une fureur collective traverse {region}, et la moindre étincelle pourrait embraser les tensions accumulées entre {groupe_culture} et leurs rivaux."],"ambivalent":["{region} oscille entre des élans d'espérance collective et des accès de colère qui pourraient tout faire basculer selon l'issue de {enjeu_regional}.","L'énergie qui parcourt {region} en ce moment pourrait aussi bien annoncer un âge de prospérité qu'un embrasement généralisé."]}}};
 const EVT_VARIABLES = {"personnage_type":["marchand influent","jeune savant","ancien militaire","religieux respecté","artisan habile","messager itinérant","notable local","voyageur mystérieux","scribe méticuleux","guérisseur réputé","chef de caravane","poète errant"],"lieu_local":["le quartier des tisserands","la place du marché","le caravansérail","les abords de la mosquée","le quartier des étrangers","les faubourgs","la maison de la sagesse locale","le port","les ruelles basses","l'oasis voisine"],"lieu":["ce territoire","cette cité","cette province","ces terres","ce comptoir","cette vallée","ce district frontalier","cette oasis","ce port"],"region":["la région","ces contrées","ce territoire élargi","cette province","ces terres frontalières","ce vaste district","cette partie du royaume"],"groupe_culture":["les marchands locaux","les tribus de l'asabiyya","les théologiens","les gardiens du savoir","les marins","les nomades","les mercenaires","les explorateurs","les artisans organisés","la congrégation religieuse","les maîtres du siège","les messagers"],"evenement_local":["une altercation imprévue","la visite d'un notable","un différend commercial","une rumeur soudaine","un incident au marché","une cérémonie improvisée","une rencontre fortuite","un litige de voisinage"],"evenement_declencheur":["l'arrivée d'une caravane porteuse de nouvelles inattendues","un différend frontalier resurgi","une prédiction colportée par un voyageur","la nomination contestée d'un nouveau notable","une mauvaise récolte","l'annonce d'une expédition militaire voisine","un afflux soudain de réfugiés","la découverte d'un ancien savoir","un incident lors d'une cérémonie publique","des rumeurs persistantes venues d'au-delà des frontières"],"enjeu_local":["le partage des ressources du quartier","une dette ancienne non réglée","l'attribution d'une charge religieuse","le contrôle d'un point d'eau","une succession contestée","l'organisation d'une cérémonie à venir","un différend de voisinage qui s'éternise"],"enjeu_regional":["le contrôle des routes commerciales","la répartition des terres fertiles","la légitimité d'un nouveau pouvoir local","l'alliance avec une faction voisine","la gestion d'une période de disette","le tribut dû à une puissance lointaine","la défense des frontières","l'accueil ou le rejet de réfugiés","la reconnaissance d'une autorité religieuse contestée"],"entreprise_locale":["la restauration d'un édifice local","l'organisation d'une expédition modeste","la résolution d'un différend de voisinage","un projet d'irrigation","la formation d'un apprenti prometteur"],"entreprise_collective":["la construction d'un nouvel édifice","l'organisation d'une expédition","la négociation d'un accord commercial","la défense d'un territoire menacé","la mise en place d'un nouveau réseau d'échanges","un grand projet d'irrigation","la fondation d'une nouvelle congrégation","une campagne de prosélytisme"],"situation_locale":["une période de tension commerciale","un afflux de nouveaux arrivants","une crise de confiance envers les autorités locales","une saison de récoltes incertaines","des rumeurs persistantes de troubles à venir","un changement dans l'administration locale"],"cible_locale":["une faction rivale","un ancien allié","une autorité voisine","un groupe de nouveaux arrivants","une congrégation concurrente","un partenaire commercial de longue date","les autorités en place"],"force_groupe":["l'asabiyya qui les unit","la silsila qui les enracine dans leur tradition","le nasab qui les relie à leurs ancêtres","la muru'a de l'un des leurs","la solidarité de groupe","leur cohésion ancestrale"]};
@@ -988,7 +833,6 @@ const EVT_VARIABLES = {"personnage_type":["marchand influent","jeune savant","an
 /* ══════════════════════════════════════════════
    GÉNÉRATEUR D'ÉVÉNEMENTS
    ══════════════════════════════════════════════ */
-
 const EVT_AXES = [
   {id:'feu',       label:'Feu',        num:1},
   {id:'bile_jaune',label:'Bile Jaune', num:2},
@@ -1012,13 +856,13 @@ const EvtGen = {
   targetKey: null,
 
   async open(){
-    document.getElementById('evt-overlay').classList.add('open');
+    document.getElementById('gen-overlay').style.display='flex';
     await this.loadEnvEtat();
     this.buildAxeGrid();
     this.reset();
   },
   close(){
-    document.getElementById('evt-overlay').classList.remove('open');
+    document.getElementById('gen-overlay').style.display='none';
   },
   reset(){
     this.selectedAxe=null; this.currentText=''; this.targetKey=null;
@@ -1169,24 +1013,31 @@ const EvtGen = {
   },
 
   accept(){
-    if(!this.targetKey||!this.currentText) return;
-    ensureSlot(this.targetKey);
+    if(!this.currentText) return;
     const axeLabel=EVT_AXES.find(a=>a.id===this.selectedAxe).label;
     const axeNum=EVT_AXES.find(a=>a.id===this.selectedAxe).num;
-    state.slots[this.targetKey].titre=axeLabel+' — événement généré';
-    state.slots[this.targetKey].texte=this.currentText;
-    // Niveau de précision selon l'échelle : plus l'échelle est large, plus le fait est établi
-    state.slots[this.targetKey].niveau=this.currentEchelle;
-    state.slots[this.targetKey].revele_a='aucun';
-    // Lie automatiquement l'événement à l'axe qui l'a généré
-    state.slots[this.targetKey].axes=[axeNum];
-    // Poids par défaut proportionnel à l'échelle (un événement régional pèse plus lourd)
-    state.slots[this.targetKey].poids=this.currentEchelle*2-1; // 1=>1, 2=>3, 3=>5
-    saveState();
-    buildCarte();
-    this.close();
+    const newKey='gen_'+Date.now();
+    ensureSlot(newKey);
+    state.slots[newKey].titre=axeLabel+' — événement généré';
+    state.slots[newKey].texte=this.currentText;
+    state.slots[newKey].niveau=this.currentEchelle;
+    state.slots[newKey].revele_a='aucun';
+    state.slots[newKey].axes=[axeNum];
+    state.slots[newKey].poids=this.currentEchelle*2-1;
+    const W=window.innerWidth,H=window.innerHeight,cx=W/2,cy=H/2;
+    const maxR=Math.min(W,H)*0.42;
+    const rMin=maxR*(this.currentEchelle-1)/3,rMax=maxR*this.currentEchelle/3;
+    const r=rMin+Math.random()*(rMax-rMin),angle=Math.random()*Math.PI*2;
+    const pos=getMyPositions();
+    pos[newKey]={x:cx+Math.cos(angle)*r,y:cy+Math.sin(angle)*r};
+    saveState();buildMap();this.close();
   }
 };
+
+function openGenerator(){
+  document.getElementById('gen-overlay').style.display='flex';
+  EvtGen.open();
+}
 
 </script>
 </body>

@@ -804,7 +804,7 @@ const CartePanel = {
     if(ol.classList.contains('open')){ this.close(); return; }
     const iframe=document.getElementById('carte-iframe');
     if(!iframe.getAttribute('data-loaded')){
-      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId());
+      iframe.src=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams()+'&pid='+encodeURIComponent(FICHE_ID);
       iframe.setAttribute('data-loaded','1');
     }
     ol.classList.add('open');
