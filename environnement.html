@@ -301,6 +301,16 @@ async function gmSaveOrigin(){
   setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },2500);
 }
 
+async function gmResetFull(){
+  // Réinitialisation complète : octogone + log dynamique
+  if(!confirm('Réinitialiser complètement la fiche (octogone + historique de dynamique) ?')) return;
+  state.dynamiqueLog=[];
+  state.nineCount=0;
+  state.nineThreshold=Math.floor(Math.random()*4)+3;
+  renderDynamiqueLog();
+  await gmReset();
+}
+
 async function gmReset(){
   if(!confirm("Réinitialiser la fiche à l'état d'origine ? Toutes les modifications actuelles seront perdues.")) return;
   const msg=document.getElementById('save-msg');
@@ -565,6 +575,55 @@ async function gmReset(){
   .gm-btn.danger:hover { background:#f5e8e8; }
   .gm-btn.safe { border-color:#3a6e3a; color:#3a6e3a; }
   .gm-btn.safe:hover { background:#e8f5e8; }
+
+  /* ── Masquer zones pneumatographie aux joueurs ── */
+  .pneu-zone.gm-only-zone { display:none; }
+  .pneu-zone.gm-only-zone.gm-visible { display:block; }
+
+  /* ── Panneau de Dynamique ── */
+  #dynamique-panel { margin:.6rem 0; padding:.6rem .8rem;
+    background:var(--section-bg); border:1px solid var(--border2); border-radius:7px; }
+  .dyn-panel-title { font-family:'Cinzel',serif; font-size:.72rem; color:var(--accent);
+    letter-spacing:.06em; text-transform:uppercase; margin-bottom:.4rem;
+    display:flex; align-items:center; justify-content:space-between; }
+  .dyn-log-list { max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:.25rem; }
+  .dyn-log-item { font-size:.8rem; color:var(--ink2); line-height:1.4;
+    padding:.25rem .4rem; border-left:2px solid var(--border2); }
+  .dyn-log-item.white { border-left-color:#c8860a; }
+  .dyn-log-item.black { border-left-color:#8b2020; }
+  .dyn-log-item.nine { border-left-color:#185FA5; color:var(--ink3); font-style:italic; }
+  .dyn-log-date { font-size:.65rem; color:var(--ink3); margin-left:.4rem; }
+  .dyn-empty { font-size:.78rem; color:var(--ink3); font-style:italic; }
+
+  /* ── Panneau 9 (MJ) ── */
+  #nine-panel { margin:.4rem 0; padding:.5rem .7rem;
+    background:#f0f4fa; border:1px solid #c0d0e8; border-radius:6px; display:none; }
+  .nine-panel-title { font-family:'Cinzel',serif; font-size:.72rem; color:#185FA5;
+    letter-spacing:.05em; text-transform:uppercase; margin-bottom:.35rem; }
+  .nine-count-row { display:flex; align-items:center; gap:.6rem; font-size:.82rem; }
+  .nine-count-val { font-family:'Cinzel',serif; font-size:1.1rem; font-weight:700; color:#185FA5; }
+  .nine-threshold { font-size:.72rem; color:#888; }
+  .nine-fiches { margin-top:.35rem; font-size:.75rem; color:#555; }
+
+  /* ── File d'événements en attente (MJ) ── */
+  #evt-queue-panel { margin:.4rem 0; padding:.5rem .7rem;
+    background:#fdf8ee; border:1px solid #e0c878; border-radius:6px; display:none; }
+  .evt-queue-title { font-family:'Cinzel',serif; font-size:.72rem; color:#c8860a;
+    letter-spacing:.05em; text-transform:uppercase; margin-bottom:.4rem; }
+  .evt-queue-item { padding:.4rem .5rem; border:1px solid #e8d898; border-radius:4px;
+    margin-bottom:.3rem; background:#fff; font-size:.82rem; color:#3d342a; }
+  .evt-queue-item-text { margin-bottom:.3rem; line-height:1.4; }
+  .evt-queue-btns { display:flex; gap:.4rem; }
+  .evt-q-btn { font-family:'Cinzel',serif; font-size:.65rem; padding:2px 8px;
+    border-radius:3px; border:1px solid #ccc; cursor:pointer; background:none; }
+  .evt-q-btn.accept { border-color:#3a7a4a; color:#3a7a4a; }
+  .evt-q-btn.refuse { border-color:#c85a52; color:#c85a52; }
+
+  /* ── Fiches liées (input MJ) ── */
+  #fiches-liees-row { margin:.3rem 0; display:none; }
+  .fiches-liees-input { width:100%; background:var(--input-bg); border:1px solid var(--border);
+    border-radius:3px; font-family:'Crimson Text',serif; font-size:.82rem; color:var(--ink);
+    padding:3px 6px; outline:none; }
 </style>
 </head>
 <body>
@@ -583,6 +642,39 @@ async function gmReset(){
 </div>
 
 <!-- Panneau axe flottant -->
+<!-- Panneau Dynamique (visible à tous, filtré par niveau) -->
+<div id="dynamique-panel">
+  <div class="dyn-panel-title">
+    <span>Dynamique de l'environnement</span>
+  </div>
+  <div class="dyn-log-list" id="dyn-log-list">
+    <div class="dyn-empty">Aucune modification enregistrée.</div>
+  </div>
+</div>
+
+<!-- Fiches personnages liées (MJ only) -->
+<div id="fiches-liees-row">
+  <div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--ink3);margin-bottom:.2rem;">Fiches personnages liées (séparées par des virgules)</div>
+  <input id="fiches-liees-input" class="fiches-liees-input" type="text" placeholder="christophe, nuzha, …"
+    oninput="saveFichesLiees()">
+</div>
+
+<!-- Panneau 9 agrégés (MJ only) -->
+<div id="nine-panel">
+  <div class="nine-panel-title">⚡ Total des 9 recueillis</div>
+  <div class="nine-count-row">
+    <span class="nine-count-val" id="nine-count-val">0</span>
+    <span class="nine-threshold" id="nine-threshold-label">/ seuil : ?</span>
+  </div>
+  <div class="nine-fiches" id="nine-fiches-detail"></div>
+</div>
+
+<!-- File d'événements en attente d'approbation MJ -->
+<div id="evt-queue-panel">
+  <div class="evt-queue-title">🎲 Événements à approuver</div>
+  <div id="evt-queue-list"></div>
+</div>
+
 <div id="axis-overlay">
   <div id="axis-box">
     <button class="axis-close" onclick="closeAxisPanel()">✕</button>
@@ -660,7 +752,7 @@ async function gmReset(){
   <div class="pneumato-panel">
     <div class="pneumato-title">Pneumatographie</div>
     <div class="pneumato-grid">
-      <div class="pneumato-zone">
+      <div class="pneumato-zone gm-only-zone">
         <div class="pneumato-zone-title">Valeurs<button class="pneu-zone-reveal-btn" id="pneu-reveal-valeurs" onclick="pneuToggleZoneReveal('valeurs')" style="display:none;">👁</button></div>
         <div class="pneumato-btns" id="pneu-valeurs-btns">
           <button class="pneu-btn" data-zone="valeurs" data-level="1" onclick="pneuToggle('valeurs',1)">
@@ -677,7 +769,7 @@ async function gmReset(){
           </button>
         </div>
       </div>
-      <div class="pneumato-zone">
+      <div class="pneumato-zone gm-only-zone">
         <div class="pneumato-zone-title">Polarité<button class="pneu-zone-reveal-btn" id="pneu-reveal-polarite" onclick="pneuToggleZoneReveal('polarite')" style="display:none;">👁</button></div>
         <div class="pneumato-btns" id="pneu-polarite-btns">
           <button class="pneu-btn" data-zone="polarite" data-level="1" onclick="pneuToggle('polarite',1)">
@@ -694,7 +786,7 @@ async function gmReset(){
           </button>
         </div>
       </div>
-      <div class="pneumato-zone">
+      <div class="pneumato-zone gm-only-zone">
         <div class="pneumato-zone-title">Occultation</div>
         <div class="pneumato-btns" id="pneu-occultation-btns">
           <button class="pneu-btn" id="btn-occultation-gm" onclick="OcculteGen.openAxisChooser()" style="width:auto;padding:0 .8rem;display:none;">
@@ -743,6 +835,7 @@ async function gmReset(){
   <span class="gm-bar-label">MJ</span>
   <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
   <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser à l'état d'origine</button>
+  <button class="gm-btn danger" onclick="gmResetFull()">🗑 Réinitialisation complète</button>
 </div>
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
 </div>
@@ -829,7 +922,29 @@ let authenticated=false;
 let isGM=false;
 let playerId='joueur';
 let applyingRemote=false;
+// Historique de dynamique (permanent jusqu'à réinitialisation)
+if(!state.dynamiqueLog) state.dynamiqueLog=[];
+// Fiches personnages liées (identifiants, saisis par le MJ)
+if(!state.fichePersonnages) state.fichePersonnages=[];
+// Compteur de 9 agrégés depuis toutes les fiches personnages liées
+if(state.nineCount===undefined) state.nineCount=0;
+// Seuil aléatoire courant (tiré au sort à chaque réinitialisation du compteur)
+if(!state.nineThreshold) state.nineThreshold=Math.floor(Math.random()*4)+3; // 3 à 6
 
+const AXE_LABELS = {
+  feu:'Feu', bile_j:'Bile Jaune', terre:'Terre', bile_n:'Bile Noire',
+  eau:'Eau', flegme:'Flegme', air:'Air', sang:'Sang'
+};
+const AXE_NARRATIFS = {
+  feu: {white:'une ardeur nouvelle gagne cet espace', black:'une tension destructrice couve ici'},
+  bile_j: {white:"l'air tranche, les esprits s'aiguisent", black:"une aigreur sourde empoisonne l'atmosphère"},
+  terre: {white:'les liens se renforcent, les alliances tiennent', black:'quelque chose se rompt dans les fondations'},
+  bile_n: {white:"une sagesse froide s'installe", black:'un désespoir ancien remonte à la surface'},
+  eau: {white:"les esprits s'apaisent, la mesure revient", black:'un abandon silencieux gagne les âmes'},
+  flegme: {white:'la dignité et la probité reprennent leurs droits', black:'la corruption infiltre les intentions'},
+  air: {white:'les serments se raffermissent', black:"une trahison ancienne ou nouvelle flotte dans l'air"},
+  sang: {white:'un espoir collectif renaît', black:'une fureur latente cherche une issue'},
+};
 const SECTORS=[
   {id:'feu',    num:1,label:'FEU',        sub1:'force',     sub2:'envie',     angle:0  },
   {id:'bile_j', num:2,label:'BILE JAUNE', sub1:'charité',   sub2:'luxure',    angle:45 },
@@ -1022,10 +1137,27 @@ function addToken(sectorId,color){
 }
 
 function cycleToken(sectorId,idx){
-  if(!isGM) return; // Seul le MJ peut modifier les jetons
+  if(!isGM) return;
   const cur=state.tokens[sectorId][idx];
-  state.tokens[sectorId][idx]=cur==='empty'?'white':cur==='white'?'black':'empty';
+  const next=cur==='empty'?'white':cur==='white'?'black':'empty';
+  state.tokens[sectorId][idx]=next;
+  // Enregistrer dans le log de dynamique
+  if(next!=='empty'){
+    const axeLabel=AXE_LABELS[sectorId]||sectorId;
+    const narratif=AXE_NARRATIFS[sectorId]?.[next==='white'?'white':'black']||'';
+    const sign=next==='white'?'+1 blanc':'-1 noir';
+    const entry={
+      ts:Date.now(),
+      axe:sectorId,
+      pol:next,
+      text:narratif ? narratif.charAt(0).toUpperCase()+narratif.slice(1)+` — ${axeLabel} ${sign}` : `${axeLabel} ${sign}`,
+      raw:`${axeLabel} ${sign}`
+    };
+    if(!state.dynamiqueLog) state.dynamiqueLog=[];
+    state.dynamiqueLog.push(entry);
+  }
   renderToken(sectorId,idx); updateSectorLane(sectorId); saveState();
+  renderDynamiqueLog();
 }
 
 function renderToken(sectorId,idx){
@@ -1275,6 +1407,10 @@ function applyRemoteState(saved){
     }
     if(saved.ether!==undefined){state.ether=saved.ether;document.getElementById('ether-val').value=saved.ether;}
     if(saved.occultation!==undefined){state.occultation=saved.occultation;document.getElementById('occultation-val').value=saved.occultation;}
+    if(saved.dynamiqueLog!==undefined){ state.dynamiqueLog=saved.dynamiqueLog; renderDynamiqueLog(); }
+    if(saved.fichePersonnages!==undefined){ state.fichePersonnages=saved.fichePersonnages; }
+    if(saved.nineCount!==undefined){ state.nineCount=saved.nineCount; }
+    if(saved.nineThreshold!==undefined){ state.nineThreshold=saved.nineThreshold; }
     if(saved.wheelRot!==undefined) applyRotation(saved.wheelRot,true);
     if(saved._xferRequest){ const req=saved._xferRequest; if(!xferPending||xferPending.ts!==req.ts) xferShowNotif(req); }
   }catch(e){console.error('applyRemoteState',e);}
@@ -1331,6 +1467,13 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
         if(tryGM){
           document.getElementById('gm-bar').style.display='flex';
           document.getElementById('btn-occultation-gm').style.display='flex';
+          document.querySelectorAll('.gm-only-zone').forEach(el=>el.classList.add('gm-visible'));
+          document.getElementById('nine-panel').style.display='block';
+          document.getElementById('fiches-liees-row').style.display='block';
+          // Restaurer fiches liées dans l'input
+          const flInp=document.getElementById('fiches-liees-input');
+          if(flInp&&state.fichePersonnages) flInp.value=(state.fichePersonnages||[]).join(', ');
+          pollNines();
         }
         // Charger d'abord l'état Supabase, PUIS initialiser l'UI
         if(row.etat&&Object.keys(row.etat).length>0){
@@ -1736,6 +1879,215 @@ function renderAxisEvents(list, events){
     });
     list.appendChild(item);
   });
+}
+
+</script>
+
+<script>
+
+/* ══════════════════════════════════════════════
+   DYNAMIQUE, NINE & ÉVÉNEMENTS AUTO
+   ══════════════════════════════════════════════ */
+
+// ── Textes narratifs pour les 9 ──
+const NINE_NARRATIFS = [
+  "Les échanges entre les âmes et ce lieu se font nombreux — le voile s'épaissit.",
+  "Quelque chose circule entre les personnages et l'environnement, imperceptible mais réel.",
+  "Les souffles s'emmêlent — les personnages portent quelque chose de ce lieu, et inversement.",
+  "L'occultation monte. Ce que cache cet endroit cherche à s'exprimer.",
+  "Les éléments et les humeurs s'échangent, dans un mouvement que personne ne maîtrise vraiment.",
+  "Le voile entre les êtres et leur environnement se fait plus mince — et plus dense à la fois.",
+];
+
+// Niveaux de Dynamique visibles (I=1 entrée, II=5, III=toutes)
+const DYN_LEVELS = {1:1, 2:5, 3:999};
+
+function renderDynamiqueLog(){
+  const list = document.getElementById('dyn-log-list');
+  if(!list) return;
+  const log = state.dynamiqueLog||[];
+  const dynLevel = state.pneumato?.dynamique
+    ? Object.entries(state.pneumato.dynamique).filter(([k,v])=>v.active).map(([k])=>parseInt(k)).pop()||0
+    : 0;
+  const maxVisible = isGM ? 999 : (DYN_LEVELS[dynLevel]||0);
+
+  if(!log.length){
+    list.innerHTML='<div class="dyn-empty">Aucune modification enregistrée.</div>';
+    return;
+  }
+
+  // Afficher les N dernières entrées selon le niveau
+  const visible = log.slice(-maxVisible);
+  list.innerHTML='';
+  [...visible].reverse().forEach(entry=>{
+    const item=document.createElement('div');
+    item.className='dyn-log-item '+(entry.nine?'nine':entry.pol||'');
+    const d=new Date(entry.ts);
+    const dateStr=d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+    item.innerHTML=`${entry.text}<span class="dyn-log-date">${dateStr}</span>`;
+    list.appendChild(item);
+  });
+}
+
+// ── Fiches personnages liées ──
+function saveFichesLiees(){
+  const val=document.getElementById('fiches-liees-input').value;
+  state.fichePersonnages=val.split(',').map(s=>s.trim()).filter(Boolean);
+  saveState();
+}
+
+// ── Polling des 9 depuis les fiches personnages liées ──
+let _ninesPollTimer=null;
+async function pollNines(){
+  if(!isGM) return;
+  const fiches = state.fichePersonnages||[];
+  if(!fiches.length){
+    document.getElementById('nine-count-val').textContent='0';
+    document.getElementById('nine-threshold-label').textContent='/ seuil : '+(state.nineThreshold||'?');
+    document.getElementById('nine-fiches-detail').textContent='Aucune fiche liée.';
+    clearTimeout(_ninesPollTimer);
+    _ninesPollTimer=setTimeout(pollNines,30000);
+    return;
+  }
+
+  try{
+    // Lire toutes les fiches liées
+    const ids=fiches.map(id=>`id=eq.${encodeURIComponent(id)}`).join(',');
+    const url=`${SUPABASE_URL}/rest/v1/fiches?or=(${ids})&select=id,etat`;
+    const r=await fetch(url,{headers:SB.headers});
+    const rows=await r.json();
+
+    let total=0;
+    const detail=[];
+    (rows||[]).forEach(row=>{
+      const occ=parseInt(row.etat?.occultation)||0;
+      total+=occ;
+      if(occ>0) detail.push(`${row.id}: ${occ}`);
+    });
+
+    // Mettre à jour l'occultation globale
+    const prev=state.nineCount||0;
+    state.nineCount=total;
+    document.getElementById('nine-count-val').textContent=total;
+    document.getElementById('nine-threshold-label').textContent='/ seuil : '+(state.nineThreshold||'?');
+    document.getElementById('nine-fiches-detail').textContent=detail.join(' · ')||'Aucun 9 enregistré.';
+
+    // Ajouter au log si changement
+    if(total>prev){
+      const added=total-prev;
+      const narratif=NINE_NARRATIFS[Math.floor(Math.random()*NINE_NARRATIFS.length)];
+      const entry={ts:Date.now(),nine:true,pol:'nine',
+        text:narratif+` (+${added} neuf${added>1?'s':''})`};
+      if(!state.dynamiqueLog) state.dynamiqueLog=[];
+      state.dynamiqueLog.push(entry);
+      renderDynamiqueLog();
+      saveState();
+      // Vérifier si le seuil est atteint
+      checkNineThreshold(total);
+    }
+  }catch(e){}
+
+  clearTimeout(_ninesPollTimer);
+  _ninesPollTimer=setTimeout(pollNines,30000);
+}
+
+function checkNineThreshold(total){
+  const threshold=state.nineThreshold||5;
+  if(total<threshold) return;
+  // Seuil atteint : générer un événement automatique
+  const poids=Math.max(1,Math.min(5,Math.round(total/2)));
+  generateAutoEvent(poids);
+  // Remettre le compteur à zéro + nouveau seuil aléatoire
+  state.nineCount=0;
+  state.nineThreshold=Math.floor(Math.random()*4)+3;
+  document.getElementById('nine-count-val').textContent='0';
+  document.getElementById('nine-threshold-label').textContent='/ seuil : '+state.nineThreshold;
+  // Log de reset
+  const entry={ts:Date.now(),nine:true,pol:'nine',
+    text:`Seuil de ${total} neuf${total>1?'s':''} atteint — événement généré (poids ${poids}). Compteur remis à zéro.`};
+  state.dynamiqueLog.push(entry);
+  renderDynamiqueLog();
+  saveState();
+}
+
+// ── Générateur automatique d'événements ──
+const EVT_AUTO_QUEUE=[];
+
+async function generateAutoEvent(poids){
+  // Choisir un axe majoritaire de l'octogone d'environnement
+  let bestAxe=null, bestCount=0;
+  const AXES_IDS=['feu','bile_j','terre','bile_n','eau','flegme','air','sang'];
+  const AXES_NUMS={feu:1,bile_j:2,terre:3,bile_n:4,eau:5,flegme:6,air:7,sang:8};
+  AXES_IDS.forEach(axe=>{
+    const arr=state.tokens[axe]||[];
+    const count=arr.filter(t=>t!=='empty').length;
+    if(count>bestCount){ bestCount=count; bestAxe=axe; }
+  });
+  if(!bestAxe) bestAxe=AXES_IDS[Math.floor(Math.random()*AXES_IDS.length)];
+
+  const axeArr=state.tokens[bestAxe]||[];
+  const whites=axeArr.filter(t=>t==='white').length;
+  const blacks=axeArr.filter(t=>t==='black').length;
+  const pol=whites>=blacks?'positif':'negatif';
+
+  // Construire un texte généré narratif simple
+  const axeLabel=AXE_LABELS[bestAxe]||bestAxe;
+  const narratif=AXE_NARRATIFS[bestAxe]?.[pol==='positif'?'white':'black']||'';
+  const echelleLabel=poids<=1?'personnage':poids<=3?'groupe':'région';
+  const text=`${narratif.charAt(0).toUpperCase()+narratif.slice(1)} (${axeLabel}, ${pol}, échelle ${echelleLabel})`;
+
+  const evt={id:'auto_'+Date.now(), text, axe:AXES_NUMS[bestAxe]||1, poids, pol, ts:Date.now()};
+  EVT_AUTO_QUEUE.push(evt);
+  renderEvtQueue();
+}
+
+function renderEvtQueue(){
+  const panel=document.getElementById('evt-queue-panel');
+  const listEl=document.getElementById('evt-queue-list');
+  if(!panel||!listEl) return;
+  panel.style.display=EVT_AUTO_QUEUE.length?'block':'none';
+  listEl.innerHTML='';
+  EVT_AUTO_QUEUE.forEach((evt,idx)=>{
+    const item=document.createElement('div'); item.className='evt-queue-item';
+    item.innerHTML=`<div class="evt-queue-item-text">${evt.text}</div>
+      <div style="font-size:.7rem;color:#888;margin-bottom:.3rem;">Poids ${evt.poids}</div>
+      <div class="evt-queue-btns">
+        <button class="evt-q-btn accept" onclick="acceptAutoEvt(${idx})">✓ Dévoiler dans la carte</button>
+        <button class="evt-q-btn refuse" onclick="refuseAutoEvt(${idx})">✕ Ignorer</button>
+      </div>`;
+    listEl.appendChild(item);
+  });
+}
+
+async function acceptAutoEvt(idx){
+  const evt=EVT_AUTO_QUEUE[idx];
+  if(!evt) return;
+  // Insérer dans la colonne carte de cette fiche
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=carte`,{headers:SB.headers});
+    const d=await r.json();
+    const carte=d[0]?.carte||{slots:{}};
+    if(!carte.slots) carte.slots={};
+    const key='auto_'+evt.ts;
+    carte.slots[key]={titre:evt.text.substring(0,40),texte:evt.text,niveau:Math.min(3,evt.poids),
+      revele_a:'aucun',axes:[evt.axe],poids:evt.poids,image:null};
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+      method:'POST',
+      headers:{...SB.headers,'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({id:FICHE_ID,carte})
+    });
+    // Log
+    state.dynamiqueLog.push({ts:Date.now(),pol:'white',
+      text:`Événement généré automatiquement dévoilé dans la carte — ${evt.text.substring(0,60)}`});
+    renderDynamiqueLog(); saveState();
+  }catch(e){}
+  EVT_AUTO_QUEUE.splice(idx,1);
+  renderEvtQueue();
+}
+
+function refuseAutoEvt(idx){
+  EVT_AUTO_QUEUE.splice(idx,1);
+  renderEvtQueue();
 }
 
 </script>
