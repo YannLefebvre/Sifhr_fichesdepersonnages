@@ -871,8 +871,11 @@
     pointer-events:none;
   }
   #notif-bubble.visible {
-    opacity:1; max-height:5rem; padding:.5rem 1rem;
+    opacity:1; max-height:6rem; padding:.5rem 1rem;
   }
+  .notif-text { display:inline; }
+  .notif-source { display:inline; font-style:normal; font-size:.75rem;
+    color:#b07070; margin-left:.4rem; opacity:.8; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -1667,15 +1670,15 @@ async function xferClearRequest(){
   <span class="rot-val" id="rot-display">0°</span>
 </div>
 
+<!-- Bulle de conscience interne — entre rotation et octogone -->
+<div id="notif-bubble"><span class="notif-text"></span><span class="notif-source"></span></div>
+
 <div class="oct-wrap">
 <svg id="oct" viewBox="-130 -130 560 560" xmlns="http://www.w3.org/2000/svg">
   <g id="roue"></g>
   <g id="labels-static"></g>
 </svg>
 </div>
-
-<!-- Bulle de conscience interne — juste sous l'octogone -->
-<div id="notif-bubble"><span class="notif-text"></span></div>
 
 <div class="lower">
   <div class="panel">
@@ -5480,7 +5483,7 @@ const NotifSystem = {
   // Cooldown entre collectes (ms)
   _collectInterval: 25000, // 25s
   // Durée d'affichage d'un message (ms)
-  _displayDuration: 9000,
+  _displayDuration: 20000,
   // Pause min/max entre messages (ms)
   _pauseMin: 18000,
   _pauseMax: 55000,
@@ -5517,14 +5520,16 @@ const NotifSystem = {
       const pol = whites > blacks ? 'positif' : 'negatif';
       const pool = NOTIFS_DATA.saturation_perso[axe]?.[pol]||[];
       const msg = this._pick(pool);
-      if(msg) messages.push({text:msg, src:'perso', axe, pol});
+      if(msg) messages.push({text:msg, src:'perso', axe, pol,
+        label:this._axesLabel[axe]+' saturé '+(pol==='positif'?'positivement':'négativement')});
 
       // 2. Vertu/Vice attisé
       const vvPool = pol==='positif'
         ? NOTIFS_DATA.vertu_vice.vertu[axe]||[]
         : NOTIFS_DATA.vertu_vice.vice[axe]||[];
       const vvMsg = this._pick(vvPool);
-      if(vvMsg && Math.random()<0.5) messages.push({text:vvMsg, src:'vertu_vice', axe, pol});
+      if(vvMsg && Math.random()<0.5) messages.push({text:vvMsg, src:'vertu_vice', axe, pol,
+        label:(pol==='positif'?'Vertu':'Vice')+' — '+this._axesLabel[axe]});
     });
 
     // 3. Saturation octogone environnement
@@ -5547,7 +5552,8 @@ const NotifSystem = {
             const pol = whites > blacks ? 'positif' : 'negatif';
             const pool = NOTIFS_DATA.saturation_env[axe]?.[pol]||[];
             const msg = this._pick(pool);
-            if(msg && Math.random()<0.6) messages.push({text:msg, src:'env', axe, pol});
+            if(msg && Math.random()<0.6) messages.push({text:msg, src:'env', axe, pol,
+              label:'Environnement — '+this._axesLabel[axe]+(pol==='positif'?' +':' −')});
           });
         }
 
@@ -5563,7 +5569,7 @@ const NotifSystem = {
           });
           if(revealed.length>0 && Math.random()<0.5){
             const evtMsg = this._pick(NOTIFS_DATA.evenement);
-            if(evtMsg) messages.push({text:evtMsg, src:'evenement'});
+            if(evtMsg) messages.push({text:evtMsg, src:'evenement', label:'Événement révélé'});
           }
         }
 
@@ -5573,7 +5579,7 @@ const NotifSystem = {
             .filter(([pid,pdata])=>pid!==(playerId||FICHE_ID)&&pdata.shared);
           if(others.length>0 && Math.random()<0.4){
             const shareMsg = this._pick(NOTIFS_DATA.carte_partagee);
-            if(shareMsg) messages.push({text:shareMsg, src:'carte'});
+            if(shareMsg) messages.push({text:shareMsg, src:'carte', label:'Carte partagée'});
           }
         }
       }
@@ -5605,24 +5611,26 @@ const NotifSystem = {
     if(!this._queue.length) return;
     const item = this._queue.shift();
     if(!item) return; // silence
-    this._show(item.text);
+    this._show(item.text, item.label||'');
     // Ajouter à l'historique récent
     this._recent.push(item.text);
     if(this._recent.length>this._maxRecent) this._recent.shift();
   },
 
-  _show(text){
+  _show(text, sourceLabel){
     const el = document.getElementById('notif-bubble');
     if(!el) return;
     clearTimeout(el._hideTimer);
     el.querySelector('.notif-text').textContent = text;
+    const srcEl = el.querySelector('.notif-source');
+    if(srcEl) srcEl.textContent = sourceLabel ? ' ('+sourceLabel+')' : '';
     el.classList.add('visible');
     el._hideTimer = setTimeout(()=>el.classList.remove('visible'), this._displayDuration);
   },
 
   // Affiche immédiatement un message urgent (appelable de l'extérieur)
-  push(text){
-    this._show(text);
+  push(text, sourceLabel){
+    this._show(text, sourceLabel||'');
     this._recent.push(text);
     if(this._recent.length>this._maxRecent) this._recent.shift();
   },
@@ -5653,7 +5661,7 @@ const NotifSystem = {
     const pol = whites > blacks ? 'positif' : 'negatif';
     const pool = NOTIFS_DATA.saturation_perso[axe]?.[pol]||[];
     const msg = this._pick(pool);
-    if(msg) this.push(msg);
+    if(msg) this.push(msg, this._axesLabel[axe]+' saturé '+(pol==='positif'?'positivement':'négativement'));
   }
 };
 
