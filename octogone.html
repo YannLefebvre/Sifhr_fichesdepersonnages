@@ -430,6 +430,22 @@
   .dsuccess-opposition.reussite { background:#d4edda; color:#1a5c2a; border:1px solid #8abf9a; }
   .dsuccess-opposition.echec { background:#fde8e8; color:#8b2020; border:1px solid #e8a0a0; }
   .dsuccess-opposition.echec-critique { background:#8b2020; color:#fff; border:1px solid #5a1010; }
+  /* Prouesse */
+  #dprouesse-row { display:none; align-items:center; gap:.5rem; margin:.5rem 0 .3rem;
+    padding:.4rem .6rem; background:#f7f4ee; border-radius:6px; border:1px solid #e0dcd4; }
+  #dprouesse-row.visible { display:flex; }
+  #dprouesse-toggle { width:18px; height:18px; accent-color:var(--accent); cursor:pointer; flex-shrink:0; }
+  .dprouesse-label { font-family:'Cinzel',serif; font-size:.75rem; color:#3d342a;
+    letter-spacing:.04em; cursor:pointer; flex:1; }
+  .dprouesse-info { width:16px; height:16px; border-radius:50%; background:#c8860a;
+    color:#fff; font-size:.65rem; font-weight:700; display:inline-flex; align-items:center;
+    justify-content:center; cursor:help; flex-shrink:0; position:relative; }
+  .dprouesse-info:hover::after { content:attr(data-tip); position:absolute; left:22px; top:50%;
+    transform:translateY(-50%); background:#3d342a; color:#f5e8c8; font-family:'Crimson Text',serif;
+    font-size:.75rem; padding:.5rem .7rem; border-radius:5px; width:220px; line-height:1.5;
+    z-index:500; white-space:normal; pointer-events:none; }
+  .dsuccess-opposition.prouesse { background:#3d342a; color:#f5e8c8; border:1px solid #c8860a; }
+  .dsuccess-opposition.echec-prouesse { background:#fde8e8; color:#8b2020; border:1px solid #e8a0a0; }
   /* Traits mobilisables */
   #dtrait-panel { margin:.5rem 0; padding:.5rem .7rem; background:#f5f2ec;
     border:1px solid #e0dcd4; border-radius:8px; display:none; }
@@ -1529,6 +1545,12 @@ async function xferClearRequest(){
       <div class="setup-card" id="dsuccess-setup">
         <p class="dsuccess-question">Valeurs de réussite <span id="dsuccess-hint" class="dsuccess-hint">(choisissez 1 ou 2 valeurs)</span></p>
         <div id="dsuccess-unified" class="dsuccess-unified"></div>
+        <!-- Option prouesse (apparaît quand 2 valeurs sont choisies) -->
+        <div id="dprouesse-row">
+          <input type="checkbox" id="dprouesse-toggle" onchange="dToggleProuesse()">
+          <label class="dprouesse-label" for="dprouesse-toggle">Tenter une prouesse ?</label>
+          <span class="dprouesse-info" data-tip="Conditions : 1) Au moins un dé rouge (ou dévoyé) doit obtenir la valeur de réussite finale. 2) Aucun dé ne doit obtenir la valeur opposée. Si l'une de ces conditions échoue, c'est un échec.">?</span>
+        </div>
         <div class="dbm-row">
           <div class="dbm-group">
             <span class="dbm-group-label">Bonus</span>
@@ -3634,6 +3656,7 @@ function dRenderSuccessUnified(){
 
 function dSyncSuccessInputs(){
   dRenderSuccessUnified();
+  dUpdateProuesseRow();
 }
 
 // ══════════════════════════════════════════════
@@ -3799,11 +3822,32 @@ function dUpdateSectionLabel(){
 const OPPOSED_VALUES = {1:5, 2:6, 3:7, 4:8, 5:1, 6:2, 7:3, 8:4};
 // Valeur de réussite finale choisie par le joueur après le lancer
 let _chosenSuccessVal = null;
+// Prouesse déclarée avant le lancer
+let _prouesseDeclared = false;
+
+function dToggleProuesse(){
+  _prouesseDeclared = document.getElementById('dprouesse-toggle').checked;
+}
+
+// Afficher/masquer le bouton prouesse selon les valeurs choisies
+function dUpdateProuesseRow(){
+  const s = dS();
+  const row = document.getElementById('dprouesse-row');
+  if(!row) return;
+  const hasTwo = s.successVal1!=null && s.successVal2!=null;
+  row.classList.toggle('visible', hasTwo);
+  if(!hasTwo){
+    _prouesseDeclared = false;
+    const cb = document.getElementById('dprouesse-toggle');
+    if(cb) cb.checked = false;
+  }
+}
 
 function dComputeSuccesses(){
   const s=dS();
   const resultEl=document.getElementById('dsuccess-result');
   dRenderRollHistory();
+  dUpdateProuesseRow();
   if(!resultEl) return;
   const v1=s.successVal1, v2=s.successVal2;
   if(!s.rolled || !s.dice || !s.dice.length || (v1==null && v2==null)){
@@ -3824,42 +3868,66 @@ function dComputeSuccesses(){
     row.innerHTML=`<span class="dsuccess-result-label">Réussites sur ${val}</span><span class="dsuccess-result-count">${count}</span>`;
     row.addEventListener('click',()=>{
       _chosenSuccessVal=(_chosenSuccessVal===val)?null:val;
-      dComputeSuccesses(); // re-render avec sélection
+      dComputeSuccesses();
     });
     resultEl.appendChild(row);
 
-    // Si cette valeur est choisie → calculer l'opposition
     if(val===_chosenSuccessVal){
       const opp=OPPOSED_VALUES[val];
       const oppCount=opp?values.filter(v=>v===opp).length:0;
-      if(opp){
+
+      if(opp && oppCount>0){
         const oppRow=document.createElement('div');
         oppRow.style.cssText='font-size:.75rem;color:#888;padding:2px 6px;';
         oppRow.textContent=`Opposition (${opp}) : ${oppCount} dé${oppCount>1?'s':''}`;
         resultEl.appendChild(oppRow);
       }
-      // Verdict
-      if(count>0||oppCount>0){
+
+      if(_prouesseDeclared){
+        // ── Évaluation prouesse ──
+        // Cond 1 : au moins un dé rouge ou black_token a la valeur choisie
+        const redWithVal = s.dice.filter(d=>
+          (d.color==='red'||d.color==='black_token') && d.value===val
+        ).length;
+        // Cond 2 : aucun dé n'a la valeur opposée
+        const anyOpp = oppCount > 0;
+
         const verdict=document.createElement('div');
         verdict.className='dsuccess-opposition';
-        if(oppCount===0||oppCount<count){
-          verdict.classList.add('reussite');
-          verdict.textContent=`✓ Réussite — ${count} succès`;
-        } else if(oppCount===count){
-          verdict.classList.add('echec');
-          verdict.textContent=`✗ Échec — ${oppCount} opposition${oppCount>1?'s':''} annule${oppCount>1?'nt':''} les réussites`;
+        if(redWithVal>0 && !anyOpp){
+          verdict.classList.add('prouesse');
+          verdict.textContent=`✦ Prouesse ! ${redWithVal} dé${redWithVal>1?'s':''} rouge${redWithVal>1?'s':''} sur ${val}, aucune opposition`;
         } else {
-          verdict.classList.add('echec-critique');
-          verdict.textContent=`✗✗ Échec critique — ${oppCount} opposition${oppCount>1?'s':''} surpasse${oppCount>1?'nt':''} les ${count} réussite${count>1?'s':''}`;
+          verdict.classList.add('echec-prouesse');
+          const raisons=[];
+          if(redWithVal===0) raisons.push(`aucun dé rouge sur ${val}`);
+          if(anyOpp) raisons.push(`${oppCount} dé${oppCount>1?'s':''} sur l'opposé (${opp})`);
+          verdict.textContent=`✗ Échec de prouesse — ${raisons.join(', ')}`;
         }
         resultEl.appendChild(verdict);
+      } else {
+        // ── Évaluation normale ──
+        if(count>0||oppCount>0){
+          const verdict=document.createElement('div');
+          verdict.className='dsuccess-opposition';
+          if(oppCount===0||oppCount<count){
+            verdict.classList.add('reussite');
+            verdict.textContent=`✓ Réussite — ${count} succès`;
+          } else if(oppCount===count){
+            verdict.classList.add('echec');
+            verdict.textContent=`✗ Échec — ${oppCount} opposition${oppCount>1?'s':''} annule${oppCount>1?'nt':''} les réussites`;
+          } else {
+            verdict.classList.add('echec-critique');
+            verdict.textContent=`✗✗ Échec critique — ${oppCount} opposition${oppCount>1?'s':''} surpasse${oppCount>1?'nt':''} les ${count} réussite${count>1?'s':''}`;
+          }
+          resultEl.appendChild(verdict);
+        }
       }
     }
   };
 
   makeRow(v1);
   makeRow(v2);
-  // Réinitialiser le choix si les valeurs cibles ont changé
   if(_chosenSuccessVal!==null && _chosenSuccessVal!==v1 && _chosenSuccessVal!==v2){
     _chosenSuccessVal=null;
   }
@@ -4021,6 +4089,7 @@ function dApplyTokenRules(){
 function dRollDice(){
   if(dCurrentRole!=='launcher') return;
   _chosenSuccessVal=null; // Réinitialiser la valeur de réussite choisie à chaque nouveau lancer
+  _prouesseDeclared=document.getElementById('dprouesse-toggle')?.checked||false; // Conserver si déclarée avant
   const s=dS();
   s.rolled=true;
   if(!s.dice||!s.dice.length) dInitDice(false);
