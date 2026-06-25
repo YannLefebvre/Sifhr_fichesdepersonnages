@@ -858,6 +858,22 @@
     border:1px solid #c8860a; border-radius:4px; background:none; color:#c8860a;
     cursor:pointer; margin-bottom:.4rem; }
   .acc-bib-btn:hover { background:#fdf5e6; }
+
+  /* ── Bulle de notification / conscience interne ── */
+  #notif-bubble {
+    position:fixed; bottom:5.5rem; left:50%; transform:translateX(-50%) translateY(12px);
+    background:rgba(26,10,10,0.92); border:1px solid #8b2020;
+    color:#f5d0d0; border-radius:20px; padding:.55rem 1.1rem;
+    font-family:'Crimson Text',serif; font-style:italic; font-size:.88rem;
+    max-width:min(340px,88vw); text-align:center; line-height:1.5;
+    z-index:500; pointer-events:none;
+    opacity:0; transition:opacity .5s ease, transform .5s ease;
+    box-shadow:0 3px 18px rgba(139,32,32,0.35);
+  }
+  #notif-bubble.visible {
+    opacity:1; transform:translateX(-50%) translateY(0);
+  }
+  .notif-text { display:block; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -1818,6 +1834,8 @@ async function doLogin(tryGM){
         }
         if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);
         startRealtime();
+        // Démarrer le système de notifications après le login
+        setTimeout(()=>NotifSystem.start(), 3000);
       }
     }
   } catch(e) {
@@ -2337,6 +2355,7 @@ function cycleToken(sectorId,idx){
     }
   }
   saveState();
+  NotifSystem._checkSaturationImmediate(sectorId);
 }
 function renderToken(sectorId,idx){
   const g=document.getElementById(`tok-${sectorId}-${idx}`);
@@ -5194,6 +5213,445 @@ const BibTraits = {
 
       container.appendChild(item);
     });
+  }
+};
+
+</script>
+
+<!-- Bulle de conscience interne -->
+<div id="notif-bubble"><span class="notif-text"></span></div>
+
+<script>
+/* ══════════════════════════════════════════════
+   NOTIFS_DATA — Messages courts de conscience interne
+   Organisés par source, axe et polarité.
+   Chaque entrée est un fragment court (impression, sensation, voix intérieure).
+   ══════════════════════════════════════════════ */
+
+const NOTIFS_DATA = {
+
+  /* ── Saturation de l'octogone du personnage ── */
+  saturation_perso: {
+    feu: {
+      positif: [
+        "Ce feu en toi… il brûle.",
+        "Tu ne tiens plus en place.",
+        "Une impatience sourde te ronge.",
+        "Tu voudrais agir. Maintenant.",
+        "Quelque chose en toi s'embrase."
+      ],
+      negatif: [
+        "Tu te consumes sans raison.",
+        "Cette colère… d'où vient-elle ?",
+        "Tu risques de tout brûler autour de toi.",
+        "L'emportement te guette.",
+        "Tu sens la braise, pas la lumière."
+      ]
+    },
+    bile_jaune: {
+      positif: [
+        "Ton esprit tranche net.",
+        "Tu vois clair. Trop clair, peut-être.",
+        "Une vivacité acide t'anime.",
+        "Tu pourrais décider en un instant.",
+        "La précision t'appartient."
+      ],
+      negatif: [
+        "Une amertume s'installe, que tu n'expliques pas.",
+        "Tes mots pourraient blesser sans que tu le veuilles.",
+        "Quelque chose t'irrite. Tout, en fait.",
+        "Tu sens monter une acrimonie sans objet.",
+        "La causticité te vient trop facilement."
+      ]
+    },
+    terre: {
+      positif: [
+        "Tu te sens ancré. Solide.",
+        "Rien ne semble pouvoir t'ébranler.",
+        "Une loyauté tranquille t'habite.",
+        "Tu saurais tenir ta promesse, quoi qu'il arrive.",
+        "La constance est ta force aujourd'hui."
+      ],
+      negatif: [
+        "Tu te sens lourd. Immobile.",
+        "Quelque chose en toi résiste à tout mouvement.",
+        "Une inertie pesante t'envahit.",
+        "Tu doutes de ta propre fiabilité.",
+        "La trahison rôde — pas la tienne, celle des autres."
+      ]
+    },
+    bile_noire: {
+      positif: [
+        "Une sagesse tranquille t'enveloppe.",
+        "Tu réfléchis avant d'agir. C'est bien.",
+        "La prudence t'est naturelle ce soir.",
+        "Tu vois les risques que les autres ignorent.",
+        "Une lucidité froide guide tes pensées."
+      ],
+      negatif: [
+        "Un voile gris s'étend sur tes pensées.",
+        "Tout te semble vain, sans raison précise.",
+        "Le pessimisme s'installe doucement.",
+        "Tu peines à trouver l'énergie d'y croire.",
+        "Une mélancolie sans objet te traverse."
+      ]
+    },
+    eau: {
+      positif: [
+        "Une mesure calme t'habite.",
+        "Tu te sens équilibré, pondéré.",
+        "La tempérance t'est facile ce soir.",
+        "Rien ne semble pouvoir t'emporter.",
+        "Tu navigues avec aisance."
+      ],
+      negatif: [
+        "Tu ressens une envie de fuir. Vers nulle part.",
+        "Quelque chose t'incite à éviter, à contourner.",
+        "Une mollesse étrange t'envahit.",
+        "Tu hésites là où tu devrais avancer.",
+        "La dérobade te tente, et tu en as honte."
+      ]
+    },
+    flegme: {
+      positif: [
+        "Ta dignité te porte, discrètement.",
+        "Tu te sens d'une rectitude sans effort.",
+        "La retenue t'est naturelle.",
+        "Tu saurais résister à la tentation.",
+        "Une noblesse tranquille t'habite."
+      ],
+      negatif: [
+        "Une avidité sourde que tu préfères ignorer.",
+        "Quelque chose en toi convoite. Discrètement.",
+        "Tu te demandes ce que tu ferais pour obtenir ce que tu veux.",
+        "La cupidité rôde dans tes pensées.",
+        "Tu perçois en toi un appétit que tu ne t'avoues pas."
+      ]
+    },
+    air: {
+      positif: [
+        "Ta loyauté est entière ce soir.",
+        "Tu saurais tenir ta parole, même au prix fort.",
+        "Une droiture claire t'anime.",
+        "Tu te sens fidèle — à toi-même, aux autres.",
+        "La sincérité te vient sans effort."
+      ],
+      negatif: [
+        "Quelque chose en toi calcule. Tu n'aimes pas ça.",
+        "Une tentation de trahir, petite mais réelle.",
+        "Tu te demandes si ta loyauté a un prix.",
+        "La duplicité rôde dans tes arrière-pensées.",
+        "Tu te sens moins honnête que tu ne le voudrais."
+      ]
+    },
+    sang: {
+      positif: [
+        "Une joie légère et inexplicable t'envahit.",
+        "Tu te sens vivant, pleinement.",
+        "Une espérance douce t'anime.",
+        "Tu crois en quelque chose, en ce moment.",
+        "La confiance te vient naturellement."
+      ],
+      negatif: [
+        "Une colère monte. Tu cherches pourquoi.",
+        "Tu pourrais tout renverser d'un geste.",
+        "La fureur est proche, comme une flamme sous la peau.",
+        "Tu t'emballes. Tu le sais.",
+        "Une témérité dangereuse t'attire."
+      ]
+    }
+  },
+
+  /* ── Vertu ou vice attisé par la saturation ── */
+  vertu_vice: {
+    // Saturation positive → vertu activée
+    vertu: {
+      feu:        ["Ce courage en toi… il cherche à s'exprimer.", "Ta force te surprend toi-même.", "Tu sens que tu pourrais affronter n'importe quoi."],
+      bile_jaune: ["Ton intelligence tranche comme une lame.", "Tu perçois ce que les autres ratent.", "Ta vivacité d'esprit est à son comble."],
+      terre:      ["Ta loyauté est une roche ce soir.", "Tu saurais mourir pour ce en quoi tu crois.", "Ta constance force le respect, même silencieux."],
+      bile_noire: ["Ta prudence est une vertu, pas une faiblesse.", "Tu anticipes. C'est ton don.", "La sagesse te protège."],
+      eau:        ["Ta mesure est une force rare.", "Tu résistes là où d'autres cèdent.", "La tempérance t'élève."],
+      flegme:     ["Ta pureté d'intention rayonne.", "Tu n'as pas honte de ta rectitude.", "La candeur est ton armure."],
+      air:        ["Ta foi tient bon.", "Tu honores ce que tu as promis.", "La piété te guide sans te contraindre."],
+      sang:       ["L'espoir en toi est une lumière.", "Tu crois encore. C'est précieux.", "Ta joie est contagieuse."]
+    },
+    // Saturation négative → vice activé
+    vice: {
+      feu:        ["Ta colère cherche une cible.", "Tu risques l'emportement.", "La précipitation pourrait tout gâcher."],
+      bile_jaune: ["Ton acrimonie blesse sans que tu le voies.", "L'amertume te ronge de l'intérieur.", "Méfie-toi de ta propre causticité."],
+      terre:      ["Tu te demandes si tu mérites la confiance qu'on te donne.", "La trahison, même involontaire, te guette.", "Une paresse de l'âme s'installe."],
+      bile_noire: ["Le désespoir est proche. Résiste.", "La résignation est une prison que tu entrouvres.", "Ton pessimisme pourrait devenir prophétie."],
+      eau:        ["Tu fuis quelque chose. Tu sais quoi.", "La lâcheté se déguise en prudence.", "Tu évites. Combien de temps encore ?"],
+      flegme:     ["Ce que tu désires te consume discrètement.", "L'avidité porte un masque digne.", "Tu convoites. Est-ce vraiment ton genre ?"],
+      air:        ["Ta loyauté vacille. Un instant seulement.", "Tu mens par omission. Cela compte quand même.", "Quelque chose en toi se dérobe."],
+      sang:       ["Ta fureur cherche une issue.", "Tu pourrais tout brûler dans un accès de rage.", "L'imprudence te sourit. Méfie-toi."]
+    }
+  },
+
+  /* ── Saturation de l'octogone d'environnement ── */
+  saturation_env: {
+    feu: {
+      positif: ["Une chaleur étrange règne ici.", "Quelque chose dans l'air attise les passions.", "Ce lieu exalte les élans."],
+      negatif: ["Une tension sourde imprègne cet endroit.", "Les esprits s'échauffent ici sans raison.", "Méfie-toi des emportements qui rôdent."]
+    },
+    bile_jaune: {
+      positif: ["Une clarté tranchante émane de ce lieu.", "Les décisions semblent plus faciles ici.", "L'air de cet endroit aiguise l'esprit."],
+      negatif: ["Une aigreur latente flotte dans cet endroit.", "Ce lieu exacerbe les ressentiments.", "Quelque chose ici rend les langues acérées."]
+    },
+    terre: {
+      positif: ["Ce lieu inspire une confiance solide.", "Quelque chose d'ancien et de fiable règne ici.", "Les alliances tiennent mieux en ce lieu."],
+      negatif: ["Une influence néfaste ronge les liens ici.", "Ce lieu porte en lui une promesse brisée.", "La trahison a laissé des traces dans cette terre."]
+    },
+    bile_noire: {
+      positif: ["Un silence pensif règne ici.", "Ce lieu invite à la réflexion.", "Quelque chose ici porte à la sagesse."],
+      negatif: ["Une mélancolie pesante émane de cet endroit.", "Ce lieu porte les cicatrices de vieilles défaites.", "Une désillusion ancienne imprègne cette terre."]
+    },
+    eau: {
+      positif: ["Une paix fragile flotte sur ce lieu.", "Rien ici ne semble vouloir s'emballer.", "Ce lieu incite à la mesure."],
+      negatif: ["Une fuite douce mais insidieuse imprègne ce lieu.", "Quelque chose ici invite à baisser les bras.", "Un abandon silencieux rode dans cet endroit."]
+    },
+    flegme: {
+      positif: ["Ce lieu respire la dignité.", "Une honnêteté tranquille règne ici.", "Quelque chose ici invite à la pureté d'intention."],
+      negatif: ["Une cupidité souterraine imprègne ce lieu.", "Ce lieu a vu trop de compromis.", "La corruption a laissé son odeur ici."]
+    },
+    air: {
+      positif: ["Une loyauté ancienne plane sur ce lieu.", "Ce lieu invite à tenir ses engagements.", "Quelque chose ici renforce les serments."],
+      negatif: ["Une trahison ancienne hante ce lieu.", "Les promesses faites ici ont tendance à voler en éclats.", "Une duplicité latente imprègne l'atmosphère."]
+    },
+    sang: {
+      positif: ["Une joie collective vibre en ce lieu.", "Ce lieu a connu des fêtes, des espoirs.", "Quelque chose ici réconcilie."],
+      negatif: ["Une colère ancienne s'est imprégnée ici.", "Ce lieu a connu des violences que les pierres n'ont pas oubliées.", "Une fureur latente rode dans cet endroit."]
+    }
+  },
+
+  /* ── Événement révélé dans la carte ── */
+  evenement: [
+    "Quelque chose que tu as appris revient te hanter.",
+    "Ce que tu sais… tu n'es pas sûr de pouvoir le porter seul.",
+    "Une information que tu détiens pèse plus qu'elle ne devrait.",
+    "Tu repenses à ce que le monde t'a révélé.",
+    "Cela que tu as découvert — est-ce vraiment le bon moment pour en parler ?",
+    "Ce savoir est un fardeau. Un privilège aussi.",
+    "Tu portes quelque chose que peu de gens savent."
+  ],
+
+  /* ── Échange de jetons avec un autre personnage ── */
+  echange_jetons: [
+    "Tu te rappelles de cette présence qui t'a aidé à tenir.",
+    "Quelqu'un t'a transmis quelque chose d'essentiel.",
+    "Cet échange avec l'autre a laissé une trace en toi.",
+    "Tu portes encore l'écho de ce que quelqu'un t'a confié.",
+    "Tu te souviens de cette connexion — brève, mais réelle.",
+    "Quelque chose de l'autre est en toi maintenant."
+  ],
+
+  /* ── Visibilité de la carte d'un autre personnage ── */
+  carte_partagee: [
+    "Tu te rappelles des hypothèses de l'autre — elles résonnent.",
+    "Quelqu'un a vu les choses différemment. Cela te reste.",
+    "La carte de l'autre t'a révélé quelque chose que tu n'avais pas vu.",
+    "Tu repenses à ce que l'autre a tracé sur sa constellation.",
+    "Leurs connexions et les tiennes se rejoignent peut-être.",
+    "Tu n'oublies pas ce que tu as entrevu dans la vision de l'autre."
+  ],
+
+  /* ── Silences (pauses narratives) ── */
+  silence: [
+    null, null, null, null, null  // 5 nulls = 5 chances de silence
+  ]
+};
+
+/* ══════════════════════════════════════════════
+   MOTEUR DE NOTIFICATIONS — Conscience interne
+   ══════════════════════════════════════════════ */
+
+const NotifSystem = {
+  // File de messages à afficher
+  _queue: [],
+  // Historique récent pour éviter les répétitions
+  _recent: [],
+  _maxRecent: 12,
+  // Timers
+  _displayTimer: null,
+  _collectTimer: null,
+  // État de la dernière collecte (pour détecter les changements)
+  _lastEnvEtat: null,
+  _lastCarteSlots: null,
+  _lastPlayers: null,
+  // Cooldown entre collectes (ms)
+  _collectInterval: 25000, // 25s
+  // Durée d'affichage d'un message (ms)
+  _displayDuration: 9000,
+  // Pause min/max entre messages (ms)
+  _pauseMin: 18000,
+  _pauseMax: 55000,
+  // Axes de l'octogone
+  _axes: ['feu','bile_jaune','terre','bile_noire','eau','flegme','air','sang'],
+  _axesLabel: {feu:'Feu',bile_jaune:'Bile Jaune',terre:'Terre',bile_noire:'Bile Noire',
+               eau:'Eau',flegme:'Flegme',air:'Air',sang:'Sang'},
+
+  start(){
+    if(!authenticated||!FICHE_ID) return;
+    this._collect();
+    this._scheduleNext();
+  },
+
+  stop(){
+    clearTimeout(this._displayTimer);
+    clearTimeout(this._collectTimer);
+  },
+
+  // ── Collecte des messages pertinents ──
+  async _collect(){
+    const messages = [];
+
+    // 1. Saturation octogone perso
+    this._axes.forEach(axe=>{
+      const arr = state.tokens[axe]||[];
+      const whites = arr.filter(t=>t==='white').length;
+      const blacks = arr.filter(t=>t==='black').length;
+      const total = whites + blacks;
+      if(total < 2) return; // pas de saturation notable
+      const pol = whites > blacks ? 'positif' : 'negatif';
+      const pool = NOTIFS_DATA.saturation_perso[axe]?.[pol]||[];
+      const msg = this._pick(pool);
+      if(msg) messages.push({text:msg, src:'perso', axe, pol});
+
+      // 2. Vertu/Vice attisé
+      const vvPool = pol==='positif'
+        ? NOTIFS_DATA.vertu_vice.vertu[axe]||[]
+        : NOTIFS_DATA.vertu_vice.vice[axe]||[];
+      const vvMsg = this._pick(vvPool);
+      if(vvMsg && Math.random()<0.5) messages.push({text:vvMsg, src:'vertu_vice', axe, pol});
+    });
+
+    // 3. Saturation octogone environnement
+    try{
+      const envId = getEnvFicheId();
+      if(envId && envId!==FICHE_ID){
+        const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat,carte`,{
+          headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+        });
+        const d=await r.json();
+        const envData=d[0]||null;
+
+        if(envData?.etat?.tokens){
+          this._axes.forEach(axe=>{
+            const arr = envData.etat.tokens[axe]||[];
+            const whites = arr.filter(t=>t==='white').length;
+            const blacks = arr.filter(t=>t==='black').length;
+            const total = whites + blacks;
+            if(total < 2) return;
+            const pol = whites > blacks ? 'positif' : 'negatif';
+            const pool = NOTIFS_DATA.saturation_env[axe]?.[pol]||[];
+            const msg = this._pick(pool);
+            if(msg && Math.random()<0.6) messages.push({text:msg, src:'env', axe, pol});
+          });
+        }
+
+        // 4. Événements révélés dans la carte
+        if(envData?.carte?.slots){
+          const slots = envData.carte.slots;
+          const revealed = Object.values(slots).filter(s=>{
+            if(!s||!s.texte) return false;
+            const ra = s.revele_a;
+            if(ra==='tous') return true;
+            if(Array.isArray(ra)) return ra.includes(playerId||FICHE_ID);
+            return false;
+          });
+          if(revealed.length>0 && Math.random()<0.5){
+            const evtMsg = this._pick(NOTIFS_DATA.evenement);
+            if(evtMsg) messages.push({text:evtMsg, src:'evenement'});
+          }
+        }
+
+        // 5. Cartes partagées par d'autres joueurs
+        if(envData?.carte?.players){
+          const others = Object.entries(envData.carte.players)
+            .filter(([pid,pdata])=>pid!==(playerId||FICHE_ID)&&pdata.shared);
+          if(others.length>0 && Math.random()<0.4){
+            const shareMsg = this._pick(NOTIFS_DATA.carte_partagee);
+            if(shareMsg) messages.push({text:shareMsg, src:'carte'});
+          }
+        }
+      }
+    }catch(e){}
+
+    // 6. Silences intentionnels (réduire la fréquence)
+    messages.push(...[null,null,null]); // 3 chances de silence supplémentaires
+
+    // Filtrer les doublons récents et mélanger
+    const filtered = messages.filter(m=>m!==null&&!this._recent.includes(m.text||''));
+    this._queue = this._shuffle([...filtered, null, null]);
+
+    // Re-planifier la prochaine collecte
+    clearTimeout(this._collectTimer);
+    this._collectTimer = setTimeout(()=>this._collect(), this._collectInterval);
+  },
+
+  // ── Affichage du prochain message ──
+  _scheduleNext(){
+    const pause = this._pauseMin + Math.random()*(this._pauseMax-this._pauseMin);
+    this._displayTimer = setTimeout(()=>{
+      this._showNext();
+      this._scheduleNext();
+    }, pause);
+  },
+
+  _showNext(){
+    if(!authenticated) return;
+    if(!this._queue.length) return;
+    const item = this._queue.shift();
+    if(!item) return; // silence
+    this._show(item.text);
+    // Ajouter à l'historique récent
+    this._recent.push(item.text);
+    if(this._recent.length>this._maxRecent) this._recent.shift();
+  },
+
+  _show(text){
+    const el = document.getElementById('notif-bubble');
+    if(!el) return;
+    clearTimeout(el._hideTimer);
+    el.querySelector('.notif-text').textContent = text;
+    el.classList.add('visible');
+    el._hideTimer = setTimeout(()=>el.classList.remove('visible'), this._displayDuration);
+  },
+
+  // Affiche immédiatement un message urgent (appelable de l'extérieur)
+  push(text){
+    this._show(text);
+    this._recent.push(text);
+    if(this._recent.length>this._maxRecent) this._recent.shift();
+  },
+
+  _pick(pool){
+    if(!pool||!pool.length) return null;
+    const available = pool.filter(t=>!this._recent.includes(t));
+    if(!available.length) return pool[Math.floor(Math.random()*pool.length)];
+    return available[Math.floor(Math.random()*available.length)];
+  },
+
+  _shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  },
+
+  // Vérification immédiate après modification d'un jeton
+  _checkSaturationImmediate(axe){
+    if(!authenticated||!axe) return;
+    const arr = state.tokens[axe]||[];
+    const whites = arr.filter(t=>t==='white').length;
+    const blacks = arr.filter(t=>t==='black').length;
+    const total = whites + blacks;
+    if(total < 2) return; // pas encore saturé
+    const pol = whites > blacks ? 'positif' : 'negatif';
+    const pool = NOTIFS_DATA.saturation_perso[axe]?.[pol]||[];
+    const msg = this._pick(pool);
+    if(msg) this.push(msg);
   }
 };
 
