@@ -1808,6 +1808,13 @@ async function doLogin(tryGM){
           // Révéler les boutons bibliothèque et bm des accordéons enrichis
           document.querySelectorAll('.acc-bib-btn').forEach(btn=>btn.style.display='');
           document.querySelectorAll('.gm-bm-btn').forEach(btn=>btn.style.display='');
+          // MJ : afficher le display MJ, masquer le display joueur
+          document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='');
+          document.querySelectorAll('.bm-joueur-display').forEach(el=>el.style.display='none');
+        } else {
+          // Joueur : masquer le display MJ (qui montre "0"), afficher uniquement le display joueur
+          document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='none');
+          // bm-joueur-display est déjà visible si bm !== 0
         }
         if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);
         startRealtime();
@@ -2792,28 +2799,33 @@ function buildEnhancedAccItem(panel, getArr, idx, titlePlaceholder, textPlacehol
     const b=document.createElement('button');
     b.className='bm-num-btn '+(v>0?'pos':v<0?'neg':'zero')+(v===curBm?' active':'');
     b.textContent=v>0?'+'+v:(v===0?'0':v);
-    b.style.display=octIsGM?'':'none';
-    b.classList.add('gm-bm-btn'); // pour affichage post-login
+    b.style.display='none'; // masqué par défaut, révélé après login MJ
+    b.classList.add('gm-bm-btn');
     b.addEventListener('click',()=>{
       if(!octIsGM) return;
       const arr=getArr(); arr[idx]={...(arr[idx]||{}), bm:v};
       bmDisplay.className='bm-num-display '+(v>0?'pos':v<0?'neg':'zero');
       bmDisplay.textContent=v>0?'+'+v:(v===0?'0':v);
+      // Mettre à jour visibilité du display joueur
+      bmDisplayJoueur.textContent=v>0?'+'+v:(v===0?'':v);
+      bmDisplayJoueur.style.display=(v!==0)?'':'none';
       bmBtns.querySelectorAll('.bm-num-btn').forEach(bb=>bb.classList.remove('active'));
       b.classList.add('active');
       saveState();
     });
     bmBtns.appendChild(b);
   });
-  // Côté joueur : afficher uniquement la valeur active si non nulle
-  if(!octIsGM && curBm!==0){
-    bmRow.appendChild(bmLabel);
-    bmRow.appendChild(bmDisplay);
-  } else if(octIsGM){
-    bmRow.appendChild(bmLabel);
-    bmRow.appendChild(bmBtns);
-    bmRow.appendChild(bmDisplay);
-  }
+  // Display joueur (toujours présent, visible si bm !== 0 et pas MJ)
+  const bmDisplayJoueur=document.createElement('span');
+  bmDisplayJoueur.className='bm-num-display '+(curBm>0?'pos':curBm<0?'neg':'zero');
+  bmDisplayJoueur.textContent=curBm>0?'+'+curBm:curBm<0?curBm:'';
+  bmDisplayJoueur.style.display=(curBm!==0)?'':'none';
+  bmDisplayJoueur.classList.add('bm-joueur-display'); // masqué après login MJ
+
+  bmRow.appendChild(bmLabel);
+  bmRow.appendChild(bmBtns);    // boutons MJ (masqués par défaut)
+  bmRow.appendChild(bmDisplay); // display MJ (toujours visible pour MJ)
+  bmRow.appendChild(bmDisplayJoueur); // display joueur (visible si bm != 0)
   body.appendChild(bmRow);
 
   // ── Texte descriptif ──
