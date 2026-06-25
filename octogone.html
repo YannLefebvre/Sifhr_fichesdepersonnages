@@ -861,19 +861,18 @@
 
   /* ── Bulle de notification / conscience interne ── */
   #notif-bubble {
-    position:fixed; bottom:5.5rem; left:50%; transform:translateX(-50%) translateY(12px);
-    background:rgba(26,10,10,0.92); border:1px solid #8b2020;
-    color:#f5d0d0; border-radius:20px; padding:.55rem 1.1rem;
+    max-width:500px; margin:.4rem auto .2rem;
+    background:rgba(90,20,20,0.08); border:1px solid #c8a0a0;
+    color:#8b2020; border-radius:8px; padding:.5rem 1rem;
     font-family:'Crimson Text',serif; font-style:italic; font-size:.88rem;
-    max-width:min(340px,88vw); text-align:center; line-height:1.5;
-    z-index:500; pointer-events:none;
-    opacity:0; transition:opacity .5s ease, transform .5s ease;
-    box-shadow:0 3px 18px rgba(139,32,32,0.35);
+    text-align:center; line-height:1.5;
+    opacity:0; max-height:0; overflow:hidden;
+    transition:opacity .6s ease, max-height .6s ease, padding .6s ease, margin .6s ease;
+    pointer-events:none;
   }
   #notif-bubble.visible {
-    opacity:1; transform:translateX(-50%) translateY(0);
+    opacity:1; max-height:5rem; padding:.5rem 1rem;
   }
-  .notif-text { display:block; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -1674,6 +1673,9 @@ async function xferClearRequest(){
   <g id="labels-static"></g>
 </svg>
 </div>
+
+<!-- Bulle de conscience interne — juste sous l'octogone -->
+<div id="notif-bubble"><span class="notif-text"></span></div>
 
 <div class="lower">
   <div class="panel">
@@ -5218,9 +5220,6 @@ const BibTraits = {
 
 </script>
 
-<!-- Bulle de conscience interne -->
-<div id="notif-bubble"><span class="notif-text"></span></div>
-
 <script>
 /* ══════════════════════════════════════════════
    NOTIFS_DATA — Messages courts de conscience interne
@@ -5492,7 +5491,10 @@ const NotifSystem = {
 
   start(){
     if(!authenticated||!FICHE_ID) return;
-    this._collect();
+    this._collect().then(()=>{
+      // Afficher un premier message rapidement si des messages sont disponibles
+      setTimeout(()=>this._showNext(), 1500);
+    });
     this._scheduleNext();
   },
 
