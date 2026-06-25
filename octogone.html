@@ -412,14 +412,39 @@
   }
   .dsuccess-result-row {
     display:flex; align-items:center; justify-content:space-between;
-    font-size:.85rem; padding:4px 0;
+    font-size:.85rem; padding:4px 0; cursor:pointer; border-radius:5px;
+    transition:background .12s; padding:5px 6px; margin:0 -6px;
   }
+  .dsuccess-result-row:hover { background:#f0ede6; }
+  .dsuccess-result-row.chosen { background:#e6f1fb; border:1px solid #185FA5; border-radius:5px; }
+  .dsuccess-result-row.chosen .dsuccess-result-label { color:#185FA5; font-weight:600; }
   .dsuccess-result-row + .dsuccess-result-row { border-top:1px dashed #e8e4dc; }
   .dsuccess-result-label { color:#555; }
   .dsuccess-result-count {
     font-family:'Cinzel',serif; font-weight:600; color:var(--accent);
     background:#f7f4ee; border-radius:10px; padding:2px 10px;
   }
+  /* Résultat opposition */
+  .dsuccess-opposition { margin-top:.4rem; padding:.4rem .6rem; border-radius:5px;
+    font-family:'Cinzel',serif; font-size:.78rem; letter-spacing:.04em; text-align:center; }
+  .dsuccess-opposition.reussite { background:#d4edda; color:#1a5c2a; border:1px solid #8abf9a; }
+  .dsuccess-opposition.echec { background:#fde8e8; color:#8b2020; border:1px solid #e8a0a0; }
+  .dsuccess-opposition.echec-critique { background:#8b2020; color:#fff; border:1px solid #5a1010; }
+  /* Traits mobilisables */
+  #dtrait-panel { margin:.5rem 0; padding:.5rem .7rem; background:#f5f2ec;
+    border:1px solid #e0dcd4; border-radius:8px; display:none; }
+  .dtrait-panel-title { font-family:'Cinzel',serif; font-size:.72rem; color:#666;
+    letter-spacing:.05em; margin-bottom:.4rem; text-transform:uppercase; }
+  .dtrait-list { display:flex; flex-wrap:wrap; gap:.3rem; }
+  .dtrait-btn { font-family:'Cinzel',serif; font-size:.7rem; padding:3px 9px;
+    border-radius:12px; border:1px solid #ccc; background:#fff; cursor:pointer;
+    display:flex; align-items:center; gap:.3rem; transition:all .15s; }
+  .dtrait-btn:hover { border-color:#185FA5; }
+  .dtrait-btn.active { border-color:#185FA5; background:#e6f1fb; color:#185FA5; }
+  .dtrait-btn.malus { border-color:#c85a52; }
+  .dtrait-btn.malus.active { background:#fde8e8; color:#8b2020; border-color:#8b2020; }
+  .dtrait-level-badge { font-size:.6rem; padding:1px 5px; border-radius:8px;
+    background:#eee; color:#666; }
 
   /* ── Boutons Bonus/Malus cumulables ── */
   .dbm-row { display:flex; gap:8px; justify-content:center; margin-top:.7rem; flex-wrap:wrap; }
@@ -1544,6 +1569,11 @@ async function xferClearRequest(){
       <p class="dice-section-title" id="dice-section-lbl">Aucun bonus ni malus sélectionné</p>
       <div class="dice-grid" id="dice-grid"></div>
       <div id="droll-history" class="droll-history" style="display:none;"></div>
+      <!-- Traits mobilisables depuis l'aptitude sélectionnée -->
+      <div id="dtrait-panel">
+        <div class="dtrait-panel-title">Traits mobilisables</div>
+        <div class="dtrait-list" id="dtrait-list"></div>
+      </div>
       <div id="dsuccess-result" class="dsuccess-result" style="display:none;"></div>
       <div id="dlock-explain" class="dlock-explain" style="display:none;"></div>
       <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
@@ -3023,6 +3053,9 @@ function selectDiceRole(role){
   // Charger état actuel
   const s=dS();
   dRenderAptGrid();
+  // Afficher les traits mobilisables si une aptitude est déjà sélectionnée
+  if(role==='launcher' && s._aptKey) dRenderTraitsMobilisables(s._aptKey);
+  else { const p=document.getElementById('dtrait-panel'); if(p) p.style.display='none'; }
   // Appliquer le plancher de dés rouges imposé par les axes saturés
   const minReds=dCountSaturatedAxes();
   if((s.reds||0)<minReds) s.reds=minReds;
@@ -3169,7 +3202,83 @@ function dSelectAptitude(key,score){
   s.whites=score;
   s._aptKey=key;
   dRenderAptGrid();
+  dRenderTraitsMobilisables(key);
   dInitDice(true); dRenderDice(false); dUpdateRedMessage(); dPushState();
+}
+
+// ── Traits mobilisables pour l'aptitude sélectionnée ──
+const LEVEL_LABELS = {
+  'bonus-1':'Avantage','bonus-2':'Expertise','bonus-3':'Maîtrise',
+  'malus-1':'Relance','malus-2':'Opposition','malus-3':'Négation'
+};
+const LEVEL_TYPE = {
+  'bonus-1':'bonus','bonus-2':'bonus','bonus-3':'bonus',
+  'malus-1':'malus','malus-2':'malus','malus-3':'malus'
+};
+const LEVEL_NUM = {
+  'bonus-1':1,'bonus-2':2,'bonus-3':3,
+  'malus-1':1,'malus-2':2,'malus-3':3
+};
+// Stocke le trait actuellement activé {aptKey, traitIdx}
+let _activeTraitKey = null;
+
+function dRenderTraitsMobilisables(aptKey){
+  const panel = document.getElementById('dtrait-panel');
+  const list = document.getElementById('dtrait-list');
+  if(!panel||!list) return;
+  const traits = (state.aptTraits&&state.aptTraits[aptKey])||[];
+  const available = traits.filter(t=>t.level && LEVEL_LABELS[t.level]);
+  if(!available.length){ panel.style.display='none'; _activeTraitKey=null; return; }
+  panel.style.display='block';
+  list.innerHTML='';
+  available.forEach((trait,idx)=>{
+    const isBonus = LEVEL_TYPE[trait.level]==='bonus';
+    const btn=document.createElement('button');
+    btn.className='dtrait-btn'+(isBonus?'':' malus');
+    const isActive=(_activeTraitKey&&_activeTraitKey.aptKey===aptKey&&_activeTraitKey.traitIdx===idx);
+    if(isActive) btn.classList.add('active');
+    btn.innerHTML=`<span>${trait.title||'Trait'}</span><span class="dtrait-level-badge">${LEVEL_LABELS[trait.level]}</span>`;
+    btn.addEventListener('click',()=>{
+      if(isActive){
+        // Désactiver : retirer le bonus/malus
+        _deactivateTrait(aptKey, idx, trait);
+        _activeTraitKey=null;
+      } else {
+        // Désactiver l'ancien si présent
+        if(_activeTraitKey) _deactivateTrait(_activeTraitKey.aptKey, _activeTraitKey.traitIdx, _getActiveTrait());
+        _activeTraitKey={aptKey,traitIdx:idx};
+        _activateTrait(trait);
+      }
+      dRenderTraitsMobilisables(aptKey);
+    });
+    list.appendChild(btn);
+  });
+}
+
+function _getActiveTrait(){
+  if(!_activeTraitKey) return null;
+  return (state.aptTraits[_activeTraitKey.aptKey]||[])[_activeTraitKey.traitIdx]||null;
+}
+
+function _activateTrait(trait){
+  const type=LEVEL_TYPE[trait.level];
+  const num=LEVEL_NUM[trait.level];
+  dbmClick(type, num);
+}
+
+function _deactivateTrait(aptKey, idx, trait){
+  if(!trait||!trait.level) return;
+  const type=LEVEL_TYPE[trait.level];
+  const num=LEVEL_NUM[trait.level];
+  // Décrémenter le compteur du bonus/malus correspondant
+  const s=dS();
+  if(!s.bonusMalus) return;
+  if(!s.bonusMalus[type]) return;
+  if(s.bonusMalus[type][num]>0){
+    s.bonusMalus[type][num]--;
+    dSyncBonusMalus();
+    dInitDice(false); dRenderDice(false); dUpdateRedMessage(); dPushState();
+  }
 }
 
 // ── Saturation des axes : impose un minimum de dés rouges ──
@@ -3686,6 +3795,11 @@ function dUpdateSectionLabel(){
   el.textContent = parts.length ? `Actifs : ${parts.join(', ')}` : 'Aucun bonus ni malus sélectionné';
 }
 
+// Table des oppositions octogonales (axe i ↔ axe i+4)
+const OPPOSED_VALUES = {1:5, 2:6, 3:7, 4:8, 5:1, 6:2, 7:3, 8:4};
+// Valeur de réussite finale choisie par le joueur après le lancer
+let _chosenSuccessVal = null;
+
 function dComputeSuccesses(){
   const s=dS();
   const resultEl=document.getElementById('dsuccess-result');
@@ -3695,22 +3809,59 @@ function dComputeSuccesses(){
   if(!s.rolled || !s.dice || !s.dice.length || (v1==null && v2==null)){
     resultEl.style.display='none';
     resultEl.innerHTML='';
+    _chosenSuccessVal=null;
     return;
   }
   const values=s.dice.map(d=>d.value).filter(v=>v!==null);
   resultEl.innerHTML='';
   resultEl.style.display='block';
-  if(v1!==null && v1!==undefined){
-    const count=values.filter(v=>v===v1).length;
-    const row=document.createElement('div'); row.className='dsuccess-result-row';
-    row.innerHTML=`<span class="dsuccess-result-label">Réussites sur ${v1}</span><span class="dsuccess-result-count">${count}</span>`;
+
+  const makeRow=(val)=>{
+    if(val==null) return;
+    const count=values.filter(v=>v===val).length;
+    const row=document.createElement('div');
+    row.className='dsuccess-result-row'+(val===_chosenSuccessVal?' chosen':'');
+    row.innerHTML=`<span class="dsuccess-result-label">Réussites sur ${val}</span><span class="dsuccess-result-count">${count}</span>`;
+    row.addEventListener('click',()=>{
+      _chosenSuccessVal=(_chosenSuccessVal===val)?null:val;
+      dComputeSuccesses(); // re-render avec sélection
+    });
     resultEl.appendChild(row);
-  }
-  if(v2!==null && v2!==undefined){
-    const count=values.filter(v=>v===v2).length;
-    const row=document.createElement('div'); row.className='dsuccess-result-row';
-    row.innerHTML=`<span class="dsuccess-result-label">Réussites sur ${v2}</span><span class="dsuccess-result-count">${count}</span>`;
-    resultEl.appendChild(row);
+
+    // Si cette valeur est choisie → calculer l'opposition
+    if(val===_chosenSuccessVal){
+      const opp=OPPOSED_VALUES[val];
+      const oppCount=opp?values.filter(v=>v===opp).length:0;
+      if(opp){
+        const oppRow=document.createElement('div');
+        oppRow.style.cssText='font-size:.75rem;color:#888;padding:2px 6px;';
+        oppRow.textContent=`Opposition (${opp}) : ${oppCount} dé${oppCount>1?'s':''}`;
+        resultEl.appendChild(oppRow);
+      }
+      // Verdict
+      if(count>0||oppCount>0){
+        const verdict=document.createElement('div');
+        verdict.className='dsuccess-opposition';
+        if(oppCount===0||oppCount<count){
+          verdict.classList.add('reussite');
+          verdict.textContent=`✓ Réussite — ${count} succès`;
+        } else if(oppCount===count){
+          verdict.classList.add('echec');
+          verdict.textContent=`✗ Échec — ${oppCount} opposition${oppCount>1?'s':''} annule${oppCount>1?'nt':''} les réussites`;
+        } else {
+          verdict.classList.add('echec-critique');
+          verdict.textContent=`✗✗ Échec critique — ${oppCount} opposition${oppCount>1?'s':''} surpasse${oppCount>1?'nt':''} les ${count} réussite${count>1?'s':''}`;
+        }
+        resultEl.appendChild(verdict);
+      }
+    }
+  };
+
+  makeRow(v1);
+  makeRow(v2);
+  // Réinitialiser le choix si les valeurs cibles ont changé
+  if(_chosenSuccessVal!==null && _chosenSuccessVal!==v1 && _chosenSuccessVal!==v2){
+    _chosenSuccessVal=null;
   }
 }
 
@@ -3869,6 +4020,7 @@ function dApplyTokenRules(){
 
 function dRollDice(){
   if(dCurrentRole!=='launcher') return;
+  _chosenSuccessVal=null; // Réinitialiser la valeur de réussite choisie à chaque nouveau lancer
   const s=dS();
   s.rolled=true;
   if(!s.dice||!s.dice.length) dInitDice(false);
