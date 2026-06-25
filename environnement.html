@@ -922,14 +922,6 @@ let authenticated=false;
 let isGM=false;
 let playerId='joueur';
 let applyingRemote=false;
-// Historique de dynamique (permanent jusqu'à réinitialisation)
-if(!state.dynamiqueLog) state.dynamiqueLog=[];
-// Fiches personnages liées (identifiants, saisis par le MJ)
-if(!state.fichePersonnages) state.fichePersonnages=[];
-// Compteur de 9 agrégés depuis toutes les fiches personnages liées
-if(state.nineCount===undefined) state.nineCount=0;
-// Seuil aléatoire courant (tiré au sort à chaque réinitialisation du compteur)
-if(!state.nineThreshold) state.nineThreshold=Math.floor(Math.random()*4)+3; // 3 à 6
 
 const AXE_LABELS = {
   feu:'Feu', bile_j:'Bile Jaune', terre:'Terre', bile_n:'Bile Noire',
@@ -986,6 +978,12 @@ SECTORS.forEach(s=>{
   state.tokens[s.id]=['empty','empty','empty'];
   state.axisNotes[s.id]={gm:{text:'',locked:false,revealed:false},players:{text:'',locked:false}};
 });
+
+// Extensions de state (après que state soit défini)
+if(!state.dynamiqueLog) state.dynamiqueLog=[];
+if(!state.fichePersonnages) state.fichePersonnages=[];
+if(state.nineCount===undefined) state.nineCount=0;
+if(!state.nineThreshold) state.nineThreshold=Math.floor(Math.random()*4)+3;
 
 // ── SVG ──
 const CX=150,CY=150,OUTER_R=108,INNER_R=18,RINGS=5;
