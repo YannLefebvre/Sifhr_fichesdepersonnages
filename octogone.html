@@ -70,6 +70,42 @@
   .panel-body.collapsed { max-height:0; opacity:0; }
   .panel-body-inner { padding:.6rem .75rem .75rem; }
   /* (accordion items handle confrerie/artefacts/equipement now) */
+
+  /* ── Boutons de niveau Trait (bonus/malus, sélection unique) ── */
+  .trait-level-row { display:flex; gap:4px; flex-wrap:wrap; margin:.3rem 0 .4rem; }
+  .trait-level-btn {
+    padding:3px 8px; border-radius:4px; border:1.5px solid transparent;
+    font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.03em;
+    cursor:pointer; color:#fff; opacity:.45; transition:opacity .15s;
+  }
+  .trait-level-btn:hover { opacity:.75; }
+  .trait-level-btn.active { opacity:1; border-color:#1a1510; }
+  .trait-level-btn.tlb-bonus-1 { background:#a8d5ad; color:#1a1510; }
+  .trait-level-btn.tlb-bonus-2 { background:#5fa86a; }
+  .trait-level-btn.tlb-bonus-3 { background:#2d6e38; }
+  .trait-level-btn.tlb-malus-1 { background:#e8a3a0; color:#1a1510; }
+  .trait-level-btn.tlb-malus-2 { background:#c85a52; }
+  .trait-level-btn.tlb-malus-3 { background:#8b2020; }
+  .trait-level-btn:disabled { cursor:not-allowed; }
+
+  /* ── Aptitudes avec accordéons de sous-traits ── */
+  .apt-acc-item { margin-bottom:.3rem; border-bottom:1px dotted var(--border); }
+  .apt-acc-header { display:flex; align-items:center; gap:.4rem; padding:.2rem 0; }
+  .apt-acc-toggle { flex-shrink:0; width:14px; height:14px; cursor:pointer; color:var(--ink3); font-size:.65rem; user-select:none; display:flex; align-items:center; justify-content:center; transition:transform .2s; }
+  .apt-acc-toggle.open { transform:rotate(90deg); }
+  .apt-acc-body { overflow:hidden; max-height:0; opacity:0; transition:max-height .25s ease, opacity .2s ease; }
+  .apt-acc-body.open { max-height:none; opacity:1; overflow:visible; }
+  .apt-acc-subtraits { padding:.3rem 0 .3rem 1rem; display:flex; flex-direction:column; gap:.5rem; }
+  .apt-subtrait { background:var(--section-bg); border:1px solid var(--border); border-radius:var(--radius); padding:.4rem .6rem; }
+  .apt-subtrait-header { display:flex; align-items:center; gap:.4rem; margin-bottom:.25rem; }
+  .apt-subtrait-title { flex:1; background:transparent; border:none; font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink); padding:2px 4px; outline:none; }
+  .apt-subtrait-title:focus { background:var(--input-bg); }
+  .apt-subtrait-title:disabled { color:var(--ink3); }
+  .apt-subtrait-del { background:none; border:none; cursor:pointer; color:#c85a52; font-size:.85rem; flex-shrink:0; }
+  .apt-subtrait-add-btn { align-self:flex-start; font-family:'Cinzel',serif; font-size:.65rem; letter-spacing:.04em; padding:4px 10px; border:1px solid var(--border); border-radius:4px; background:var(--input-bg); cursor:pointer; color:var(--ink2); }
+  .apt-subtrait-add-btn:hover { background:var(--border2); }
+  .apt-copy-btn { font-family:'Cinzel',serif; font-size:.62rem; padding:3px 8px; border:1px solid #1a4a6e; border-radius:4px; background:#e8f0f7; color:#1a4a6e; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  .apt-copy-btn:hover { background:#d0e4f5; }
   /* Wide panels below actions/traits */
   .lower-wide { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; max-width:700px; margin:0 auto 1rem; }
   @media(max-width:600px){ .lower-wide{grid-template-columns:1fr;} }
@@ -764,6 +800,7 @@ function getBaseUrl(){
 }
 
 // ── Fiche d'environnement liée ──
+// Utilise state.envFiche si défini, sinon retombe sur FICHE_ID (comportement historique)
 function getEnvFicheId(){
   return (state.envFiche && state.envFiche.trim()) ? state.envFiche.trim() : FICHE_ID;
 }
@@ -780,10 +817,6 @@ function saveEnvFiche(){
   if(envIframe) envIframe.removeAttribute('data-loaded');
   if(carteIframe) carteIframe.removeAttribute('data-loaded');
 }
-
-// Construit les paramètres de connexion automatique :
-// - pw : mot de passe de la fiche d'environnement
-// - player_fiche + player_pw : identité propre du joueur (sa fiche personnage)
 function buildAutoLoginParams(){
   const pw=isGM?(state.envFichePwGM||''):(state.envFichePw||'');
   if(!pw) return '';
@@ -802,9 +835,7 @@ function toggleEnvPanel(){
   const iframe=document.getElementById('env-iframe');
   const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
   const url=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
-  if(iframe.src!==url){
-    iframe.src=url;
-  }
+  if(iframe.src!==url) iframe.src=url;
   ol.classList.add('open');
   document.getElementById('env-fab').classList.add('open');
 }
@@ -819,11 +850,8 @@ const CartePanel = {
     const ol=document.getElementById('carte-overlay');
     if(ol.classList.contains('open')){ this.close(); return; }
     const iframe=document.getElementById('carte-iframe');
-    // Toujours reconstruire l'URL pour refléter les derniers paramètres (mots de passe, fiche)
     const url=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
-    if(iframe.src!==url){
-      iframe.src=url;
-    }
+    if(iframe.src!==url) iframe.src=url;
     ol.classList.add('open');
     document.getElementById('carte-fab').classList.add('open');
   },
@@ -1633,7 +1661,8 @@ const SB = {
 
 // ── Authentification ───────────────────────────
 let authenticated = false;
-let isGM = false;
+let isGM = false; // alias synchronisé avec octIsGM pour buildAutoLoginParams
+let octIsGM = false;
 
 document.getElementById('modal-pw').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('modal-btn').click();
@@ -1657,8 +1686,9 @@ async function doLogin(tryGM){
         err.textContent = tryGM ? 'Mot de passe meneur incorrect.' : 'Mot de passe incorrect.';
       } else {
         authenticated = true;
-        isGM = tryGM;
-        if(!tryGM) window._playerPw = pw; // Stocker pour buildAutoLoginParams
+        octIsGM = tryGM;
+        isGM = tryGM; // sync pour buildAutoLoginParams
+        if(!tryGM) window._playerPw = pw;
         document.getElementById('modal-overlay').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         showDiceFab();
@@ -1916,7 +1946,8 @@ let wheelRot=0;
 const NUM_EQUIPEMENT=6, NUM_ARTEFACTS=5;
 const NUM_CONFRERIE=4;
 let state={tokens:{},scores:{},aptitudes:{},envFiche:'',
-  traits:Array.from({length:NUM_TRAITS},()=>({title:'',text:''})),
+  traits:Array.from({length:NUM_TRAITS},()=>({title:'',text:'',level:null,levelType:null,locked:false})),
+  aptTraits:{}, // {aptKey: [{id,title,text,level,levelType,locked}]}
   confrerie:Array.from({length:NUM_CONFRERIE},()=>({title:'',text:''})),
   equipement:Array.from({length:NUM_EQUIPEMENT},()=>({title:'',text:''})),
   artefacts:Array.from({length:NUM_ARTEFACTS},()=>({title:'',text:''})),
@@ -2226,13 +2257,20 @@ function editScore(sectorId,qi,txt,g){
 /* ── Aptitudes ── */
 const aptPanel=document.getElementById('aptitudes-inner');
 APTITUDES.forEach((aptitude,ai)=>{
-  const row=document.createElement('div');row.className='aptitude-row';
-  const lbl=document.createElement('span');lbl.className='aptitude-label vv-hoverable';lbl.textContent=aptitude;
   const aptKey=APTITUDE_KEYS[ai];
+  // Conteneur accordéon pour l'aptitude
+  const accItem=document.createElement('div'); accItem.className='apt-acc-item';
+  const header=document.createElement('div'); header.className='apt-acc-header';
+
+  const toggle=document.createElement('span'); toggle.className='apt-acc-toggle'; toggle.textContent='▶';
+  header.appendChild(toggle);
+
+  const lbl=document.createElement('span');lbl.className='aptitude-label vv-hoverable';lbl.textContent=aptitude;
   lbl.addEventListener('mouseenter',(e)=>showAptTooltip(aptitude, aptKey, e));
   lbl.addEventListener('mousemove', positionVVTooltip);
   lbl.addEventListener('mouseleave', hideVVTooltip);
-  row.appendChild(lbl);
+  header.appendChild(lbl);
+
   const sqs=document.createElement('div');sqs.className='aptitude-squares';
   for(let si=0;si<SQ_PER_APTITUDE;si++){
     const sq=document.createElement('div');sq.className='apt-sq';
@@ -2242,10 +2280,217 @@ APTITUDES.forEach((aptitude,ai)=>{
     sq.addEventListener('click',()=>{state.aptitudes[key]=!state.aptitudes[key];sq.classList.toggle('filled',state.aptitudes[key]);saveState();});
     sqs.appendChild(sq);
   }
-  row.appendChild(sqs);aptPanel.appendChild(row);
+  header.appendChild(sqs);
+  accItem.appendChild(header);
+
+  const body=document.createElement('div'); body.className='apt-acc-body';
+  const subTraitsWrap=document.createElement('div'); subTraitsWrap.className='apt-acc-subtraits';
+  body.appendChild(subTraitsWrap);
+
+  // Bouton Ajouter un trait
+  if(octIsGM){
+    const addBtn=document.createElement('button'); addBtn.className='apt-subtrait-add-btn'; addBtn.textContent='+ Ajouter un trait';
+    addBtn.addEventListener('click',()=>{
+      if(!state.aptTraits[aptKey]) state.aptTraits[aptKey]=[];
+      const newId='t'+Date.now();
+      state.aptTraits[aptKey].push({id:newId,title:'',text:'',level:null,levelType:null,locked:false});
+      saveState();
+      renderAptTraits(aptKey,subTraitsWrap);
+    });
+    body.appendChild(addBtn);
+  }
+
+  accItem.appendChild(body);
+  aptPanel.appendChild(accItem);
+
+  // Toggle
+  toggle.addEventListener('click',()=>{
+    const isOpen=body.classList.contains('open');
+    body.classList.toggle('open',!isOpen);
+    toggle.classList.toggle('open',!isOpen);
+    if(!isOpen) renderAptTraits(aptKey,subTraitsWrap);
+  });
+
+  // Stocker la ref pour refresh
+  accItem._aptKey=aptKey;
+  accItem._subTraitsWrap=subTraitsWrap;
 });
 
-/* ── Helper : crée un item accordéon titre+texte ── */
+// ── Rendu des sous-traits d'une aptitude ──
+function renderAptTraits(aptKey,container){
+  container.innerHTML='';
+  const traits=(state.aptTraits[aptKey]||[]);
+  traits.forEach((trait,idx)=>{
+    const wrap=document.createElement('div'); wrap.className='apt-subtrait';
+    // Header : titre + del
+    const hdr=document.createElement('div'); hdr.className='apt-subtrait-header';
+    const titleInp=document.createElement('input'); titleInp.type='text'; titleInp.className='apt-subtrait-title';
+    titleInp.placeholder='Nom du trait…'; titleInp.value=trait.title||'';
+    titleInp.disabled=(!octIsGM && trait.locked);
+    titleInp.addEventListener('input',()=>{ trait.title=titleInp.value; saveState(); });
+    hdr.appendChild(titleInp);
+    if(octIsGM){
+      const delBtn=document.createElement('button'); delBtn.className='apt-subtrait-del'; delBtn.textContent='✕';
+      delBtn.title='Supprimer ce trait';
+      delBtn.addEventListener('click',()=>{
+        state.aptTraits[aptKey].splice(idx,1);
+        saveState();
+        renderAptTraits(aptKey,container);
+      });
+      hdr.appendChild(delBtn);
+    }
+    // Bouton "Ajouter dans les Traits"
+    const copyBtn=document.createElement('button'); copyBtn.className='apt-copy-btn'; copyBtn.textContent='↗ Traits';
+    copyBtn.title='Copier dans les Traits globaux';
+    copyBtn.addEventListener('click',()=>{
+      const emptyIdx=state.traits.findIndex(t=>!t.title&&!t.text);
+      if(emptyIdx!==-1){
+        state.traits[emptyIdx]={title:trait.title||'',text:trait.text||'',level:trait.level,levelType:trait.levelType,locked:false};
+        saveState();
+        traitWidgets[emptyIdx].titleInp.value=state.traits[emptyIdx].title;
+        traitWidgets[emptyIdx].textArea.value=state.traits[emptyIdx].text;
+        traitWidgets[emptyIdx].autoResize();
+        renderTraitLevel(emptyIdx);
+      } else {
+        alert('Plus de place dans les Traits — veuillez libérer un emplacement.');
+      }
+    });
+    hdr.appendChild(copyBtn);
+    wrap.appendChild(hdr);
+    // Boutons niveau (MJ seulement)
+    const levelRow=buildTraitLevelRow(trait, ()=>saveState());
+    wrap.appendChild(levelRow);
+    // Texte descriptif
+    const textArea=document.createElement('textarea'); textArea.className='acc-text';
+    textArea.placeholder='Description du trait…'; textArea.value=trait.text||'';
+    textArea.style.width='100%';
+    function autoResize(){ textArea.style.height='auto'; textArea.style.height=textArea.scrollHeight+'px'; }
+    textArea.addEventListener('input',()=>{ trait.text=textArea.value; autoResize(); saveState(); });
+    setTimeout(autoResize,10);
+    wrap.appendChild(textArea);
+    container.appendChild(wrap);
+  });
+}
+
+
+
+/* ── Helper : construit la rangée de boutons de niveau pour un Trait ── */
+const TRAIT_LEVELS=[
+  {key:'bonus-1',label:'Avantage',cls:'tlb-bonus-1'},
+  {key:'bonus-2',label:'Expertise',cls:'tlb-bonus-2'},
+  {key:'bonus-3',label:'Maîtrise',cls:'tlb-bonus-3'},
+  {key:'malus-1',label:'Relance',cls:'tlb-malus-1'},
+  {key:'malus-2',label:'Opposition',cls:'tlb-malus-2'},
+  {key:'malus-3',label:'Négation',cls:'tlb-malus-3'},
+];
+
+function buildTraitLevelRow(traitObj, onSave){
+  const row=document.createElement('div'); row.className='trait-level-row';
+  TRAIT_LEVELS.forEach(({key,label,cls})=>{
+    const btn=document.createElement('button'); btn.className=`trait-level-btn ${cls}`;
+    btn.textContent=label; btn.title=label;
+    btn.disabled=!octIsGM;
+    if(traitObj.level===key) btn.classList.add('active');
+    btn.addEventListener('click',()=>{
+      if(!octIsGM) return;
+      const wasActive=(traitObj.level===key);
+      traitObj.level=wasActive?null:key;
+      row.querySelectorAll('.trait-level-btn').forEach(b=>b.classList.remove('active'));
+      if(!wasActive) btn.classList.add('active');
+      if(onSave) onSave();
+    });
+    row.appendChild(btn);
+  });
+  return row;
+}
+
+/* ── Helper : item accordéon Trait enrichi (avec niveau bonus/malus) ── */
+function buildTraitAccItem(panel, idx){
+  const item=document.createElement('div'); item.className='acc-item';
+  const titleWrap=document.createElement('div'); titleWrap.className='acc-title-wrap';
+  const toggle=document.createElement('span'); toggle.className='acc-toggle'; toggle.textContent='▶';
+  titleWrap.appendChild(toggle);
+  const titleInp=document.createElement('input'); titleInp.type='text'; titleInp.className='acc-title';
+  titleInp.placeholder='Titre du trait…';
+  const cur=(state.traits[idx])||{title:'',text:'',level:null,locked:false};
+  titleInp.value=cur.title||'';
+  titleWrap.appendChild(titleInp);
+  const lockBtn=document.createElement('button'); lockBtn.className='acc-lock-btn';
+  lockBtn.title='Verrouiller / déverrouiller la saisie';
+  let isLocked=cur.locked||false;
+  lockBtn.textContent=isLocked?'🔒':'🔓';
+  titleWrap.appendChild(lockBtn);
+  item.appendChild(titleWrap);
+
+  const body=document.createElement('div'); body.className='acc-body';
+
+  // Boutons de niveau (MJ only)
+  const levelRow=buildTraitLevelRow(state.traits[idx], saveState);
+  body.appendChild(levelRow);
+
+  const textArea=document.createElement('textarea'); textArea.className='acc-text';
+  textArea.placeholder='Description du trait…'; textArea.value=cur.text||'';
+  textArea.disabled=isLocked;
+  const rendered=document.createElement('div'); rendered.className='acc-rendered';
+  if(isLocked){ rendered.innerHTML=markdownToHtml(cur.text||''); rendered.classList.add('visible'); textArea.style.display='none'; }
+  function autoResize(){ textArea.style.height='auto'; textArea.style.height=textArea.scrollHeight+'px'; }
+  textArea.addEventListener('input', autoResize);
+  textArea.addEventListener('keydown', e=>{
+    if((e.ctrlKey||e.metaKey)&&(e.key==='b'||e.key==='B'||e.key==='i'||e.key==='I')){
+      e.preventDefault();
+      const tag=e.key.toLowerCase()==='b'?'**':'*';
+      const start=textArea.selectionStart,end=textArea.selectionEnd;
+      const sel=textArea.value.substring(start,end);
+      textArea.setRangeText(tag+sel+tag,start,end,'select');
+      saveItem();
+    }
+  });
+  body.appendChild(textArea); body.appendChild(rendered);
+  item.appendChild(body);
+
+  lockBtn.addEventListener('click',()=>{
+    isLocked=!isLocked; lockBtn.textContent=isLocked?'🔒':'🔓';
+    textArea.disabled=isLocked;
+    if(isLocked){ rendered.innerHTML=markdownToHtml(textArea.value); rendered.classList.add('visible'); textArea.style.display='none'; }
+    else { rendered.classList.remove('visible'); textArea.style.display=''; setTimeout(autoResize,10); }
+    state.traits[idx]={...state.traits[idx], locked:isLocked}; saveState();
+  });
+
+  function toggleAcc(){
+    const isOpen=body.classList.contains('open');
+    body.classList.toggle('open',!isOpen); toggle.classList.toggle('open',!isOpen);
+    if(!isOpen) setTimeout(autoResize,10);
+  }
+  toggle.addEventListener('click', toggleAcc);
+  titleInp.addEventListener('dblclick', toggleAcc);
+
+  function saveItem(){
+    state.traits[idx]={...state.traits[idx], title:titleInp.value, text:textArea.value, locked:isLocked};
+    saveState();
+  }
+  titleInp.addEventListener('input', saveItem);
+  textArea.addEventListener('input', saveItem);
+
+  panel.appendChild(item);
+  item._levelRow=levelRow;
+  return {titleInp, textArea, rendered, body, toggle, autoResize,
+    applyLock:(locked)=>{
+      isLocked=locked; lockBtn.textContent=locked?'🔒':'🔓'; textArea.disabled=locked;
+      if(locked){ rendered.innerHTML=markdownToHtml(textArea.value); rendered.classList.add('visible'); textArea.style.display='none'; }
+      else { rendered.classList.remove('visible'); textArea.style.display=''; }
+    }
+  };
+}
+
+/* ── Refresh boutons de niveau d'un trait global (après copie depuis Aptitude) ── */
+function renderTraitLevel(idx){
+  const item=traitsPanel.querySelectorAll('.acc-item')[idx];
+  if(!item) return;
+  const oldRow=item.querySelector('.trait-level-row');
+  if(oldRow){ const newRow=buildTraitLevelRow(state.traits[idx],saveState); oldRow.replaceWith(newRow); }
+}
+
+/* ── Helper : construit un item accordéon titre+texte ── */
 function markdownToHtml(text){
   if(typeof marked==='undefined') return text.replace(/\n/g,'<br>');
   return marked.parse(text||'');
@@ -2364,7 +2609,7 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
 const traitsPanel=document.getElementById('traits-inner');
 const traitWidgets=[];
 for(let i=0;i<NUM_TRAITS;i++){
-  traitWidgets.push(buildAccItem(traitsPanel, ()=>state.traits, i, 'Titre du trait…', 'Description du trait…'));
+  traitWidgets.push(buildTraitAccItem(traitsPanel, i));
 }
 
 /* ── Confrérie ── */
@@ -2527,6 +2772,17 @@ function applyRemoteState(saved){
           traitWidgets[i].textArea.style.height=traitWidgets[i].textArea.scrollHeight+'px';
           if(t.locked) traitWidgets[i].applyLock(true);
           else traitWidgets[i].applyLock(false);
+          // Rafraîchir les boutons de niveau
+          renderTraitLevel(i);
+        }
+      });
+    }
+    if(saved.aptTraits){
+      state.aptTraits=saved.aptTraits;
+      // Rafraîchir les sous-traits ouverts
+      document.querySelectorAll('.apt-acc-item').forEach(item=>{
+        if(item._aptKey && item._subTraitsWrap && item.querySelector('.apt-acc-body.open')){
+          renderAptTraits(item._aptKey, item._subTraitsWrap);
         }
       });
     }
