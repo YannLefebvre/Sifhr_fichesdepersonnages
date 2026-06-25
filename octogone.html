@@ -1693,7 +1693,11 @@ async function doLogin(tryGM){
         document.getElementById('app').style.display = 'block';
         showDiceFab();
         showEnvFab();
-        if(tryGM) document.getElementById('gm-bar').style.display='flex';
+        if(tryGM){
+          document.getElementById('gm-bar').style.display='flex';
+          // Révéler les boutons MJ des sous-traits d'aptitude
+          document.querySelectorAll('.apt-subtrait-add-btn').forEach(btn=>btn.style.display='');
+        }
         if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);
         startRealtime();
       }
@@ -2287,24 +2291,29 @@ APTITUDES.forEach((aptitude,ai)=>{
   const subTraitsWrap=document.createElement('div'); subTraitsWrap.className='apt-acc-subtraits';
   body.appendChild(subTraitsWrap);
 
-  // Bouton Ajouter un trait
-  if(octIsGM){
-    const addBtn=document.createElement('button'); addBtn.className='apt-subtrait-add-btn'; addBtn.textContent='+ Ajouter un trait';
-    addBtn.addEventListener('click',()=>{
-      if(!state.aptTraits[aptKey]) state.aptTraits[aptKey]=[];
-      const newId='t'+Date.now();
-      state.aptTraits[aptKey].push({id:newId,title:'',text:'',level:null,levelType:null,locked:false});
-      saveState();
-      renderAptTraits(aptKey,subTraitsWrap);
-    });
-    body.appendChild(addBtn);
-  }
+  // Bouton Ajouter un trait (toujours créé, affiché seulement pour le MJ après login)
+  const addBtn=document.createElement('button');
+  addBtn.className='apt-subtrait-add-btn';
+  addBtn.textContent='+ Ajouter un trait';
+  addBtn.style.display='none'; // caché par défaut, révélé après login MJ
+  addBtn.dataset.aptkey=aptKey;
+  addBtn.addEventListener('click',()=>{
+    if(!state.aptTraits[aptKey]) state.aptTraits[aptKey]=[];
+    const newId='t'+Date.now();
+    state.aptTraits[aptKey].push({id:newId,title:'',text:'',level:null,levelType:null,locked:false});
+    saveState();
+    renderAptTraits(aptKey,subTraitsWrap);
+  });
+  body.appendChild(addBtn);
 
   accItem.appendChild(body);
   aptPanel.appendChild(accItem);
 
-  // Toggle
-  toggle.addEventListener('click',()=>{
+  // Toggle — header entier cliquable
+  header.style.cursor='pointer';
+  header.addEventListener('click',(e)=>{
+    // Ne pas déclencher si on clique sur les cases ou sur le label (tooltip)
+    if(e.target.classList.contains('apt-sq')||e.target.classList.contains('aptitude-label')) return;
     const isOpen=body.classList.contains('open');
     body.classList.toggle('open',!isOpen);
     toggle.classList.toggle('open',!isOpen);
