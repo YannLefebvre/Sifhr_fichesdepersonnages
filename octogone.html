@@ -2752,6 +2752,29 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
 
 
 
+/* ── syncBmWidget : resynchronise les boutons et displays bm après applyRemoteState ── */
+function syncBmWidget(widget, bm){
+  if(!widget||!widget.body) return;
+  // Mettre à jour les boutons actifs
+  widget.body.querySelectorAll('.gm-bm-btn').forEach(b=>{
+    const v=parseInt(b.textContent.replace('+',''));
+    b.classList.toggle('active', v===bm);
+  });
+  // Mettre à jour le display MJ
+  const disp=widget.body.querySelector('.bm-num-display:not(.bm-joueur-display)');
+  if(disp){
+    disp.className='bm-num-display '+(bm>0?'pos':bm<0?'neg':'zero');
+    disp.textContent=bm>0?'+'+bm:(bm===0?'0':bm);
+  }
+  // Mettre à jour le display joueur
+  const dispJ=widget.body.querySelector('.bm-joueur-display');
+  if(dispJ){
+    dispJ.className='bm-num-display '+(bm>0?'pos':bm<0?'neg':'zero');
+    dispJ.textContent=bm>0?'+'+bm:(bm<0?bm:'');
+    dispJ.style.display=(bm!==0)?'':'none';
+  }
+}
+
 /* ── buildEnhancedAccItem : accordéon avec image, bibliothèque et bonus/malus numérique ── */
 function buildEnhancedAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder, bibCategorie){
   const item=document.createElement('div'); item.className='acc-item';
@@ -3107,6 +3130,8 @@ function applyRemoteState(saved){
           equipWidgets[i].textArea.value=v.text||'';
           equipWidgets[i].textArea.style.height='auto';
           equipWidgets[i].textArea.style.height=equipWidgets[i].textArea.scrollHeight+'px';
+          if(v.locked) equipWidgets[i].applyLock(true);
+          syncBmWidget(equipWidgets[i], v.bm||0);
         }
       });
     }
@@ -3118,6 +3143,8 @@ function applyRemoteState(saved){
           artefactWidgets[i].textArea.value=v.text||'';
           artefactWidgets[i].textArea.style.height='auto';
           artefactWidgets[i].textArea.style.height=artefactWidgets[i].textArea.scrollHeight+'px';
+          if(v.locked) artefactWidgets[i].applyLock(true);
+          syncBmWidget(artefactWidgets[i], v.bm||0);
         }
       });
     }
@@ -3130,6 +3157,7 @@ function applyRemoteState(saved){
           prodigesWidgets[i].textArea.style.height='auto';
           prodigesWidgets[i].textArea.style.height=prodigesWidgets[i].textArea.scrollHeight+'px';
           if(v.locked) prodigesWidgets[i].applyLock(true);
+          syncBmWidget(prodigesWidgets[i], v.bm||0);
         }
       });
     }
