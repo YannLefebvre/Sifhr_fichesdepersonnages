@@ -3108,23 +3108,32 @@ function renderDettes(){
     const bmDisp=document.createElement('span');
     bmDisp.className='dette-bm-display '+(curBm>0?'pos':curBm<0?'neg':'zero');
     bmDisp.textContent=curBm>0?'+'+curBm:(curBm===0?'0':curBm);
+    // Display joueur (visible si bm != 0, masqué après login MJ)
+    const bmDispJ=document.createElement('span');
+    bmDispJ.className='dette-bm-display bm-joueur-display '+(curBm>0?'pos':curBm<0?'neg':'zero');
+    bmDispJ.textContent=curBm>0?'+'+curBm:(curBm<0?String(curBm):'');
+    bmDispJ.style.display=curBm!==0?'':'none';
     const bmBtns=document.createElement('div'); bmBtns.style.cssText='display:flex;gap:.2rem;';
     [-3,-2,-1,0,1,2,3].forEach(v=>{
       const b=document.createElement('button');
-      b.className='dette-bm-btn gm-edit-only '+(v>0?'pos':v<0?'neg':'zero')+(v===curBm?' active':'');
+      b.className='dette-bm-btn gm-bm-btn '+(v>0?'pos':v<0?'neg':'zero')+(v===curBm?' active':'');
       b.textContent=v>0?'+'+v:(v===0?'0':v);
+      b.style.display='none'; // masqué par défaut, révélé après login MJ
       b.addEventListener('click',()=>{
         if(!octIsGM) return;
         state.dettes[idx].bm=v;
         bmDisp.className='dette-bm-display '+(v>0?'pos':v<0?'neg':'zero');
         bmDisp.textContent=v>0?'+'+v:(v===0?'0':v);
+        bmDispJ.className='dette-bm-display bm-joueur-display '+(v>0?'pos':v<0?'neg':'zero');
+        bmDispJ.textContent=v>0?'+'+v:(v<0?String(v):'');
+        bmDispJ.style.display=v!==0?'':'none';
         bmBtns.querySelectorAll('.dette-bm-btn').forEach(bb=>bb.classList.remove('active'));
         b.classList.add('active');
         saveState();
       });
       bmBtns.appendChild(b);
     });
-    bmRow.appendChild(bmLabel); bmRow.appendChild(bmBtns); bmRow.appendChild(bmDisp);
+    bmRow.appendChild(bmLabel); bmRow.appendChild(bmBtns); bmRow.appendChild(bmDisp); bmRow.appendChild(bmDispJ);
     item.appendChild(bmRow);
     const ta=document.createElement('textarea'); ta.className='hc-text';
     ta.placeholder='Description de la dette ou créance…'; ta.value=d.text||'';
