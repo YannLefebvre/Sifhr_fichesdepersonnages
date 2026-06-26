@@ -4473,6 +4473,8 @@ function dComputeSuccesses(){
     row.addEventListener('click',()=>{
       _chosenSuccessVal=(_chosenSuccessVal===val)?null:val;
       dComputeSuccesses();
+      // Sauvegarder le résultat du duel pour l'adversaire
+      if(_chosenSuccessVal) dSaveDuelResult(_chosenSuccessVal, count, values);
     });
     resultEl.appendChild(row);
 
@@ -4710,7 +4712,8 @@ function dApplyTokenRules(){
 
 function dRollDice(){
   if(dCurrentRole!=='launcher') return;
-  _chosenSuccessVal=null; // Réinitialiser la valeur de réussite choisie à chaque nouveau lancer
+  _chosenSuccessVal=null;
+  state.duelResult=null; // Réinitialiser le résultat de duel à chaque nouveau lancer
   _prouesseDeclared=document.getElementById('dprouesse-toggle')?.checked||false;
   _prodigeDeclared=document.getElementById('dprodige-toggle')?.checked||false;
   const s=dS();
@@ -6610,6 +6613,92 @@ const PersonnePanel = {
 };
 
 function togglePersoPanel(){ PersonnePanel.toggle(); }
+
+</script>
+
+<script>
+
+// ── Résultat de duel ──
+async function dSaveDuelResult(chosenVal, successes, allValues){
+  const opp = {1:5,2:6,3:7,4:8,5:1,6:2,7:3,8:4}[chosenVal];
+  const oppCount = opp ? allValues.filter(v=>v===opp).length : 0;
+  let verdict = 'reussite';
+  if(oppCount >= successes) verdict = oppCount > successes ? 'echec_critique' : 'echec';
+  const result = {
+    joueur: FICHE_ID,
+    valeur: chosenVal,
+    reussites: successes,
+    oppositions: oppCount,
+    verdict,
+    ts: Date.now()
+  };
+  // Stocker dans state.etat et sauvegarder
+  state.duelResult = result;
+  saveState();
+  // Polling pour voir si l'adversaire a aussi un résultat
+  dPollAdversaireResult();
+}
+
+let _duelPollTimer = null;
+async function dPollAdversaireResult(){
+  // Chercher dans les fiches de l'environnement qui a un duelResult récent (< 5min)
+  const envId = getEnvFicheId();
+  if(!envId || envId===FICHE_ID) return;
+  clearTimeout(_duelPollTimer);
+  _duelPollTimer = setTimeout(async ()=>{
+    try{
+      const r=await fetch(
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+      );
+      const d=await r.json();
+      const fp=(d[0]?.etat?.fichePersonnages||[]);
+      // Chercher parmi les fiches liées celle qui a un duelResult récent
+      for(const p of fp){
+        const pid=typeof p==='string'?p:p.id;
+        if(pid===FICHE_ID) continue;
+        const r2=await fetch(
+          `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(pid)}&select=etat`,
+          {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+        );
+        const d2=await r2.json();
+        const advResult=d2[0]?.etat?.duelResult;
+        if(advResult && (Date.now()-advResult.ts)<300000){
+          dShowAdversaireResult(advResult, pid);
+          return;
+        }
+      }
+    }catch(e){}
+    // Réessayer dans 5s si pas de résultat
+    _duelPollTimer = setTimeout(dPollAdversaireResult, 5000);
+  }, 1000);
+}
+
+function dShowAdversaireResult(result, pid){
+  clearTimeout(_duelPollTimer);
+  const verdictLabel = {
+    reussite:'✓ Réussite', echec:'✗ Échec', echec_critique:'✗✗ Échec critique'
+  }[result.verdict]||result.verdict;
+  const verdictClass = {
+    reussite:'reussite', echec:'echec', echec_critique:'echec-critique'
+  }[result.verdict]||'reussite';
+
+  // Afficher dans le panneau de résultats du dé
+  const resultEl = document.getElementById('dsuccess-result');
+  if(!resultEl) return;
+  const advDiv = document.createElement('div');
+  advDiv.style.cssText='margin-top:.6rem;padding:.4rem .6rem;border-top:1px solid #ddd;';
+  const label = document.createElement('div');
+  label.style.cssText='font-family:Cinzel,serif;font-size:.7rem;color:#888;margin-bottom:.3rem;letter-spacing:.04em;';
+  label.textContent='Résultat de ' + pid + ' :';
+  const verdict = document.createElement('div');
+  verdict.className = 'dsuccess-opposition ' + verdictClass;
+  verdict.textContent = `${verdictLabel} — ${result.reussites} réussite${result.reussites>1?'s':''} sur ${result.valeur}`;
+  advDiv.appendChild(label);
+  advDiv.appendChild(verdict);
+  resultEl.appendChild(advDiv);
+  resultEl.style.display='block';
+}
 
 </script>
 </body>

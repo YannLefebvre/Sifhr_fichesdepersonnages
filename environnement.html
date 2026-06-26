@@ -636,6 +636,22 @@ async function gmReset(){
     padding:3px 6px; outline:none; }
   .fiche-add-btn { font-family:'Cinzel',serif; font-size:.7rem; padding:4px 9px;
     border:1px solid var(--accent); border-radius:3px; background:none; color:var(--accent); cursor:pointer; }
+
+  /* ── Overlay duel (iframe octogone adverse) ── */
+  #duel-overlay { position:fixed; inset:0; background:rgba(10,7,3,0.92);
+    display:none; align-items:flex-start; justify-content:center;
+    z-index:400; padding:1rem; }
+  #duel-overlay.open { display:flex; }
+  #duel-box { background:var(--bg); border:1px solid var(--accent); border-radius:8px;
+    width:min(700px,98vw); height:90vh; display:flex; flex-direction:column;
+    overflow:hidden; box-shadow:0 6px 32px rgba(0,0,0,0.6); }
+  #duel-header { padding:.5rem .8rem; border-bottom:1px solid var(--border2);
+    display:flex; align-items:center; gap:.6rem; flex-shrink:0;
+    background:var(--section-bg); }
+  #duel-title { font-family:'Cinzel',serif; font-size:.82rem; color:var(--accent);
+    letter-spacing:.08em; flex:1; }
+  #duel-close { background:none; border:none; font-size:1.1rem; cursor:pointer; color:var(--ink3); }
+  #duel-iframe { flex:1; border:none; width:100%; }
 </style>
 </head>
 <body>
@@ -669,7 +685,8 @@ async function gmReset(){
   <div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.4rem;">Personnages liés à cet environnement</div>
   <div class="fiches-perso-list" id="fiches-perso-list"></div>
   <div class="fiche-add-row">
-    <input id="fiche-add-input" class="fiche-add-input" type="text" placeholder="identifiant de fiche…">
+    <input id="fiche-add-input" class="fiche-add-input" type="text" placeholder="identifiant…" style="flex:1.5;">
+    <input id="fiche-add-pw" class="fiche-add-input" type="password" placeholder="mdp MJ" style="flex:1;">
     <button class="fiche-add-btn" onclick="addFichePersonnage()">+ Ajouter</button>
   </div>
 </div>
@@ -1934,17 +1951,18 @@ function saveFichesLiees(){
 
 function addFichePersonnage(){
   const inp=document.getElementById('fiche-add-input');
+  const pwInp=document.getElementById('fiche-add-pw');
   const id=inp.value.trim();
+  const pw=pwInp?pwInp.value.trim():'';
   if(!id) return;
   if(!state.fichePersonnages) state.fichePersonnages=[];
-  // Normaliser en objets
   const exists=state.fichePersonnages.find(p=>(typeof p==='string'?p:p.id)===id);
   if(!exists){
-    state.fichePersonnages.push({id,niveauReveal:2,texteMJ:''});
+    state.fichePersonnages.push({id,niveauReveal:2,texteMJ:'',pwMJ:pw});
     saveState();
     renderFichesPersoList();
   }
-  inp.value='';
+  inp.value=''; if(pwInp) pwInp.value='';
 }
 
 function renderFichesPersoList(){
@@ -1975,6 +1993,15 @@ function renderFichesPersoList(){
     del.addEventListener('click',()=>{
       state.fichePersonnages.splice(idx,1); saveState(); renderFichesPersoList();
     });
+    // Bouton Épreuve (ouvre iframe octogone MJ si pwMJ disponible)
+    const pw=typeof p==='object'?p.pwMJ||'':'';
+    if(pw){
+      const epBtn=document.createElement('button'); epBtn.className='fiche-reveal-btn';
+      epBtn.textContent='⚔'; epBtn.title='Lancer une épreuve (ouvre la fiche MJ)';
+      epBtn.style.cssText='border-color:#c8860a;color:#c8860a;';
+      epBtn.addEventListener('click',()=>openDuel(id,pw));
+      revDiv.appendChild(epBtn);
+    }
     row.appendChild(idSpan); row.appendChild(revDiv); row.appendChild(del);
     list.appendChild(row);
   });
@@ -2132,6 +2159,36 @@ async function acceptAutoEvt(idx){
 function refuseAutoEvt(idx){
   EVT_AUTO_QUEUE.splice(idx,1);
   renderEvtQueue();
+}
+
+</script>
+
+<!-- Overlay duel — iframe octogone adverse -->
+<div id="duel-overlay">
+  <div id="duel-box">
+    <div id="duel-header">
+      <span id="duel-title">Épreuve</span>
+      <button id="duel-close" onclick="closeDuel()">✕</button>
+    </div>
+    <iframe id="duel-iframe" src="about:blank" allow="same-origin"></iframe>
+  </div>
+</div>
+
+<script>
+
+function openDuel(ficheId, pwMJ){
+  const base = new URL(location.href).origin + new URL(location.href).pathname.replace(/[^/]*$/,'');
+  const url = base + 'octogone.html?fiche=' + encodeURIComponent(ficheId)
+    + '&pw=' + encodeURIComponent(pwMJ) + '&gm=1';
+  document.getElementById('duel-title').textContent = '⚔ Épreuve — ' + ficheId;
+  const iframe = document.getElementById('duel-iframe');
+  iframe.src = url;
+  document.getElementById('duel-overlay').classList.add('open');
+}
+
+function closeDuel(){
+  document.getElementById('duel-overlay').classList.remove('open');
+  document.getElementById('duel-iframe').src = 'about:blank';
 }
 
 </script>
