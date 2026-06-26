@@ -969,7 +969,7 @@
 
   /* ── Panneau Personnages ── */
   #perso-fab {
-    position:fixed; bottom:1.2rem; left:15.6rem;
+    position:fixed; bottom:1.2rem; left:12rem;
     width:52px; height:52px; border-radius:50%;
     background:#1a4a3a; color:#f5f0e8;
     border:none; font-size:1.4rem; cursor:pointer;
@@ -6287,7 +6287,22 @@ const ProdigeSystem = {
 </div>
 
 <!-- FAB Personnages -->
-<button id="perso-fab" onclick="togglePersoPanel()" title="Personnages">👥</button>
+<button id="perso-fab" onclick="togglePersoPanel()" title="Personnages">
+  <svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" fill="none">
+    <!-- Fleur islamique 8 pétales -->
+    <g opacity="0.85">
+      <ellipse cx="14" cy="7.5" rx="2.2" ry="5" fill="#f5e8c8" transform="rotate(0 14 14)"/>
+      <ellipse cx="14" cy="7.5" rx="2.2" ry="5" fill="#f5e8c8" transform="rotate(45 14 14)"/>
+      <ellipse cx="14" cy="7.5" rx="2.2" ry="5" fill="#f5e8c8" transform="rotate(90 14 14)"/>
+      <ellipse cx="14" cy="7.5" rx="2.2" ry="5" fill="#f5e8c8" transform="rotate(135 14 14)"/>
+    </g>
+    <!-- Cercle central -->
+    <circle cx="14" cy="14" r="6.5" fill="#1a4a3a" stroke="#f5e8c8" stroke-width="0.8"/>
+    <!-- Silhouette personnage (tête + buste) -->
+    <circle cx="14" cy="11.5" r="2.3" fill="#f5e8c8"/>
+    <path d="M9.5 19.5 Q9.5 15.5 14 15.5 Q18.5 15.5 18.5 19.5" fill="#f5e8c8"/>
+  </svg>
+</button>
 
 <!-- Panneau Personnages -->
 <div id="perso-panel">
