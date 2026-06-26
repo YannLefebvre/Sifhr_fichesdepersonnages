@@ -1871,6 +1871,9 @@ async function doLogin(tryGM){
           // MJ : afficher le display MJ, masquer le display joueur
           document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='');
           document.querySelectorAll('.bm-joueur-display').forEach(el=>el.style.display='none');
+          // Re-rendre dettes et histoires croisées avec les droits MJ
+          if(typeof renderDettes==='function') renderDettes();
+          if(typeof renderHistoiresCroisees==='function') renderHistoiresCroisees();
         } else {
           // Joueur : masquer le display MJ (qui montre "0"), afficher uniquement le display joueur
           document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='none');
@@ -3099,6 +3102,7 @@ function renderDettes(){
     persoInp.value=d.perso||'';
     persoInp.addEventListener('input',()=>{ state.dettes[idx].perso=persoInp.value; saveState(); });
     const delBtn=document.createElement('button'); delBtn.className='hc-del-btn gm-edit-only'; delBtn.textContent='✕';
+    if(!octIsGM) delBtn.style.display='none';
     delBtn.addEventListener('click',()=>{ state.dettes.splice(idx,1); saveState(); renderDettes(); });
     head.appendChild(persoInp); head.appendChild(delBtn);
     item.appendChild(head);
@@ -3119,6 +3123,8 @@ function renderDettes(){
       b.className='dette-bm-btn gm-bm-btn '+(v>0?'pos':v<0?'neg':'zero')+(v===curBm?' active':'');
       b.textContent=v>0?'+'+v:(v===0?'0':v);
       b.style.display='none'; // masqué par défaut, révélé après login MJ
+      // Si le MJ est déjà connecté (re-render après applyRemoteState), afficher immédiatement
+      if(octIsGM) b.style.display='';
       b.addEventListener('click',()=>{
         if(!octIsGM) return;
         state.dettes[idx].bm=v;
@@ -3144,6 +3150,7 @@ function renderDettes(){
   });
   const addBtn=document.createElement('button'); addBtn.className='hc-add-btn gm-edit-only';
   addBtn.textContent='+ Ajouter une dette / créance';
+  if(!octIsGM) addBtn.style.display='none';
   addBtn.addEventListener('click',()=>{
     if(!state.dettes) state.dettes=[];
     state.dettes.push({id:'d_'+Date.now(), perso:'', bm:0, text:''});
