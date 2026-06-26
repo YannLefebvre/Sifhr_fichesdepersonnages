@@ -446,6 +446,21 @@
     z-index:500; white-space:normal; pointer-events:none; }
   .dsuccess-opposition.prouesse { background:#3d342a; color:#f5e8c8; border:1px solid #c8860a; }
   .dsuccess-opposition.echec-prouesse { background:#fde8e8; color:#8b2020; border:1px solid #e8a0a0; }
+  .dsuccess-opposition.prodige { background:#1a2a3a; color:#a0c8e8; border:1px solid #4a8abf; }
+  .dsuccess-opposition.echec-prodige { background:#fde8e8; color:#8b2020; border:1px solid #e8a0a0; }
+  #dprodige-row { display:none; align-items:center; gap:.5rem; margin:.3rem 0 .3rem;
+    padding:.4rem .6rem; background:#f0f4fa; border-radius:6px; border:1px solid #c0d0e8; }
+  #dprodige-row.visible { display:flex; }
+  #dprodige-toggle { width:18px; height:18px; accent-color:#185FA5; cursor:pointer; flex-shrink:0; }
+  .dprodige-label { font-family:'Cinzel',serif; font-size:.75rem; color:#185FA5;
+    letter-spacing:.04em; cursor:pointer; flex:1; }
+  .dprodige-info { width:16px; height:16px; border-radius:50%; background:#185FA5;
+    color:#fff; font-size:.65rem; font-weight:700; display:inline-flex; align-items:center;
+    justify-content:center; cursor:help; flex-shrink:0; position:relative; }
+  .dprodige-info:hover::after { content:attr(data-tip); position:absolute; left:22px; top:50%;
+    transform:translateY(-50%); background:#1a2a3a; color:#a0c8e8; font-family:'Crimson Text',serif;
+    font-size:.75rem; padding:.5rem .7rem; border-radius:5px; width:220px; line-height:1.5;
+    z-index:500; white-space:normal; pointer-events:none; }
   /* Traits mobilisables */
   #dtrait-panel { margin:.5rem 0; padding:.5rem .7rem; background:#f5f2ec;
     border:1px solid #e0dcd4; border-radius:8px; display:none; }
@@ -1676,11 +1691,16 @@ async function xferClearRequest(){
       <div class="setup-card" id="dsuccess-setup">
         <p class="dsuccess-question">Valeurs de réussite <span id="dsuccess-hint" class="dsuccess-hint">(choisissez 1 ou 2 valeurs)</span></p>
         <div id="dsuccess-unified" class="dsuccess-unified"></div>
-        <!-- Option prouesse (apparaît quand 2 valeurs sont choisies) -->
+        <!-- Option prouesse / prodige (mutuellement exclusives) -->
         <div id="dprouesse-row">
           <input type="checkbox" id="dprouesse-toggle" onchange="dToggleProuesse()">
           <label class="dprouesse-label" for="dprouesse-toggle">Tenter une prouesse ?</label>
-          <span class="dprouesse-info" data-tip="Conditions : 1) Au moins un dé rouge (ou dévoyé) doit obtenir la valeur de réussite finale. 2) Aucun dé ne doit obtenir la valeur opposée. Si l'une de ces conditions échoue, c'est un échec.">?</span>
+          <span class="dprouesse-info" data-tip="Conditions : 1) Au moins un dé rouge (ou dévoyé) doit obtenir la valeur de réussite finale. 2) Aucun dé ne doit obtenir la valeur opposée. Réussite : les valeurs des dés rouges sont transférées dans votre octogone.">?</span>
+        </div>
+        <div id="dprodige-row">
+          <input type="checkbox" id="dprodige-toggle" onchange="dToggleProdige()">
+          <label class="dprodige-label" for="dprodige-toggle">Tenter un prodige ?</label>
+          <span class="dprodige-info" data-tip="Mêmes conditions que la prouesse. Réussite : vos dés rouges sont transférés dans l'environnement, qui vous renvoie en échange des jetons selon ses axes dominants.">?</span>
         </div>
         <div class="dbm-row">
           <div class="dbm-group">
@@ -2319,7 +2339,13 @@ function rebuildLabels(){
       'font-weight':fw0,'stroke':'#1a1510','stroke-width':sw0,'paint-order':'stroke',
       'text-anchor':'middle','dominant-baseline':'auto','class':'vv-hoverable'},vg);
     vt.textContent=virtLabel;
-    vt.addEventListener('click',(e)=>{e.stopPropagation();showVVTooltip(sec.sub1, sec.sub1, score0, e);});
+    vt.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      if(isMobile()){
+        const pairIdx=VV_PAIRS.findIndex(p=>p.vAxis===sec.num);
+        if(pairIdx>=0){ document.getElementById('vv-panel').classList.add('open'); buildVVPanelList(); vvSelectPair(pairIdx); }
+      } else { showVVTooltip(sec.sub1, sec.sub1, score0, e); }
+    });
     vt.addEventListener('mouseenter',(e)=>{ if(!isMobile()) showVVTooltip(sec.sub1, sec.sub1, score0, e); });
     vt.addEventListener('mousemove', positionVVTooltip);
     vt.addEventListener('mouseleave', hideVVTooltip);
@@ -2332,7 +2358,13 @@ function rebuildLabels(){
       'font-weight':fw1,'stroke':'#8b2020','stroke-width':sw1,'paint-order':'stroke',
       'font-style':'italic','text-anchor':'middle','dominant-baseline':'auto','class':'vv-hoverable'},vg);
     vc.textContent=viceLabel;
-    vc.addEventListener('click',(e)=>{e.stopPropagation();showVVTooltip(sec.sub2, sec.sub2, score1, e);});
+    vc.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      if(isMobile()){
+        const pairIdx=VV_PAIRS.findIndex(p=>p.viAxis===sec.num);
+        if(pairIdx>=0){ document.getElementById('vv-panel').classList.add('open'); buildVVPanelList(); vvSelectPair(pairIdx); }
+      } else { showVVTooltip(sec.sub2, sec.sub2, score1, e); }
+    });
     vc.addEventListener('mouseenter',(e)=>{ if(!isMobile()) showVVTooltip(sec.sub2, sec.sub2, score1, e); });
     vc.addEventListener('mousemove', positionVVTooltip);
     vc.addEventListener('mouseleave', hideVVTooltip);
@@ -4303,22 +4335,41 @@ const OPPOSED_VALUES = {1:5, 2:6, 3:7, 4:8, 5:1, 6:2, 7:3, 8:4};
 let _chosenSuccessVal = null;
 // Prouesse déclarée avant le lancer
 let _prouesseDeclared = false;
+let _prodigeDeclared = false;
 
 function dToggleProuesse(){
   _prouesseDeclared = document.getElementById('dprouesse-toggle').checked;
+  if(_prouesseDeclared){
+    // Désactiver prodige (mutuellement exclusif)
+    _prodigeDeclared = false;
+    const cb = document.getElementById('dprodige-toggle');
+    if(cb) cb.checked = false;
+  }
+}
+
+function dToggleProdige(){
+  _prodigeDeclared = document.getElementById('dprodige-toggle').checked;
+  if(_prodigeDeclared){
+    // Désactiver prouesse (mutuellement exclusif)
+    _prouesseDeclared = false;
+    const cb = document.getElementById('dprouesse-toggle');
+    if(cb) cb.checked = false;
+  }
 }
 
 // Afficher/masquer le bouton prouesse selon les valeurs choisies
 function dUpdateProuesseRow(){
   const s = dS();
   const row = document.getElementById('dprouesse-row');
+  const rowP = document.getElementById('dprodige-row');
   if(!row) return;
   const hasTwo = s.successVal1!=null && s.successVal2!=null;
   row.classList.toggle('visible', hasTwo);
+  if(rowP) rowP.classList.toggle('visible', hasTwo);
   if(!hasTwo){
-    _prouesseDeclared = false;
-    const cb = document.getElementById('dprouesse-toggle');
-    if(cb) cb.checked = false;
+    _prouesseDeclared = false; _prodigeDeclared = false;
+    const cb1 = document.getElementById('dprouesse-toggle'); if(cb1) cb1.checked = false;
+    const cb2 = document.getElementById('dprodige-toggle'); if(cb2) cb2.checked = false;
   }
 }
 
@@ -4362,26 +4413,44 @@ function dComputeSuccesses(){
         resultEl.appendChild(oppRow);
       }
 
+      // Conditions communes à prouesse et prodige
+      const redWithVal = s.dice.filter(d=>
+        (d.color==='red'||d.color==='black_token') && d.value===val
+      ).length;
+      const anyOpp = oppCount > 0;
+
       if(_prouesseDeclared){
         // ── Évaluation prouesse ──
-        // Cond 1 : au moins un dé rouge ou black_token a la valeur choisie
-        const redWithVal = s.dice.filter(d=>
-          (d.color==='red'||d.color==='black_token') && d.value===val
-        ).length;
-        // Cond 2 : aucun dé n'a la valeur opposée
-        const anyOpp = oppCount > 0;
-
         const verdict=document.createElement('div');
         verdict.className='dsuccess-opposition';
         if(redWithVal>0 && !anyOpp){
           verdict.classList.add('prouesse');
           verdict.textContent=`✦ Prouesse ! ${redWithVal} dé${redWithVal>1?'s':''} rouge${redWithVal>1?'s':''} sur ${val}, aucune opposition`;
+          // Déclencher le transfert des dés rouges vers l'octogone du joueur
+          setTimeout(()=>ProdigeSystem.triggerProuesse(s), 100);
         } else {
           verdict.classList.add('echec-prouesse');
           const raisons=[];
           if(redWithVal===0) raisons.push(`aucun dé rouge sur ${val}`);
           if(anyOpp) raisons.push(`${oppCount} dé${oppCount>1?'s':''} sur l'opposé (${opp})`);
           verdict.textContent=`✗ Échec de prouesse — ${raisons.join(', ')}`;
+        }
+        resultEl.appendChild(verdict);
+      } else if(_prodigeDeclared){
+        // ── Évaluation prodige ──
+        const verdict=document.createElement('div');
+        verdict.className='dsuccess-opposition';
+        if(redWithVal>0 && !anyOpp){
+          verdict.classList.add('prodige');
+          verdict.textContent=`✦ Prodige ! ${redWithVal} dé${redWithVal>1?'s':''} rouge${redWithVal>1?'s':''} sur ${val}, aucune opposition`;
+          // Déclencher l'échange bidirectionnel avec l'environnement
+          setTimeout(()=>ProdigeSystem.triggerProdige(s), 100);
+        } else {
+          verdict.classList.add('echec-prodige');
+          const raisons=[];
+          if(redWithVal===0) raisons.push(`aucun dé rouge sur ${val}`);
+          if(anyOpp) raisons.push(`${oppCount} dé${oppCount>1?'s':''} sur l'opposé (${opp})`);
+          verdict.textContent=`✗ Échec de prodige — ${raisons.join(', ')}`;
         }
         resultEl.appendChild(verdict);
       } else {
@@ -4568,7 +4637,8 @@ function dApplyTokenRules(){
 function dRollDice(){
   if(dCurrentRole!=='launcher') return;
   _chosenSuccessVal=null; // Réinitialiser la valeur de réussite choisie à chaque nouveau lancer
-  _prouesseDeclared=document.getElementById('dprouesse-toggle')?.checked||false; // Conserver si déclarée avant
+  _prouesseDeclared=document.getElementById('dprouesse-toggle')?.checked||false;
+  _prodigeDeclared=document.getElementById('dprodige-toggle')?.checked||false;
   const s=dS();
   s.rolled=true;
   if(!s.dice||!s.dice.length) dInitDice(false);
@@ -5899,5 +5969,184 @@ const NotifSystem = {
   <div id="info-panel-title"></div>
   <div id="info-panel-text"></div>
 </div>
+
+<script>
+
+/* ══════════════════════════════════════════════
+   PRODIGE SYSTEM — Prouesse et Prodige
+   ══════════════════════════════════════════════ */
+
+const PRODIGE_NARRATIFS = [
+  "Ce que tu as cumulé dans ton Souffle s'est propagé dans la pneuma environnante.",
+  "Ton élan intérieur a traversé le voile — l'environnement en a été marqué.",
+  "Le souffle que tu portais s'est répandu au-delà de toi-même.",
+  "Ce que tu as accompli a laissé une trace dans la trame de ce lieu.",
+  "Ton action a résonné dans la pneuma de l'environnement.",
+];
+
+const RETOUR_NARRATIFS = {
+  positif: [
+    "En échange, tu ressens une influence bénéfique — {axe} semble te soutenir.",
+    "L'environnement te répond favorablement — quelque chose de {axe} circule en toi.",
+    "Une énergie de {axe} te revient, comme un écho de ce que tu as donné.",
+  ],
+  negatif: [
+    "En retour, une influence sombre de {axe} s'infiltre en toi.",
+    "L'environnement te répond — mais sa réponse porte la marque sombre de {axe}.",
+    "Un courant de {axe} négatif te traverse en échange de ce que tu as transmis.",
+  ]
+};
+
+const ProdigeSystem = {
+  _axeLabels: {
+    feu:'Feu', bile_j:'Bile Jaune', terre:'Terre', bile_n:'Bile Noire',
+    eau:'Eau', flegme:'Flegme', air:'Air', sang:'Sang'
+  },
+  _sectorsById: null,
+
+  _getSectors(){
+    if(!this._sectorsById){
+      this._sectorsById = {};
+      if(typeof SECTORS !== 'undefined') SECTORS.forEach(s=>this._sectorsById[s.num]=s);
+    }
+    return this._sectorsById;
+  },
+
+  // ── Prouesse réussie : dés rouges → octogone du joueur ──
+  triggerProuesse(diceState){
+    const redDice = diceState.dice.filter(d=>
+      (d.color==='red'||d.color==='black_token') && d.value>=1 && d.value<=8
+    );
+    if(!redDice.length) return;
+    const tokens = [];
+    redDice.forEach(d=>{
+      const sec = this._getSectors()[d.value];
+      if(!sec) return;
+      const pol = d.color==='black_token' ? 'black' : 'white';
+      tokens.push({sec, pol});
+    });
+    this._applyTokensToPlayer(tokens);
+  },
+
+  // Applique les jetons à l'octogone du joueur (remplace le dernier si plein)
+  _applyTokensToPlayer(tokens){
+    tokens.forEach(({sec, pol})=>{
+      const arr = state.tokens[sec.id];
+      if(!arr) return;
+      const emptyIdx = arr.indexOf('empty');
+      if(emptyIdx>=0){
+        arr[emptyIdx] = pol;
+      } else {
+        // Axe plein : remplacer le dernier jeton (index 2 = périphérie)
+        arr[2] = pol;
+      }
+      if(typeof renderToken==='function'){
+        arr.forEach((_,i)=>renderToken(sec.id,i));
+        if(typeof updateSectorLane==='function') updateSectorLane(sec.id);
+      }
+    });
+    if(typeof saveState==='function') saveState();
+    if(typeof rebuildLabels==='function') rebuildLabels();
+  },
+
+  // ── Prodige réussi : dés rouges → environnement, retour vers joueur ──
+  async triggerProdige(diceState){
+    const envId = getEnvFicheId();
+    if(!envId || envId===FICHE_ID){
+      OccNotif.push("Aucun environnement lié — le prodige reste sans écho.");
+      return;
+    }
+    const redDice = diceState.dice.filter(d=>
+      (d.color==='red'||d.color==='black_token') && d.value>=1 && d.value<=8
+    );
+    if(!redDice.length) return;
+
+    // 1. Charger l'état de l'environnement
+    let envEtat = null;
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,{
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+      });
+      const d=await r.json();
+      envEtat=d[0]?.etat||null;
+    }catch(e){ return; }
+    if(!envEtat) return;
+
+    // 2. Pousser les dés rouges vers l'environnement (même règle que OccNotif)
+    const envTokens = JSON.parse(JSON.stringify(envEtat.tokens||{}));
+    const secs = this._getSectors();
+    redDice.forEach(d=>{
+      const sec = secs[d.value]; if(!sec) return;
+      if(!envTokens[sec.id]) envTokens[sec.id]=['empty','empty','empty'];
+      const pol = d.color==='black_token'?'black':'white';
+      const emptyIdx = envTokens[sec.id].indexOf('empty');
+      if(emptyIdx>=0) envTokens[sec.id][emptyIdx]=pol;
+      else envTokens[sec.id][2]=pol; // remplace le dernier si plein
+    });
+
+    // 3. Calculer les axes dominants de l'environnement pour le retour
+    const retourTokens = this._computeRetourTokens(envTokens, redDice.length);
+
+    // 4. Sauvegarder l'environnement modifié
+    try{
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+        method:'POST',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+          'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({id:envId, etat:{...envEtat, tokens:envTokens}})
+      });
+    }catch(e){}
+
+    // 5. Proposer les jetons retour via OccNotif (avec possibilité de refus par éther)
+    this._proposeRetour(retourTokens);
+  },
+
+  // Calcule les jetons de retour depuis les axes dominants de l'environnement
+  _computeRetourTokens(envTokens, count){
+    const secs = this._getSectors();
+    // Trier les axes par nombre de jetons (descendant)
+    const ranked = Object.entries(envTokens)
+      .map(([secId, arr])=>{
+        const whites = arr.filter(t=>t==='white').length;
+        const blacks = arr.filter(t=>t==='black').length;
+        return {secId, whites, blacks, total:whites+blacks, pol:whites>=blacks?'white':'black'};
+      })
+      .filter(e=>e.total>0)
+      .sort((a,b)=>b.total-a.total);
+
+    // Prendre les N axes dominants
+    const retour = [];
+    for(let i=0; i<Math.min(count, ranked.length); i++){
+      const axe = ranked[i];
+      const sec = SECTORS.find(s=>s.id===axe.secId);
+      if(sec) retour.push({sec, pol:axe.pol, axeLabel:this._axeLabels[axe.secId]||axe.secId});
+    }
+    return retour;
+  },
+
+  // Propose les jetons de retour via l'interface OccNotif
+  _proposeRetour(retourTokens){
+    if(!retourTokens.length) return;
+    // Construire les proposals au format OccNotif
+    const narratifBase = PRODIGE_NARRATIFS[Math.floor(Math.random()*PRODIGE_NARRATIFS.length)];
+    OccNotif.push(narratifBase);
+
+    // Délai pour laisser le message initial s'afficher
+    setTimeout(()=>{
+      const pending = retourTokens.map(({sec, pol, axeLabel})=>{
+        const retourPool = RETOUR_NARRATIFS[pol==='white'?'positif':'negatif'];
+        const tmpl = retourPool[Math.floor(Math.random()*retourPool.length)];
+        const narrative = tmpl.replace('{axe}', axeLabel);
+        return {axe:sec, polarite:pol, narrative, refused:false};
+      });
+      // Réutiliser OccNotif directement
+      OccNotif.pending = [...(OccNotif.pending||[]), ...pending];
+      OccNotif.render();
+      document.getElementById('occ-overlay').classList.add('open');
+    }, 1500);
+  }
+};
+
+</script>
 </body>
 </html>
