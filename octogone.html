@@ -947,6 +947,24 @@
   #info-panel-close { position:absolute; top:.8rem; right:.8rem; background:none; border:none;
     font-size:1.1rem; cursor:pointer; color:var(--ink3); }
   #info-panel-close:hover { color:var(--ink); }
+
+  /* ── Message narratif prodige ── */
+  #prodige-msg-overlay { position:fixed; inset:0; background:rgba(10,16,26,0.85);
+    display:none; align-items:center; justify-content:center; z-index:400; }
+  #prodige-msg-overlay.open { display:flex; }
+  #prodige-msg-box { background:#0e1a2a; border:1px solid #4a8abf; border-radius:10px;
+    padding:1.4rem 1.6rem; max-width:420px; width:92vw; text-align:center;
+    box-shadow:0 6px 32px rgba(0,0,0,0.6); }
+  .prodige-msg-title { font-family:'Cinzel',serif; color:#a0c8e8; font-size:.85rem;
+    letter-spacing:.1em; text-transform:uppercase; margin-bottom:.7rem; }
+  .prodige-msg-main { font-family:'Crimson Text',serif; font-style:italic; font-size:1rem;
+    color:#d0e8f5; line-height:1.6; margin-bottom:.5rem; }
+  .prodige-msg-retour { font-family:'Crimson Text',serif; font-size:.88rem; color:#8ab8d8;
+    line-height:1.5; margin-bottom:1rem; }
+  .prodige-msg-btn { font-family:'Cinzel',serif; font-size:.78rem; padding:.5rem 1.2rem;
+    border-radius:4px; border:1px solid #4a8abf; background:#1a2a3a; color:#a0c8e8;
+    cursor:pointer; letter-spacing:.05em; }
+  .prodige-msg-btn:hover { background:#2a3a4a; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -6124,29 +6142,54 @@ const ProdigeSystem = {
     return retour;
   },
 
-  // Propose les jetons de retour via l'interface OccNotif
+  // Affiche le message narratif prodige puis propose les jetons retour
+  _pendingRetour: [],
+
   _proposeRetour(retourTokens){
     if(!retourTokens.length) return;
-    // Construire les proposals au format OccNotif
     const narratifBase = PRODIGE_NARRATIFS[Math.floor(Math.random()*PRODIGE_NARRATIFS.length)];
-    OccNotif.push(narratifBase);
 
-    // Délai pour laisser le message initial s'afficher
-    setTimeout(()=>{
-      const pending = retourTokens.map(({sec, pol, axeLabel})=>{
-        const retourPool = RETOUR_NARRATIFS[pol==='white'?'positif':'negatif'];
-        const tmpl = retourPool[Math.floor(Math.random()*retourPool.length)];
-        const narrative = tmpl.replace('{axe}', axeLabel);
-        return {axe:sec, polarite:pol, narrative, refused:false};
-      });
-      // Réutiliser OccNotif directement
-      OccNotif.pending = [...(OccNotif.pending||[]), ...pending];
-      OccNotif.render();
-      document.getElementById('occ-overlay').classList.add('open');
-    }, 1500);
+    // Construire les textes de retour
+    const retourLines = retourTokens.map(({sec, pol, axeLabel})=>{
+      const pool = RETOUR_NARRATIFS[pol==='white'?'positif':'negatif'];
+      return pool[Math.floor(Math.random()*pool.length)].replace('{axe}', axeLabel);
+    });
+
+    // Stocker pour confirmMsg
+    this._pendingRetour = retourTokens.map(({sec, pol, axeLabel})=>{
+      const pool = RETOUR_NARRATIFS[pol==='white'?'positif':'negatif'];
+      const narrative = pool[Math.floor(Math.random()*pool.length)].replace('{axe}', axeLabel);
+      return {axe:sec, polarite:pol, narrative};
+    });
+
+    // Afficher la fenêtre narrative prodige
+    document.getElementById('prodige-msg-main').textContent = narratifBase;
+    document.getElementById('prodige-msg-retour').textContent = retourLines.join(' ');
+    document.getElementById('prodige-msg-overlay').classList.add('open');
+  },
+
+  // Ferme la fenêtre prodige et ouvre OccNotif pour les jetons retour
+  confirmMsg(){
+    document.getElementById('prodige-msg-overlay').classList.remove('open');
+    if(!this._pendingRetour.length) return;
+    // Injecter dans OccNotif
+    OccNotif.pending = this._pendingRetour.map(p=>({...p, refused:false}));
+    this._pendingRetour = [];
+    OccNotif.render();
+    document.getElementById('occ-overlay').classList.add('open');
   }
 };
 
 </script>
+
+<!-- Fenêtre narrative prodige -->
+<div id="prodige-msg-overlay">
+  <div id="prodige-msg-box">
+    <div class="prodige-msg-title">✦ Prodige</div>
+    <div class="prodige-msg-main" id="prodige-msg-main"></div>
+    <div class="prodige-msg-retour" id="prodige-msg-retour"></div>
+    <button class="prodige-msg-btn" onclick="ProdigeSystem.confirmMsg()">Continuer →</button>
+  </div>
+</div>
 </body>
 </html>
