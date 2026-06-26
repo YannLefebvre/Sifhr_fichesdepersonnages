@@ -1019,6 +1019,36 @@
   .perso-epreuve-btn:hover { background:var(--accent); color:var(--bg); }
   /* Xfer ciblé */
   .perso-xfer-note { font-size:.78rem; color:var(--ink3); font-style:italic; margin-bottom:.4rem; }
+
+  /* ── Feedback duel adversaire ── */
+  #duel-feedback-overlay { position:fixed; inset:0; background:rgba(10,7,3,0.88);
+    display:none; align-items:center; justify-content:center; z-index:450; }
+  #duel-feedback-overlay.open { display:flex; }
+  #duel-feedback-box { background:var(--bg); border:1px solid var(--accent); border-radius:10px;
+    padding:1.2rem 1.4rem; max-width:460px; width:94vw; max-height:88vh; overflow-y:auto;
+    box-shadow:0 6px 32px rgba(0,0,0,0.6); }
+  .dfb-title { font-family:'Cinzel',serif; color:var(--accent); font-size:.88rem;
+    letter-spacing:.08em; text-transform:uppercase; margin-bottom:.7rem; }
+  .dfb-waiting { font-family:'Crimson Text',serif; font-style:italic; color:var(--ink3);
+    font-size:.88rem; text-align:center; padding:.8rem 0; }
+  .dfb-verdict { border-radius:6px; padding:.5rem .8rem; font-family:'Cinzel',serif;
+    font-size:.82rem; letter-spacing:.04em; text-align:center; margin-bottom:.6rem; }
+  .dfb-verdict.reussite { background:#d4edda; color:#1a5c2a; border:1px solid #8abf9a; }
+  .dfb-verdict.echec { background:#fde8e8; color:#8b2020; border:1px solid #e8a0a0; }
+  .dfb-verdict.echec_critique { background:#8b2020; color:#fff; }
+  .dfb-section { margin-bottom:.55rem; }
+  .dfb-section-label { font-family:'Cinzel',serif; font-size:.65rem; color:var(--ink3);
+    letter-spacing:.07em; text-transform:uppercase; margin-bottom:.2rem; }
+  .dfb-section-text { font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2);
+    line-height:1.5; font-style:italic; }
+  .dfb-token-list { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.2rem; }
+  .dfb-token-pill { font-size:.72rem; padding:2px 8px; border-radius:10px;
+    font-family:'Cinzel',serif; }
+  .dfb-token-pill.white { background:#f7f0e0; color:#8a6a2a; border:1px solid #c8a060; }
+  .dfb-token-pill.black { background:#2a1e10; color:#c8a060; border:1px solid #6a4a2a; }
+  .dfb-close-btn { width:100%; font-family:'Cinzel',serif; font-size:.75rem; padding:.5rem;
+    border:1px solid var(--border); border-radius:4px; background:var(--input-bg);
+    color:var(--ink2); cursor:pointer; margin-top:.6rem; letter-spacing:.05em; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -6619,29 +6649,97 @@ function togglePersoPanel(){ PersonnePanel.toggle(); }
 <script>
 
 // ── Résultat de duel ──
+// ── Textes narratifs pour le feedback duel ──
+const DUEL_ROUGE_NARRATIFS = [
+  [0, "Aucune émotion particulière ne transparaissait dans son lancer."],
+  [1, "Une légère tension émotionnelle colorait ses dés."],
+  [2, "Une tension émotionnelle notable habitait ce lancer."],
+  [3, "Ses émotions étaient clairement engagées dans cette action."],
+  [4, "Une intensité émotionnelle frappante animait chacun de ses gestes."],
+  [5, "Tout son être émotionnel était mobilisé dans cet élan."],
+];
+const DUEL_APT_NARRATIFS = {
+  se_deplacer: "une agilité et une présence physique manifestes",
+  percevoir: "une acuité perceptive aiguisée",
+  agir: "une détermination et une force d'action remarquables",
+  connaitre: "une intelligence et une mémoire au service de l'acte",
+  communiquer: "un art de la parole et du lien mis en jeu",
+  creer: "une créativité et une inspiration singulières",
+  influencer: "une capacité à peser sur les esprits et les volontés",
+  resister: "une résistance et une endurance intérieures",
+};
+const DUEL_TRAIT_NARRATIFS = {
+  'bonus-1': "un léger avantage qui a pesé dans la balance",
+  'bonus-2': "une expertise affirmée qui a guidé l'action",
+  'bonus-3': "une maîtrise absolue qui transcendait la simple compétence",
+  'malus-1': "une fragilité légère qui a compliqué l'exécution",
+  'malus-2': "une résistance opposée qui a pesé lourdement",
+  'malus-3': "un obstacle majeur qui a entravé chaque effort",
+};
+const AXE_LABELS_DUEL = {
+  feu:'Feu',bile_j:'Bile Jaune',terre:'Terre',bile_n:'Bile Noire',
+  eau:'Eau',flegme:'Flegme',air:'Air',sang:'Sang'
+};
+
 async function dSaveDuelResult(chosenVal, successes, allValues){
   const opp = {1:5,2:6,3:7,4:8,5:1,6:2,7:3,8:4}[chosenVal];
   const oppCount = opp ? allValues.filter(v=>v===opp).length : 0;
   let verdict = 'reussite';
   if(oppCount >= successes) verdict = oppCount > successes ? 'echec_critique' : 'echec';
+
+  const s = dS();
+  // Dés rouges
+  const rouges = (s.dice||[]).filter(d=>d.color==='red'||d.color==='black_token').length;
+  // Aptitude
+  const aptKey = s._aptKey||null;
+  const aptLabel = aptKey && APT_LABELS && APT_LABELS[aptKey] ? APT_LABELS[aptKey] : null;
+  // Trait
+  const activeTrait = _getActiveTrait();
+  const traitNom = activeTrait?.title||null;
+  const traitLevel = activeTrait?.level||null;
+  // Jetons acquis (prouesse/prodige/9)
+  const tokensAcquis = _collectJetonsAcquis();
+
   const result = {
     joueur: FICHE_ID,
     valeur: chosenVal,
     reussites: successes,
     oppositions: oppCount,
     verdict,
+    rouges,
+    aptKey, aptLabel,
+    traitNom, traitLevel,
+    tokensAcquis,
     ts: Date.now()
   };
-  // Stocker dans state.etat et sauvegarder
   state.duelResult = result;
   saveState();
-  // Polling pour voir si l'adversaire a aussi un résultat
+
+  // Ouvrir le panneau d'attente
+  document.getElementById('dfb-title').textContent = "Résultat de l'adversaire";
+  document.getElementById('dfb-content').innerHTML =
+    '<div class="dfb-waiting">En attente du choix de l\'adversaire…</div>';
+  document.getElementById('duel-feedback-overlay').classList.add('open');
+
   dPollAdversaireResult();
+}
+
+function _collectJetonsAcquis(){
+  // Lire les jetons récemment modifiés dans l'octogone (approximation)
+  const tokens = [];
+  if(typeof SECTORS !== 'undefined'){
+    SECTORS.forEach(sec=>{
+      const arr = state.tokens[sec.id]||[];
+      arr.forEach((tok,i)=>{
+        if(tok!=='empty') tokens.push({axe:sec.id,axeLabel:AXE_LABELS_DUEL[sec.id]||sec.id,pol:tok});
+      });
+    });
+  }
+  return tokens.slice(0,4); // max 4 pour le feedback
 }
 
 let _duelPollTimer = null;
 async function dPollAdversaireResult(){
-  // Chercher dans les fiches de l'environnement qui a un duelResult récent (< 5min)
   const envId = getEnvFicheId();
   if(!envId || envId===FICHE_ID) return;
   clearTimeout(_duelPollTimer);
@@ -6653,7 +6751,6 @@ async function dPollAdversaireResult(){
       );
       const d=await r.json();
       const fp=(d[0]?.etat?.fichePersonnages||[]);
-      // Chercher parmi les fiches liées celle qui a un duelResult récent
       for(const p of fp){
         const pid=typeof p==='string'?p:p.id;
         if(pid===FICHE_ID) continue;
@@ -6663,15 +6760,17 @@ async function dPollAdversaireResult(){
         );
         const d2=await r2.json();
         const advResult=d2[0]?.etat?.duelResult;
-        if(advResult && (Date.now()-advResult.ts)<300000){
+        // Attendre que les DEUX aient choisi leur valeur finale
+        const myResult=state.duelResult;
+        if(advResult && myResult && advResult.valeur && myResult.valeur
+           && (Date.now()-advResult.ts)<600000){
           dShowAdversaireResult(advResult, pid);
           return;
         }
       }
     }catch(e){}
-    // Réessayer dans 5s si pas de résultat
     _duelPollTimer = setTimeout(dPollAdversaireResult, 5000);
-  }, 1000);
+  }, 2000);
 }
 
 function dShowAdversaireResult(result, pid){
@@ -6679,27 +6778,73 @@ function dShowAdversaireResult(result, pid){
   const verdictLabel = {
     reussite:'✓ Réussite', echec:'✗ Échec', echec_critique:'✗✗ Échec critique'
   }[result.verdict]||result.verdict;
-  const verdictClass = {
-    reussite:'reussite', echec:'echec', echec_critique:'echec-critique'
-  }[result.verdict]||'reussite';
+  const verdictClass = result.verdict||'reussite';
 
-  // Afficher dans le panneau de résultats du dé
-  const resultEl = document.getElementById('dsuccess-result');
-  if(!resultEl) return;
-  const advDiv = document.createElement('div');
-  advDiv.style.cssText='margin-top:.6rem;padding:.4rem .6rem;border-top:1px solid #ddd;';
-  const label = document.createElement('div');
-  label.style.cssText='font-family:Cinzel,serif;font-size:.7rem;color:#888;margin-bottom:.3rem;letter-spacing:.04em;';
-  label.textContent='Résultat de ' + pid + ' :';
-  const verdict = document.createElement('div');
-  verdict.className = 'dsuccess-opposition ' + verdictClass;
-  verdict.textContent = `${verdictLabel} — ${result.reussites} réussite${result.reussites>1?'s':''} sur ${result.valeur}`;
-  advDiv.appendChild(label);
-  advDiv.appendChild(verdict);
-  resultEl.appendChild(advDiv);
-  resultEl.style.display='block';
+  const box = document.getElementById('dfb-content');
+  box.innerHTML = '';
+
+  // Verdict
+  const vEl = document.createElement('div');
+  vEl.className = 'dfb-verdict ' + verdictClass;
+  let vTxt = verdictLabel;
+  if(result.verdict==='reussite' && result.reussites>0)
+    vTxt += ` — ${result.reussites} réussite${result.reussites>1?'s':''} sur ${result.valeur}`;
+  vEl.textContent = vTxt;
+  box.appendChild(vEl);
+
+  // Tension émotionnelle (dés rouges)
+  const rouges = result.rouges||0;
+  const rougeTxt = DUEL_ROUGE_NARRATIFS.slice().reverse().find(([n])=>rouges>=n)?.[1]||'';
+  if(rougeTxt) _dfbSection(box, 'Souffle engagé', rougeTxt);
+
+  // Aptitude
+  if(result.aptLabel){
+    const aptNarr = DUEL_APT_NARRATIFS[result.aptKey]||result.aptLabel;
+    _dfbSection(box, 'Aptitude mobilisée', `${result.aptLabel} — ${aptNarr}`);
+  }
+
+  // Trait
+  if(result.traitNom && result.traitLevel){
+    const traitNarr = DUEL_TRAIT_NARRATIFS[result.traitLevel]||'un trait particulier';
+    _dfbSection(box, 'Trait mobilisé', `${result.traitNom} — ${traitNarr}`);
+  }
+
+  // Jetons acquis
+  if(result.tokensAcquis && result.tokensAcquis.length){
+    const sec = _dfbSection(box, 'Jetons acquis', '');
+    const pillRow = document.createElement('div'); pillRow.className='dfb-token-list';
+    result.tokensAcquis.forEach(t=>{
+      const pill=document.createElement('span');
+      pill.className='dfb-token-pill '+(t.pol||'white');
+      pill.textContent=(t.axeLabel||t.axe)+' '+(t.pol==='white'?'●':'◆');
+      pillRow.appendChild(pill);
+    });
+    sec.appendChild(pillRow);
+  }
+
+  document.getElementById('duel-feedback-overlay').classList.add('open');
+}
+
+function _dfbSection(box, label, text){
+  const sec=document.createElement('div'); sec.className='dfb-section';
+  const lbl=document.createElement('div'); lbl.className='dfb-section-label'; lbl.textContent=label;
+  const txt=document.createElement('div'); txt.className='dfb-section-text'; txt.textContent=text;
+  sec.appendChild(lbl); sec.appendChild(txt);
+  box.appendChild(sec);
+  return txt;
 }
 
 </script>
+
+<!-- Overlay feedback duel -->
+<div id="duel-feedback-overlay">
+  <div id="duel-feedback-box">
+    <div class="dfb-title" id="dfb-title">Résultat de l'adversaire</div>
+    <div id="dfb-content">
+      <div class="dfb-waiting">En attente du choix de l'adversaire…</div>
+    </div>
+    <button class="dfb-close-btn" onclick="document.getElementById('duel-feedback-overlay').classList.remove('open')">Fermer</button>
+  </div>
+</div>
 </body>
 </html>
