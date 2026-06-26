@@ -967,7 +967,7 @@
   .prodige-msg-btn:hover { background:#2a3a4a; }
 
   /* ── Panneau Personnages ── */
-  #perso-fab { position:fixed; bottom:5.5rem; right:1rem; width:44px; height:44px;
+  #perso-fab { position:fixed; bottom:1.2rem; left:15.6rem; width:44px; height:44px;
     border-radius:50%; border:2px solid var(--accent); background:var(--bg);
     color:var(--accent); font-size:1.1rem; cursor:pointer; z-index:100;
     display:none; align-items:center; justify-content:center;
@@ -6409,7 +6409,15 @@ const PersonnePanel = {
   _renderOctogone(){
     const p = this._currentPerso;
     const etat = this._currentEtat;
-    const niveau = p?.niveauReveal||2;
+    const niveau = p?.niveauReveal??2;
+
+    // N0 : masqué pour le joueur
+    if(niveau===0 && !octIsGM){
+      svg.innerHTML='<text x="150" y="155" text-anchor="middle" font-family="Cinzel,serif" font-size="11" fill="#9a7a5a">Non révélé</text>';
+      document.getElementById('perso-oct-narrative').textContent='';
+      const mjTa=document.getElementById('perso-oct-mj-text'); if(mjTa) mjTa.style.display='none';
+      return;
+    }
     const tokens = etat?.tokens||{};
     const ns='http://www.w3.org/2000/svg';
     const svg=document.getElementById('perso-oct-svg');

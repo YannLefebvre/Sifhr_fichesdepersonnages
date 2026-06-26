@@ -1958,9 +1958,10 @@ function renderFichesPersoList(){
     const row=document.createElement('div'); row.className='fiche-perso-row';
     const idSpan=document.createElement('span'); idSpan.className='fiche-perso-id'; idSpan.textContent=id;
     const revDiv=document.createElement('div'); revDiv.className='fiche-perso-reveal';
-    [1,2,3].forEach(n=>{
+    [0,1,2,3].forEach(n=>{
       const b=document.createElement('button'); b.className='fiche-reveal-btn'+(nr===n?' on':'');
-      b.textContent='N'+n; b.title=['Présence seule','Polarité dominante','Tout visible'][n-1];
+      b.textContent=n===0?'N0':'N'+n;
+      b.title=['Masqué (non révélé)','Présence seule','Polarité dominante','Tout visible'][n];
       b.addEventListener('click',()=>{
         if(!Array.isArray(state.fichePersonnages)) return;
         state.fichePersonnages[idx]=typeof state.fichePersonnages[idx]==='string'
