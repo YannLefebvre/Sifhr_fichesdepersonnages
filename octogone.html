@@ -965,6 +965,60 @@
     border-radius:4px; border:1px solid #4a8abf; background:#1a2a3a; color:#a0c8e8;
     cursor:pointer; letter-spacing:.05em; }
   .prodige-msg-btn:hover { background:#2a3a4a; }
+
+  /* ── Panneau Personnages ── */
+  #perso-fab { position:fixed; bottom:5.5rem; right:1rem; width:44px; height:44px;
+    border-radius:50%; border:2px solid var(--accent); background:var(--bg);
+    color:var(--accent); font-size:1.1rem; cursor:pointer; z-index:100;
+    display:none; align-items:center; justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,0.3); transition:background .15s; }
+  #perso-fab:hover { background:var(--accent); color:var(--bg); }
+  #perso-panel { position:fixed; right:-380px; top:0; width:min(370px,96vw); height:100%;
+    background:var(--bg); border-left:2px solid var(--accent); z-index:310;
+    display:flex; flex-direction:column; transition:right .25s ease;
+    box-shadow:-4px 0 20px rgba(0,0,0,0.3); overflow:hidden; }
+  #perso-panel.open { right:0; }
+  #perso-panel-header { padding:.7rem 1rem; border-bottom:1px solid var(--border2);
+    display:flex; align-items:center; gap:.5rem; flex-shrink:0; }
+  #perso-panel-title { font-family:'Cinzel',serif; font-size:.82rem; color:var(--accent);
+    letter-spacing:.08em; flex:1; }
+  #perso-panel-close { background:none; border:none; font-size:1.1rem; cursor:pointer; color:var(--ink3); }
+  /* Liste des personnages */
+  #perso-list-section { padding:.6rem .8rem; border-bottom:1px solid var(--border2); flex-shrink:0; }
+  .perso-list-title { font-family:'Cinzel',serif; font-size:.65rem; color:var(--ink3);
+    letter-spacing:.06em; text-transform:uppercase; margin-bottom:.4rem; }
+  .perso-btn-list { display:flex; flex-wrap:wrap; gap:.3rem; }
+  .perso-btn { font-family:'Cinzel',serif; font-size:.72rem; padding:4px 11px;
+    border:1px solid var(--border); border-radius:12px; background:var(--input-bg);
+    color:var(--ink2); cursor:pointer; transition:all .15s; }
+  .perso-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .perso-btn.active { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+  /* Contenu personnage sélectionné */
+  #perso-detail { flex:1; overflow-y:auto; padding:.7rem .9rem; display:none; }
+  #perso-detail.open { display:block; }
+  .perso-section { margin-bottom:.6rem; border:1px solid var(--border2); border-radius:6px; overflow:hidden; }
+  .perso-section-head { padding:.4rem .6rem; background:var(--section-bg);
+    font-family:'Cinzel',serif; font-size:.72rem; color:var(--accent);
+    letter-spacing:.06em; cursor:pointer; display:flex; align-items:center; gap:.4rem; }
+  .perso-section-body { padding:.5rem .6rem; display:none; }
+  .perso-section-body.open { display:block; }
+  /* Mini-octogone */
+  #perso-oct-svg { display:block; margin:0 auto .5rem; }
+  .perso-oct-narrative { font-family:'Crimson Text',serif; font-style:italic;
+    font-size:.83rem; color:var(--ink2); line-height:1.5; margin-bottom:.4rem; }
+  .perso-oct-mj-text { width:100%; background:var(--input-bg); border:none;
+    border-left:2px solid var(--accent); font-family:'Crimson Text',serif;
+    font-size:.82rem; color:var(--ink); padding:4px 6px; outline:none;
+    resize:none; min-height:2.5em; margin-top:.4rem; display:none; }
+  .perso-oct-mj-text.gm { display:block; }
+  /* Bouton épreuve */
+  .perso-epreuve-btn { width:100%; font-family:'Cinzel',serif; font-size:.78rem;
+    padding:.5rem; border:1px solid var(--accent); border-radius:4px;
+    background:var(--input-bg); color:var(--accent); cursor:pointer; margin-top:.3rem;
+    letter-spacing:.05em; }
+  .perso-epreuve-btn:hover { background:var(--accent); color:var(--bg); }
+  /* Xfer ciblé */
+  .perso-xfer-note { font-size:.78rem; color:var(--ink3); font-style:italic; margin-bottom:.4rem; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -1961,6 +2015,7 @@ async function doLogin(tryGM){
           // Re-rendre dettes et histoires croisées avec les droits MJ
           if(typeof renderDettes==='function') renderDettes();
           if(typeof renderHistoiresCroisees==='function') renderHistoiresCroisees();
+          document.getElementById('perso-fab').style.display='flex';
         } else {
           // Joueur : masquer le display MJ (qui montre "0"), afficher uniquement le display joueur
           document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='none');
@@ -1969,6 +2024,7 @@ async function doLogin(tryGM){
             if(el.tagName==='INPUT'||el.tagName==='TEXTAREA') { el.readOnly=true; el.style.background='transparent'; el.style.borderColor='transparent'; }
             else el.style.display='none';
           });
+          document.getElementById('perso-fab').style.display='flex';
         }
         if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);
         startRealtime();
@@ -6191,5 +6247,362 @@ const ProdigeSystem = {
     <button class="prodige-msg-btn" onclick="ProdigeSystem.confirmMsg()">Continuer →</button>
   </div>
 </div>
+
+<!-- FAB Personnages -->
+<button id="perso-fab" onclick="togglePersoPanel()" title="Personnages">👥</button>
+
+<!-- Panneau Personnages -->
+<div id="perso-panel">
+  <div id="perso-panel-header">
+    <span id="perso-panel-title">Personnages liés</span>
+    <button id="perso-panel-close" onclick="togglePersoPanel()">✕</button>
+  </div>
+  <div id="perso-list-section">
+    <div class="perso-list-title">Choisir un personnage</div>
+    <div class="perso-btn-list" id="perso-btn-list">
+      <span style="font-size:.75rem;color:var(--ink3);font-style:italic;">Chargement…</span>
+    </div>
+  </div>
+  <div id="perso-detail">
+    <!-- Section Octogone -->
+    <div class="perso-section" id="perso-sec-oct">
+      <div class="perso-section-head">
+        <span>▶</span><span>Octogone</span>
+      </div>
+      <div class="perso-section-body">
+        <svg id="perso-oct-svg" width="220" height="220" viewBox="0 0 300 300"></svg>
+        <div class="perso-oct-narrative" id="perso-oct-narrative"></div>
+        <textarea class="perso-oct-mj-text" id="perso-oct-mj-text"
+          placeholder="Note du meneur sur ce personnage…"></textarea>
+      </div>
+    </div>
+    <!-- Section Transfert -->
+    <div class="perso-section" id="perso-sec-xfer">
+      <div class="perso-section-head">
+        <span>▶</span><span>Envoyer un jeton</span>
+      </div>
+      <div class="perso-section-body">
+        <div class="perso-xfer-note">Sélectionner un jeton à envoyer à ce personnage :</div>
+        <div class="xfer-token-grid" id="perso-xfer-token-list"></div>
+      </div>
+    </div>
+    <!-- Section Épreuve -->
+    <div class="perso-section" id="perso-sec-epreuve">
+      <div class="perso-section-head">
+        <span>▶</span><span>Épreuve</span>
+      </div>
+      <div class="perso-section-body">
+        <div class="perso-xfer-note" id="perso-epreuve-note">Ouvre le lanceur de dés pour une épreuve.</div>
+        <button class="perso-epreuve-btn" onclick="PersonnePanel.openEpreuve()">
+          🎲 Lancer une épreuve
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   PANNEAU PERSONNAGES
+   ══════════════════════════════════════════════ */
+
+// Textes narratifs pour l'octogone perçu
+const PERSO_NARRATIFS = {
+  feu:     { white: "Tu perçois en lui une ardeur intérieure difficile à contenir.",
+             black: "Une tension destructrice semble habiter ses actes." },
+  bile_j:  { white: "Ton esprit tranche avec une vivacité acérée.",
+             black: "Une amertume sourde transparaît dans ses paroles." },
+  terre:   { white: "Sa loyauté et sa constance se lisent dans chacun de ses gestes.",
+             black: "Quelque chose en lui résiste, ou trahit sans qu'il le veuille." },
+  bile_n:  { white: "Une sagesse froide et prudente guide ses décisions.",
+             black: "Un voile de mélancolie et de résignation l'enveloppe." },
+  eau:     { white: "Sa tempérance et son équilibre sont perceptibles.",
+             black: "Tu sens en lui une envie de fuir, de se dérober." },
+  flegme:  { white: "Sa rectitude et sa dignité sont manifestes.",
+             black: "Une avidité discrète transparaît derrière sa façade." },
+  air:     { white: "Sa loyauté et sa foi te semblent solides.",
+             black: "Une duplicité, même involontaire, flotte autour de lui." },
+  sang:    { white: "Un espoir et une joie de vivre rayonnent de sa personne.",
+             black: "Une fureur contenue cherche une issue en lui." },
+};
+
+const PersonnePanel = {
+  _currentPerso: null,   // {id, niveauReveal, texteMJ}
+  _currentEtat: null,    // etat chargé depuis Supabase
+  _personnes: [],        // liste depuis l'environnement
+
+  // ── Ouvrir/fermer ──
+  toggle(){
+    const panel = document.getElementById('perso-panel');
+    if(panel.classList.contains('open')){
+      panel.classList.remove('open'); return;
+    }
+    panel.classList.add('open');
+    this.loadPersonnes();
+  },
+
+  // ── Charger la liste depuis la fiche d'environnement ──
+  async loadPersonnes(){
+    const envId = getEnvFicheId();
+    if(!envId||envId===FICHE_ID){
+      this._renderList([]);return;
+    }
+    try{
+      const r=await fetch(
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+      );
+      const d=await r.json();
+      const fp = d[0]?.etat?.fichePersonnages||[];
+      // Normaliser : strings → objets
+      this._personnes = fp.map(p=>{
+        if(typeof p==='string') return {id:p, niveauReveal:2, texteMJ:''};
+        return {id:p.id||p, niveauReveal:p.niveauReveal||2, texteMJ:p.texteMJ||''};
+      }).filter(p=>p.id && p.id!==FICHE_ID); // exclure soi-même
+      this._renderList(this._personnes);
+    }catch(e){ this._renderList([]); }
+  },
+
+  _renderList(personnes){
+    const cont = document.getElementById('perso-btn-list');
+    cont.innerHTML='';
+    if(!personnes.length){
+      cont.innerHTML='<span style="font-size:.75rem;color:var(--ink3);font-style:italic;">Aucun personnage lié à cet environnement.</span>';
+      return;
+    }
+    personnes.forEach(p=>{
+      const btn=document.createElement('button'); btn.className='perso-btn';
+      if(this._currentPerso?.id===p.id) btn.classList.add('active');
+      btn.textContent=p.id;
+      btn.addEventListener('click',()=>this.selectPerso(p));
+      cont.appendChild(btn);
+    });
+  },
+
+  // ── Sélectionner un personnage ──
+  async selectPerso(p){
+    this._currentPerso=p;
+    // Mise à jour visuelle des boutons
+    document.querySelectorAll('.perso-btn').forEach(b=>{
+      b.classList.toggle('active',b.textContent===p.id);
+    });
+    document.getElementById('perso-panel-title').textContent=p.id;
+    document.getElementById('perso-detail').classList.add('open');
+    // Charger etat
+    try{
+      const r=await fetch(
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(p.id)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+      );
+      const d=await r.json();
+      this._currentEtat=d[0]?.etat||null;
+    }catch(e){ this._currentEtat=null; }
+
+    this._renderOctogone();
+    this._renderXfer();
+    this._renderEpreuve();
+    // Ouvrir la section octogone par défaut
+    this._openSection('perso-sec-oct');
+  },
+
+  // ── Rendu octogone ──
+  _renderOctogone(){
+    const p = this._currentPerso;
+    const etat = this._currentEtat;
+    const niveau = p?.niveauReveal||2;
+    const tokens = etat?.tokens||{};
+    const ns='http://www.w3.org/2000/svg';
+    const svg=document.getElementById('perso-oct-svg');
+    svg.innerHTML='';
+    const CX=150,CY=150,R=90,INNER=20,N=8;
+    // Fond octogone
+    const pts=[]; for(let i=0;i<8;i++){const a=(i*45-90)*Math.PI/180;pts.push(`${(CX+R*Math.cos(a)).toFixed(1)},${(CY+R*Math.sin(a)).toFixed(1)}`);}
+    const oct=document.createElementNS(ns,'polygon'); oct.setAttribute('points',pts.join(' '));
+    oct.setAttribute('fill','none'); oct.setAttribute('stroke','#4a3218'); oct.setAttribute('stroke-width','1');
+    svg.appendChild(oct);
+    // Centre
+    const circ=document.createElementNS(ns,'circle'); circ.setAttribute('cx',CX); circ.setAttribute('cy',CY);
+    circ.setAttribute('r',INNER); circ.setAttribute('fill','none'); circ.setAttribute('stroke','#4a3218'); circ.setAttribute('stroke-width','1');
+    svg.appendChild(circ);
+
+    const sectorOrder=['feu','bile_j','terre','bile_n','eau','flegme','air','sang'];
+    const sectorLabels={feu:'Feu',bile_j:'Bile J.',terre:'Terre',bile_n:'Bile N.',eau:'Eau',flegme:'Flegme',air:'Air',sang:'Sang'};
+    const narratifLines=[];
+
+    sectorOrder.forEach((secId,i)=>{
+      const angle=(i*45-90)*Math.PI/180;
+      const ax=Math.cos(angle),ay=Math.sin(angle);
+      const arr=tokens[secId]||['empty','empty','empty'];
+      const whites=arr.filter(t=>t==='white').length;
+      const blacks=arr.filter(t=>t==='black').length;
+      const total=whites+blacks;
+      const pol=whites>blacks?'white':'black';
+
+      // Ligne de l'axe
+      const line=document.createElementNS(ns,'line');
+      line.setAttribute('x1',CX+INNER*ax); line.setAttribute('y1',CY+INNER*ay);
+      line.setAttribute('x2',CX+R*ax); line.setAttribute('y2',CY+R*ay);
+      line.setAttribute('stroke','#4a3218'); line.setAttribute('stroke-width','0.5');
+      svg.appendChild(line);
+
+      // Label axe
+      const lx=(CX+(R+14)*ax).toFixed(1), ly=(CY+(R+14)*ay).toFixed(1);
+      const ltxt=document.createElementNS(ns,'text'); ltxt.setAttribute('x',lx); ltxt.setAttribute('y',ly);
+      ltxt.setAttribute('text-anchor','middle'); ltxt.setAttribute('dominant-baseline','middle');
+      ltxt.setAttribute('font-family','Cinzel,serif'); ltxt.setAttribute('font-size','8');
+      ltxt.setAttribute('fill','#9a7a5a');
+      ltxt.textContent=sectorLabels[secId]||secId;
+      svg.appendChild(ltxt);
+
+      if(total===0) return;
+
+      // Dessin des jetons selon le niveau
+      const ringR=[38,62,86]; // rayon des 3 anneaux
+      arr.forEach((tok,idx)=>{
+        if(tok==='empty') return;
+        const tr=ringR[idx]||62;
+        const tx=(CX+tr*ax).toFixed(1), ty=(CY+tr*ay).toFixed(1);
+        const g=document.createElementNS(ns,'g');
+
+        if(niveau===1){
+          // Présence seule : cercle gris
+          const c=document.createElementNS(ns,'circle'); c.setAttribute('cx',tx); c.setAttribute('cy',ty); c.setAttribute('r','5');
+          c.setAttribute('fill','#888'); c.setAttribute('stroke','#555'); c.setAttribute('stroke-width','0.8');
+          g.appendChild(c);
+        } else if(niveau===2){
+          // Polarité dominante, pas quantité exacte — montrer seulement 1 jeton par axe
+          if(idx>0) return;
+          const c=document.createElementNS(ns,'circle'); c.setAttribute('cx',tx); c.setAttribute('cy',ty); c.setAttribute('r','7');
+          c.setAttribute('fill',pol==='white'?'#e8d5a0':'#3a2810'); c.setAttribute('stroke','#c8860a'); c.setAttribute('stroke-width','1');
+          g.appendChild(c);
+        } else {
+          // Tout visible
+          const c=document.createElementNS(ns,'circle'); c.setAttribute('cx',tx); c.setAttribute('cy',ty); c.setAttribute('r','5');
+          c.setAttribute('fill',tok==='white'?'#e8d5a0':'#3a2810'); c.setAttribute('stroke','#c8860a'); c.setAttribute('stroke-width','0.8');
+          g.appendChild(c);
+        }
+        svg.appendChild(g);
+      });
+
+      // Texte narratif pour axes saillants (≥2 jetons ou niveau 3)
+      if(total>=2||(niveau===3&&total>=1)){
+        const n=PERSO_NARRATIFS[secId];
+        if(n) narratifLines.push(n[pol]);
+      }
+    });
+
+    // Texte narratif auto
+    const narEl=document.getElementById('perso-oct-narrative');
+    narEl.textContent=narratifLines.length ? narratifLines.slice(0,3).join(' ') : '';
+
+    // Texte MJ
+    const mjTa=document.getElementById('perso-oct-mj-text');
+    mjTa.value=p.texteMJ||'';
+    if(octIsGM){ mjTa.classList.add('gm'); mjTa.style.display='block'; }
+    else { mjTa.style.display='none'; }
+    mjTa.oninput=()=>this._saveMjText();
+  },
+
+  async _saveMjText(){
+    if(!this._currentPerso) return;
+    const txt=document.getElementById('perso-oct-mj-text').value;
+    this._currentPerso.texteMJ=txt;
+    // Sauvegarder dans la fiche env
+    const envId=getEnvFicheId();
+    if(!envId||envId===FICHE_ID) return;
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const d=await r.json();
+      const etat=d[0]?.etat||{};
+      const fp=etat.fichePersonnages||[];
+      const normalized=fp.map(p=>{
+        const id=typeof p==='string'?p:p.id;
+        if(id===this._currentPerso.id) return {...(typeof p==='object'?p:{id}), texteMJ:txt};
+        return typeof p==='object'?p:{id};
+      });
+      etat.fichePersonnages=normalized;
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+        method:'POST',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+          'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({id:envId,etat})
+      });
+    }catch(e){}
+  },
+
+  // ── Rendu transfert ciblé ──
+  _renderXfer(){
+    const list=document.getElementById('perso-xfer-token-list');
+    list.innerHTML='';
+    const allTokens=[];
+    const sectorOrder=['feu','bile_j','terre','bile_n','eau','flegme','air','sang'];
+    sectorOrder.forEach(secId=>{
+      (state.tokens[secId]||[]).forEach((tok,idx)=>{
+        if(tok==='empty') return;
+        const sec=SECTORS.find(s=>s.id===secId);
+        if(!sec) return;
+        allTokens.push({secId,sec,idx,tok});
+      });
+    });
+    if(!allTokens.length){
+      list.innerHTML='<span style="font-size:.75rem;color:var(--ink3);font-style:italic;">Aucun jeton disponible.</span>';
+      return;
+    }
+    allTokens.forEach(({secId,sec,idx,tok})=>{
+      const btn=document.createElement('button'); btn.className='xfer-token-btn';
+      btn.innerHTML=`<span class="xfer-tok-dot ${tok}"></span><span class="xfer-tok-label">${sec.label}</span>`;
+      btn.addEventListener('click',()=>{
+        // Pré-remplir la cible dans le xfer existant et lancer
+        document.getElementById('xfer-target-input').value=this._currentPerso.id;
+        // Simuler la sélection du jeton dans xferBuildTokenList
+        xferBuildTokenList();
+        const existingBtns=document.querySelectorAll('#xfer-token-list .xfer-token-btn');
+        existingBtns.forEach(b=>{ if(b.dataset.secid===secId&&b.dataset.idx===String(idx)) b.click(); });
+        // Ouvrir le xfer overlay
+        if(!document.getElementById('xfer-overlay').classList.contains('open')) toggleXfer();
+        xferShowStep(2);
+      });
+      list.appendChild(btn);
+    });
+  },
+
+  // ── Épreuve ──
+  _renderEpreuve(){
+    const note=document.getElementById('perso-epreuve-note');
+    if(note) note.textContent=`Ouvre le lanceur de dés pour une épreuve avec ${this._currentPerso?.id||'ce personnage'}.`;
+  },
+
+  openEpreuve(){
+    // Ouvre le lanceur de dés existant
+    if(typeof openDice==='function') openDice();
+    else if(typeof toggleDice==='function') toggleDice();
+  },
+
+  _openSection(id){
+    document.querySelectorAll('.perso-section').forEach(s=>{
+      const body=s.querySelector('.perso-section-body');
+      const tog=s.querySelector('span');
+      const isTarget=s.id===id;
+      if(body){ body.classList.toggle('open',isTarget); }
+      if(tog) tog.textContent=isTarget?'▼':'▶';
+    });
+    // Ajouter click handlers aux headers
+    document.querySelectorAll('.perso-section-head').forEach(head=>{
+      head.onclick=()=>{
+        const body=head.nextElementSibling;
+        const tog=head.querySelector('span');
+        const wasOpen=body.classList.contains('open');
+        document.querySelectorAll('.perso-section-body').forEach(b=>b.classList.remove('open'));
+        document.querySelectorAll('.perso-section-head span').forEach(t=>t.textContent='▶');
+        if(!wasOpen){ body.classList.add('open'); tog.textContent='▼'; }
+      };
+    });
+  }
+};
+
+function togglePersoPanel(){ PersonnePanel.toggle(); }
+
+</script>
 </body>
 </html>
