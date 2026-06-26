@@ -668,12 +668,13 @@
   .occ-btn.primary:hover { background:#6e1a1a; }
   /* Bouton transfert inter-fiches */
   #xfer-fab {
+    display:none !important;
     position:fixed; bottom:1.2rem; left:4.8rem;
     width:52px; height:52px; border-radius:50%;
     background:#3d342a; color:#f5f0e8;
     border:none; font-size:1.1rem; cursor:pointer;
     box-shadow:0 4px 16px rgba(0,0,0,0.3);
-    display:none; align-items:center; justify-content:center;
+    align-items:center; justify-content:center;
     z-index:190; transition:background .15s;
   }
   #xfer-fab:hover { background:#1a1510; }
@@ -967,12 +968,16 @@
   .prodige-msg-btn:hover { background:#2a3a4a; }
 
   /* ── Panneau Personnages ── */
-  #perso-fab { position:fixed; bottom:1.2rem; left:15.6rem; width:44px; height:44px;
-    border-radius:50%; border:2px solid var(--accent); background:var(--bg);
-    color:var(--accent); font-size:1.1rem; cursor:pointer; z-index:100;
+  #perso-fab {
+    position:fixed; bottom:1.2rem; left:15.6rem;
+    width:52px; height:52px; border-radius:50%;
+    background:#1a4a3a; color:#f5f0e8;
+    border:none; font-size:1.4rem; cursor:pointer;
+    box-shadow:0 4px 16px rgba(0,0,0,0.3);
     display:none; align-items:center; justify-content:center;
-    box-shadow:0 2px 8px rgba(0,0,0,0.3); transition:background .15s; }
-  #perso-fab:hover { background:var(--accent); color:var(--bg); }
+    z-index:190; transition:background .15s;
+  }
+  #perso-fab:hover { background:#0a3a2a; }
   #perso-panel { position:fixed; right:-380px; top:0; width:min(370px,96vw); height:100%;
     background:var(--bg); border-left:2px solid var(--accent); z-index:310;
     display:flex; flex-direction:column; transition:right .25s ease;
