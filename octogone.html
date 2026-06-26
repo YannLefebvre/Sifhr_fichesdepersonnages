@@ -876,6 +876,45 @@
   .notif-text { display:inline; }
   .notif-source { display:inline; font-style:normal; font-size:.75rem;
     color:#b07070; margin-left:.4rem; opacity:.8; }
+
+  /* ── Sections Historique ── */
+  .hist-section { margin-bottom:.6rem; border:1px solid var(--border2); border-radius:6px; overflow:hidden; }
+  .hist-section-title { font-family:'Cinzel',serif; font-size:.75rem; color:var(--accent);
+    letter-spacing:.07em; text-transform:uppercase; padding:.45rem .7rem;
+    background:var(--section-bg); cursor:pointer; display:flex; align-items:center; gap:.4rem; }
+  .hist-section-body { padding:.5rem .7rem; display:none; }
+  .hist-section-body.open { display:block; }
+  /* Histoires croisées / Dettes */
+  .hc-item { border:1px solid var(--border2); border-radius:5px; padding:.5rem .6rem;
+    margin-bottom:.4rem; background:var(--section-bg); }
+  .hc-item-head { display:flex; align-items:center; gap:.4rem; margin-bottom:.35rem; flex-wrap:wrap; }
+  .hc-perso-inp { flex:1; min-width:100px; background:var(--input-bg); border:1px solid var(--border);
+    border-radius:3px; font-family:'Crimson Text',serif; font-size:.82rem; color:var(--ink);
+    padding:3px 6px; outline:none; }
+  .hc-perso-inp:focus { border-color:var(--accent); }
+  .hc-del-btn { background:none; border:none; color:var(--ink3); cursor:pointer; font-size:.85rem; padding:0 3px; }
+  .hc-del-btn:hover { color:#c85a52; }
+  .hc-text { width:100%; background:var(--input-bg); border:none; border-left:2px solid var(--border2);
+    font-family:'Crimson Text',serif; font-size:.85rem; color:var(--ink2);
+    padding:4px 6px; outline:none; resize:none; min-height:2.5em; line-height:1.5; overflow:hidden; }
+  .hc-text:focus { border-left-color:var(--accent); }
+  .hc-add-btn { font-family:'Cinzel',serif; font-size:.68rem; padding:4px 10px;
+    border:1px solid var(--border); border-radius:4px; background:var(--input-bg);
+    cursor:pointer; color:var(--ink2); margin-top:.3rem; }
+  .hc-add-btn:hover { background:var(--border2); }
+  /* Dettes */
+  .dette-bm-row { display:flex; align-items:center; gap:.3rem; margin:.3rem 0; flex-wrap:wrap; }
+  .dette-bm-label { font-family:'Cinzel',serif; font-size:.65rem; color:#888; }
+  .dette-bm-btn { width:28px; height:22px; border-radius:3px; border:1px solid #ddd;
+    background:#f5f5f5; cursor:pointer; font-family:'Cinzel',serif; font-size:.68rem; color:#666; }
+  .dette-bm-btn:hover { border-color:var(--accent); }
+  .dette-bm-btn.pos.active { background:#d4edda; border-color:#5a9a6a; color:#1a5c2a; font-weight:700; }
+  .dette-bm-btn.neg.active { background:#fde8e8; border-color:#c85a52; color:#8b2020; font-weight:700; }
+  .dette-bm-display { font-family:'Cinzel',serif; font-size:.78rem; font-weight:700;
+    padding:1px 7px; border-radius:8px; min-width:28px; text-align:center; }
+  .dette-bm-display.pos { background:#d4edda; color:#1a5c2a; }
+  .dette-bm-display.neg { background:#fde8e8; color:#8b2020; }
+  .dette-bm-display.zero { background:#f0ede6; color:#888; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -1835,7 +1874,11 @@ async function doLogin(tryGM){
         } else {
           // Joueur : masquer le display MJ (qui montre "0"), afficher uniquement le display joueur
           document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='none');
-          // bm-joueur-display est déjà visible si bm !== 0
+          // Désactiver l'édition des sections réservées au MJ
+          document.querySelectorAll('.gm-edit-only').forEach(el=>{
+            if(el.tagName==='INPUT'||el.tagName==='TEXTAREA') { el.readOnly=true; el.style.background='transparent'; el.style.borderColor='transparent'; }
+            else el.style.display='none';
+          });
         }
         if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);
         startRealtime();
@@ -2098,6 +2141,8 @@ let state={tokens:{},scores:{},aptitudes:{},envFiche:'',
   artefacts:Array.from({length:NUM_ARTEFACTS},()=>({title:'',text:'',bm:0,image:null})),
   prodiges:Array.from({length:NUM_PRODIGES},()=>({title:'',text:'',bm:0,image:null})),
   historique:{title:'',text:''},
+  histoiresCroisees:[], // [{id, perso, text}]
+  dettes:[],            // [{id, perso, bm, text}]
   portrait:'',
   dice:{whites:3,reds:2,dice:[],rolled:false},
   des:'',ether:'',occultation:'',wheelRot:0,accordion:{}};
@@ -2978,14 +3023,127 @@ for(let i=0;i<NUM_PRODIGES;i++){
 
 /* ── Historique ── */
 const historiquePanel=document.getElementById('historique-inner');
-const historiqueWidget=buildAccItem(historiquePanel, ()=>[state.historique], 0, 'Titre…', 'Historique du personnage…');
-// Wire save back to state.historique directly
-function saveHistorique(){
-  state.historique={title:historiqueWidget.titleInp.value, text:historiqueWidget.textArea.value};
-  saveState();
+
+function buildHistSection(title, bodyContent){
+  const sec=document.createElement('div'); sec.className='hist-section';
+  const head=document.createElement('div'); head.className='hist-section-title';
+  const tog=document.createElement('span'); tog.textContent='▶';
+  head.appendChild(tog);
+  const lbl=document.createElement('span'); lbl.textContent=title;
+  head.appendChild(lbl);
+  const body=document.createElement('div'); body.className='hist-section-body';
+  body.appendChild(bodyContent);
+  head.addEventListener('click',()=>{
+    const o=body.classList.contains('open');
+    body.classList.toggle('open',!o);
+    tog.textContent=o?'▶':'▼';
+  });
+  sec.appendChild(head); sec.appendChild(body);
+  historiquePanel.appendChild(sec);
+  return {head,body};
 }
-historiqueWidget.titleInp.addEventListener('input', saveHistorique);
-historiqueWidget.textArea.addEventListener('input', saveHistorique);
+
+// ── 1. Histoire du personnage (MJ écrit, joueur lit) ──
+const histPersoWrap=document.createElement('div');
+const histPersoTitle=document.createElement('input'); histPersoTitle.type='text'; histPersoTitle.className='acc-title gm-edit-only';
+histPersoTitle.placeholder='Titre…'; histPersoTitle.value=state.historique.title||'';
+histPersoTitle.addEventListener('input',()=>{ state.historique.title=histPersoTitle.value; saveState(); });
+const histPersoText=document.createElement('textarea'); histPersoText.className='acc-text gm-edit-only';
+histPersoText.placeholder='Histoire du personnage écrite par le meneur…'; histPersoText.value=state.historique.text||'';
+histPersoText.addEventListener('input',()=>{ state.historique.text=histPersoText.value; histPersoText.style.height='auto'; histPersoText.style.height=histPersoText.scrollHeight+'px'; saveState(); });
+histPersoWrap.appendChild(histPersoTitle); histPersoWrap.appendChild(histPersoText);
+buildHistSection('Histoire du personnage', histPersoWrap);
+
+// ── 2. Histoires Croisées ──
+const hcWrap=document.createElement('div');
+function renderHistoiresCroisees(){
+  hcWrap.innerHTML='';
+  (state.histoiresCroisees||[]).forEach((hc,idx)=>{
+    const item=document.createElement('div'); item.className='hc-item';
+    const head=document.createElement('div'); head.className='hc-item-head';
+    const persoInp=document.createElement('input'); persoInp.className='hc-perso-inp';
+    persoInp.placeholder='Identifiant ou nom du personnage / PNJ';
+    persoInp.value=hc.perso||'';
+    persoInp.addEventListener('input',()=>{ state.histoiresCroisees[idx].perso=persoInp.value; saveState(); });
+    const delBtn=document.createElement('button'); delBtn.className='hc-del-btn'; delBtn.textContent='✕';
+    delBtn.addEventListener('click',()=>{ state.histoiresCroisees.splice(idx,1); saveState(); renderHistoiresCroisees(); });
+    head.appendChild(persoInp); head.appendChild(delBtn);
+    const ta=document.createElement('textarea'); ta.className='hc-text';
+    ta.placeholder='Histoire partagée avec ce personnage…'; ta.value=hc.text||'';
+    ta.addEventListener('input',()=>{ state.histoiresCroisees[idx].text=ta.value; ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; saveState(); });
+    item.appendChild(head); item.appendChild(ta);
+    hcWrap.appendChild(item);
+    setTimeout(()=>{ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; },10);
+  });
+  const addBtn=document.createElement('button'); addBtn.className='hc-add-btn';
+  addBtn.textContent='+ Ajouter une histoire croisée';
+  addBtn.addEventListener('click',()=>{
+    if(!state.histoiresCroisees) state.histoiresCroisees=[];
+    state.histoiresCroisees.push({id:'hc_'+Date.now(), perso:'', text:''});
+    saveState(); renderHistoiresCroisees();
+  });
+  hcWrap.appendChild(addBtn);
+}
+renderHistoiresCroisees();
+buildHistSection('Histoires Croisées', hcWrap);
+
+// ── 3. Dettes et Créances ──
+const detteWrap=document.createElement('div');
+function renderDettes(){
+  detteWrap.innerHTML='';
+  (state.dettes||[]).forEach((d,idx)=>{
+    const item=document.createElement('div'); item.className='hc-item';
+    const head=document.createElement('div'); head.className='hc-item-head';
+    const persoInp=document.createElement('input'); persoInp.className='hc-perso-inp';
+    persoInp.placeholder='Identifiant ou nom du personnage / PNJ';
+    persoInp.value=d.perso||'';
+    persoInp.addEventListener('input',()=>{ state.dettes[idx].perso=persoInp.value; saveState(); });
+    const delBtn=document.createElement('button'); delBtn.className='hc-del-btn gm-edit-only'; delBtn.textContent='✕';
+    delBtn.addEventListener('click',()=>{ state.dettes.splice(idx,1); saveState(); renderDettes(); });
+    head.appendChild(persoInp); head.appendChild(delBtn);
+    item.appendChild(head);
+    const bmRow=document.createElement('div'); bmRow.className='dette-bm-row';
+    const bmLabel=document.createElement('span'); bmLabel.className='dette-bm-label'; bmLabel.textContent='Niveau de dette :';
+    const curBm=d.bm||0;
+    const bmDisp=document.createElement('span');
+    bmDisp.className='dette-bm-display '+(curBm>0?'pos':curBm<0?'neg':'zero');
+    bmDisp.textContent=curBm>0?'+'+curBm:(curBm===0?'0':curBm);
+    const bmBtns=document.createElement('div'); bmBtns.style.cssText='display:flex;gap:.2rem;';
+    [-3,-2,-1,0,1,2,3].forEach(v=>{
+      const b=document.createElement('button');
+      b.className='dette-bm-btn gm-edit-only '+(v>0?'pos':v<0?'neg':'zero')+(v===curBm?' active':'');
+      b.textContent=v>0?'+'+v:(v===0?'0':v);
+      b.addEventListener('click',()=>{
+        if(!octIsGM) return;
+        state.dettes[idx].bm=v;
+        bmDisp.className='dette-bm-display '+(v>0?'pos':v<0?'neg':'zero');
+        bmDisp.textContent=v>0?'+'+v:(v===0?'0':v);
+        bmBtns.querySelectorAll('.dette-bm-btn').forEach(bb=>bb.classList.remove('active'));
+        b.classList.add('active');
+        saveState();
+      });
+      bmBtns.appendChild(b);
+    });
+    bmRow.appendChild(bmLabel); bmRow.appendChild(bmBtns); bmRow.appendChild(bmDisp);
+    item.appendChild(bmRow);
+    const ta=document.createElement('textarea'); ta.className='hc-text';
+    ta.placeholder='Description de la dette ou créance…'; ta.value=d.text||'';
+    ta.addEventListener('input',()=>{ state.dettes[idx].text=ta.value; ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; saveState(); });
+    item.appendChild(ta);
+    detteWrap.appendChild(item);
+    setTimeout(()=>{ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; },10);
+  });
+  const addBtn=document.createElement('button'); addBtn.className='hc-add-btn gm-edit-only';
+  addBtn.textContent='+ Ajouter une dette / créance';
+  addBtn.addEventListener('click',()=>{
+    if(!state.dettes) state.dettes=[];
+    state.dettes.push({id:'d_'+Date.now(), perso:'', bm:0, text:''});
+    saveState(); renderDettes();
+  });
+  detteWrap.appendChild(addBtn);
+}
+renderDettes();
+buildHistSection('Dettes et Créances', detteWrap);
 
 /* ── Portrait ── */
 const portraitFileInput = document.getElementById('portrait-file-input');
@@ -3187,13 +3345,11 @@ function applyRemoteState(saved){
     }
     if(saved.historique){
       state.historique=saved.historique;
-      historiqueWidget.titleInp.value=saved.historique.title||'';
-      historiqueWidget.textArea.value=saved.historique.text||'';
-      historiqueWidget.textArea.style.height='auto';
-      historiqueWidget.textArea.style.height=historiqueWidget.textArea.scrollHeight+'px';
-      if(saved.historique.locked) historiqueWidget.applyLock(true);
-      else historiqueWidget.applyLock(false);
+      if(histPersoTitle) histPersoTitle.value=saved.historique.title||'';
+      if(histPersoText){ histPersoText.value=saved.historique.text||''; histPersoText.style.height='auto'; histPersoText.style.height=histPersoText.scrollHeight+'px'; }
     }
+    if(saved.histoiresCroisees!==undefined){ state.histoiresCroisees=saved.histoiresCroisees; renderHistoiresCroisees(); }
+    if(saved.dettes!==undefined){ state.dettes=saved.dettes; renderDettes(); }
     if(saved.dice!==undefined){
       state.dice=saved.dice;
       if(dCurrentRole){
