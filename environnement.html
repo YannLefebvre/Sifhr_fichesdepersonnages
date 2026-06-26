@@ -463,10 +463,6 @@ async function gmReset(){
   #xfer-notif { position:fixed; top:1rem; left:50%; transform:translateX(-50%); background:var(--bg); border:2px solid var(--accent); border-radius:8px; padding:.9rem 1.2rem; max-width:340px; width:92vw; box-shadow:0 4px 20px rgba(0,0,0,0.3); z-index:230; display:none; font-family:'Crimson Text',serif; font-size:.9rem; }
   #xfer-notif h4 { font-family:'Cinzel',serif; color:var(--accent); font-size:.8rem; margin-bottom:.4rem; }
   .xfer-notif-btns { display:flex; gap:.5rem; margin-top:.6rem; }
-  #xfer-fab { position:fixed; bottom:1.2rem; right:1.2rem; width:52px; height:52px; border-radius:50%; background:#3d342a; color:#f5f0e8; border:none; font-size:1.1rem; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.3); display:none; align-items:center; justify-content:center; z-index:190; transition:background .15s; }
-  #carte-env-fab { position:fixed; bottom:1.2rem; right:5.4rem; width:52px; height:52px; border-radius:50%; background:#1a6b4a; color:#f5f0e8; border:1px solid #2a9a6a; font-size:1.1rem; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.3); display:none; align-items:center; justify-content:center; z-index:190; transition:background .15s; }
-  #carte-env-fab:hover { background:#0a4a2a; }
-  #carte-env-fab.open { background:#0a3a1a; }
   .carte-env-overlay { position:fixed; inset:0; background:rgba(26,21,16,0.88); display:none; align-items:center; justify-content:center; z-index:195; }
   .carte-env-overlay.open { display:flex; }
   .carte-env-box { background:#1a1208; border:1px solid #4a3218; border-radius:10px; width:96vw; height:92vh; max-width:820px; position:relative; box-shadow:0 8px 40px rgba(0,0,0,0.6); overflow:hidden; display:flex; flex-direction:column; }
@@ -475,8 +471,6 @@ async function gmReset(){
   .carte-env-close { background:none; border:none; font-size:1.1rem; cursor:pointer; color:#888; padding:0 4px; }
   .carte-env-close:hover { color:#f5f0e8; }
   .carte-env-box iframe { flex:1; border:none; width:100%; background:#1a1208; }
-  #xfer-fab:hover { background:#1a1510; }
-  #xfer-fab.open { background:var(--accent); }
 
   /* ── Pneumatographie ── */
   .pneumato-panel { max-width:700px; margin:0 auto 1rem; background:var(--section-bg); border:1px solid var(--border); border-radius:var(--radius); padding:.75rem; }
@@ -875,19 +869,6 @@ async function gmReset(){
     <button class="xfer-btn" onclick="xferRefuse()">Refuser</button>
   </div>
 </div>
-<button id="xfer-fab" onclick="toggleXfer()" title="Transfert de jeton">↗</button>
-<button id="carte-env-fab" onclick="CarteEnvPanel.toggle()" title="Carte de l'environnement">
-  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="12" r="10" stroke="#f5f0e8" stroke-width="1" opacity="0.8"/>
-    <circle cx="12" cy="12" r="7" stroke="#f5f0e8" stroke-width="0.8" opacity="0.7"/>
-    <circle cx="12" cy="12" r="4" stroke="#f5f0e8" stroke-width="0.8" opacity="0.6"/>
-    <circle cx="12" cy="12" r="1.5" fill="#f5f0e8" opacity="0.8"/>
-    <line x1="12" y1="2" x2="12" y2="22" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
-    <line x1="2" y1="12" x2="22" y2="12" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
-    <line x1="4.9" y1="4.9" x2="19.1" y2="19.1" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
-    <line x1="19.1" y1="4.9" x2="4.9" y2="19.1" stroke="#f5f0e8" stroke-width="0.5" opacity="0.4"/>
-  </svg>
-</button>
 
 <!-- Panneau flottant Carte -->
 <div id="carte-env-overlay" class="carte-env-overlay">
@@ -1460,8 +1441,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
         if(!tryGM&&window._envLoginPw) window._playerPw=window._envLoginPw;
         document.getElementById('modal-overlay').style.display='none';
         document.getElementById('app').style.display='block';
-        document.getElementById('xfer-fab').style.display='flex';
-        document.getElementById('carte-env-fab').style.display='flex';
+        // xfer-fab et carte-env-fab retirés (accès depuis octogone.html uniquement)
         if(tryGM){
           document.getElementById('gm-bar').style.display='flex';
           document.getElementById('btn-occultation-gm').style.display='flex';
