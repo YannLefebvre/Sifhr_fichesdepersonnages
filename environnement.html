@@ -618,6 +618,24 @@ async function gmReset(){
   .fiches-liees-input { width:100%; background:var(--input-bg); border:1px solid var(--border);
     border-radius:3px; font-family:'Crimson Text',serif; font-size:.82rem; color:var(--ink);
     padding:3px 6px; outline:none; }
+
+  .fiches-perso-list { display:flex; flex-direction:column; gap:.4rem; margin-top:.4rem; }
+  .fiche-perso-row { display:flex; align-items:center; gap:.4rem; padding:.35rem .5rem;
+    background:var(--section-bg); border:1px solid var(--border2); border-radius:5px; flex-wrap:wrap; }
+  .fiche-perso-id { font-family:'Cinzel',serif; font-size:.75rem; color:var(--ink); flex:1; min-width:80px; }
+  .fiche-perso-reveal { display:flex; gap:.2rem; }
+  .fiche-reveal-btn { font-family:'Cinzel',serif; font-size:.62rem; padding:2px 7px;
+    border-radius:3px; border:1px solid var(--border); background:var(--input-bg);
+    color:var(--ink3); cursor:pointer; }
+  .fiche-reveal-btn.on { border-color:var(--accent); color:var(--accent); background:#2a1a04; }
+  .fiche-perso-del { background:none; border:none; color:var(--ink3); cursor:pointer; font-size:.85rem; padding:0 3px; }
+  .fiche-perso-del:hover { color:#c85a52; }
+  .fiche-add-row { display:flex; gap:.4rem; margin-top:.4rem; }
+  .fiche-add-input { flex:1; background:var(--input-bg); border:1px solid var(--border);
+    border-radius:3px; font-family:'Crimson Text',serif; font-size:.82rem; color:var(--ink);
+    padding:3px 6px; outline:none; }
+  .fiche-add-btn { font-family:'Cinzel',serif; font-size:.7rem; padding:4px 9px;
+    border:1px solid var(--accent); border-radius:3px; background:none; color:var(--accent); cursor:pointer; }
 </style>
 </head>
 <body>
@@ -648,9 +666,12 @@ async function gmReset(){
 
 <!-- Fiches personnages liées (MJ only) -->
 <div id="fiches-liees-row">
-  <div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--ink3);margin-bottom:.2rem;">Fiches personnages liées (séparées par des virgules)</div>
-  <input id="fiches-liees-input" class="fiches-liees-input" type="text" placeholder="christophe, nuzha, …"
-    oninput="saveFichesLiees()">
+  <div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.4rem;">Personnages liés à cet environnement</div>
+  <div class="fiches-perso-list" id="fiches-perso-list"></div>
+  <div class="fiche-add-row">
+    <input id="fiche-add-input" class="fiche-add-input" type="text" placeholder="identifiant de fiche…">
+    <button class="fiche-add-btn" onclick="addFichePersonnage()">+ Ajouter</button>
+  </div>
 </div>
 
 <!-- Panneau 9 agrégés (MJ only) -->
@@ -1387,7 +1408,7 @@ function applyRemoteState(saved){
     if(saved.ether!==undefined){state.ether=saved.ether;document.getElementById('ether-val').value=saved.ether;}
     if(saved.occultation!==undefined){state.occultation=saved.occultation;document.getElementById('occultation-val').value=saved.occultation;}
     if(saved.dynamiqueLog!==undefined){ state.dynamiqueLog=saved.dynamiqueLog; renderDynamiqueLog(); }
-    if(saved.fichePersonnages!==undefined){ state.fichePersonnages=saved.fichePersonnages; }
+    if(saved.fichePersonnages!==undefined){ state.fichePersonnages=saved.fichePersonnages; if(isGM) renderFichesPersoList(); }
     if(saved.nineCount!==undefined){ state.nineCount=saved.nineCount; }
     if(saved.nineThreshold!==undefined){ state.nineThreshold=saved.nineThreshold; }
     if(saved.wheelRot!==undefined) applyRotation(saved.wheelRot,true);
@@ -1449,8 +1470,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           document.getElementById('nine-panel').style.display='block';
           document.getElementById('fiches-liees-row').style.display='block';
           // Restaurer fiches liées dans l'input
-          const flInp=document.getElementById('fiches-liees-input');
-          if(flInp&&state.fichePersonnages) flInp.value=(state.fichePersonnages||[]).join(', ');
+          renderFichesPersoList();
           pollNines();
         }
         // Charger d'abord l'état Supabase, PUIS initialiser l'UI
@@ -1909,9 +1929,54 @@ function renderDynamiqueLog(){
 
 // ── Fiches personnages liées ──
 function saveFichesLiees(){
-  const val=document.getElementById('fiches-liees-input').value;
-  state.fichePersonnages=val.split(',').map(s=>s.trim()).filter(Boolean);
-  saveState();
+  // Ancienne version pour compatibilité — utiliser renderFichesPersoList à la place
+}
+
+function addFichePersonnage(){
+  const inp=document.getElementById('fiche-add-input');
+  const id=inp.value.trim();
+  if(!id) return;
+  if(!state.fichePersonnages) state.fichePersonnages=[];
+  // Normaliser en objets
+  const exists=state.fichePersonnages.find(p=>(typeof p==='string'?p:p.id)===id);
+  if(!exists){
+    state.fichePersonnages.push({id,niveauReveal:2,texteMJ:''});
+    saveState();
+    renderFichesPersoList();
+  }
+  inp.value='';
+}
+
+function renderFichesPersoList(){
+  const list=document.getElementById('fiches-perso-list');
+  if(!list) return;
+  list.innerHTML='';
+  const fp=state.fichePersonnages||[];
+  fp.forEach((p,idx)=>{
+    const id=typeof p==='string'?p:p.id;
+    const nr=(typeof p==='object'?p.niveauReveal:null)||2;
+    const row=document.createElement('div'); row.className='fiche-perso-row';
+    const idSpan=document.createElement('span'); idSpan.className='fiche-perso-id'; idSpan.textContent=id;
+    const revDiv=document.createElement('div'); revDiv.className='fiche-perso-reveal';
+    [1,2,3].forEach(n=>{
+      const b=document.createElement('button'); b.className='fiche-reveal-btn'+(nr===n?' on':'');
+      b.textContent='N'+n; b.title=['Présence seule','Polarité dominante','Tout visible'][n-1];
+      b.addEventListener('click',()=>{
+        if(!Array.isArray(state.fichePersonnages)) return;
+        state.fichePersonnages[idx]=typeof state.fichePersonnages[idx]==='string'
+          ?{id,niveauReveal:n,texteMJ:''}
+          :{...state.fichePersonnages[idx],niveauReveal:n};
+        saveState(); renderFichesPersoList();
+      });
+      revDiv.appendChild(b);
+    });
+    const del=document.createElement('button'); del.className='fiche-perso-del'; del.textContent='✕';
+    del.addEventListener('click',()=>{
+      state.fichePersonnages.splice(idx,1); saveState(); renderFichesPersoList();
+    });
+    row.appendChild(idSpan); row.appendChild(revDiv); row.appendChild(del);
+    list.appendChild(row);
+  });
 }
 
 // ── Polling des 9 depuis les fiches personnages liées ──
