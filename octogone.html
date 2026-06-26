@@ -915,6 +915,23 @@
   .dette-bm-display.pos { background:#d4edda; color:#1a5c2a; }
   .dette-bm-display.neg { background:#fde8e8; color:#8b2020; }
   .dette-bm-display.zero { background:#f0ede6; color:#888; }
+
+  /* ── Panneau info latéral (mobile) ── */
+  #info-panel {
+    position:fixed; right:-320px; top:0; width:min(310px,90vw); height:100%;
+    background:var(--bg); border-left:2px solid var(--accent); z-index:310;
+    padding:1.2rem 1rem; overflow-y:auto; transition:right .25s ease;
+    box-shadow:-4px 0 20px rgba(0,0,0,0.3);
+  }
+  #info-panel.open { right:0; }
+  #info-panel-title { font-family:'Cinzel',serif; font-size:.85rem; color:var(--accent);
+    letter-spacing:.07em; text-transform:uppercase; margin-bottom:.6rem;
+    padding-right:2rem; }
+  #info-panel-text { font-family:'Crimson Text',serif; font-size:.9rem; color:var(--ink2);
+    line-height:1.6; }
+  #info-panel-close { position:absolute; top:.8rem; right:.8rem; background:none; border:none;
+    font-size:1.1rem; cursor:pointer; color:var(--ink3); }
+  #info-panel-close:hover { color:var(--ink); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -934,9 +951,19 @@ function showAptTooltip(label, key, evt){
   if(!text) return;
   const els = getVVTooltipEls();
   if(!els.tooltip||!els.title||!els.text) return;
+  if(isMobile()){
+    showInfoPanel(`${label} — niveau ${lvl}`, text);
+    return;
+  }
   els.title.textContent = `${label} — niveau ${lvl}`;
   els.text.textContent = text;
   els.tooltip.style.display = 'block';
+  if(isMobile()){
+    const ti = els.title ? els.title.textContent : label;
+    const tx = els.text ? els.text.textContent : '';
+    showInfoPanel(ti, tx);
+    return;
+  }
   positionVVTooltip(evt);
 }
 
@@ -1150,6 +1177,24 @@ function positionVVTooltip(evt){
 function hideVVTooltip(){
   const els = getVVTooltipEls();
   if(els.tooltip) els.tooltip.style.display='none';
+  // Fermer aussi le panneau info si ouvert
+  const ip = document.getElementById('info-panel');
+  if(ip) ip.classList.remove('open');
+}
+
+function isMobile(){
+  return window.innerWidth <= 600;
+}
+
+// Affiche le contenu dans un panneau latéral (mobile) ou tooltip (desktop)
+function showInfoPanel(title, text){
+  const panel = document.getElementById('info-panel');
+  const ptitle = document.getElementById('info-panel-title');
+  const ptext = document.getElementById('info-panel-text');
+  if(!panel||!ptitle||!ptext) return;
+  ptitle.textContent = title;
+  ptext.textContent = text;
+  panel.classList.add('open');
 }
 
 // ── Infobulle des jetons d'un axe, déclenchée au survol du numéro ──
@@ -1180,6 +1225,10 @@ function showAxisTokenTooltip(sec, evt){
 
   const els = getVVTooltipEls();
   if(!els.tooltip||!els.title||!els.text) return;
+  if(isMobile()){
+    showInfoPanel(`${sec.label} — jetons`, text);
+    return;
+  }
   els.title.textContent = `${sec.label} — jetons`;
   els.text.textContent = text;
   els.tooltip.style.display = 'block';
@@ -2270,7 +2319,8 @@ function rebuildLabels(){
       'font-weight':fw0,'stroke':'#1a1510','stroke-width':sw0,'paint-order':'stroke',
       'text-anchor':'middle','dominant-baseline':'auto','class':'vv-hoverable'},vg);
     vt.textContent=virtLabel;
-    vt.addEventListener('mouseenter',(e)=>showVVTooltip(sec.sub1, sec.sub1, score0, e));
+    vt.addEventListener('click',(e)=>{e.stopPropagation();showVVTooltip(sec.sub1, sec.sub1, score0, e);});
+    vt.addEventListener('mouseenter',(e)=>{ if(!isMobile()) showVVTooltip(sec.sub1, sec.sub1, score0, e); });
     vt.addEventListener('mousemove', positionVVTooltip);
     vt.addEventListener('mouseleave', hideVVTooltip);
 
@@ -2282,7 +2332,8 @@ function rebuildLabels(){
       'font-weight':fw1,'stroke':'#8b2020','stroke-width':sw1,'paint-order':'stroke',
       'font-style':'italic','text-anchor':'middle','dominant-baseline':'auto','class':'vv-hoverable'},vg);
     vc.textContent=viceLabel;
-    vc.addEventListener('mouseenter',(e)=>showVVTooltip(sec.sub2, sec.sub2, score1, e));
+    vc.addEventListener('click',(e)=>{e.stopPropagation();showVVTooltip(sec.sub2, sec.sub2, score1, e);});
+    vc.addEventListener('mouseenter',(e)=>{ if(!isMobile()) showVVTooltip(sec.sub2, sec.sub2, score1, e); });
     vc.addEventListener('mousemove', positionVVTooltip);
     vc.addEventListener('mouseleave', hideVVTooltip);
 
@@ -2299,7 +2350,8 @@ function rebuildLabels(){
       style:'cursor:help'},labelsStatic
     );
     numTxt.textContent=sec.num;
-    numTxt.addEventListener('mouseenter',(e)=>showAxisTokenTooltip(sec,e));
+    numTxt.addEventListener('click',(e)=>{e.stopPropagation();showAxisTokenTooltip(sec,e);});
+    numTxt.addEventListener('mouseenter',(e)=>{ if(!isMobile()) showAxisTokenTooltip(sec,e); });
     numTxt.addEventListener('mousemove',positionVVTooltip);
     numTxt.addEventListener('mouseleave',hideVVTooltip);
 
@@ -2461,7 +2513,8 @@ APTITUDES.forEach((aptitude,ai)=>{
   header.appendChild(toggle);
 
   const lbl=document.createElement('span');lbl.className='aptitude-label vv-hoverable';lbl.textContent=aptitude;
-  lbl.addEventListener('mouseenter',(e)=>showAptTooltip(aptitude, aptKey, e));
+  lbl.addEventListener('click',(e)=>{e.stopPropagation();showAptTooltip(aptitude, aptKey, e);});
+  lbl.addEventListener('mouseenter',(e)=>{ if(!isMobile()) showAptTooltip(aptitude, aptKey, e); });
   lbl.addEventListener('mousemove', positionVVTooltip);
   lbl.addEventListener('mouseleave', hideVVTooltip);
   header.appendChild(lbl);
@@ -3112,11 +3165,12 @@ function renderDettes(){
     const bmDisp=document.createElement('span');
     bmDisp.className='dette-bm-display '+(curBm>0?'pos':curBm<0?'neg':'zero');
     bmDisp.textContent=curBm>0?'+'+curBm:(curBm===0?'0':curBm);
+    bmDisp.style.display=octIsGM?'':'none'; // visible uniquement pour le MJ
     // Display joueur (visible si bm != 0, masqué après login MJ)
     const bmDispJ=document.createElement('span');
     bmDispJ.className='dette-bm-display bm-joueur-display '+(curBm>0?'pos':curBm<0?'neg':'zero');
     bmDispJ.textContent=curBm>0?'+'+curBm:(curBm<0?String(curBm):'');
-    bmDispJ.style.display=curBm!==0?'':'none';
+    bmDispJ.style.display=(!octIsGM&&curBm!==0)?'':'none';
     const bmBtns=document.createElement('div'); bmBtns.style.cssText='display:flex;gap:.2rem;';
     [-3,-2,-1,0,1,2,3].forEach(v=>{
       const b=document.createElement('button');
@@ -5838,5 +5892,12 @@ const NotifSystem = {
 };
 
 </script>
+
+<!-- Panneau info latéral (mobile) -->
+<div id="info-panel">
+  <button id="info-panel-close" onclick="document.getElementById('info-panel').classList.remove('open')">✕</button>
+  <div id="info-panel-title"></div>
+  <div id="info-panel-text"></div>
+</div>
 </body>
 </html>
