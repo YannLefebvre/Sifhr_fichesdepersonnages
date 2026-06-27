@@ -2019,97 +2019,42 @@ document.getElementById('modal-pw').addEventListener('keydown', e => {
 });
 
 async function doLogin(tryGM){
-  const pw = document.getElementById('modal-pw').value.trim();
-  const err = document.getElementById('modal-err');
-  err.textContent = '';
-  if (!pw) { err.textContent = 'Saisis un mot de passe.'; return; }
+  // MODE DÉMO : bypass complet — pas de vérification mdp
   const btn = document.getElementById(tryGM?'modal-btn-gm':'modal-btn');
-  const origText = btn.textContent;
-  btn.textContent = '…'; btn.disabled = true;
-  try {
-    // MODE DÉMO : état initial embarqué
-    const DEMO_INITIAL = {"tokens": {"feu": ["white", "white", "empty"], "bile_j": ["white", "empty", "empty"], "terre": ["white", "empty", "empty"], "bile_n": ["white", "black", "empty"], "eau": ["black", "empty", "empty"], "flegme": ["white", "empty", "empty"], "air": ["white", "empty", "empty"], "sang": ["white", "white", "empty"]}, "scores": {"air_0": "1", "air_1": "1", "eau_0": "1", "eau_1": "0", "feu_0": "1", "feu_1": "1", "sang_0": "0", "sang_1": "1", "sang_2": "'", "terre_0": "1", "terre_1": "0", "terre_2": "3", "bile_j_0": "1", "bile_j_1": "0", "bile_n_0": "0", "bile_n_1": "0", "flegme_0": "2", "flegme_1": "0"}, "aptitudes": {"0_0": true, "0_1": true, "1_0": true, "1_1": true, "2_0": true, "2_1": true, "2_2": true, "2_3": true, "3_0": true, "3_1": true, "3_2": true, "3_3": false, "4_0": true, "4_1": true, "4_2": false, "5_0": true, "5_1": true, "5_2": true, "5_3": true, "5_4": true, "6_0": true, "6_1": true, "6_2": true, "7_0": true, "7_1": true}, "envFiche": "env-test", "traits": [{"text": "Offre une Expertise dans le domaine de la traduction", "title": "Polyglotte", "locked": true}, {"text": "Offre une **Maîtrise** pour détecter et évaluer les valeurs de la Pneuma", "title": "Sensible à la Pneuma", "locked": true}, {"text": "Fixe un 9 avant toute Épreuve lors de ses relations avec les femmes", "title": "Misogyne", "locked": true}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}], "aptTraits": {"se_deplacer": [{"id": "t1", "text": "Pied bôt", "level": "malus-1", "title": "Pied bôt", "locked": false}, {"id": "t2", "text": "Offre une Expertise à toute Épreuve visant à esquiver les obstacles.", "level": null, "title": "Insaisissable", "locked": false}]}, "confrerie": [{"text": "La première des confréries, née au sein de la Maison de la Sagesse de Bagdad. Les érudits cultivent la pneuma entre la science et la connaissance intime du divin.", "title": "Érudits"}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}], "equipement": [{"text": "", "title": "Bible écrite en grec"}, {"text": "de notes de traduction littéraire dans les trois langues connues (Rajoute 1 Dé de Maîtrise lors d'une traduction)", "title": "Des rouleaux personnels"}, {"text": "(Peut servir d'arme)", "title": "Bâton de pèlerin"}, {"text": "(Peut causer quelques ennuis sociaux selon les interlocuteurs)", "title": "Tenue de moine grec"}, {"text": "", "title": "Mule âgée"}, {"text": "", "title": ""}], "artefacts": [{"text": "Outil mécanique légèrement chargé de pneuma. Donne une maîtrise pour l'épreuve en Imaginer.", "title": "Stylet de lecture", "locked": true}, {"text": "En obtenant une réussite à une épreuve d'Occulter, on gagne un point d'éther supplémentaire donnant un résultat de 10 dans le Souffle.", "title": "Reliquaire portatif de Saint Christophe", "locked": true}, {"text": "Donne 1 Dé d'Expertise pour tout acte de perception et d'analyse de la Pneuma.", "title": "Bracelet de la Macchina", "locked": true}, {"text": "Prodiges — Souffle miraculeux : avec une Prouesse de Dévoiler (Air/Sang), permet de transformer toutes les valeurs récupérées dans la pneuma locale en 10.", "title": "Souffle miraculeux", "locked": true}, {"text": "", "title": ""}], "prodiges": [{"bm": 0, "text": "", "image": null, "title": ""}, {"bm": 0, "text": "", "image": null, "title": ""}, {"bm": 0, "text": "", "image": null, "title": ""}, {"bm": 0, "text": "", "image": null, "title": ""}, {"bm": 0, "text": "", "image": null, "title": ""}], "historique": {"text": "Christóforos ho Mytilīnaîos, dit Christophe de Mitylène. Ventripotent quinquagénaire, moine barbu du mont Athos. Bibliothécaire exilé par les croisades, il s'est allié aux érudits de Bagdad pour poursuivre sa quête du savoir.", "title": "Historique"}, "histoiresCroisees": [], "dettes": [{"bm": -2, "id": "d_1", "text": "Elle m'a sauvé la vie à de nombreuses reprises.", "perso": "nuzha"}], "des": "0", "ether": "2", "occultation": "0", "wheelRot": 0, "accordion": {}, "envFichePw": "mdpj", "envFichePwGM": "mdpmj"};
-    const saved = sessionStorage.getItem('demo_sifhr');
-    const row = {
-      mot_de_passe: pw||'demo',
-      mot_de_passe_mj: 'demomj',
-      etat: saved ? JSON.parse(saved) : DEMO_INITIAL,
-      etat_origine: DEMO_INITIAL,
-      carte: null,
-      aventure_state: null
-    };
-    // Forcer la connexion en mode joueur
-    const _origPw = pw; pw = 'demo';
-    if (!row) {
-      err.textContent = 'Fiche introuvable : « ' + FICHE_ID + ' »';
-    } else {
-      const pwField = tryGM ? 'mot_de_passe_mj' : 'mot_de_passe';
-      if (row[pwField] !== pw) {
-        err.textContent = tryGM ? 'Mot de passe meneur incorrect.' : 'Mot de passe incorrect.';
-      } else {
-        authenticated = true;
-        octIsGM = tryGM;
-        isGM = tryGM; // sync pour buildAutoLoginParams
-        if(!tryGM) window._playerPw = pw;
-        document.getElementById('modal-overlay').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        showDiceFab();
-        showEnvFab();
-        if(tryGM){
-          document.getElementById('gm-bar').style.display='flex';
-          // Révéler les boutons MJ des sous-traits d'aptitude
-          document.querySelectorAll('.apt-subtrait-add-btn').forEach(btn=>btn.style.display='');
-          // Révéler les boutons bibliothèque et bm des accordéons enrichis
-          document.querySelectorAll('.acc-bib-btn').forEach(btn=>btn.style.display='');
-          document.querySelectorAll('.gm-bm-btn').forEach(btn=>btn.style.display='');
-          // MJ : afficher le display MJ, masquer le display joueur
-          document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='');
-          document.querySelectorAll('.bm-joueur-display').forEach(el=>el.style.display='none');
-          // Re-rendre dettes et histoires croisées avec les droits MJ
-          if(typeof renderDettes==='function') renderDettes();
-          if(typeof renderHistoiresCroisees==='function') renderHistoiresCroisees();
-          document.getElementById('perso-fab').style.display='flex';
-        } else {
-          // Joueur : masquer le display MJ (qui montre "0"), afficher uniquement le display joueur
-          document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='none');
-          // Désactiver l'édition des sections réservées au MJ
-          document.querySelectorAll('.gm-edit-only').forEach(el=>{
-            if(el.tagName==='INPUT'||el.tagName==='TEXTAREA') { el.readOnly=true; el.style.background='transparent'; el.style.borderColor='transparent'; }
-            else el.style.display='none';
-          });
-          document.getElementById('perso-fab').style.display='flex';
-        }
-        if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);
-        startRealtime();
-        // Démarrer le système de notifications après le login
-        setTimeout(()=>NotifSystem.start(), 3000);
-        // Mode vue ciblée depuis aventure.html
-        const viewMode=new URLSearchParams(location.search).get('view');
-        if(viewMode==='des'){
-          // Masquer tout sauf le lanceur
-          document.getElementById('app').style.display='none';
-          document.getElementById('gm-bar').style.display='none';
-          document.querySelectorAll('.fab-btn,#dice-fab,#env-fab,#carte-fab,#perso-fab').forEach(el=>el.style.display='none');
-          // Ouvrir directement le lanceur
-          setTimeout(()=>{
-            document.getElementById('dice-overlay').style.cssText='display:flex;position:fixed;inset:0;z-index:50;';
-            document.getElementById('dice-close').style.display='none'; // pas de fermeture
-            if(typeof openDice==='function') openDice();
-          },300);
-        }
-      }
-    }
-  } catch(e) {
-    err.textContent = 'Erreur réseau, réessaie.';
-    console.error(e);
-  }
-  btn.textContent = origText; btn.disabled = false;
+  if(btn){ btn.textContent='…'; btn.disabled=true; }
+  await doLoginWithPw('demo', false, null);
+  if(btn){ btn.textContent='Entrer'; btn.disabled=false; }
 }
 
-document.getElementById('modal-btn').addEventListener('click', ()=>doLogin(false));
-document.getElementById('modal-btn-gm').addEventListener('click', ()=>doLogin(true));
+// MODE DÉMO : auto-login immédiat au chargement
+window.addEventListener('load', ()=>doLogin(false));
+async function doLoginWithPw(pw, tryGM, resolvedPid){
+  const DEMO_INITIAL = {"tokens": {"feu": ["white", "white", "empty"], "bile_j": ["white", "empty", "empty"], "terre": ["white", "empty", "empty"], "bile_n": ["white", "black", "empty"], "eau": ["black", "empty", "empty"], "flegme": ["white", "empty", "empty"], "air": ["white", "empty", "empty"], "sang": ["white", "white", "empty"]}, "scores": {"air_0": "1", "air_1": "1", "eau_0": "1", "eau_1": "0", "feu_0": "1", "feu_1": "1", "sang_0": "0", "sang_1": "1", "sang_2": "'", "terre_0": "1", "terre_1": "0", "terre_2": "3", "bile_j_0": "1", "bile_j_1": "0", "bile_n_0": "0", "bile_n_1": "0", "flegme_0": "2", "flegme_1": "0"}, "aptitudes": {"0_0": true, "0_1": true, "1_0": true, "1_1": true, "2_0": true, "2_1": true, "2_2": true, "2_3": true, "3_0": true, "3_1": true, "3_2": true, "3_3": false, "4_0": true, "4_1": true, "4_2": false, "5_0": true, "5_1": true, "5_2": true, "5_3": true, "5_4": true, "6_0": true, "6_1": true, "6_2": true, "7_0": true, "7_1": true}, "envFiche": "env-test", "traits": [{"text": "Offre une Expertise dans le domaine de la traduction", "title": "Polyglotte", "locked": true}, {"text": "Offre une **Maîtrise** pour détecter et évaluer les valeurs de la Pneuma", "title": "Sensible à la Pneuma", "locked": true}, {"text": "Fixe un 9 avant toute Épreuve lors de ses relations avec les femmes", "title": "Misogyne", "locked": true}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}], "aptTraits": {"se_deplacer": [{"id": "t1", "text": "Pied bôt", "level": "malus-1", "title": "Pied bôt", "locked": false}, {"id": "t2", "text": "Offre une Expertise à toute Épreuve visant à esquiver les obstacles.", "level": null, "title": "Insaisissable", "locked": false}]}, "confrerie": [{"text": "La première des confréries, née au sein de la Maison de la Sagesse de Bagdad. Les érudits cultivent la pneuma entre la science et la connaissance intime du divin.", "title": "Érudits"}, {"text": "", "title": ""}, {"text": "", "title": ""}, {"text": "", "title": ""}], "equipement": [{"text": "", "title": "Bible écrite en grec"}, {"text": "de notes de traduction littéraire dans les trois langues connues (Rajoute 1 Dé de Maîtrise lors d'une traduction)", "title": "Des rouleaux personnels"}, {"text": "(Peut servir d'arme)", "title": "Bâton de pèlerin"}, {"text": "(Peut causer quelques ennuis sociaux selon les interlocuteurs)", "title": "Tenue de moine grec"}, {"text": "", "title": "Mule âgée"}, {"text": "", "title": ""}], "artefacts": [{"text": "Outil mécanique légèrement chargé de pneuma. Donne une maîtrise pour l'épreuve en Imaginer.", "title": "Stylet de lecture", "locked": true}, {"text": "En obtenant une réussite à une épreuve d'Occulter, on gagne un point d'éther supplémentaire donnant un résultat de 10 dans le Souffle.", "title": "Reliquaire portatif de Saint Christophe", "locked": true}, {"text": "Donne 1 Dé d'Expertise pour tout acte de perception et d'analyse de la Pneuma.", "title": "Bracelet de la Macchina", "locked": true}, {"text": "Prodiges — Souffle miraculeux : avec une Prouesse de Dévoiler (Air/Sang), permet de transformer toutes les valeurs récupérées dans la pneuma locale en 10.", "title": "Souffle miraculeux", "locked": true}, {"text": "", "title": ""}], "prodiges": [{"bm": 0, "text": "", "image": null, "title": ""}, {"bm": 0, "text": "", "image": null, "title": ""}, {"bm": 0, "text": "", "image": null, "title": ""}, {"bm": 0, "text": "", "image": null, "title": ""}, {"bm": 0, "text": "", "image": null, "title": ""}], "historique": {"text": "Christóforos ho Mytilīnaîos, dit Christophe de Mitylène. Ventripotent quinquagénaire, moine barbu du mont Athos. Bibliothécaire exilé par les croisades, il s'est allié aux érudits de Bagdad pour poursuivre sa quête du savoir.", "title": "Historique"}, "histoiresCroisees": [], "dettes": [{"bm": -2, "id": "d_1", "text": "Elle m'a sauvé la vie à de nombreuses reprises.", "perso": "nuzha"}], "des": "0", "ether": "2", "occultation": "0", "wheelRot": 0, "accordion": {}, "envFichePw": "mdpj", "envFichePwGM": "mdpmj"};
+  const saved = sessionStorage.getItem('demo_sifhr');
+  const etat = saved ? JSON.parse(saved) : DEMO_INITIAL;
+  authenticated = true;
+  isGM = false;
+  octIsGM = false;
+  window._playerPw = 'demo';
+  applyingRemote = false;
+  applyRemoteState(etat);
+  originalState = DEMO_INITIAL;
+  document.getElementById('modal-overlay').style.display='none';
+  document.getElementById('dice-fab').style.display='flex';
+  document.getElementById('env-fab').style.display='flex';
+  document.getElementById('carte-fab').style.display='flex';
+  document.getElementById('perso-fab').style.display='flex';
+  document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='none');
+  document.querySelectorAll('.gm-edit-only').forEach(el=>{
+    if(el.tagName==='INPUT'||el.tagName==='TEXTAREA'){el.readOnly=true;el.style.background='transparent';el.style.borderColor='transparent';}
+    else el.style.display='none';
+  });
+  if(typeof renderDettes==='function') renderDettes();
+  if(typeof renderHistoiresCroisees==='function') renderHistoiresCroisees();
+  setTimeout(()=>NotifSystem.start(),3000);
+}
 
-// ── Flag anti-boucle ───────────────────────────
+
 let applyingRemote = false;
 
 const CX=150,CY=150,OUTER_R=108,INNER_R=18,RINGS=5;
