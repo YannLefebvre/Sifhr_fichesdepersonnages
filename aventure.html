@@ -117,6 +117,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     <p>Identifiant de la fiche personnage</p>
     <input id="modal-fiche" class="modal-inp" type="text" placeholder="christophe" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
     <input id="modal-pw" class="modal-inp" type="password" placeholder="Mot de passe">
+    <input id="modal-session" class="modal-inp" type="text" placeholder="Code session (laisser vide pour nouvelle partie)" autocomplete="off" autocapitalize="none" style="font-size:.78rem;color:var(--ink3);">
     <button class="modal-btn" onclick="doLogin()">Commencer</button>
     <div id="modal-err"></div>
   </div>
@@ -126,6 +127,10 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   <div id="story-header">
     <div id="story-title">Sifhr — Introduction</div>
     <div id="story-subtitle">Aventure en solo · Yann Lefebvre</div>
+    <div id="session-info" style="display:none;margin-top:.4rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;">
+      Session : <span id="session-code" style="color:var(--accent);"></span>
+      <button onclick="restartAdventure()" style="margin-left:.8rem;font-family:'Cinzel',serif;font-size:.62rem;padding:2px 7px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">↺ Nouvelle partie</button>
+    </div>
   </div>
   <div id="status-bar">
     <div class="stat-group">
@@ -301,32 +306,64 @@ function initIndexes(){
 document.getElementById('modal-pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('modal-fiche').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('modal-pw').focus();});
 
+// ── Génère un code session court ──
+function genSessionCode(){
+  return Math.random().toString(36).substring(2,6).toUpperCase();
+}
+
+let SESSION_FICHE_ID=''; // ID de la fiche session dans Supabase
+
 async function doLogin(){
   const fiche=document.getElementById('modal-fiche').value.trim();
   const pw=document.getElementById('modal-pw').value.trim();
+  const sessionCode=document.getElementById('modal-session').value.trim().toUpperCase();
   const err=document.getElementById('modal-err');
   err.textContent='';
   if(!fiche||!pw){err.textContent='Remplis les deux champs.';return;}
   const btn=document.querySelector('.modal-btn');btn.textContent='…';btn.disabled=true;
   try{
+    // Vérifier identifiant + mdp sur la fiche personnage
     const row=await SB.get(fiche);
     if(!row){err.textContent='Fiche introuvable : «'+fiche+'»';}
     else if(row.mot_de_passe!==pw){err.textContent='Mot de passe incorrect.';}
     else{
-      FICHE_ID=fiche;ficheEtat=row.etat||{};
-      _fichePw=pw; // Stocker pour les fenêtres ciblées
+      FICHE_ID=fiche;
+      ficheEtat=row.etat||{};
+      _fichePw=pw;
+
+      // Déterminer l'ID de session
+      let code=sessionCode;
+      if(!code){
+        code=genSessionCode();
+      }
+      SESSION_FICHE_ID='aventure-'+fiche+'-'+code;
+
+      // Afficher le code session
+      document.getElementById('session-code').textContent=SESSION_FICHE_ID;
+      document.getElementById('session-info').style.display='block';
+
       document.getElementById('modal-overlay').style.display='none';
       document.getElementById('app').style.display='block';
       document.getElementById('fiche-bar').style.display='flex';
       initIndexes();
-      if(row.aventure_state){
+
+      // Charger ou créer la fiche session
+      const sessionRow=await SB.get(SESSION_FICHE_ID);
+      if(sessionRow&&sessionRow.aventure_state){
         try{
-          const saved=typeof row.aventure_state==='string'?JSON.parse(row.aventure_state):row.aventure_state;
-          if(saved&&saved.currentSeq&&confirm('Reprendre votre partie en cours ?')){
-            Object.assign(gameState,saved);renderSequence(gameState.currentSeq);renderStatusBar();startRealtime();return;
+          const saved=typeof sessionRow.aventure_state==='string'
+            ?JSON.parse(sessionRow.aventure_state):sessionRow.aventure_state;
+          if(saved&&saved.currentSeq){
+            Object.assign(gameState,saved);
+            renderSequence(gameState.currentSeq);
+            renderStatusBar();
+            startRealtime();
+            btn.textContent='Commencer';btn.disabled=false;
+            return;
           }
         }catch(e){}
       }
+      // Nouvelle partie
       syncFromOctogone();
       renderSequence(STORY_DATA.firstSequence);
       renderStatusBar();
@@ -431,33 +468,79 @@ async function openOct(){
 function closeOct(){document.getElementById('oct-overlay').style.display='none';}
 
 // ── Aptitudes ──
+// Noms des aptitudes (correspondance clé → label)
+const APT_DISPLAY_NAMES = {
+  se_deplacer:'Se déplacer', se_mesurer:'Se mesurer', occulter:'Occulter',
+  imaginer:'Imaginer', fabriquer:'Fabriquer', devoiler:'Dévoiler',
+  resister:'Résister', ravir:'Ravir'
+};
+// Nombre de cases par aptitude
+const APT_MAX_SQUARES = 6;
+
 async function openApt(){
   document.getElementById('apt-overlay').style.display='flex';
   const row=await SB.get(FICHE_ID);
   if(!row||!row.etat)return;
-  const apts=row.etat.aptitudes||{};
+  // aptitudes = {se_deplacer_0: true, se_deplacer_1: true, ...}
+  // Calculer le score de chaque aptitude en comptant les cases cochées
+  const aptRaw=row.etat.aptitudes||{};
   const aptTraits=row.etat.aptTraits||{};
+  // Grouper par aptitude
+  const scores={};
+  Object.entries(aptRaw).forEach(([key,val])=>{
+    if(!val) return;
+    // Format: aptKey_squareIndex
+    const parts=key.split('_');
+    // Reconstituer la clé aptitude (peut contenir des _)
+    const sqIdx=parts[parts.length-1];
+    const aptKey=parts.slice(0,-1).join('_');
+    if(!isNaN(sqIdx)){
+      scores[aptKey]=(scores[aptKey]||0)+1;
+    }
+  });
   const cont=document.getElementById('fiche-apt-content');
   cont.innerHTML='';
-  const aptKeys=Object.keys(apts).filter(k=>apts[k]?.score>0);
-  if(!aptKeys.length){cont.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;">Aucune aptitude développée.</p>';return;}
+  const aptKeys=Object.keys(APT_DISPLAY_NAMES);
+  let hasAny=false;
   aptKeys.forEach(k=>{
-    const apt=apts[k];
-    const div=document.createElement('div');
-    div.style.cssText='margin-bottom:.8rem;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:6px;background:var(--section-bg);';
-    const head=document.createElement('div');head.style.cssText='display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;';
-    const name=document.createElement('span');name.style.cssText='font-family:Cinzel,serif;font-size:.78rem;color:var(--accent);';name.textContent=k.replace('_',' ');
-    const score=document.createElement('span');score.style.cssText='font-family:Cinzel,serif;font-size:.72rem;padding:1px 7px;border-radius:8px;border:1px solid var(--accent);color:var(--accent);';score.textContent=apt.score||0;
-    head.appendChild(name);head.appendChild(score);div.appendChild(head);
-    // Traits liés
+    const score=scores[k]||0;
     const traits=(aptTraits[k]||[]).filter(t=>t.title||t.text);
+    if(score===0&&!traits.length) return;
+    hasAny=true;
+    const div=document.createElement('div');
+    div.style.cssText='margin-bottom:.7rem;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:6px;background:var(--section-bg);';
+    // En-tête : nom + cases visuelles
+    const head=document.createElement('div');head.style.cssText='display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;flex-wrap:wrap;';
+    const name=document.createElement('span');name.style.cssText='font-family:Cinzel,serif;font-size:.78rem;color:var(--accent);flex:1;';
+    name.textContent=APT_DISPLAY_NAMES[k]||k.replace(/_/g,' ');
+    // Cases noires visuelles
+    const cases=document.createElement('div');cases.style.cssText='display:flex;gap:3px;';
+    for(let i=0;i<APT_MAX_SQUARES;i++){
+      const sq=document.createElement('span');
+      sq.style.cssText='width:10px;height:10px;border-radius:2px;border:1px solid #6a4a2a;'
+        +(i<score?'background:#e8d5a0;':'background:#1a1208;');
+      cases.appendChild(sq);
+    }
+    head.appendChild(name);head.appendChild(cases);div.appendChild(head);
+    // Traits liés
     traits.forEach(t=>{
-      const tr=document.createElement('div');tr.style.cssText='font-size:.8rem;color:var(--ink2);padding:.2rem 0;border-top:1px solid var(--border2);margin-top:.2rem;';
-      tr.textContent=(t.title||'Trait')+(t.level?' ('+t.level+')':'');
+      const tr=document.createElement('div');
+      tr.style.cssText='font-size:.82rem;color:var(--ink2);padding:.25rem .3rem;border-top:1px solid var(--border2);margin-top:.2rem;line-height:1.4;';
+      const tlabel=document.createElement('span');tlabel.style.cssText='font-family:Cinzel,serif;font-size:.72rem;color:var(--ink);';tlabel.textContent=t.title||'Trait';
+      tr.appendChild(tlabel);
+      if(t.level){
+        const lvl=document.createElement('span');lvl.style.cssText='font-family:Cinzel,serif;font-size:.62rem;padding:1px 5px;border-radius:8px;margin-left:.4rem;background:var(--input-bg);color:var(--ink3);';
+        lvl.textContent=t.level;tr.appendChild(lvl);
+      }
+      if(t.text){
+        const txt=document.createElement('div');txt.style.cssText='font-size:.78rem;color:var(--ink3);margin-top:.15rem;font-style:italic;';
+        txt.textContent=t.text.substring(0,100)+(t.text.length>100?'…':'');tr.appendChild(txt);
+      }
       div.appendChild(tr);
     });
     cont.appendChild(div);
   });
+  if(!hasAny) cont.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;">Aucune aptitude d\u00e9velopp\u00e9e pour l\u2019instant.</p>';
 }
 function closeApt(){document.getElementById('apt-overlay').style.display='none';}
 
@@ -821,6 +904,12 @@ function _renderEnding(seq){
 }
 
 function restartAdventure(){
+  if(!confirm('Commencer une nouvelle partie ? Votre progression actuelle sera conservée sous le code «'+SESSION_FICHE_ID+'».')) return;
+  // Créer un nouveau code session
+  const newCode=genSessionCode();
+  SESSION_FICHE_ID='aventure-'+FICHE_ID+'-'+newCode;
+  document.getElementById('session-code').textContent=SESSION_FICHE_ID;
+  // Réinitialiser l'état
   initIndexes();syncFromOctogone();gameState.history=[];
   renderSequence(STORY_DATA.firstSequence);renderStatusBar();
 }
@@ -831,8 +920,13 @@ function scheduleSave(){
   saveTimer=setTimeout(async()=>{
     const ind=document.getElementById('save-indicator');
     ind.textContent='Sauvegarde…';ind.classList.add('show');
+    const saveId=SESSION_FICHE_ID||FICHE_ID;
     try{
-      await SB.patch(FICHE_ID,{aventure_state:JSON.stringify(gameState)});
+      await SB.patch(saveId,{
+        id:saveId,
+        mot_de_passe:'aventure', // mdp générique pour les fiches session
+        aventure_state:JSON.stringify(gameState)
+      });
       ind.textContent='Sauvegardé ✓';
       setTimeout(()=>ind.classList.remove('show'),1500);
     }catch(e){ind.textContent='Hors-ligne';setTimeout(()=>ind.classList.remove('show'),2000);}
