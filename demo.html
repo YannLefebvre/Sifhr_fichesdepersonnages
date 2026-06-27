@@ -826,6 +826,7 @@
   }
   /* Boutons FAB environnement et carte */
   #env-fab {
+    display:none !important;
     position:fixed; bottom:1.2rem; left:4.8rem;
     width:52px; height:52px; border-radius:50%;
     background:#1a4a8a; color:#f5f0e8;
@@ -838,6 +839,7 @@
   #env-fab:hover { background:#123a6a; }
   #env-fab.open { background:#0a2a4a; }
   #carte-fab {
+    display:none !important;
     position:fixed; bottom:1.2rem; left:8.4rem;
     width:52px; height:52px; border-radius:50%;
     background:#1a6b4a; color:#f5f0e8;
@@ -969,6 +971,7 @@
 
   /* ── Panneau Personnages ── */
   #perso-fab {
+    display:none !important;
     position:fixed; bottom:1.2rem; left:12rem;
     width:52px; height:52px; border-radius:50%;
     background:#1a4a3a; color:#f5f0e8;
@@ -2037,13 +2040,19 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
   octIsGM = false;
   window._playerPw = 'demo';
   applyingRemote = false;
+  // Afficher l'app
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('modal-overlay').style.display = 'none';
+  // Afficher uniquement le lanceur de dés
+  document.getElementById('dice-fab').style.display = 'flex';
+  // Construire les sections UI avant d'appliquer l'état
   applyRemoteState(etat);
   originalState = DEMO_INITIAL;
   document.getElementById('modal-overlay').style.display='none';
   document.getElementById('dice-fab').style.display='flex';
-  document.getElementById('env-fab').style.display='flex';
-  document.getElementById('carte-fab').style.display='flex';
-  document.getElementById('perso-fab').style.display='flex';
+  // DEMO disabled: document.getElementById('env-fab').style.display='flex';
+  // DEMO disabled: document.getElementById('carte-fab').style.display='flex';
+  // DEMO disabled: document.getElementById('perso-fab').style.display='flex';
   document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='none');
   document.querySelectorAll('.gm-edit-only').forEach(el=>{
     if(el.tagName==='INPUT'||el.tagName==='TEXTAREA'){el.readOnly=true;el.style.background='transparent';el.style.borderColor='transparent';}
