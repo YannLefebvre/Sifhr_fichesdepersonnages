@@ -3813,8 +3813,9 @@ function startRealtime(){
           const newEtat=m.payload?.record?.etat;
           if(newEtat) applyRemoteState(newEtat);
           // Vérifier si on est observateur d'un dice_share
-          if(typeof checkIncomingDiceShare==='function'&&m.payload?.record)
+          if(typeof checkIncomingDiceShare==='function'&&m.payload?.record){
             checkIncomingDiceShare(m.payload.record);
+          }
         }
       } catch(err){}
     };
@@ -3860,6 +3861,7 @@ function selectDiceRole(role){
   dCurrentRole=role;
   document.getElementById('dice-role-screen').style.display='none';
   document.getElementById('dice-app').style.display='block';
+  if(role==='launcher') dActivateShare();
   const badge=document.getElementById('drole-badge');
   badge.textContent=role==='launcher'?'🎯 Lanceur':'👁️ Spectateur';
   badge.style.background=role==='launcher'?'#e6f1fb':'#e1f5ee';
@@ -7181,7 +7183,9 @@ async function dPushDiceShare(){
       ts: Date.now()
     };
     try{
-      await SB.upsert(FICHE_ID, {...state, dice_share: shareData});
+      // dice_share va dans state.dice_share (colonne etat de Supabase)
+      state.dice_share = shareData;
+      await SB.upsert(FICHE_ID, state);
     }catch(e){}
   }, 300);
 }
@@ -7198,7 +7202,8 @@ async function dDeactivateShare(){
   _diceShareLoaded = false;
   document.getElementById('dice-share-panel').classList.remove('open');
   try{
-    await SB.upsert(FICHE_ID, {...state, dice_share:{active:false, observers:_diceShareObservers, fiche:FICHE_ID, ts:Date.now()}});
+    state.dice_share = {active:false, observers:_diceShareObservers, fiche:FICHE_ID, ts:Date.now()};
+    await SB.upsert(FICHE_ID, state);
   }catch(e){}
 }
 
@@ -7215,7 +7220,7 @@ function openObserver(ficheId){
   document.getElementById('obs-status').textContent = 'En direct';
   document.getElementById('obs-overlay').classList.add('open');
   // Charger l'état initial
-  SB.get(ficheId).then(row=>{ if(row?.dice_share) renderObserverState(row.dice_share); });
+  SB.get(ficheId).then(row=>{ const ds=row?.etat?.dice_share||row?.dice_share; if(ds) renderObserverState(ds); });
   // Démarrer le polling Realtime sur cette fiche
   dStartObserverRealtime(ficheId);
 }
@@ -7239,7 +7244,7 @@ function dStartObserverRealtime(ficheId){
     try{
       const m=JSON.parse(e.data);
       if((m.event==='UPDATE'||m.event==='INSERT')&&m.payload?.record?.etat){
-        const ds = m.payload.record.dice_share||m.payload.record.etat?.dice_share;
+        const ds = m.payload.record.etat?.dice_share||m.payload.record.dice_share;
         if(ds) renderObserverState(ds);
         if(ds&&!ds.active){
           document.getElementById('obs-status').textContent='Lancer terminé';
@@ -7284,7 +7289,8 @@ function renderObserverState(ds){
 
 // ── Vérifier à chaque Realtime si on est observateur d'un lancer ──
 function checkIncomingDiceShare(record){
-  const ds = record.dice_share;
+  // dice_share est dans etat (colonne Supabase), pas à la racine du record
+  const ds = record.etat?.dice_share || record.dice_share;
   if(!ds||!ds.active) return;
   if(ds.fiche===FICHE_ID) return; // c'est notre propre lancer
   if(!(ds.observers||[]).includes(FICHE_ID)) return; // on n'est pas observateur

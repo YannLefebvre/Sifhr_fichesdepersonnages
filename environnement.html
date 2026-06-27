@@ -2243,7 +2243,7 @@ function mjStartObservingFiches(){
   const personnes = state.fichePersonnages||[];
   personnes.forEach(p=>{
     const ficheId = typeof p==='string'?p:(p.id||p);
-    if(ficheId) mjObserveFiche(ficheId);
+    if(ficheId && ficheId!==FICHE_ID) mjObserveFiche(ficheId);
   });
 }
 
@@ -2263,9 +2263,10 @@ function mjObserveFiche(ficheId){
         const m=JSON.parse(e.data);
         if(m.event==='UPDATE'||m.event==='INSERT'){
           const record=m.payload?.record;
-          if(record?.dice_share) mjHandleDiceShare(ficheId, record.dice_share);
+          const mj_ds = record?.etat?.dice_share || record?.dice_share;
+          if(mj_ds) mjHandleDiceShare(ficheId, mj_ds);
           // Indicateur sur la liste personnages
-          mjUpdateDiceIndicator(ficheId, record?.dice_share?.active||false);
+          mjUpdateDiceIndicator(ficheId, mj_ds?.active||false);
         }
       }catch(err){}
     };
