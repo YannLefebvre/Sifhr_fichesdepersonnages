@@ -6866,5 +6866,39 @@ function _dfbSection(box, label, text){
     <button class="dfb-close-btn" onclick="document.getElementById('duel-feedback-overlay').classList.remove('open')">Fermer</button>
   </div>
 </div>
+
+<script>
+
+// ── Réception des messages depuis aventure.html ──
+window.addEventListener('message',(e)=>{
+  if(!e.data||e.data.type!=='sifhr-focus') return;
+  const section=e.data.section;
+  if(section==='all') return;
+  if(section==='des'){
+    // Ouvrir le lanceur de dés
+    if(typeof openDice==='function') openDice();
+    return;
+  }
+  // Ouvrir le panneau correspondant
+  const panelMap={
+    octogone:null, // scroll vers le haut
+    aptitudes:'aptitudes-panel',
+    equipement:'equipement-panel',
+    historique:'historique-panel',
+  };
+  const panelId=panelMap[section];
+  if(panelId===undefined) return;
+  if(panelId===null){ window.scrollTo({top:0,behavior:'smooth'}); return; }
+  // Ouvrir l'accordéon si fermé
+  const panel=document.getElementById(panelId);
+  if(panel){
+    const title=panel.previousElementSibling;
+    if(title&&!panel.classList.contains('open')){
+      title.click();
+    }
+    setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'start'}),200);
+  }
+});
+</script>
 </body>
 </html>
