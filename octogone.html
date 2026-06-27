@@ -1059,6 +1059,41 @@
   .dfb-close-btn { width:100%; font-family:'Cinzel',serif; font-size:.75rem; padding:.5rem;
     border:1px solid var(--border); border-radius:4px; background:var(--input-bg);
     color:var(--ink2); cursor:pointer; margin-top:.6rem; letter-spacing:.05em; }
+
+  /* ── Partage de lancer ── */
+  #dice-share-btn { font-family:'Cinzel',serif; font-size:.72rem; padding:4px 10px;
+    border:1px solid var(--border); border-radius:12px; background:none; color:var(--ink3);
+    cursor:pointer; margin-bottom:.4rem; display:flex; align-items:center; gap:.3rem; }
+  #dice-share-btn.active { border-color:#4a90d9; color:#4a90d9; background:rgba(74,144,217,.08); }
+  #dice-share-panel { display:none; background:var(--section-bg); border:1px solid #4a90d9;
+    border-radius:7px; padding:.5rem .7rem; margin-bottom:.5rem; }
+  #dice-share-panel.open { display:block; }
+  .share-perso-list { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.3rem; }
+  .share-perso-btn { font-family:'Cinzel',serif; font-size:.65rem; padding:3px 9px;
+    border:1px solid var(--border); border-radius:10px; background:var(--input-bg);
+    color:var(--ink3); cursor:pointer; transition:all .12s; }
+  .share-perso-btn.selected { border-color:#4a90d9; background:rgba(74,144,217,.15); color:#4a90d9; }
+  /* ── Vue observateur ── */
+  #obs-overlay { position:fixed; inset:0; background:rgba(10,7,3,0.85); display:none;
+    align-items:flex-end; justify-content:center; z-index:480; padding-bottom:1.5rem; }
+  #obs-overlay.open { display:flex; }
+  #obs-box { background:var(--bg); border:1px solid #4a90d9; border-radius:10px;
+    padding:1rem 1.2rem; max-width:420px; width:94vw; max-height:82vh; overflow-y:auto; }
+  .obs-header { font-family:'Cinzel',serif; color:#4a90d9; font-size:.82rem; letter-spacing:.08em;
+    display:flex; align-items:center; margin-bottom:.7rem; }
+  .obs-close { background:none; border:none; font-size:1rem; cursor:pointer; color:var(--ink3); margin-left:auto; }
+  .obs-dice-row { display:flex; flex-wrap:wrap; gap:.3rem; margin:.4rem 0; }
+  .obs-die { width:32px; height:32px; border-radius:5px; display:flex; align-items:center;
+    justify-content:center; font-size:.9rem; font-weight:bold; border:2px solid transparent; }
+  .obs-die.white { background:#f5f0e8; border-color:#c8a060; color:#1a1510; }
+  .obs-die.red { background:#8b2020; border-color:#c85a52; color:#fff; }
+  .obs-die.locked { opacity:.55; }
+  .obs-verdict { font-family:'Cinzel',serif; font-size:.78rem; padding:.3rem .6rem;
+    border-radius:5px; margin-top:.4rem; text-align:center; }
+  .obs-verdict.reussite { background:#d4edda; color:#1a5c2a; }
+  .obs-verdict.echec { background:#fde8e8; color:#8b2020; }
+  .obs-label { font-family:'Cinzel',serif; font-size:.65rem; color:var(--ink3);
+    letter-spacing:.05em; text-transform:uppercase; margin-top:.4rem; margin-bottom:.15rem; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -1861,6 +1896,16 @@ async function xferClearRequest(){
       </div>
       <div id="dsuccess-result" class="dsuccess-result" style="display:none;"></div>
       <div id="dlock-explain" class="dlock-explain" style="display:none;"></div>
+      <!-- Partage de lancer -->
+      <button id="dice-share-btn" onclick="dToggleSharePanel()" title="Partager ce lancer">
+        👁 Partager ce lancer <span id="dice-share-count" style="display:none;background:#4a90d9;color:#fff;border-radius:8px;padding:0 5px;font-size:.6rem;"></span>
+      </button>
+      <div id="dice-share-panel">
+        <div style="font-family:'Cinzel',serif;font-size:.65rem;color:#4a90d9;letter-spacing:.05em;margin-bottom:.3rem;">Personnages qui voient ce lancer :</div>
+        <div class="share-perso-list" id="share-perso-list">
+          <span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Chargement…</span>
+        </div>
+      </div>
       <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
       <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
     <div id="dice-legend" style="display:none;margin-top:.6rem;padding:.5rem .6rem;background:#f0ede6;border-radius:6px;font-size:.72rem;color:#6b5d4f;line-height:1.6;">
@@ -3767,6 +3812,9 @@ function startRealtime(){
         if(m.event==='UPDATE'||m.event==='INSERT'){
           const newEtat=m.payload?.record?.etat;
           if(newEtat) applyRemoteState(newEtat);
+          // Vérifier si on est observateur d'un dice_share
+          if(typeof checkIncomingDiceShare==='function'&&m.payload?.record)
+            checkIncomingDiceShare(m.payload.record);
         }
       } catch(err){}
     };
@@ -3801,6 +3849,7 @@ function openDice(){
 function closeDice(){
   document.getElementById('dice-fab').classList.remove('open');
   document.getElementById('dice-overlay').classList.remove('open');
+  if(dCurrentRole==='launcher') dDeactivateShare();
 }
 function toggleDice(){
   const ol=document.getElementById('dice-overlay');
@@ -3923,6 +3972,7 @@ function dPushState(){
   dIsSyncing=true;
   dSetSync('syncing','Envoi…');
   saveState(); // sauvegarde tout l'état fiche + dés
+  dPushDiceShare(); // partager aux observateurs
   setTimeout(()=>{ dIsSyncing=false; dSetSync('live','En direct'); },700);
 }
 
@@ -7049,6 +7099,201 @@ function _dfbSection(box, label, text){
 
 <script>
 
+
+// ══════════════════════════════════════════════
+//   PARTAGE DE LANCER (dice_share)
+// ══════════════════════════════════════════════
+
+let _diceShareObservers = []; // IDs des personnages qui voient ce lancer
+let _diceShareLoaded = false;
+let _diceShareActive = false;
+let _diceShareDebounce = null;
+
+// ── Ouvrir/fermer le panel de sélection des observateurs ──
+async function dToggleSharePanel(){
+  const panel = document.getElementById('dice-share-panel');
+  const btn = document.getElementById('dice-share-btn');
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  btn.classList.toggle('active', !isOpen || _diceShareObservers.length > 0);
+  if(!isOpen && !_diceShareLoaded) await dLoadSharePersonnes();
+}
+
+async function dLoadSharePersonnes(){
+  _diceShareLoaded = true;
+  const list = document.getElementById('share-perso-list');
+  const personnes = await getPersonnesEnv();
+  list.innerHTML = '';
+  if(!personnes.length){
+    list.innerHTML = '<span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Aucun personnage lié à cet environnement.</span>';
+    return;
+  }
+  personnes.forEach(p=>{
+    const btn = document.createElement('button');
+    btn.className = 'share-perso-btn' + (_diceShareObservers.includes(p.id)?' selected':'');
+    btn.textContent = p.id;
+    btn.addEventListener('click',()=>{
+      if(_diceShareObservers.includes(p.id)){
+        _diceShareObservers = _diceShareObservers.filter(id=>id!==p.id);
+        btn.classList.remove('selected');
+      } else {
+        _diceShareObservers.push(p.id);
+        btn.classList.add('selected');
+      }
+      dUpdateShareCount();
+      dPushDiceShare(); // Mettre à jour en temps réel
+    });
+    list.appendChild(btn);
+  });
+}
+
+function dUpdateShareCount(){
+  const count = _diceShareObservers.length;
+  const el = document.getElementById('dice-share-count');
+  const btn = document.getElementById('dice-share-btn');
+  if(count > 0){
+    el.textContent = count; el.style.display = '';
+    btn.classList.add('active');
+  } else {
+    el.style.display = 'none';
+    btn.classList.remove('active');
+  }
+}
+
+// ── Écrire dice_share sur Supabase (debounce 300ms) ──
+async function dPushDiceShare(){
+  clearTimeout(_diceShareDebounce);
+  _diceShareDebounce = setTimeout(async ()=>{
+    const s = dS();
+    if(!s) return;
+    const shareData = {
+      active: _diceShareActive,
+      observers: _diceShareObservers,
+      fiche: FICHE_ID,
+      dice: s.dice||[],
+      whites: s.whites||0,
+      reds: s.reds||0,
+      rolled: s.rolled||false,
+      aptKey: s._aptKey||null,
+      aptLabel: s._aptLabel||null,
+      successes: s.successes||[],
+      chosenVal: s.chosenVal||null,
+      ts: Date.now()
+    };
+    try{
+      await SB.upsert(FICHE_ID, {...state, dice_share: shareData});
+    }catch(e){}
+  }, 300);
+}
+
+// ── Activer le share quand le lanceur s'ouvre (rôle launcher) ──
+function dActivateShare(){
+  _diceShareActive = true;
+  dPushDiceShare();
+}
+
+// ── Désactiver quand le lanceur se ferme ──
+async function dDeactivateShare(){
+  _diceShareActive = false;
+  _diceShareLoaded = false;
+  document.getElementById('dice-share-panel').classList.remove('open');
+  try{
+    await SB.upsert(FICHE_ID, {...state, dice_share:{active:false, observers:_diceShareObservers, fiche:FICHE_ID, ts:Date.now()}});
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════
+//   VUE OBSERVATEUR (reçue via Realtime ou directement)
+// ══════════════════════════════════════════════
+
+let _obsSourceFiche = null;
+let _obsRealtime = null;
+
+function openObserver(ficheId){
+  _obsSourceFiche = ficheId;
+  document.getElementById('obs-fiche-label').textContent = ficheId;
+  document.getElementById('obs-status').textContent = 'En direct';
+  document.getElementById('obs-overlay').classList.add('open');
+  // Charger l'état initial
+  SB.get(ficheId).then(row=>{ if(row?.dice_share) renderObserverState(row.dice_share); });
+  // Démarrer le polling Realtime sur cette fiche
+  dStartObserverRealtime(ficheId);
+}
+
+function closeObserver(){
+  document.getElementById('obs-overlay').classList.remove('open');
+  _obsSourceFiche = null;
+  if(_obsRealtime){ _obsRealtime.close(); _obsRealtime=null; }
+}
+
+function dStartObserverRealtime(ficheId){
+  if(_obsRealtime) _obsRealtime.close();
+  const wsUrl = SUPABASE_URL.replace('https://','wss://')
+    +'/realtime/v1/websocket?apikey='+SUPABASE_KEY+'&vsn=1.0.0';
+  const ws = new WebSocket(wsUrl);
+  ws.onopen=()=>{
+    ws.send(JSON.stringify({topic:'realtime:public:fiches:id=eq.'+ficheId,event:'phx_join',payload:{},ref:'obs1'}));
+    _obsRealtime = ws;
+  };
+  ws.onmessage=(e)=>{
+    try{
+      const m=JSON.parse(e.data);
+      if((m.event==='UPDATE'||m.event==='INSERT')&&m.payload?.record?.etat){
+        const ds = m.payload.record.dice_share||m.payload.record.etat?.dice_share;
+        if(ds) renderObserverState(ds);
+        if(ds&&!ds.active){
+          document.getElementById('obs-status').textContent='Lancer terminé';
+        }
+      }
+    }catch(err){}
+  };
+  ws.onclose=()=>{ if(_obsSourceFiche===ficheId) setTimeout(()=>dStartObserverRealtime(ficheId),2000); };
+}
+
+function renderObserverState(ds){
+  if(!ds) return;
+  // Aptitude
+  document.getElementById('obs-apt').textContent = ds.aptLabel||ds.aptKey||'Libre';
+  // Dés
+  const diceRow = document.getElementById('obs-dice-row');
+  diceRow.innerHTML='';
+  (ds.dice||[]).forEach(d=>{
+    const el=document.createElement('div');
+    const col=d.color==='red'?'red':'white';
+    el.className='obs-die '+col+(d.locked?' locked':'');
+    el.textContent=d.value||'?';
+    el.title=(d.locked?'Verrouillé · ':'')+col;
+    diceRow.appendChild(el);
+  });
+  // Succès
+  const succEl=document.getElementById('obs-successes');
+  if(ds.rolled&&ds.successes&&ds.successes.length){
+    succEl.textContent=ds.successes.map(s=>`${s.count} réussite(s) sur ${s.val}`).join(' · ');
+  } else if(!ds.rolled){ succEl.textContent='En attente du lancer…'; }
+  else { succEl.textContent=''; }
+  // Verdict
+  const vEl=document.getElementById('obs-verdict-el');
+  vEl.innerHTML='';
+  if(ds.chosenVal){
+    const v=document.createElement('div');
+    v.className='obs-verdict '+(ds.chosenVal?'reussite':'echec');
+    v.textContent=ds.chosenVal?'✓ Réussite validée':'✕ Échec';
+    vEl.appendChild(v);
+  }
+}
+
+// ── Vérifier à chaque Realtime si on est observateur d'un lancer ──
+function checkIncomingDiceShare(record){
+  const ds = record.dice_share;
+  if(!ds||!ds.active) return;
+  if(ds.fiche===FICHE_ID) return; // c'est notre propre lancer
+  if(!(ds.observers||[]).includes(FICHE_ID)) return; // on n'est pas observateur
+  // Ouvrir la vue observateur si pas déjà ouverte sur cette fiche
+  if(_obsSourceFiche!==ds.fiche){
+    openObserver(ds.fiche);
+  }
+}
+
 // ── Réception des messages depuis aventure.html ──
 window.addEventListener('message',(e)=>{
   if(!e.data||e.data.type!=='sifhr-focus') return;
@@ -7080,5 +7325,22 @@ window.addEventListener('message',(e)=>{
   }
 });
 </script>
+
+<!-- Overlay observateur lanceur -->
+<div id="obs-overlay">
+  <div id="obs-box">
+    <div class="obs-header">
+      👁 Lancer de <span id="obs-fiche-label" style="margin-left:.4rem;color:var(--ink);"></span>
+      <span id="obs-status" style="font-size:.65rem;color:var(--ink3);margin-left:.5rem;font-style:italic;"></span>
+      <button class="obs-close" onclick="closeObserver()">✕ Fermer</button>
+    </div>
+    <div class="obs-label">Aptitude</div>
+    <div id="obs-apt" style="font-family:'Crimson Text',serif;font-size:.9rem;color:var(--ink2);">—</div>
+    <div class="obs-label" style="margin-top:.5rem;">Dés</div>
+    <div class="obs-dice-row" id="obs-dice-row"></div>
+    <div id="obs-successes" style="font-family:'Cinzel',serif;font-size:.75rem;color:var(--ink3);margin-top:.3rem;"></div>
+    <div id="obs-verdict-el"></div>
+  </div>
+</div>
 </body>
 </html>

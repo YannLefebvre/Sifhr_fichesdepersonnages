@@ -656,6 +656,32 @@ async function gmReset(){
     letter-spacing:.08em; flex:1; }
   #duel-close { background:none; border:none; font-size:1.1rem; cursor:pointer; color:var(--ink3); }
   #duel-iframe { flex:1; border:none; width:100%; }
+
+  /* ── Indicateur dice_share dans la liste personnages ── */
+  .fiche-dice-indicator { display:none; font-size:.7rem; color:#4a90d9;
+    animation:pulse 1.5s infinite; margin-left:.3rem; }
+  .fiche-dice-indicator.active { display:inline; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  /* ── Overlay observateur MJ ── */
+  #mj-obs-overlay { position:fixed; bottom:1.5rem; right:1.5rem; z-index:400;
+    display:none; flex-direction:column; gap:.5rem; max-width:360px; width:94vw; }
+  #mj-obs-overlay.open { display:flex; }
+  .mj-obs-card { background:var(--bg); border:1.5px solid #4a90d9; border-radius:10px;
+    padding:.8rem 1rem; box-shadow:0 4px 20px rgba(0,0,0,0.3); }
+  .mj-obs-card-header { font-family:'Cinzel',serif; color:#4a90d9; font-size:.78rem;
+    display:flex; align-items:center; margin-bottom:.5rem; }
+  .mj-obs-close { background:none; border:none; font-size:.9rem; cursor:pointer;
+    color:var(--ink3); margin-left:auto; }
+  .mj-obs-dice-row { display:flex; flex-wrap:wrap; gap:.25rem; margin:.3rem 0; }
+  .mj-obs-die { width:28px; height:28px; border-radius:4px; display:flex; align-items:center;
+    justify-content:center; font-size:.8rem; font-weight:bold; border:2px solid transparent; }
+  .mj-obs-die.white { background:#f5f0e8; border-color:#c8a060; color:#1a1510; }
+  .mj-obs-die.red { background:#8b2020; border-color:#c85a52; color:#fff; }
+  .mj-obs-die.locked { opacity:.55; }
+  .mj-obs-verdict { font-family:'Cinzel',serif; font-size:.72rem; padding:.25rem .5rem;
+    border-radius:4px; margin-top:.3rem; text-align:center; }
+  .mj-obs-verdict.reussite { background:#d4edda; color:#1a5c2a; }
+  .mj-obs-verdict.echec { background:#fde8e8; color:#8b2020; }
 </style>
 </head>
 <body>
@@ -1502,6 +1528,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           pneuRenderButtons();
         }
         startRealtime();
+        setTimeout(startMjDiceObservation, 500); // observer les lancers des joueurs
       }
     }
   }catch(e){err.textContent='Erreur réseau.';}
@@ -2194,6 +2221,141 @@ function openDuel(ficheId, pwMJ){
 function closeDuel(){
   document.getElementById('duel-overlay').classList.remove('open');
   document.getElementById('duel-iframe').src = 'about:blank';
+}
+
+</script>
+
+<!-- Panneau MJ observateur de lancers -->
+<div id="mj-obs-overlay">
+  <!-- Les cartes de lancer sont ajoutées dynamiquement ici -->
+</div>
+<script>
+
+// ══════════════════════════════════════════════
+//   OBSERVATION DES LANCERS MJ (environnement)
+// ══════════════════════════════════════════════
+
+const _mjObsCards = {}; // ficheId → {card, ws}
+const _mjObsRealtimes = {}; // ficheId → WebSocket
+
+// Surveiller les fiches personnages pour dice_share actif
+function mjStartObservingFiches(){
+  const personnes = state.fichePersonnages||[];
+  personnes.forEach(p=>{
+    const ficheId = typeof p==='string'?p:(p.id||p);
+    if(ficheId) mjObserveFiche(ficheId);
+  });
+}
+
+function mjObserveFiche(ficheId){
+  if(_mjObsRealtimes[ficheId]) return; // déjà connecté
+  const wsUrl = SUPABASE_URL.replace('https://','wss://')
+    +'/realtime/v1/websocket?apikey='+SUPABASE_KEY+'&vsn=1.0.0';
+  let ws, hb;
+  function connect(){
+    ws = new WebSocket(wsUrl);
+    ws.onopen=()=>{
+      ws.send(JSON.stringify({topic:'realtime:public:fiches:id=eq.'+ficheId,event:'phx_join',payload:{},ref:'mj_'+ficheId}));
+      hb=setInterval(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb_mj'})),25000);
+    };
+    ws.onmessage=(e)=>{
+      try{
+        const m=JSON.parse(e.data);
+        if(m.event==='UPDATE'||m.event==='INSERT'){
+          const record=m.payload?.record;
+          if(record?.dice_share) mjHandleDiceShare(ficheId, record.dice_share);
+          // Indicateur sur la liste personnages
+          mjUpdateDiceIndicator(ficheId, record?.dice_share?.active||false);
+        }
+      }catch(err){}
+    };
+    ws.onclose=()=>{ clearInterval(hb); setTimeout(connect,3000); };
+    ws.onerror=()=>ws.close();
+    _mjObsRealtimes[ficheId]=ws;
+  }
+  connect();
+}
+
+function mjUpdateDiceIndicator(ficheId, active){
+  // Mettre à jour l'indicateur 🎲 dans la liste des fiches personnages
+  const indicator = document.querySelector(`.fiche-dice-indicator[data-fiche="${ficheId}"]`);
+  if(indicator) indicator.classList.toggle('active', active);
+}
+
+function mjHandleDiceShare(ficheId, ds){
+  if(ds.active){
+    // Créer ou mettre à jour la carte observateur
+    if(!_mjObsCards[ficheId]) mjCreateObsCard(ficheId);
+    mjRenderObsCard(ficheId, ds);
+  } else if(_mjObsCards[ficheId]){
+    // Marquer comme terminé mais garder visible
+    const card = _mjObsCards[ficheId].card;
+    const statusEl = card.querySelector('.mj-obs-status');
+    if(statusEl) statusEl.textContent = 'Lancer terminé';
+  }
+}
+
+function mjCreateObsCard(ficheId){
+  const overlay = document.getElementById('mj-obs-overlay');
+  overlay.classList.add('open');
+  const card = document.createElement('div');
+  card.className = 'mj-obs-card';
+  card.innerHTML = `
+    <div class="mj-obs-card-header">
+      👁 <span style="margin-left:.3rem;">${ficheId}</span>
+      <span class="mj-obs-status" style="font-size:.62rem;color:var(--ink3);margin-left:.4rem;font-style:italic;">En direct</span>
+      <button class="mj-obs-close" onclick="mjCloseObsCard('${ficheId}')">✕</button>
+    </div>
+    <div style="font-family:'Cinzel',serif;font-size:.62rem;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:.2rem;">Aptitude</div>
+    <div class="mj-obs-apt" style="font-family:'Crimson Text',serif;font-size:.88rem;color:var(--ink2);margin-bottom:.4rem;">—</div>
+    <div style="font-family:'Cinzel',serif;font-size:.62rem;color:var(--ink3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:.2rem;">Dés</div>
+    <div class="mj-obs-dice-row"></div>
+    <div class="mj-obs-successes" style="font-size:.72rem;color:var(--ink3);margin-top:.2rem;font-family:'Cinzel',serif;"></div>
+    <div class="mj-obs-verdict-el"></div>`;
+  overlay.appendChild(card);
+  _mjObsCards[ficheId] = { card };
+}
+
+function mjRenderObsCard(ficheId, ds){
+  const { card } = _mjObsCards[ficheId];
+  card.querySelector('.mj-obs-apt').textContent = ds.aptLabel||ds.aptKey||'Libre';
+  // Dés
+  const diceRow = card.querySelector('.mj-obs-dice-row');
+  diceRow.innerHTML='';
+  (ds.dice||[]).forEach(d=>{
+    const el=document.createElement('div');
+    el.className='mj-obs-die '+(d.color==='red'?'red':'white')+(d.locked?' locked':'');
+    el.textContent=d.value||'?';
+    diceRow.appendChild(el);
+  });
+  // Succès
+  const succEl = card.querySelector('.mj-obs-successes');
+  if(ds.rolled&&ds.successes?.length){
+    succEl.textContent = ds.successes.map(s=>`${s.count} réussite(s) sur ${s.val}`).join(' · ');
+  } else if(!ds.rolled){ succEl.textContent='En attente du lancer…'; }
+  // Verdict
+  const vEl = card.querySelector('.mj-obs-verdict-el');
+  vEl.innerHTML='';
+  if(ds.chosenVal){
+    const v=document.createElement('div');
+    v.className='mj-obs-verdict reussite';
+    v.textContent='✓ Réussite validée sur '+ds.chosenVal;
+    vEl.appendChild(v);
+  }
+}
+
+function mjCloseObsCard(ficheId){
+  const {card}=_mjObsCards[ficheId]||{};
+  if(card) card.remove();
+  delete _mjObsCards[ficheId];
+  const overlay=document.getElementById('mj-obs-overlay');
+  if(!overlay.children.length) overlay.classList.remove('open');
+}
+
+// Démarrer l'observation après login MJ
+function startMjDiceObservation(){
+  if(!isGM) return;
+  mjStartObservingFiches();
 }
 
 </script>
