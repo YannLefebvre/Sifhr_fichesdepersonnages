@@ -148,7 +148,10 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     <div class="inv-items" id="inv-items"></div>
   </div>
   <div id="sequence-wrap">
-    <img id="seq-image" src="" alt="">
+    <div class="seq-img-wrap" id="seq-img-wrap">
+      <img class="seq-img-thumb" id="seq-image" src="" alt="" onclick="openLightbox(this.src)">
+      <span class="seq-img-hint">🔍 Agrandir</span>
+    </div>
     <div id="seq-content"></div>
     <div id="choices-wrap"></div>
     <button id="btn-next" onclick="goNext()">Continuer →</button>
@@ -159,9 +162,17 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 <div id="fiche-panel">
   <div id="fiche-panel-header">
     <span id="fiche-panel-title">Fiche de personnage</span>
-    <button id="fiche-panel-close" onclick="closeFichePanel()">✕ Retour à l'aventure</button>
+    <button id="fiche-panel-close" onclick="closeFichePanel()">✕ Retour</button>
   </div>
-  <iframe id="fiche-iframe" src="about:blank"></iframe>
+  <div id="fiche-view-btns">
+    <button class="fiche-view-btn active" onclick="setFicheView('all')">Tout</button>
+    <button class="fiche-view-btn" onclick="setFicheView('octogone')">Octogone</button>
+    <button class="fiche-view-btn" onclick="setFicheView('des')">Dés</button>
+    <button class="fiche-view-btn" onclick="setFicheView('aptitudes')">Aptitudes</button>
+    <button class="fiche-view-btn" onclick="setFicheView('equipement')">Équipements</button>
+    <button class="fiche-view-btn" onclick="setFicheView('historique')">Historique</button>
+  </div>
+  <iframe id="fiche-iframe" src="about:blank" id="fiche-iframe"></iframe>
 </div>
 
 <!-- FAB fiche -->
@@ -178,6 +189,12 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     <path d="M9.5 19.5 Q9.5 15.5 14 15.5 Q18.5 15.5 18.5 19.5" fill="#1a1208"/>
   </svg>
 </button>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="">
+</div>
 
 <div id="oct-notif"></div>
 <div id="save-indicator">Sauvegarde…</div>
@@ -259,6 +276,7 @@ async function doLogin(){
     else if(row.mot_de_passe!==pw){err.textContent='Mot de passe incorrect.';}
     else{
       FICHE_ID=fiche;ficheEtat=row.etat||{};
+      _fichePanelPw=pw; // Stocker pour fédération d'identité
       document.getElementById('modal-overlay').style.display='none';
       document.getElementById('app').style.display='block';
       document.getElementById('fiche-fab').style.display='flex';
@@ -281,16 +299,57 @@ async function doLogin(){
 }
 
 // ── Panneau fiche ──
-function toggleFichePanel(){
+// ── Panneau fiche avec fédération d'identité ──
+let _fichePanelPw = '';
+function toggleFichePanel(section){
   const panel=document.getElementById('fiche-panel');
-  if(panel.classList.contains('open')){closeFichePanel();return;}
+  if(panel.classList.contains('open')&&!section){closeFichePanel();return;}
   const iframe=document.getElementById('fiche-iframe');
   const base=window.location.href.replace(/[^/]*$/,'');
-  const url=base+'octogone.html?fiche='+encodeURIComponent(FICHE_ID)+'&pw='+encodeURIComponent(document.getElementById('modal-pw').value||'')+'&_playerPw='+encodeURIComponent(document.getElementById('modal-pw').value||'');
-  iframe.src=url;
+  // Fédération d'identité : transmettre identifiant + mdp du joueur
+  const pw=_fichePanelPw||document.getElementById('modal-pw').value||'';
+  const url=base+'octogone.html?fiche='+encodeURIComponent(FICHE_ID)
+    +'&pw='+encodeURIComponent(pw)
+    +'&player_fiche='+encodeURIComponent(FICHE_ID)
+    +'&player_pw='+encodeURIComponent(pw);
+  if(iframe.src!==url) iframe.src=url;
   panel.classList.add('open');
   document.getElementById('fiche-fab').classList.add('open');
+  if(section) setTimeout(()=>setFicheView(section),1200);
 }
+
+// ── Vue ciblée de la fiche ──
+const SECTION_PANELS = {
+  octogone: ['aptitudes-panel','traits-panel','confrerie-panel','equipement-panel',
+             'artefacts-panel','prodiges-panel','historique-panel'],
+  des:      ['dice-overlay'],
+  aptitudes:['aptitudes-panel','traits-panel'],
+  equipement:['equipement-panel','artefacts-panel','prodiges-panel'],
+  historique:['historique-panel'],
+};
+function setFicheView(view){
+  // Mettre à jour les boutons
+  document.querySelectorAll('.fiche-view-btn').forEach(b=>{
+    b.classList.toggle('active', b.textContent.toLowerCase()===view||view==='all'&&b.textContent==='Tout');
+  });
+  // Communiquer avec l'iframe via postMessage
+  const iframe=document.getElementById('fiche-iframe');
+  if(iframe.contentWindow){
+    iframe.contentWindow.postMessage({type:'sifhr-focus',section:view},'*');
+  }
+}
+
+// ── Lightbox ──
+function openLightbox(src){
+  document.getElementById('lightbox-img').src=src;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLightbox();closeFichePanel();}});
 function closeFichePanel(){
   const panel=document.getElementById('fiche-panel');
   panel.classList.remove('open');
@@ -522,12 +581,17 @@ function renderSequence(seqId){
 
 function _doRenderSequence(seq){
   // Image
+  const imgWrap=document.getElementById('seq-img-wrap');
   const imgEl=document.getElementById('seq-image');
   if(seq.image&&seq.image.id){
     imgEl.src='./images/content/'+seq.image.id+'.jpg';
-    imgEl.style.display='block';
-    imgEl.style.maxHeight=seq.image.size==='huge'?'340px':seq.image.size==='medium'?'220px':'140px';
-  } else imgEl.style.display='none';
+    const maxH=seq.image.size==='huge'?'320px':seq.image.size==='medium'?'200px':'140px';
+    imgEl.style.maxHeight=maxH;
+    imgWrap.style.display='block';
+  } else {
+    imgWrap.style.display='none';
+    imgEl.src='';
+  }
   // Contenu
   const contentHtml=seq.noContent?'':( seq.content||'');
   document.getElementById('seq-content').innerHTML=contentHtml;
@@ -548,7 +612,7 @@ function _doRenderSequence(seq){
     const btn=document.createElement('button');
     btn.className='open-fiche-btn';
     btn.textContent='Ouvrir ma fiche →';
-    btn.addEventListener('click',toggleFichePanel);
+    btn.addEventListener('click',()=>toggleFichePanel('des'));
     choicesWrap.appendChild(hint);
     choicesWrap.appendChild(btn);
     const sep=document.createElement('div');sep.className='choices-sep';sep.textContent='Puis choisissez votre résultat :';
