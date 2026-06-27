@@ -158,37 +158,75 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   </div>
 </div>
 
-<!-- Panneau fiche latéral -->
-<div id="fiche-panel">
-  <div id="fiche-panel-header">
-    <span id="fiche-panel-title">Fiche de personnage</span>
-    <button id="fiche-panel-close" onclick="closeFichePanel()">✕ Retour</button>
+<!-- Fenêtres ciblées fiche -->
+
+<!-- Lanceur de dés (iframe octogone en mode dés) -->
+<div id="des-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.92);display:none;align-items:center;justify-content:center;z-index:300;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:8px;width:min(640px,98vw);height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:.5rem .8rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:.5rem;background:var(--panel-bg);flex-shrink:0;">
+      <span style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--accent);letter-spacing:.08em;flex:1;">🎲 Lanceur de dés</span>
+      <button onclick="closeDes()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕ Retour à l'aventure</button>
+    </div>
+    <iframe id="des-iframe" src="about:blank" style="flex:1;border:none;width:100%;"></iframe>
   </div>
-  <div id="fiche-view-btns">
-    <button class="fiche-view-btn active" onclick="setFicheView('all')">Tout</button>
-    <button class="fiche-view-btn" onclick="setFicheView('octogone')">Octogone</button>
-    <button class="fiche-view-btn" onclick="setFicheView('des')">Dés</button>
-    <button class="fiche-view-btn" onclick="setFicheView('aptitudes')">Aptitudes</button>
-    <button class="fiche-view-btn" onclick="setFicheView('equipement')">Équipements</button>
-    <button class="fiche-view-btn" onclick="setFicheView('historique')">Historique</button>
-  </div>
-  <iframe id="fiche-iframe" src="about:blank" id="fiche-iframe"></iframe>
 </div>
 
-<!-- FAB fiche -->
-<button id="fiche-fab" onclick="toggleFichePanel()" title="Ouvrir ma fiche">
-  <svg width="24" height="24" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" fill="none">
-    <g opacity="0.9">
-      <ellipse cx="14" cy="7" rx="2.2" ry="5" fill="#1a1208" transform="rotate(0 14 14)"/>
-      <ellipse cx="14" cy="7" rx="2.2" ry="5" fill="#1a1208" transform="rotate(45 14 14)"/>
-      <ellipse cx="14" cy="7" rx="2.2" ry="5" fill="#1a1208" transform="rotate(90 14 14)"/>
-      <ellipse cx="14" cy="7" rx="2.2" ry="5" fill="#1a1208" transform="rotate(135 14 14)"/>
-    </g>
-    <circle cx="14" cy="14" r="6.5" fill="#1a1208" stroke="#1a1208" stroke-width="0.5"/>
-    <circle cx="14" cy="11.5" r="2.3" fill="#1a1208"/>
-    <path d="M9.5 19.5 Q9.5 15.5 14 15.5 Q18.5 15.5 18.5 19.5" fill="#1a1208"/>
-  </svg>
-</button>
+<!-- Fenêtre octogone -->
+<div id="oct-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:420px;width:94vw;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;margin-bottom:.8rem;">
+      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;letter-spacing:.08em;flex:1;">Octogone</span>
+      <button onclick="closeOct()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕</button>
+    </div>
+    <svg id="fiche-oct-svg" width="280" height="280" viewBox="0 0 300 300" style="display:block;margin:0 auto .8rem;"></svg>
+    <div id="fiche-oct-detail" style="font-family:'Crimson Text',serif;font-size:.88rem;color:var(--ink2);line-height:1.6;font-style:italic;"></div>
+  </div>
+</div>
+
+<!-- Fenêtre aptitudes -->
+<div id="apt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:420px;width:94vw;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;margin-bottom:.8rem;">
+      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;letter-spacing:.08em;flex:1;">Aptitudes</span>
+      <button onclick="closeApt()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕</button>
+    </div>
+    <div id="fiche-apt-content"></div>
+  </div>
+</div>
+
+<!-- Fenêtre équipements/artefacts -->
+<div id="equip-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:420px;width:94vw;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;margin-bottom:.8rem;">
+      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;letter-spacing:.08em;flex:1;">Équipements & Artefacts</span>
+      <button onclick="closeEquip()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕</button>
+    </div>
+    <div id="fiche-equip-content"></div>
+  </div>
+</div>
+
+<!-- Fenêtre historique -->
+<div id="hist-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:420px;width:94vw;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;margin-bottom:.8rem;">
+      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;letter-spacing:.08em;flex:1;">Historique</span>
+      <button onclick="closeHist()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕</button>
+    </div>
+    <div id="fiche-hist-content"></div>
+  </div>
+</div>
+
+<!-- Barre de boutons fiche -->
+<div id="fiche-bar" style="display:none;position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);
+  display:none;gap:.4rem;z-index:290;background:rgba(26,18,8,0.92);
+  border:1px solid var(--border);border-radius:20px;padding:.35rem .6rem;
+  backdrop-filter:blur(4px);">
+  <button onclick="openDes()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Lanceur de dés">🎲 Dés</button>
+  <button onclick="openOct()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Octogone">⬡ Octogone</button>
+  <button onclick="openApt()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Aptitudes">◈ Aptitudes</button>
+  <button onclick="openEquip()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Équipements">⚔ Équipements</button>
+  <button onclick="openHist()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Historique">📜 Historique</button>
+</div>
 
 <!-- Lightbox -->
 <div id="lightbox" onclick="closeLightbox()">
@@ -276,10 +314,10 @@ async function doLogin(){
     else if(row.mot_de_passe!==pw){err.textContent='Mot de passe incorrect.';}
     else{
       FICHE_ID=fiche;ficheEtat=row.etat||{};
-      _fichePanelPw=pw; // Stocker pour fédération d'identité
+      _fichePw=pw; // Stocker pour les fenêtres ciblées
       document.getElementById('modal-overlay').style.display='none';
       document.getElementById('app').style.display='block';
-      document.getElementById('fiche-fab').style.display='flex';
+      document.getElementById('fiche-bar').style.display='flex';
       initIndexes();
       if(row.aventure_state){
         try{
@@ -299,46 +337,6 @@ async function doLogin(){
 }
 
 // ── Panneau fiche ──
-// ── Panneau fiche avec fédération d'identité ──
-let _fichePanelPw = '';
-function toggleFichePanel(section){
-  const panel=document.getElementById('fiche-panel');
-  if(panel.classList.contains('open')&&!section){closeFichePanel();return;}
-  const iframe=document.getElementById('fiche-iframe');
-  const base=window.location.href.replace(/[^/]*$/,'');
-  // Fédération d'identité : transmettre identifiant + mdp du joueur
-  const pw=_fichePanelPw||document.getElementById('modal-pw').value||'';
-  const url=base+'octogone.html?fiche='+encodeURIComponent(FICHE_ID)
-    +'&pw='+encodeURIComponent(pw)
-    +'&player_fiche='+encodeURIComponent(FICHE_ID)
-    +'&player_pw='+encodeURIComponent(pw);
-  if(iframe.src!==url) iframe.src=url;
-  panel.classList.add('open');
-  document.getElementById('fiche-fab').classList.add('open');
-  if(section) setTimeout(()=>setFicheView(section),1200);
-}
-
-// ── Vue ciblée de la fiche ──
-const SECTION_PANELS = {
-  octogone: ['aptitudes-panel','traits-panel','confrerie-panel','equipement-panel',
-             'artefacts-panel','prodiges-panel','historique-panel'],
-  des:      ['dice-overlay'],
-  aptitudes:['aptitudes-panel','traits-panel'],
-  equipement:['equipement-panel','artefacts-panel','prodiges-panel'],
-  historique:['historique-panel'],
-};
-function setFicheView(view){
-  // Mettre à jour les boutons
-  document.querySelectorAll('.fiche-view-btn').forEach(b=>{
-    b.classList.toggle('active', b.textContent.toLowerCase()===view||view==='all'&&b.textContent==='Tout');
-  });
-  // Communiquer avec l'iframe via postMessage
-  const iframe=document.getElementById('fiche-iframe');
-  if(iframe.contentWindow){
-    iframe.contentWindow.postMessage({type:'sifhr-focus',section:view},'*');
-  }
-}
-
 // ── Lightbox ──
 function openLightbox(src){
   document.getElementById('lightbox-img').src=src;
@@ -349,14 +347,178 @@ function closeLightbox(){
   document.getElementById('lightbox').classList.remove('open');
   document.body.style.overflow='';
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLightbox();closeFichePanel();}});
-function closeFichePanel(){
-  const panel=document.getElementById('fiche-panel');
-  panel.classList.remove('open');
-  document.getElementById('fiche-fab').classList.remove('open');
-  // Resync après fermeture de la fiche
-  SB.get(FICHE_ID).then(row=>{if(row){ficheEtat=row.etat||{};renderStatusBar();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){
+  closeLightbox();closeDes();closeOct();closeApt();closeEquip();closeHist();
+}});
+
+// ── Lanceur de dés (iframe octogone en mode dés) ──
+let _fichePw='';
+function openDes(){
+  const base=window.location.href.replace(/[^/]*$/,'');
+  const url=base+'octogone.html?fiche='+encodeURIComponent(FICHE_ID)
+    +'&pw='+encodeURIComponent(_fichePw)
+    +'&view=des';
+  const iframe=document.getElementById('des-iframe');
+  iframe.src=url;
+  document.getElementById('des-overlay').style.display='flex';
 }
+function closeDes(){
+  document.getElementById('des-overlay').style.display='none';
+  document.getElementById('des-iframe').src='about:blank';
+  // Resync après fermeture
+  SB.get(FICHE_ID).then(row=>{if(row){ficheEtat=row.etat||{};syncFromOctogone();renderStatusBar();}});
+}
+
+// ── Octogone ──
+const AXE_NARRATIFS_FICHE={
+  feu:{w:"Feu intérieur présent",b:"Tension destructrice"},
+  bile_j:{w:"Vivacité d'esprit",b:"Amertume latente"},
+  terre:{w:"Loyauté solide",b:"Résistance passive"},
+  bile_n:{w:"Sagesse prudente",b:"Mélancolie"},
+  eau:{w:"Tempérance",b:"Tendance à fuir"},
+  flegme:{w:"Rectitude",b:"Avidité discrète"},
+  air:{w:"Loyauté affirmée",b:"Duplicité possible"},
+  sang:{w:"Espoir vivace",b:"Fureur contenue"},
+};
+async function openOct(){
+  document.getElementById('oct-overlay').style.display='flex';
+  const row=await SB.get(FICHE_ID);
+  if(!row||!row.etat) return;
+  const tokens=row.etat.tokens||{};
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.getElementById('fiche-oct-svg');
+  svg.innerHTML='';
+  const CX=150,CY=150,R=95,INNER=18;
+  // Octogone fond
+  const pts=[];for(let i=0;i<8;i++){const a=(i*45-90)*Math.PI/180;pts.push(`${(CX+R*Math.cos(a)).toFixed(1)},${(CY+R*Math.sin(a)).toFixed(1)}`);}
+  const bg=document.createElementNS(ns,'polygon');bg.setAttribute('points',pts.join(' '));bg.setAttribute('fill','none');bg.setAttribute('stroke','#4a3218');bg.setAttribute('stroke-width','1');svg.appendChild(bg);
+  const ci=document.createElementNS(ns,'circle');ci.setAttribute('cx',CX);ci.setAttribute('cy',CY);ci.setAttribute('r',INNER);ci.setAttribute('fill','none');ci.setAttribute('stroke','#4a3218');ci.setAttribute('stroke-width','1');svg.appendChild(ci);
+  const narratifs=[];
+  AXES.forEach((axe,i)=>{
+    const angle=(i*45-90)*Math.PI/180;
+    const ax=Math.cos(angle),ay=Math.sin(angle);
+    const arr=tokens[axe]||['empty','empty','empty'];
+    const line=document.createElementNS(ns,'line');
+    line.setAttribute('x1',(CX+INNER*ax).toFixed(1));line.setAttribute('y1',(CY+INNER*ay).toFixed(1));
+    line.setAttribute('x2',(CX+R*ax).toFixed(1));line.setAttribute('y2',(CY+R*ay).toFixed(1));
+    line.setAttribute('stroke','#4a3218');line.setAttribute('stroke-width','0.5');svg.appendChild(line);
+    // Label
+    const lx=(CX+(R+14)*ax).toFixed(1),ly=(CY+(R+14)*ay).toFixed(1);
+    const lt=document.createElementNS(ns,'text');lt.setAttribute('x',lx);lt.setAttribute('y',ly);
+    lt.setAttribute('text-anchor','middle');lt.setAttribute('dominant-baseline','middle');
+    lt.setAttribute('font-family','Cinzel,serif');lt.setAttribute('font-size','9');lt.setAttribute('fill','#9a7a5a');
+    lt.textContent=AXES_LABELS[axe]||axe;svg.appendChild(lt);
+    // Jetons
+    const rings=[38,62,86];
+    arr.forEach((tok,idx)=>{
+      if(tok==='empty')return;
+      const r=rings[idx];
+      const cx=(CX+r*ax).toFixed(1),cy=(CY+r*ay).toFixed(1);
+      const c=document.createElementNS(ns,'circle');c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r','6');
+      c.setAttribute('fill',tok==='white'?'#e8d5a0':'#3a2810');c.setAttribute('stroke',tok==='white'?'#c8a060':'#6a4a2a');c.setAttribute('stroke-width','1');
+      svg.appendChild(c);
+    });
+    const whites=arr.filter(t=>t==='white').length;
+    const blacks=arr.filter(t=>t==='black').length;
+    if(whites>=2||blacks>=2){
+      const pol=whites>=blacks?'w':'b';
+      const narr=AXE_NARRATIFS_FICHE[axe]?.[pol];
+      if(narr)narratifs.push(narr);
+    }
+  });
+  document.getElementById('fiche-oct-detail').textContent=narratifs.slice(0,3).join(' · ')||'';
+}
+function closeOct(){document.getElementById('oct-overlay').style.display='none';}
+
+// ── Aptitudes ──
+async function openApt(){
+  document.getElementById('apt-overlay').style.display='flex';
+  const row=await SB.get(FICHE_ID);
+  if(!row||!row.etat)return;
+  const apts=row.etat.aptitudes||{};
+  const aptTraits=row.etat.aptTraits||{};
+  const cont=document.getElementById('fiche-apt-content');
+  cont.innerHTML='';
+  const aptKeys=Object.keys(apts).filter(k=>apts[k]?.score>0);
+  if(!aptKeys.length){cont.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;">Aucune aptitude développée.</p>';return;}
+  aptKeys.forEach(k=>{
+    const apt=apts[k];
+    const div=document.createElement('div');
+    div.style.cssText='margin-bottom:.8rem;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:6px;background:var(--section-bg);';
+    const head=document.createElement('div');head.style.cssText='display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;';
+    const name=document.createElement('span');name.style.cssText='font-family:Cinzel,serif;font-size:.78rem;color:var(--accent);';name.textContent=k.replace('_',' ');
+    const score=document.createElement('span');score.style.cssText='font-family:Cinzel,serif;font-size:.72rem;padding:1px 7px;border-radius:8px;border:1px solid var(--accent);color:var(--accent);';score.textContent=apt.score||0;
+    head.appendChild(name);head.appendChild(score);div.appendChild(head);
+    // Traits liés
+    const traits=(aptTraits[k]||[]).filter(t=>t.title||t.text);
+    traits.forEach(t=>{
+      const tr=document.createElement('div');tr.style.cssText='font-size:.8rem;color:var(--ink2);padding:.2rem 0;border-top:1px solid var(--border2);margin-top:.2rem;';
+      tr.textContent=(t.title||'Trait')+(t.level?' ('+t.level+')':'');
+      div.appendChild(tr);
+    });
+    cont.appendChild(div);
+  });
+}
+function closeApt(){document.getElementById('apt-overlay').style.display='none';}
+
+// ── Équipements & Artefacts ──
+async function openEquip(){
+  document.getElementById('equip-overlay').style.display='flex';
+  const row=await SB.get(FICHE_ID);
+  if(!row||!row.etat)return;
+  const cont=document.getElementById('fiche-equip-content');
+  cont.innerHTML='';
+  const sections=[
+    {label:'Équipements',items:row.etat.equipement||[]},
+    {label:'Artefacts',items:row.etat.artefacts||[]},
+    {label:'Prodiges',items:row.etat.prodiges||[]},
+  ];
+  sections.forEach(({label,items})=>{
+    const active=items.filter(i=>i.title||i.text);
+    if(!active.length)return;
+    const sec=document.createElement('div');sec.style.marginBottom='.8rem';
+    const secTitle=document.createElement('div');secTitle.style.cssText='font-family:Cinzel,serif;font-size:.68rem;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.4rem;';secTitle.textContent=label;sec.appendChild(secTitle);
+    active.forEach(item=>{
+      const div=document.createElement('div');div.style.cssText='padding:.4rem .6rem;border:1px solid var(--border2);border-radius:5px;background:var(--section-bg);margin-bottom:.3rem;';
+      if(item.title){const t=document.createElement('div');t.style.cssText='font-family:Cinzel,serif;font-size:.75rem;color:var(--ink);margin-bottom:.2rem;';t.textContent=item.title;div.appendChild(t);}
+      if(item.text){const t=document.createElement('div');t.style.cssText='font-size:.82rem;color:var(--ink2);line-height:1.5;';t.textContent=item.text.substring(0,200)+(item.text.length>200?'…':'');div.appendChild(t);}
+      if(item.bm&&item.bm!==0){const b=document.createElement('span');b.style.cssText='font-family:Cinzel,serif;font-size:.68rem;padding:1px 6px;border-radius:8px;margin-top:.3rem;display:inline-block;'+(item.bm>0?'background:#d4edda;color:#1a5c2a;':'background:#fde8e8;color:#8b2020;');b.textContent=(item.bm>0?'+':'')+item.bm;div.appendChild(b);}
+      if(item.image){const img=document.createElement('img');img.src=item.image;img.style.cssText='max-width:100%;max-height:120px;border-radius:4px;margin-top:.4rem;cursor:zoom-in;';img.onclick=()=>openLightbox(item.image);div.appendChild(img);}
+      sec.appendChild(div);
+    });
+    cont.appendChild(sec);
+  });
+  if(!cont.children.length)cont.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;">Aucun équipement ni artefact.</p>';
+}
+function closeEquip(){document.getElementById('equip-overlay').style.display='none';}
+
+// ── Historique ──
+async function openHist(){
+  document.getElementById('hist-overlay').style.display='flex';
+  const row=await SB.get(FICHE_ID);
+  if(!row||!row.etat)return;
+  const cont=document.getElementById('fiche-hist-content');
+  cont.innerHTML='';
+  const hist=row.etat.historique||{};
+  const hc=row.etat.histoiresCroisees||[];
+  const dettes=row.etat.dettes||[];
+  const mkSection=(title,html)=>{
+    const s=document.createElement('div');s.style.cssText='margin-bottom:.8rem;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:6px;background:var(--section-bg);';
+    const t=document.createElement('div');t.style.cssText='font-family:Cinzel,serif;font-size:.72rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.4rem;';t.textContent=title;
+    const b=document.createElement('div');b.style.cssText='font-size:.88rem;color:var(--ink2);line-height:1.6;font-family:Crimson Text,serif;';b.innerHTML=html;
+    s.appendChild(t);s.appendChild(b);cont.appendChild(s);
+  };
+  if(hist.title||hist.text) mkSection('Histoire du personnage',(hist.title?'<strong>'+hist.title+'</strong><br>':'')+(hist.text||'').split('\n').join('<br>'));
+  hc.filter(h=>h.text||h.perso).forEach(h=>mkSection('Histoire avec '+(h.perso||'?'),h.text||''));
+  dettes.filter(d=>d.perso).forEach(d=>{
+    const bm=d.bm||0;
+    const bmStr=bm!==0?` <span style="font-family:Cinzel,serif;font-size:.68rem;padding:1px 5px;border-radius:8px;${bm>0?'background:#d4edda;color:#1a5c2a':'background:#fde8e8;color:#8b2020'}">${bm>0?'+':''}${bm}</span>`:'';
+    mkSection('Dette envers '+(d.perso||'?'),bmStr+(d.text?'<br>'+d.text:''));
+  });
+  if(!cont.children.length)cont.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;">Aucun historique.</p>';
+}
+function closeHist(){document.getElementById('hist-overlay').style.display='none';}
+
 
 // ── Détection d'épreuve dans le contenu ──
 function detectEpreuve(htmlContent){
@@ -612,7 +774,7 @@ function _doRenderSequence(seq){
     const btn=document.createElement('button');
     btn.className='open-fiche-btn';
     btn.textContent='Ouvrir ma fiche →';
-    btn.addEventListener('click',()=>toggleFichePanel('des'));
+    btn.addEventListener('click',openDes);
     choicesWrap.appendChild(hint);
     choicesWrap.appendChild(btn);
     const sep=document.createElement('div');sep.className='choices-sep';sep.textContent='Puis choisissez votre résultat :';
