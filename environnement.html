@@ -302,20 +302,11 @@ async function gmSaveOrigin(){
 }
 
 async function gmResetFull(){
-  // Réinitialisation complète : octogone + log dynamique
-  if(!confirm('Réinitialiser complètement la fiche (octogone + historique de dynamique) ?')) return;
-  state.dynamiqueLog=[];
-  state.nineCount=0;
-  state.nineThreshold=Math.floor(Math.random()*4)+3;
-  renderDynamiqueLog();
-  await gmReset();
-}
-
-async function gmReset(){
-  if(!confirm("Réinitialiser la fiche à l'état d'origine ? Toutes les modifications actuelles seront perdues.")) return;
+  if(!confirm('Réinitialiser complètement la fiche (octogone + dynamique) ? Cette action est irréversible.')) return;
   const msg=document.getElementById('save-msg');
   msg.textContent='Réinitialisation…'; msg.className='save-info';
   try{
+    // Charger l'état d'origine
     const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat_origine`,{
       headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
     });
@@ -326,16 +317,28 @@ async function gmReset(){
       setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },2500);
       return;
     }
+    // Réinitialiser la dynamique localement
+    state.dynamiqueLog=[];
+    state.nineCount=0;
+    state.nineThreshold=Math.floor(Math.random()*4)+3;
+    renderDynamiqueLog();
+    // Appliquer l'état d'origine en mémoire
     applyRemoteState(origine);
+    // Sauvegarder sur Supabase : état d'origine + dynamique vide
+    const etatReset={...origine, dynamiqueLog:[], nineCount:0, nineThreshold:state.nineThreshold};
     const r2=await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
       method:'POST',
       headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-      body:JSON.stringify({id:FICHE_ID, etat:origine})
+      body:JSON.stringify({id:FICHE_ID, etat:etatReset})
     });
-    if(r2.ok){ msg.textContent='Fiche réinitialisée ✓'; msg.className='save-info saved'; }
+    if(r2.ok){ msg.textContent='Réinitialisé ✓'; msg.className='save-info saved'; }
     else { msg.textContent='Erreur lors de la réinitialisation'; msg.className='save-info error'; }
   }catch(e){ msg.textContent='Erreur réseau'; msg.className='save-info error'; }
   setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },2500);
+}
+
+async function gmReset(){
+  return gmResetFull(); // alias rétrocompat
 }
 
 </script>
@@ -401,6 +404,7 @@ async function gmReset(){
   .axis-section-title { font-family:'Cinzel',serif; font-size:.75rem; letter-spacing:.08em; color:var(--accent); text-transform:uppercase; padding:.5rem .75rem; background:var(--section-bg); border-bottom:1px solid var(--border2); display:flex; align-items:center; gap:.5rem; cursor:pointer; }
   /* Événements liés à un axe */
   .axis-event-item { padding:.5rem .6rem; border:1px solid var(--border2); border-radius:5px; margin-bottom:.4rem; background:#f8f4ee; }
+  .gm-meta { font-style:italic; color:var(--ink3); border-left:2px solid var(--accent); padding-left:.4rem; }
   .axis-event-title { font-family:'Cinzel',serif; font-size:.78rem; color:var(--accent); margin-bottom:.2rem; }
   .axis-event-text { font-size:.83rem; color:var(--ink2); line-height:1.5; margin-bottom:.35rem; }
   .axis-event-meta { font-size:.68rem; color:var(--ink3); display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
@@ -1876,17 +1880,18 @@ function renderAxisEvents(list, events){
   events.forEach(([key,slot])=>{
     const item=document.createElement('div');
     item.className='axis-event-item';
-    const niv=slot.niveau?NIVEAU_LABELS[slot.niveau-1]||'':'' ;
-    const poids=slot.poids?` · Poids ${slot.poids}`:'';
-    const axes=(slot.axes||[]).map(n=>AXIS_NOMS_ENV[n-1]||n).join(', ');
+    // Infos réservées MJ : poids, axes, type (niveau)
+    const niv=isGM&&slot.niveau?NIVEAU_LABELS[slot.niveau-1]||'':'' ;
+    const poids=isGM&&slot.poids?` · Poids ${slot.poids}`:'';
+    const axes=isGM?(slot.axes||[]).map(n=>AXIS_NOMS_ENV[n-1]||n).join(', '):'';
     item.innerHTML=`
       <div class="axis-event-title">${slot.titre||'(sans titre)'}</div>
       <div class="axis-event-text">${slot.texte||''}</div>
       <div class="axis-event-meta">
-        ${niv?`<span>${niv}</span>`:''}
-        ${axes?`<span>Axes : ${axes}</span>`:''}
-        ${poids?`<span>${poids}</span>`:''}
-        <button class="axis-event-carte-btn" data-key="${key}">🗺️ Voir sur la carte</button>
+        ${niv?`<span class="gm-meta">${niv}</span>`:''}
+        ${axes?`<span class="gm-meta">Axes : ${axes}</span>`:''}
+        ${poids?`<span class="gm-meta">${poids}</span>`:''}
+        ${isGM?`<button class="axis-event-carte-btn" data-key="${key}">🗺️ Voir sur la carte</button>`:''}
       </div>`;
     item.querySelector('.axis-event-carte-btn').addEventListener('click',()=>{
       closeAxisPanel();

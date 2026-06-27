@@ -558,6 +558,8 @@
   /* Cadenas titre */
   .acc-lock-btn { flex-shrink:0; background:none; border:none; cursor:pointer;
     font-size:.6rem; color:var(--border); padding:0 2px; line-height:1; opacity:.5; transition:opacity .15s; }
+  .acc-del-btn { background:none; border:none; cursor:pointer; font-size:.85rem; color:#c85a52; flex-shrink:0; padding:0 3px; }
+  .acc-del-btn:hover { color:#e03020; }
   .acc-lock-btn:hover { opacity:1; color:var(--accent); }
 
   /* ── Bouton transfert octogone ── */
@@ -1886,7 +1888,23 @@ async function xferClearRequest(){
 </div>
 
 <!-- Bulle de conscience interne — entre rotation et octogone -->
-<div id="notif-bubble"><span class="notif-text"></span><span class="notif-source"></span></div>
+<div id="notif-bubble-wrap" style="display:flex;align-items:center;gap:.5rem;justify-content:center;">
+  <div id="notif-bubble"><span class="notif-text"></span><span class="notif-source"></span></div>
+  <button id="notif-hist-btn" onclick="NotifSystem.openHistory()" title="Historique des messages" style="display:none;position:relative;background:none;border:1px solid var(--border);border-radius:50%;width:26px;height:26px;cursor:pointer;color:var(--ink3);font-size:.7rem;flex-shrink:0;font-family:Cinzel,serif;">
+    📜<span id="notif-hist-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;border-radius:50%;width:14px;height:14px;font-size:.55rem;line-height:14px;text-align:center;font-family:Cinzel,serif;"></span>
+  </button>
+</div>
+
+<!-- Overlay historique notifs -->
+<div id="notif-hist-overlay" style="display:none;position:fixed;inset:0;background:rgba(10,7,3,0.88);align-items:center;justify-content:center;z-index:400;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;max-width:420px;width:94vw;max-height:80vh;display:flex;flex-direction:column;">
+    <div style="padding:.6rem .9rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;">
+      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.82rem;letter-spacing:.08em;flex:1;">📜 Historique des messages</span>
+      <button onclick="NotifSystem.closeHistory()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕</button>
+    </div>
+    <div id="notif-hist-list" style="overflow-y:auto;flex:1;"></div>
+  </div>
+</div>
 
 <div class="oct-wrap">
 <svg id="oct" viewBox="-130 -130 560 560" xmlns="http://www.w3.org/2000/svg">
@@ -2044,6 +2062,7 @@ async function doLogin(tryGM){
           // Révéler les boutons bibliothèque et bm des accordéons enrichis
           document.querySelectorAll('.acc-bib-btn').forEach(btn=>btn.style.display='');
           document.querySelectorAll('.gm-bm-btn').forEach(btn=>btn.style.display='');
+          document.querySelectorAll('.gm-only-el').forEach(el=>el.style.display='');
           // MJ : afficher le display MJ, masquer le display joueur
           document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='');
           document.querySelectorAll('.bm-joueur-display').forEach(el=>el.style.display='none');
@@ -2845,6 +2864,23 @@ function buildTraitAccItem(panel, idx){
   let isLocked=cur.locked||false;
   lockBtn.textContent=isLocked?'🔒':'🔓';
   titleWrap.appendChild(lockBtn);
+  // Bouton supprimer (MJ only)
+  const delTraitBtn=document.createElement('button');
+  delTraitBtn.className='acc-del-btn gm-only-el';
+  delTraitBtn.title='Supprimer ce trait';
+  delTraitBtn.textContent='✕';
+  delTraitBtn.style.display=octIsGM?'':'none';
+  delTraitBtn.addEventListener('click',(e)=>{
+    e.stopPropagation();
+    if(!confirm('Supprimer ce trait ?')) return;
+    state.traits[idx]={title:'',text:'',level:null,locked:false};
+    titleInp.value=''; textArea.value='';
+    rendered.innerHTML=''; rendered.classList.remove('visible');
+    textArea.style.display='';
+    isLocked=false; lockBtn.textContent='🔓'; textArea.disabled=false;
+    saveState();
+  });
+  titleWrap.appendChild(delTraitBtn);
   item.appendChild(titleWrap);
 
   const body=document.createElement('div'); body.className='acc-body';
@@ -5532,6 +5568,16 @@ const OccNotif = {
       </select>
     </div>
     <div id="bib-results"></div>
+    <div id="bib-custom-zone" style="border-top:1px solid var(--border2);padding:.6rem .8rem;background:var(--section-bg);border-radius:0 0 8px 8px;">
+      <div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.4rem;">— ou créer un élément libre —</div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
+        <input id="bib-custom-title" type="text" placeholder="Titre de l'élément…"
+          style="flex:1;min-width:120px;padding:.3rem .5rem;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--ink);font-family:'Crimson Text',serif;font-size:.88rem;">
+        <input id="bib-custom-text" type="text" placeholder="Description (optionnelle)…"
+          style="flex:2;min-width:160px;padding:.3rem .5rem;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--ink);font-family:'Crimson Text',serif;font-size:.88rem;">
+        <button onclick="BibTraits.useCustom()" style="font-family:'Cinzel',serif;font-size:.7rem;padding:.3rem .8rem;border:1px solid var(--accent);border-radius:3px;background:none;color:var(--accent);cursor:pointer;white-space:nowrap;">Utiliser →</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -5580,6 +5626,16 @@ const BibTraits = {
   close(){
     document.getElementById('bib-overlay').classList.remove('open');
     this._callback = null;
+  },
+  useCustom(){
+    const title = document.getElementById('bib-custom-title').value.trim();
+    if(!title){ document.getElementById('bib-custom-title').focus(); return; }
+    const text = document.getElementById('bib-custom-text').value.trim();
+    const customTrait = { nom: title, descriptif: text, type: 'Libre', niveaux:[], aptitudes:[], tags:[], _custom:true };
+    if(this._callback) this._callback(customTrait);
+    document.getElementById('bib-custom-title').value='';
+    document.getElementById('bib-custom-text').value='';
+    this.close();
   },
 
   filter(){
@@ -5892,6 +5948,9 @@ const NOTIFS_DATA = {
 const NotifSystem = {
   // File de messages à afficher
   _queue: [],
+  // Historique permanent des messages affichés
+  _history: [],
+  _maxHistory: 50,
   // Historique récent pour éviter les répétitions
   _recent: [],
   _maxRecent: 12,
@@ -6037,6 +6096,10 @@ const NotifSystem = {
     // Ajouter à l'historique récent
     this._recent.push(item.text);
     if(this._recent.length>this._maxRecent) this._recent.shift();
+    // Historique permanent
+    this._history.unshift({text:item.text, label:item.label||'', ts:Date.now()});
+    if(this._history.length>this._maxHistory) this._history.pop();
+    NotifSystem._updateHistBadge();
   },
 
   _show(text, sourceLabel){
@@ -6073,6 +6136,35 @@ const NotifSystem = {
   },
 
   // Vérification immédiate après modification d'un jeton
+  _updateHistBadge(){
+    const badge = document.getElementById('notif-hist-badge');
+    if(badge) { badge.textContent = this._history.length; badge.style.display = this._history.length?'':'none'; }
+  },
+  openHistory(){
+    const overlay = document.getElementById('notif-hist-overlay');
+    if(!overlay) return;
+    const list = document.getElementById('notif-hist-list');
+    list.innerHTML = '';
+    if(!this._history.length){
+      list.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;text-align:center;padding:1rem;">Aucun message pour l\'instant.</p>';
+    } else {
+      this._history.forEach(({text,label,ts})=>{
+        const item = document.createElement('div');
+        item.style.cssText='padding:.5rem .7rem;border-bottom:1px solid var(--border2);';
+        const d = new Date(ts);
+        const time = d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+        item.innerHTML = '<span style="font-family:Cinzel,serif;font-size:.62rem;color:var(--ink3);">'
+          +time+(label?' · '+label:'')+'</span>'
+          +'<div style="font-family:Crimson Text,serif;font-style:italic;font-size:.9rem;color:var(--ink2);margin-top:.2rem;">'+text+'</div>';
+        list.appendChild(item);
+      });
+    }
+    overlay.style.display='flex';
+  },
+  closeHistory(){
+    const overlay = document.getElementById('notif-hist-overlay');
+    if(overlay) overlay.style.display='none';
+  },
   _checkSaturationImmediate(axe){
     if(!authenticated||!axe) return;
     const arr = state.tokens[axe]||[];
