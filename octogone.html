@@ -909,6 +909,9 @@
   .hc-perso-inp { flex:1; min-width:100px; background:var(--input-bg); border:1px solid var(--border);
     border-radius:3px; font-family:'Crimson Text',serif; font-size:.82rem; color:var(--ink);
     padding:3px 6px; outline:none; }
+  .hc-perso-sel { flex:1; min-width:100px; background:var(--input-bg); border:1px solid var(--border); border-radius:3px; color:var(--ink); font-family:"Crimson Text",serif; font-size:.9rem; padding:.25rem .4rem; cursor:pointer; }
+  .hc-perso-sel:focus { border-color:var(--accent); outline:none; }
+  .hc-perso-sel option { background:var(--input-bg); }
   .hc-perso-inp:focus { border-color:var(--accent); }
   .hc-del-btn { background:none; border:none; color:var(--ink3); cursor:pointer; font-size:.85rem; padding:0 3px; }
   .hc-del-btn:hover { color:#c85a52; }
@@ -2873,12 +2876,9 @@ function buildTraitAccItem(panel, idx){
   delTraitBtn.addEventListener('click',(e)=>{
     e.stopPropagation();
     if(!confirm('Supprimer ce trait ?')) return;
-    state.traits[idx]={title:'',text:'',level:null,locked:false};
-    titleInp.value=''; textArea.value='';
-    rendered.innerHTML=''; rendered.classList.remove('visible');
-    textArea.style.display='';
-    isLocked=false; lockBtn.textContent='🔓'; textArea.disabled=false;
-    saveState();
+    // Supprimer et compacter (remonter les traits non vides)
+    state.traits[idx]={title:'',text:'',level:null,levelType:null,locked:false};
+    compactTraits();
   });
   titleWrap.appendChild(delTraitBtn);
   item.appendChild(titleWrap);
@@ -2941,6 +2941,34 @@ function buildTraitAccItem(panel, idx){
       else { rendered.classList.remove('visible'); textArea.style.display=''; }
     }
   };
+}
+
+/* ── Compacter les traits : remonter les non-vides en haut ── */
+function compactTraits(){
+  // Séparer vides et non-vides
+  const nonVides = state.traits.filter(t=>t.title||t.text);
+  const vides = state.traits.filter(t=>!t.title&&!t.text);
+  state.traits = [...nonVides, ...vides];
+  // Mettre à jour tous les widgets visuellement
+  traitWidgets.forEach((w,i)=>{
+    const t=state.traits[i]||{title:'',text:'',level:null,levelType:null,locked:false};
+    w.titleInp.value=t.title||'';
+    w.textArea.value=t.text||'';
+    w.textArea.style.height='auto';
+    setTimeout(()=>w.autoResize(),0);
+    w.applyLock(t.locked||false);
+    // Rebuild level row
+    const item=traitsPanel.querySelectorAll('.acc-item')[i];
+    if(item){
+      const oldRow=item.querySelector('.trait-level-row');
+      if(oldRow){ const newRow=buildTraitLevelRow(state.traits[i],saveState); oldRow.replaceWith(newRow); }
+      // Masquer/afficher selon MJ
+      if(octIsGM){
+        item.querySelectorAll('.gm-bm-btn,.gm-only-el').forEach(el=>el.style.display='');
+      }
+    }
+  });
+  saveState();
 }
 
 /* ── Refresh boutons de niveau d'un trait global (après copie depuis Aptitude) ── */
@@ -3303,18 +3331,67 @@ buildHistSection('Histoire du personnage', histPersoWrap);
 
 // ── 2. Histoires Croisées ──
 const hcWrap=document.createElement('div');
+
+// ── Cache de la liste des personnages depuis l'environnement ──
+let _cachedPersonnes = null; // null = pas encore chargé
+
+async function getPersonnesEnv(){
+  if(_cachedPersonnes !== null) return _cachedPersonnes;
+  const envId = state.envFiche||'';
+  if(!envId||envId===FICHE_ID){ _cachedPersonnes=[]; return []; }
+  try{
+    const r=await fetch(
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    const d=await r.json();
+    const fp=d[0]?.etat?.fichePersonnages||[];
+    _cachedPersonnes=fp.map(p=>{
+      if(typeof p==='string') return {id:p,niveauReveal:2};
+      return {id:p.id||p, niveauReveal:p.niveauReveal||2};
+    }).filter(p=>p.id&&p.id!==FICHE_ID);
+  }catch(e){ _cachedPersonnes=[]; }
+  return _cachedPersonnes;
+}
+
+// Invalider le cache quand l'env change
+function invalidatePersonnesCache(){ _cachedPersonnes=null; }
+
+// ── Construire un select personnages (avec option saisie libre) ──
+// Retourne {el, getValue, setValue}
+function buildPersoSelect(currentVal, onChange){
+  // On crée un input avec datalist pour permettre saisie libre
+  const wrap=document.createElement('div'); wrap.style.cssText='flex:1;min-width:100px;position:relative;display:flex;';
+  const inp=document.createElement('input'); inp.className='hc-perso-inp';
+  inp.placeholder='Personnage…';
+  inp.value=currentVal||'';
+  inp.setAttribute('list','perso-datalist-'+Math.random().toString(36).slice(2));
+  const dl=document.createElement('datalist'); dl.id=inp.getAttribute('list');
+  wrap.appendChild(inp); wrap.appendChild(dl);
+  // Charger les options en async
+  getPersonnesEnv().then(personnes=>{
+    dl.innerHTML='';
+    // Filtrer selon niveauReveal (N0 masqué aux joueurs)
+    const visible=personnes.filter(p=>octIsGM||p.niveauReveal>0);
+    visible.forEach(p=>{
+      const opt=document.createElement('option'); opt.value=p.id; dl.appendChild(opt);
+    });
+    // Si aucun personnage, fallback input classique
+    if(!visible.length) inp.removeAttribute('list');
+  });
+  inp.addEventListener('input',()=>onChange(inp.value));
+  return {el:wrap, getValue:()=>inp.value, setValue:(v)=>{ inp.value=v||''; }};
+}
+
 function renderHistoiresCroisees(){
   hcWrap.innerHTML='';
   (state.histoiresCroisees||[]).forEach((hc,idx)=>{
     const item=document.createElement('div'); item.className='hc-item';
     const head=document.createElement('div'); head.className='hc-item-head';
-    const persoInp=document.createElement('input'); persoInp.className='hc-perso-inp';
-    persoInp.placeholder='Identifiant ou nom du personnage / PNJ';
-    persoInp.value=hc.perso||'';
-    persoInp.addEventListener('input',()=>{ state.histoiresCroisees[idx].perso=persoInp.value; saveState(); });
+    const persoSel=buildPersoSelect(hc.perso||'',(val)=>{ state.histoiresCroisees[idx].perso=val; saveState(); });
     const delBtn=document.createElement('button'); delBtn.className='hc-del-btn'; delBtn.textContent='✕';
     delBtn.addEventListener('click',()=>{ state.histoiresCroisees.splice(idx,1); saveState(); renderHistoiresCroisees(); });
-    head.appendChild(persoInp); head.appendChild(delBtn);
+    head.appendChild(persoSel.el); head.appendChild(delBtn);
     const ta=document.createElement('textarea'); ta.className='hc-text';
     ta.placeholder='Histoire partagée avec ce personnage…'; ta.value=hc.text||'';
     ta.addEventListener('input',()=>{ state.histoiresCroisees[idx].text=ta.value; ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; saveState(); });
@@ -3341,14 +3418,11 @@ function renderDettes(){
   (state.dettes||[]).forEach((d,idx)=>{
     const item=document.createElement('div'); item.className='hc-item';
     const head=document.createElement('div'); head.className='hc-item-head';
-    const persoInp=document.createElement('input'); persoInp.className='hc-perso-inp';
-    persoInp.placeholder='Identifiant ou nom du personnage / PNJ';
-    persoInp.value=d.perso||'';
-    persoInp.addEventListener('input',()=>{ state.dettes[idx].perso=persoInp.value; saveState(); });
+    const persoSel=buildPersoSelect(d.perso||'',(val)=>{ state.dettes[idx].perso=val; saveState(); });
     const delBtn=document.createElement('button'); delBtn.className='hc-del-btn gm-edit-only'; delBtn.textContent='✕';
     if(!octIsGM) delBtn.style.display='none';
     delBtn.addEventListener('click',()=>{ state.dettes.splice(idx,1); saveState(); renderDettes(); });
-    head.appendChild(persoInp); head.appendChild(delBtn);
+    head.appendChild(persoSel.el); head.appendChild(delBtn);
     item.appendChild(head);
     const bmRow=document.createElement('div'); bmRow.className='dette-bm-row';
     const bmLabel=document.createElement('span'); bmLabel.className='dette-bm-label'; bmLabel.textContent='Niveau de dette :';
