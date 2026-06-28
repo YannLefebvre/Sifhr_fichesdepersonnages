@@ -8181,14 +8181,22 @@ function applyDeviationToWidget(item, elementName, baseBm){
     if(titleWrap) titleWrap.appendChild(badge);
   }
 
-  // bmDisplay : griser l'ancien
+  // bmDisplay : griser l'ancien si présent (équipements/artefacts)
+  // Pour les traits, bmDisplay n'existe pas
   const bmDisplay=item.querySelector('.bm-num-display');
-  // Override : afficher le nouveau
+
+  // Override : afficher le nouveau effet
   let override=item.querySelector('.bm-ideal-override');
   if(!override){
     override=document.createElement('span');
     override.className='bm-ideal-override';
-    if(bmDisplay) bmDisplay.parentNode.insertBefore(override, bmDisplay.nextSibling);
+    // Insérer après bmDisplay si présent, sinon dans titleWrap
+    if(bmDisplay){
+      bmDisplay.parentNode.insertBefore(override, bmDisplay.nextSibling);
+    } else {
+      const tw=item.querySelector('.acc-title-wrap');
+      if(tw) tw.appendChild(override);
+    }
   }
 
   if(dev.result==='neutre'){
@@ -8205,13 +8213,20 @@ function applyDeviationToWidget(item, elementName, baseBm){
     badge.className='oct-ideal-badge bonus'; badge.textContent='▲ '+lvl;
     if(bmDisplay) bmDisplay.classList.remove('degraded');
     override.className='bm-ideal-override bonus';
-    override.textContent='+ '+lvl; override.style.display='';
+    override.textContent='▲ '+lvl; override.style.display='';
   } else if(dev.result==='malus'){
     const lvl=BM_MALUS_LEVELS[dev.malusLevel];
     badge.className='oct-ideal-badge malus'; badge.textContent='▼ '+lvl;
     if(bmDisplay) bmDisplay.classList.add('degraded');
     override.className='bm-ideal-override malus';
-    override.textContent='− '+lvl; override.style.display='';
+    override.textContent='▼ '+lvl; override.style.display='';
+  }
+
+  // Pour les traits : aussi griser/colorer le levelRow (niveau du trait)
+  const levelRow=item.querySelector('.trait-level-row,.acc-level-row');
+  if(levelRow){
+    levelRow.style.opacity = dev.result==='redh' ? '0.35' : '';
+    levelRow.style.filter  = dev.result==='redh' ? 'grayscale(1)' : '';
   }
 
   // Tooltip détaillé
