@@ -662,18 +662,37 @@ async function gmReset(){
     animation:pulse 1.5s infinite; margin-left:.3rem; }
   .fiche-dice-indicator.active { display:inline; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-  /* ── Overlay observateur MJ ── */
-  #mj-obs-overlay { position:fixed; bottom:1rem; right:1rem; z-index:400;
-    display:none; flex-direction:column; gap:.6rem; max-width:460px; width:min(460px,96vw);
-    max-height:90vh; overflow-y:auto; }
-  #mj-obs-overlay.open { display:flex; }
-  .mj-obs-card { background:var(--bg); border:1.5px solid #4a90d9; border-radius:10px;
-    overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.4); }
-  .mj-obs-card-header { font-family:'Cinzel',serif; color:#4a90d9; font-size:.78rem;
-    display:flex; align-items:center; padding:.6rem .9rem;
-    border-bottom:1px solid rgba(74,144,217,.3); background:rgba(74,144,217,.06); }
-  .mj-obs-close { background:none; border:none; font-size:.9rem; cursor:pointer;
-    color:var(--ink3); margin-left:auto; }
+  /* ── Panneau MJ observateur — grille de cartes draggables ── */
+  #mj-obs-overlay { position:fixed; inset:0; pointer-events:none; z-index:400; display:none; }
+  #mj-obs-overlay.open { display:block; }
+  /* Barre de contrôle */
+  #mj-obs-toolbar { pointer-events:all; position:fixed; bottom:1rem; right:1rem;
+    display:none; gap:.4rem; align-items:center; z-index:401; }
+  #mj-obs-toolbar.visible { display:flex; }
+  .mj-obs-tool-btn { font-family:'Cinzel',serif; font-size:.65rem; padding:4px 10px;
+    border:1px solid #4a90d9; border-radius:4px; background:rgba(10,7,3,.85);
+    color:#4a90d9; cursor:pointer; white-space:nowrap; }
+  .mj-obs-tool-btn:hover { background:#4a90d9; color:#fff; }
+  /* Carte individuelle */
+  .mj-obs-card { position:absolute; background:var(--bg); border:1.5px solid #4a90d9;
+    border-radius:10px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.5);
+    pointer-events:all; display:flex; flex-direction:column;
+    width:420px; min-width:280px; min-height:200px; }
+  .mj-obs-card-header { font-family:'Cinzel',serif; color:#4a90d9; font-size:.75rem;
+    display:flex; align-items:center; padding:.4rem .7rem; flex-shrink:0;
+    border-bottom:1px solid rgba(74,144,217,.3); background:rgba(74,144,217,.06);
+    cursor:grab; user-select:none; gap:.4rem; }
+  .mj-obs-card-header:active { cursor:grabbing; }
+  .mj-obs-card iframe { flex:1; border:none; width:100%; min-height:480px;
+    overflow:auto; display:block; }
+  .mj-obs-close { background:none; border:none; font-size:.85rem; cursor:pointer;
+    color:var(--ink3); margin-left:auto; padding:0 2px; flex-shrink:0; }
+  .mj-obs-close:hover { color:#c85a52; }
+  /* Poignée de redimensionnement */
+  .mj-obs-resize { position:absolute; bottom:0; right:0; width:14px; height:14px;
+    cursor:se-resize; background:linear-gradient(135deg,transparent 50%,#4a90d9 50%);
+    border-radius:0 0 8px 0; opacity:.5; }
+  .mj-obs-resize:hover { opacity:1; }
   .mj-obs-dice-row { display:flex; flex-wrap:wrap; gap:.25rem; margin:.3rem 0; }
   .mj-obs-die { width:28px; height:28px; border-radius:4px; display:flex; align-items:center;
     justify-content:center; font-size:.8rem; font-weight:bold; border:2px solid transparent; }
@@ -2364,8 +2383,13 @@ function closeDuel(){
 </script>
 
 <!-- Panneau MJ observateur de lancers -->
-<div id="mj-obs-overlay">
-  <!-- Les cartes de lancer sont ajoutées dynamiquement ici -->
+<div id="mj-obs-overlay"></div>
+<div id="mj-obs-toolbar">
+  <span style="font-family:'Cinzel',serif;font-size:.65rem;color:#4a90d9;letter-spacing:.04em;">
+    👁 Lanceurs en cours
+  </span>
+  <button class="mj-obs-tool-btn" onclick="mjArrangeCards()">⊞ Réorganiser</button>
+  <button class="mj-obs-tool-btn" onclick="mjCloseAllCards()">✕ Tout fermer</button>
 </div>
 <script>
 
@@ -2440,26 +2464,114 @@ function mjGetFichePw(ficheId){
 function mjCreateObsCard(ficheId){
   const overlay = document.getElementById('mj-obs-overlay');
   overlay.classList.add('open');
+  document.getElementById('mj-obs-toolbar').classList.add('visible');
+
   const card = document.createElement('div');
   card.className = 'mj-obs-card';
-  // Construire l'URL de l'iframe — MJ observe en mode viewer
+
+  // Position initiale : en cascade selon le nombre de cartes ouvertes
+  const cardCount = Object.keys(_mjObsCards).length;
+  const startX = 20 + (cardCount % 3) * 440;
+  const startY = 20 + Math.floor(cardCount / 3) * 560;
+  card.style.left = Math.min(startX, window.innerWidth - 440) + 'px';
+  card.style.top = Math.min(startY, window.innerHeight - 300) + 'px';
+
+  // URL iframe
   const base = window.location.href.replace(/[^/]*$/, '');
   const pw = mjGetFichePw(ficheId);
   const iframeSrc = base + 'octogone.html'
     + '?fiche=' + encodeURIComponent(ficheId)
     + '&pw=' + encodeURIComponent(pw)
-    + '&gm=1'
-    + '&view=des'
-    + '&mjobs=1';
+    + '&gm=1&view=des&mjobs=1';
+
   card.innerHTML = `
-    <div class="mj-obs-card-header">
-      👁 Lanceur de <strong style="margin-left:.3rem;">${ficheId}</strong>
-      <span class="mj-obs-status" style="font-size:.62rem;color:#4a90d9;margin-left:.4rem;font-style:italic;">● En direct</span>
-      <button class="mj-obs-close" onclick="mjCloseObsCard('${ficheId}')">✕ Fermer</button>
+    <div class="mj-obs-card-header" data-fiche="${ficheId}">
+      👁 <strong>${ficheId}</strong>
+      <span class="mj-obs-status" style="font-size:.62rem;color:#4a90d9;font-style:italic;">● En direct</span>
+      <button class="mj-obs-close" onclick="mjCloseObsCard('${ficheId}')">✕</button>
     </div>
-    <iframe src="${iframeSrc}" style="width:100%;height:520px;border:none;border-radius:0 0 8px 8px;" allowtransparency="true"></iframe>`;
+    <iframe src="${iframeSrc}" allowtransparency="true" scrolling="yes"></iframe>
+    <div class="mj-obs-resize" data-fiche="${ficheId}"></div>`;
+
   overlay.appendChild(card);
   _mjObsCards[ficheId] = { card };
+
+  // Drag — déplacer la carte
+  mjMakeDraggable(card, card.querySelector('.mj-obs-card-header'));
+  // Resize — redimensionner la carte
+  mjMakeResizable(card, card.querySelector('.mj-obs-resize'));
+}
+
+function mjMakeDraggable(card, handle){
+  let startX, startY, startLeft, startTop;
+  handle.addEventListener('mousedown', e=>{
+    if(e.target.classList.contains('mj-obs-close')) return;
+    e.preventDefault();
+    startX=e.clientX; startY=e.clientY;
+    startLeft=parseInt(card.style.left)||0;
+    startTop=parseInt(card.style.top)||0;
+    card.style.zIndex=_mjObsZIndex++;
+    const onMove=e2=>{
+      card.style.left=Math.max(0,startLeft+(e2.clientX-startX))+'px';
+      card.style.top=Math.max(0,startTop+(e2.clientY-startY))+'px';
+    };
+    const onUp=()=>{ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+  });
+  // Touch support
+  handle.addEventListener('touchstart', e=>{
+    if(e.target.classList.contains('mj-obs-close')) return;
+    const t=e.touches[0];
+    startX=t.clientX; startY=t.clientY;
+    startLeft=parseInt(card.style.left)||0;
+    startTop=parseInt(card.style.top)||0;
+    card.style.zIndex=_mjObsZIndex++;
+    const onMove=e2=>{ const t2=e2.touches[0]; card.style.left=Math.max(0,startLeft+(t2.clientX-startX))+'px'; card.style.top=Math.max(0,startTop+(t2.clientY-startY))+'px'; };
+    const onUp=()=>{ document.removeEventListener('touchmove',onMove); document.removeEventListener('touchend',onUp); };
+    document.addEventListener('touchmove',onMove,{passive:true});
+    document.addEventListener('touchend',onUp);
+  },{passive:true});
+}
+
+function mjMakeResizable(card, handle){
+  let startX, startY, startW, startH;
+  handle.addEventListener('mousedown', e=>{
+    e.preventDefault();
+    startX=e.clientX; startY=e.clientY;
+    startW=card.offsetWidth; startH=card.offsetHeight;
+    const onMove=e2=>{
+      const newW=Math.max(280,startW+(e2.clientX-startX));
+      const newH=Math.max(200,startH+(e2.clientY-startY));
+      card.style.width=newW+'px';
+      const iframe=card.querySelector('iframe');
+      if(iframe) iframe.style.minHeight=Math.max(150,newH-40)+'px';
+    };
+    const onUp=()=>{ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+  });
+}
+
+let _mjObsZIndex = 410;
+
+// Réorganiser les cartes en grille
+function mjArrangeCards(){
+  const cards = Object.values(_mjObsCards).map(o=>o.card);
+  const cols = Math.min(cards.length, Math.floor((window.innerWidth - 40) / 440) || 1);
+  cards.forEach((card,i)=>{
+    const col=i%cols, row=Math.floor(i/cols);
+    card.style.left=(20+col*440)+'px';
+    card.style.top=(20+row*560)+'px';
+    card.style.width='420px';
+    const iframe=card.querySelector('iframe');
+    if(iframe) iframe.style.minHeight='480px';
+    card.style.zIndex=_mjObsZIndex++;
+  });
+}
+
+function mjCloseAllCards(){
+  Object.keys(_mjObsCards).forEach(id=>mjCloseObsCard(id));
 }
 
 function mjRenderObsCard(ficheId, ds){
@@ -2475,8 +2587,10 @@ function mjCloseObsCard(ficheId){
   const {card}=_mjObsCards[ficheId]||{};
   if(card) card.remove();
   delete _mjObsCards[ficheId];
-  const overlay=document.getElementById('mj-obs-overlay');
-  if(!overlay.children.length) overlay.classList.remove('open');
+  if(!Object.keys(_mjObsCards).length){
+    document.getElementById('mj-obs-overlay').classList.remove('open');
+    document.getElementById('mj-obs-toolbar').classList.remove('visible');
+  }
 }
 
 // Démarrer l'observation après login MJ
