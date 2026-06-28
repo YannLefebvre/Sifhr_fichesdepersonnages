@@ -2242,7 +2242,9 @@ async function doLogin(tryGM){
             else el.style.display='none';
           });
           document.getElementById('perso-fab').style.display='flex';
-        }        if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);        startRealtime();
+          document.getElementById('evt-fab').style.display='flex';
+        }
+        if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);        startRealtime();
         // Démarrer le système de notifications après le login
         setTimeout(()=>NotifSystem.start(), 3000);
         // Appliquer mode lecture seule si demandé
