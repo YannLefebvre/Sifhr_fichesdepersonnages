@@ -716,40 +716,46 @@
     letter-spacing:.06em; text-transform:uppercase; margin-bottom:.3rem; font-weight:600; }
   .vv-hoverable { cursor:help; }
 
-  /* ── Panneau latéral événements ── */
-  #evt-panel { position:fixed; top:0; right:0; height:100vh; width:min(400px,96vw);
-    background:var(--bg); border-left:1px solid var(--border); z-index:320;
-    transform:translateX(100%); transition:transform .3s ease;
-    display:flex; flex-direction:column; overflow:hidden; }
+  /* ── Panneau latéral événements (vert islamique) ── */
+  #evt-side-tab {
+    position:fixed; right:0; top:calc(50% + 9rem);
+    background:#1a4a2a; color:#f5f0e8; border:none;
+    border-radius:6px 0 0 6px; padding:.7rem .4rem;
+    cursor:pointer; font-family:'Cinzel',serif; font-size:.7rem;
+    letter-spacing:.08em; writing-mode:vertical-rl; text-orientation:mixed;
+    box-shadow:-2px 0 8px rgba(0,0,0,0.2); z-index:182; display:none;
+  }
+  #evt-side-tab:hover { background:#0f3319; }
+  #evt-panel {
+    position:fixed; right:0; top:0; bottom:0; width:340px; max-width:90vw;
+    background:var(--bg); border-left:2px solid #1a4a2a;
+    box-shadow:-4px 0 20px rgba(0,0,0,0.25); z-index:186;
+    transform:translateX(100%); transition:transform .25s ease;
+    overflow-y:auto; padding:1rem; display:flex; flex-direction:column;
+  }
   #evt-panel.open { transform:translateX(0); }
   #evt-panel-close { position:absolute; top:.5rem; left:.5rem; background:none;
-    border:none; font-size:1.1rem; cursor:pointer; color:var(--ink3); z-index:1; }
-  #evt-panel-title { font-family:'Cinzel',serif; font-size:.85rem; color:var(--accent);
-    letter-spacing:.08em; padding:.8rem 2.5rem; border-bottom:1px solid var(--border2);
-    flex-shrink:0; }
-  #evt-panel-body { flex:1; overflow-y:auto; padding:.6rem; }
-  .evt-item { background:var(--section-bg); border:1px solid var(--border2);
+    border:none; font-size:1rem; cursor:pointer; color:var(--ink3); }
+  #evt-panel h3 { font-family:'Cinzel',serif; color:#1a4a2a; font-size:1rem;
+    letter-spacing:.08em; margin-bottom:.8rem; text-align:center; padding-top:.4rem; }
+  #evt-panel-body { flex:1; overflow-y:auto; }
+  .evt-item { background:var(--section-bg); border:1px solid rgba(26,74,42,.2);
     border-radius:6px; padding:.6rem .8rem; margin-bottom:.5rem; }
-  .evt-item-titre { font-family:'Cinzel',serif; font-size:.78rem; color:var(--ink2);
+  .evt-item-titre { font-family:'Cinzel',serif; font-size:.78rem; color:#1a4a2a;
     font-weight:600; margin-bottom:.25rem; }
   .evt-item-texte { font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink);
     line-height:1.5; }
   .evt-item-meta { font-family:'Cinzel',serif; font-size:.62rem; color:var(--ink3);
     margin-top:.3rem; letter-spacing:.04em; }
-  .evt-item-meta.gm-only { border-left:2px solid var(--accent); padding-left:.4rem;
-    font-style:italic; }
+  .evt-item-meta.gm-only { border-left:2px solid #1a4a2a; padding-left:.4rem;
+    font-style:italic; color:#1a4a2a; }
+  .evt-item-link { display:inline-block; font-family:'Cinzel',serif; font-size:.62rem;
+    color:#1a4a2a; border:1px solid rgba(26,74,42,.4); border-radius:3px;
+    padding:1px 6px; cursor:pointer; text-decoration:none; transition:background .12s; }
+  .evt-item-link:hover { background:rgba(26,74,42,.1); }
   .evt-empty { font-style:italic; color:var(--ink3); font-size:.85rem;
     text-align:center; padding:2rem 1rem; }
-  .evt-source-label { font-family:'Cinzel',serif; font-size:.62rem; color:var(--ink3);
-    text-transform:uppercase; letter-spacing:.08em; margin:.6rem 0 .3rem;
-    padding-bottom:.2rem; border-bottom:1px solid var(--border2); }
-  /* FAB événements */
-  #evt-fab { position:fixed; bottom:calc(1rem + 240px); right:1rem; width:46px; height:46px;
-    border-radius:50%; background:#5a3a1a; color:#f5f0e8; border:none; font-size:1.1rem;
-    cursor:pointer; z-index:200; display:none; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
-  #evt-fab:hover { background:#7a5a2a; }
-  #evt-fab.open { background:#3a2a0a; }
-
+  #evt-fab { display:none !important; }
   /* ── Panneau latéral oppositions ── */
   #vv-side-tab {
     position:fixed; right:0; top:50%; transform:translateY(-50%);
@@ -2232,7 +2238,7 @@ async function doLogin(tryGM){
           if(typeof renderDettes==='function') renderDettes();
           if(typeof renderHistoiresCroisees==='function') renderHistoiresCroisees();
           document.getElementById('perso-fab').style.display='flex';
-          document.getElementById('evt-fab').style.display='flex';
+          document.getElementById('evt-side-tab').style.display='block';
         } else {
           // Joueur : masquer le display MJ (qui montre "0"), afficher uniquement le display joueur
           document.querySelectorAll('.bm-num-display:not(.bm-joueur-display)').forEach(el=>el.style.display='none');
@@ -2242,7 +2248,7 @@ async function doLogin(tryGM){
             else el.style.display='none';
           });
           document.getElementById('perso-fab').style.display='flex';
-          document.getElementById('evt-fab').style.display='flex';
+          document.getElementById('evt-side-tab').style.display='block';
         }
         if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);        startRealtime();
         // Démarrer le système de notifications après le login
@@ -6742,7 +6748,7 @@ const ProdigeSystem = {
     <path d="M9.5 19.5 Q9.5 15.5 14 15.5 Q18.5 15.5 18.5 19.5" fill="#f5e8c8"/>
   </svg>
 </button>
-<button id="evt-fab" onclick="toggleEvtPanel()" title="Événements">📜</button>
+<button id="evt-side-tab" onclick="toggleEvtPanel()">Événements</button>
 
 <!-- Panneau Personnages -->
 <div id="perso-panel">
@@ -7882,84 +7888,103 @@ let _evtPanelLoaded = false;
 
 function toggleEvtPanel(){
   const panel = document.getElementById('evt-panel');
-  const fab = document.getElementById('evt-fab');
+  const tab = document.getElementById('evt-side-tab');
   const isOpen = panel.classList.contains('open');
   panel.classList.toggle('open', !isOpen);
-  fab.classList.toggle('open', !isOpen);
+  if(tab) tab.style.background = isOpen ? '#1a4a2a' : '#0f3319';
   if(!isOpen) loadEvtPanel();
 }
 
 async function loadEvtPanel(){
-  const body = document.getElementById('evt-panel-body');
-  const envId = state.envFiche||'';
-  if(!envId){
-    body.innerHTML='<div class="evt-empty">Aucun environnement lié.</div>';
-    return;
-  }
+  const body=document.getElementById('evt-panel-body');
+  const envId=state.envFiche||'';
+  if(!envId){body.innerHTML='<div class="evt-empty">Aucun environnement lié.</div>';return;}
   body.innerHTML='<div class="evt-empty">Chargement…</div>';
+  const ANOMS=['Feu','Bile Jaune','Terre','Bile Noire','Eau','Flègme','Air','Sang'];
+  const SIDS=['feu','bile_j','terre','bile_n','eau','flegme','air','sang'];
+  const NLBL=['Rumeur','Fait établi','Indice'];
+  const base=window.location.href.replace(/[^/]*$/,'');
   try{
-    // Charger la colonne carte de la fiche env
-    const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=carte`,
-      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
-    );
-    const d = await r.json();
-    const slots = d[0]?.carte?.slots||{};
-
-    // Filtrer les événements visibles pour ce personnage
-    const events = Object.entries(slots).filter(([key,slot])=>{
-      if(!slot||(!slot.titre&&!slot.texte)) return false;
-      if(octIsGM) return true;
-      const ra = slot.revele_a;
-      return ra==='tous'||(Array.isArray(ra)&&ra.length>0&&ra.includes(FICHE_ID))
-          || (Array.isArray(ra)&&ra.length>0); // révélé à quelqu'un = visible pour les concernés
-    });
-
+    // Charger etat + carte de la fiche env
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat,carte`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const envEtat=d[0]?.etat||{};
+    const slots=d[0]?.carte?.slots||{};
     body.innerHTML='';
+    let hasContent=false;
 
-    if(!events.length){
-      body.innerHTML='<div class="evt-empty">Aucun événement pour l\'instant.</div>';
-      return;
+    // ── Source 1 : notes d'axes (axisNotes) ──
+    const axisNotes=envEtat.axisNotes||{};
+    const axisItems=[];
+    SIDS.forEach((sid,i)=>{
+      const notes=axisNotes[sid];
+      if(!notes) return;
+      // Note joueurs (toujours visible si non vide)
+      if(notes.players&&notes.players.text){
+        axisItems.push({axe:ANOMS[i],text:notes.players.text,source:'joueurs',sid});
+      }
+      // Note MJ (visible si revealed=true ou si MJ)
+      if(notes.gm&&notes.gm.text&&(octIsGM||notes.gm.revealed)){
+        axisItems.push({axe:ANOMS[i],text:notes.gm.text,source:'gm',sid,revealed:notes.gm.revealed});
+      }
+    });
+    if(axisItems.length){
+      hasContent=true;
+      const lbl=document.createElement('div');
+      lbl.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:#1a4a2a;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4rem;padding-bottom:.2rem;border-bottom:1px solid rgba(26,74,42,.2);';
+      lbl.textContent='Notes des axes';
+      body.appendChild(lbl);
+      axisItems.forEach(n=>{
+        const item=document.createElement('div');item.className='evt-item';
+        const tt=document.createElement('div');tt.className='evt-item-titre';
+        tt.textContent=n.axe+(n.source==='gm'?' — Meneur':'');
+        item.appendChild(tt);
+        const tx=document.createElement('div');tx.className='evt-item-texte';tx.textContent=n.text;item.appendChild(tx);
+        if(octIsGM&&n.source==='gm'){
+          const me=document.createElement('div');me.className='evt-item-meta gm-only';
+          me.textContent=n.revealed?'Visible joueurs':'Non révélée aux joueurs';item.appendChild(me);
+        }
+        const ll=document.createElement('div');ll.style.marginTop='.3rem';
+        const el=document.createElement('a');el.className='evt-item-link';el.textContent='⧡ Environnement';
+        el.href=base+'environnement.html?fiche='+encodeURIComponent(envId);
+        el.target='_blank';el.rel='noopener';ll.appendChild(el);
+        item.appendChild(ll);body.appendChild(item);
+      });
     }
 
-    // Trier par poids décroissant (les plus importants en premier)
-    events.sort(([,a],[,b])=>(b.poids||0)-(a.poids||0));
-
-    // Regrouper par type si MJ
-    const NIVEAU_LABELS=['Rumeur','Fait établi','Indice'];
-
-    events.forEach(([key,slot])=>{
-      const item = document.createElement('div');
-      item.className = 'evt-item';
-
-      let html = `<div class="evt-item-titre">${slot.titre||'(sans titre)'}</div>`;
-      if(slot.texte) html += `<div class="evt-item-texte">${slot.texte}</div>`;
-
-      // Infos MJ uniquement : poids, axes, type
-      if(octIsGM){
-        const AXIS_NOMS = ['Feu','Bile Jaune','Terre','Bile Noire','Eau','Flegme','Air','Sang'];
-        const axes = (slot.axes||[]).map(n=>AXIS_NOMS[n-1]||n).join(', ');
-        const niv = slot.niveau ? NIVEAU_LABELS[slot.niveau-1]||'' : '';
-        const poids = slot.poids ? `Poids ${slot.poids}` : '';
-        const meta = [niv, axes?`Axes : ${axes}`:'', poids].filter(Boolean).join(' · ');
-        if(meta) html += `<div class="evt-item-meta gm-only">${meta}</div>`;
-      } else {
-        // Joueur : afficher les axes si visibles (noms seulement, pas le poids)
-        if(slot.axes&&slot.axes.length){
-          const AXIS_NOMS = ['Feu','Bile Jaune','Terre','Bile Noire','Eau','Flegme','Air','Sang'];
-          const axes = slot.axes.map(n=>AXIS_NOMS[n-1]||n).join(', ');
-          html += `<div class="evt-item-meta">Axe${slot.axes.length>1?'s':''} : ${axes}</div>`;
-        }
-      }
-
-      item.innerHTML = html;
-      body.appendChild(item);
+    // ── Source 2 : événements de la carte ──
+    const evts=Object.entries(slots).filter(([k,s])=>{
+      if(!s||(!s.titre&&!s.texte)) return false;
+      if(octIsGM) return true;
+      const ra=s.revele_a;
+      return ra==='tous'||(Array.isArray(ra)&&(ra.includes(FICHE_ID)||ra.length>0));
     });
+    if(evts.length){
+      hasContent=true;
+      const lbl2=document.createElement('div');
+      lbl2.style.cssText="font-family:Cinzel,serif;font-size:.65rem;color:#1a4a2a;letter-spacing:.08em;text-transform:uppercase;margin:.8rem 0 .4rem;padding-bottom:.2rem;border-bottom:1px solid rgba(26,74,42,.2);";
+      lbl2.textContent='Événements de la carte';
+      body.appendChild(lbl2);
+      evts.sort(([,a],[,b])=>{const p=(b.poids||0)-(a.poids||0);return p||((b.niveau||0)-(a.niveau||0));});
+      evts.forEach(([key,s])=>{
+        const item=document.createElement('div');item.className='evt-item';
+        const tt=document.createElement('div');tt.className='evt-item-titre';tt.textContent=s.titre||'(sans titre)';item.appendChild(tt);
+        if(s.texte){const tx=document.createElement('div');tx.className='evt-item-texte';tx.textContent=s.texte;item.appendChild(tx);}
+        if(s.axes&&s.axes.length){const ax=document.createElement('div');ax.className='evt-item-meta';ax.textContent='Axe'+(s.axes.length>1?'s':'')+' : '+s.axes.map(n=>ANOMS[n-1]||n).join(', ');item.appendChild(ax);}
+        if(octIsGM){const pt=[];if(s.niveau)pt.push(NLBL[s.niveau-1]||'');if(s.poids)pt.push('Poids '+s.poids);if(pt.length){const me=document.createElement('div');me.className='evt-item-meta gm-only';me.textContent=pt.join(' · ');item.appendChild(me);}}
+        const ll=document.createElement('div');ll.style.marginTop='.3rem';
+        const cl=document.createElement('a');cl.className='evt-item-link';cl.textContent='🗺️ Carte';
+        cl.href=base+'carte.html?fiche='+encodeURIComponent(envId)+'&slot='+encodeURIComponent(key);
+        cl.target='_blank';cl.rel='noopener';ll.appendChild(cl);
+        if(octIsGM){const el2=document.createElement('a');el2.className='evt-item-link';el2.style.marginLeft='.3rem';el2.textContent='⧡ Env';
+          el2.href=base+'environnement.html?fiche='+encodeURIComponent(envId);el2.target='_blank';el2.rel='noopener';ll.appendChild(el2);}
+        item.appendChild(ll);body.appendChild(item);
+      });
+    }
 
-  }catch(e){
-    body.innerHTML='<div class="evt-empty">Impossible de charger les événements.</div>';
-    console.error('loadEvtPanel',e);
-  }
+    if(!hasContent) body.innerHTML='<div class="evt-empty">Aucun événement visible pour l\'instant.</div>';
+  }catch(e){body.innerHTML='<div class="evt-empty">Erreur de chargement.</div>';console.error('loadEvtPanel',e);}
 }
 
 // ── Réception des messages depuis aventure.html ──
@@ -8027,7 +8052,7 @@ window.addEventListener('message',(e)=>{
 <!-- Panneau latéral événements -->
 <div id="evt-panel">
   <button id="evt-panel-close" onclick="toggleEvtPanel()">✕</button>
-  <div id="evt-panel-title">📜 Événements</div>
+  <h3>📜 Événements</h3>
   <div id="evt-panel-body">
     <div class="evt-empty">Chargement…</div>
   </div>
