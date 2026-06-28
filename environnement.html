@@ -725,7 +725,7 @@ async function gmReset(){
   .bib-ideaux-cat.Equipement{ background:#5a5a1a; }
   /* Mini-octogone éditeur */
   #bib-oct-editor { display:none; background:var(--section-bg); border:1px solid #1a4a2a;
-    border-radius:8px; padding:.8rem; }
+    border-radius:8px; padding:.8rem; max-height:600px; overflow:hidden; }
   #bib-oct-editor h4 { font-family:'Cinzel',serif; font-size:.78rem; color:#1a4a2a;
     letter-spacing:.06em; margin-bottom:.6rem; }
   .bib-oct-wrap { display:flex; gap:.8rem; align-items:flex-start; flex-wrap:wrap; }
@@ -1008,22 +1008,16 @@ async function gmReset(){
     <div class="bib-oct-wrap">
       <!-- SVG mini-octogone -->
       <div id="bib-oct-svg-wrap">
-        <svg id="bib-oct-svg" viewBox="0 0 300 300" width="240" height="240"
+        <svg id="bib-oct-svg" viewBox="0 0 300 300" width="220" height="220"
           xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
       <!-- Contrôles textuels -->
-      <div class="bib-oct-controls">
-        <div class="bib-oct-section-label">Axes (jetons combinés 0-6)</div>
+      <div class="bib-oct-controls" style="max-height:380px;overflow-y:auto;padding-right:.3rem;">
         <div id="bib-oct-axes-inputs"></div>
-        <div class="bib-oct-section-label">Vices &amp; Vertus (0-5)</div>
-        <div class="bib-oct-scores-grid" id="bib-oct-scores-inputs"></div>
-        <div class="bib-oct-section-label">Dés dévoyés</div>
-        <div class="bib-oct-axis-row">
-          <span class="bib-oct-axis-label">Dés dévoyés</span>
-          <input class="bib-oct-input" type="number" id="bib-oct-des" min="0" max="10"
-            value="0" oninput="bibOctUpdateSVG()">
-        </div>
-        <button class="bib-oct-save-btn" onclick="bibOctSave()">💾 Sauvegarder cet octogone idéal</button>
+        <div id="bib-oct-scores-inputs" style="display:none;"></div>
+        <button class="bib-oct-save-btn" onclick="bibOctSave()" style="position:sticky;bottom:0;">
+          💾 Sauvegarder les conditions
+        </button>
         <div class="bib-oct-saved" id="bib-oct-saved">✓ Sauvegardé</div>
       </div>
     </div>
@@ -2751,32 +2745,53 @@ function startMjDiceObservation(){
 
 const BIB_ITEMS_ENV = [["Confusion mentale", "N1", "Négatif", "Etat"], ["Doute existentiel", "N1", "Négatif", "Etat"], ["Montée de colère", "N1", "Négatif", "Etat"], ["Perte de sang-froid", "N1", "Négatif", "Etat"], ["Montée d'adrénaline", "N1", "Positif", "Etat"], ["Se recentrer", "N1", "Positif", "Etat"], ["Une idée claire émerge", "N1", "Positif", "Etat"], ["Un vent subtil qui vous traverse", "N1", "Positif", "Etat"], ["Ataraxie", "2", "", "Prodige"], ["Dernier souffle", "", "", "Prodige"], ["Aponie", "", "", "Prodige"], ["Puissance de l'âme", "", "", "Prodige"], ["Transcrutation", "", "", "Prodige"], ["Magie astrale", "2 à 3", "", "Prodige"], ["Souffle miraculeux", "", "", "Prodige"], ["Stylet de lecture", "2", "", "Artefact"], ["Faucon mécanique", "2 à 3", "", "Artefact"], ["Pneumatographe", "1 et 2", "", "Artefact"], ["Calculatrice", "1", "", "Artefact"], ["La Voix", "", "", "Artefact"], ["Une Tuwala", "", "", "Artefact"], ["Manuel sur la Futuwah", "", "", "Artefact"], ["Arbalète à multiple mécanisme", "", "", "Artefact"], ["Bouclier de témérité", "", "", "Artefact"], ["Gant du scribe", "", "", "Artefact"], ["Bracelet de la Macchina", "1", "", "Artefact"], ["Reliquaire portatif", "2", "", "Artefact"], ["Cautériseur intégré", "2", "", "Artefact"], ["L'œil de vigilance", "1", "", "Artefact"], ["Relique périaptique", "1", "", "Artefact"], ["Boussoles stables", "", "", "Artefact"], ["Épée de cavalerie", "N1 à N3", "Positif", "Equipement"], ["Armure de cuir", "N1", "Positif", "Equipement"], ["Bouclier renforcé", "N2", "Positif", "Equipement"], ["Arc composite", "N1 à N3", "Positif", "Equipement"], ["Parchemin chiffré", "N1", "Positif/Négatif", "Equipement"]];
 
-const BIB_AXES = [
-  {id:'feu',    label:'Feu'},
-  {id:'bile_j', label:'Bile Jaune'},
-  {id:'terre',  label:'Terre'},
-  {id:'bile_n', label:'Bile Noire'},
-  {id:'eau',    label:'Eau'},
-  {id:'flegme', label:'Flegme'},
-  {id:'air',    label:'Air'},
-  {id:'sang',   label:'Sang'},
+// ── 33 éléments de comparaison ──
+const BIB_33 = [
+  // Jetons blancs (8)
+  {id:'feu_b',          label:'Feu ○',        group:'blanc', axe:'feu',    max:3},
+  {id:'bile_j_b',       label:'Bile J. ○',    group:'blanc', axe:'bile_j', max:3},
+  {id:'terre_b',        label:'Terre ○',      group:'blanc', axe:'terre',  max:3},
+  {id:'bile_n_b',       label:'Bile N. ○',    group:'blanc', axe:'bile_n', max:3},
+  {id:'eau_b',          label:'Eau ○',        group:'blanc', axe:'eau',    max:3},
+  {id:'flegme_b',       label:'Flegme ○',     group:'blanc', axe:'flegme', max:3},
+  {id:'air_b',          label:'Air ○',        group:'blanc', axe:'air',    max:3},
+  {id:'sang_b',         label:'Sang ○',       group:'blanc', axe:'sang',   max:3},
+  // Jetons noirs (8)
+  {id:'feu_n',          label:'Feu ●',        group:'noir',  axe:'feu',    max:3},
+  {id:'bile_j_n',       label:'Bile J. ●',    group:'noir',  axe:'bile_j', max:3},
+  {id:'terre_n',        label:'Terre ●',      group:'noir',  axe:'terre',  max:3},
+  {id:'bile_n_n',       label:'Bile N. ●',    group:'noir',  axe:'bile_n', max:3},
+  {id:'eau_n',          label:'Eau ●',        group:'noir',  axe:'eau',    max:3},
+  {id:'flegme_n',       label:'Flegme ●',     group:'noir',  axe:'flegme', max:3},
+  {id:'air_n',          label:'Air ●',        group:'noir',  axe:'air',    max:3},
+  {id:'sang_n',         label:'Sang ●',       group:'noir',  axe:'sang',   max:3},
+  // Vertus (8)
+  {id:'feu_force',      label:'Force',        group:'vertu', score:'feu_0',    max:5},
+  {id:'bile_j_charite', label:'Charité',      group:'vertu', score:'bile_j_0', max:5},
+  {id:'terre_loyaute',  label:'Loyauté',      group:'vertu', score:'terre_0',  max:5},
+  {id:'bile_n_prudence',label:'Prudence',     group:'vertu', score:'bile_n_0', max:5},
+  {id:'eau_temperance', label:'Tempérance',   group:'vertu', score:'eau_0',    max:5},
+  {id:'flegme_chastete',label:'Chasteté',     group:'vertu', score:'flegme_0', max:5},
+  {id:'air_foi',        label:'Foi',          group:'vertu', score:'air_0',    max:5},
+  {id:'sang_esperance', label:'Espérance',    group:'vertu', score:'sang_0',   max:5},
+  // Vices (8)
+  {id:'feu_envie',      label:'Envie',        group:'vice',  score:'feu_1',    max:5},
+  {id:'bile_j_luxure',  label:'Luxure',       group:'vice',  score:'bile_j_1', max:5},
+  {id:'terre_malignite',label:'Malignité',    group:'vice',  score:'terre_1',  max:5},
+  {id:'bile_n_acedie',  label:'Acédie',       group:'vice',  score:'bile_n_1', max:5},
+  {id:'eau_lachete',    label:'Lâcheté',      group:'vice',  score:'eau_1',    max:5},
+  {id:'flegme_avarice', label:'Avarice',      group:'vice',  score:'flegme_1', max:5},
+  {id:'air_felonie',    label:'Félonie',      group:'vice',  score:'air_1',    max:5},
+  {id:'sang_temerite',  label:'Témérité',     group:'vice',  score:'sang_1',   max:5},
+  // Dés dévoyés (1)
+  {id:'des_devoyes',    label:'Dés dévoyés',  group:'des',   max:10},
 ];
-const BIB_SCORES = [
-  'feu_0','feu_1','bile_j_0','bile_j_1',
-  'terre_0','terre_1','terre_2',
-  'bile_n_0','bile_n_1',
-  'eau_0','eau_1','flegme_0','flegme_1',
-  'air_0','air_1','sang_0','sang_1','sang_2'
-];
-const BIB_SCORE_LABELS = {
-  feu_0:'Feu V0', feu_1:'Feu V1',
-  bile_j_0:'BJ V0', bile_j_1:'BJ V1',
-  terre_0:'Terre V0', terre_1:'Terre V1', terre_2:'Terre V2',
-  bile_n_0:'BN V0', bile_n_1:'BN V1',
-  eau_0:'Eau V0', eau_1:'Eau V1',
-  flegme_0:'Fl. V0', flegme_1:'Fl. V1',
-  air_0:'Air V0', air_1:'Air V1',
-  sang_0:'Sang V0', sang_1:'Sang V1', sang_2:'Sang V2'
+
+const BIB_GROUP_COLORS = {
+  blanc:'#2A6A4A', noir:'#2A2A6A', vertu:'#6A4A0A', vice:'#8B2020', des:'#5A3A1A'
+};
+const BIB_GROUP_LABELS = {
+  blanc:'Jetons blancs ○', noir:'Jetons noirs ●', vertu:'Vertus', vice:'Vices', des:'Dés dévoyés'
 };
 
 let _bibCurrentElement = null; // nom de l'élément en cours d'édition
@@ -2802,26 +2817,60 @@ function bibIdeauxInit(){
 }
 
 function bibIdeauxBuildInputs(){
-  // Axes
-  const axesDiv=document.getElementById('bib-oct-axes-inputs');
-  axesDiv.innerHTML='';
-  BIB_AXES.forEach(ax=>{
-    const row=document.createElement('div'); row.className='bib-oct-axis-row';
-    row.innerHTML=`<span class="bib-oct-axis-label">${ax.label}</span>
-      <input class="bib-oct-input" type="number" id="bib-ax-${ax.id}"
-        min="0" max="6" value="0" oninput="bibOctUpdateSVG()">
-      <span style="font-size:.65rem;color:var(--ink3)">0-6</span>`;
-    axesDiv.appendChild(row);
-  });
-  // Scores
+  // Construire les inputs groupés pour les 33 éléments
+  const container = document.getElementById('bib-oct-axes-inputs');
+  container.innerHTML='';
+  // Masquer les anciens divs scores (on les remplace)
   const scDiv=document.getElementById('bib-oct-scores-inputs');
-  scDiv.innerHTML='';
-  BIB_SCORES.forEach(sc=>{
-    const row=document.createElement('div'); row.className='bib-oct-score-row';
-    row.innerHTML=`<span class="bib-oct-score-label">${BIB_SCORE_LABELS[sc]}</span>
-      <input class="bib-oct-input" type="number" id="bib-sc-${sc}"
-        min="0" max="5" value="0" oninput="bibOctUpdateSVG()">`;
-    scDiv.appendChild(row);
+  if(scDiv) scDiv.innerHTML='';
+
+  let currentGroup='';
+  BIB_33.forEach(el=>{
+    if(el.group!==currentGroup){
+      currentGroup=el.group;
+      const lbl=document.createElement('div');
+      lbl.className='bib-oct-section-label';
+      lbl.style.color=BIB_GROUP_COLORS[el.group]||'var(--ink3)';
+      lbl.textContent=BIB_GROUP_LABELS[el.group]||el.group;
+      container.appendChild(lbl);
+    }
+    const row=document.createElement('div');
+    row.className='bib-oct-axis-row';
+    row.style.gap='.3rem';
+
+    // Label
+    const lbl=document.createElement('span');
+    lbl.className='bib-oct-axis-label';
+    lbl.textContent=el.label;
+    row.appendChild(lbl);
+
+    // Sélecteur B/M/R/vide
+    const sel=document.createElement('select');
+    sel.id='bib-type-'+el.id;
+    sel.style.cssText='font-family:Cinzel,serif;font-size:.65rem;padding:1px 3px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--ink);width:58px;';
+    [['','—'],['B','Bonus'],['M','Malus'],['R','Rédh.']].forEach(([v,t])=>{
+      const opt=document.createElement('option'); opt.value=v; opt.textContent=t;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change',()=>bibOctUpdateSVG());
+    row.appendChild(sel);
+
+    // Valeur seuil
+    const inp=document.createElement('input');
+    inp.id='bib-val-'+el.id;
+    inp.type='number'; inp.min=0; inp.max=el.max; inp.value=0;
+    inp.className='bib-oct-input';
+    inp.style.width='38px';
+    inp.addEventListener('input',()=>bibOctUpdateSVG());
+    row.appendChild(inp);
+
+    // Indicateur de seuil
+    const hint=document.createElement('span');
+    hint.style.cssText='font-size:.6rem;color:var(--ink3);white-space:nowrap;';
+    hint.textContent='0-'+el.max;
+    row.appendChild(hint);
+
+    container.appendChild(row);
   });
   bibBuildSVG();
 }
@@ -2859,16 +2908,18 @@ function bibIdeauxSelect(nom, cat){
   // Charger les valeurs existantes
   const ideaux=state.bibliotheque_ideaux||{};
   const vals=ideaux[nom]||{};
-  BIB_AXES.forEach(ax=>{
-    const inp=document.getElementById('bib-ax-'+ax.id);
-    if(inp) inp.value=(vals.axes&&vals.axes[ax.id]!=null)?vals.axes[ax.id]:0;
+  // vals.conditions = {id: 'B:2'|'M:1'|'R:3'|''}
+  const conds=vals.conditions||{};
+  BIB_33.forEach(el=>{
+    const raw=conds[el.id]||'';
+    const sel=document.getElementById('bib-type-'+el.id);
+    const inp=document.getElementById('bib-val-'+el.id);
+    if(!sel||!inp) return;
+    if(raw&&raw.includes(':')){
+      const [type,val]=raw.split(':');
+      sel.value=type; inp.value=parseInt(val)||0;
+    } else { sel.value=''; inp.value=0; }
   });
-  BIB_SCORES.forEach(sc=>{
-    const inp=document.getElementById('bib-sc-'+sc);
-    if(inp) inp.value=(vals.scores&&vals.scores[sc]!=null)?vals.scores[sc]:0;
-  });
-  const desInp=document.getElementById('bib-oct-des');
-  if(desInp) desInp.value=vals.des_devoyes||0;
   document.getElementById('bib-oct-saved').style.display='none';
   bibOctUpdateSVG();
   bibIdeauxRenderList(document.getElementById('bib-ideaux-search').value.toLowerCase());
@@ -2877,17 +2928,15 @@ function bibIdeauxSelect(nom, cat){
 async function bibOctSave(){
   if(!_bibCurrentElement) return;
   if(!state.bibliotheque_ideaux) state.bibliotheque_ideaux={};
-  const axes={}, scores={};
-  BIB_AXES.forEach(ax=>{
-    const v=parseInt(document.getElementById('bib-ax-'+ax.id)?.value||0);
-    if(v>0) axes[ax.id]=v;
+  const conditions={};
+  BIB_33.forEach(el=>{
+    const sel=document.getElementById('bib-type-'+el.id);
+    const inp=document.getElementById('bib-val-'+el.id);
+    if(!sel||!inp) return;
+    const type=sel.value; const val=parseInt(inp.value||0);
+    if(type) conditions[el.id]=type+':'+val;
   });
-  BIB_SCORES.forEach(sc=>{
-    const v=parseInt(document.getElementById('bib-sc-'+sc)?.value||0);
-    if(v>0) scores[sc]=v;
-  });
-  const des=parseInt(document.getElementById('bib-oct-des')?.value||0);
-  state.bibliotheque_ideaux[_bibCurrentElement]={axes,scores,des_devoyes:des};
+  state.bibliotheque_ideaux[_bibCurrentElement]={conditions};
   await saveState();
   const saved=document.getElementById('bib-oct-saved');
   saved.style.display='block';
@@ -2946,22 +2995,47 @@ function bibOctUpdateSVG(){
     Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));
     layer.appendChild(el); return el;
   };
-  // Polygone des valeurs d'axes
-  const maxVal=6;
-  const pts=BIB_AXES.map((ax,i)=>{
-    const v=Math.min(maxVal,Math.max(0,parseInt(document.getElementById('bib-ax-'+ax.id)?.value||0)));
-    const r=BIB_INNER+(BIB_OUTER-BIB_INNER)*(v/maxVal);
-    const p=bibPolar(r,i*45);
-    return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-  }).join(' ');
-  mk('polygon',{points:pts,fill:'rgba(26,74,42,0.25)',stroke:'#1a4a2a','stroke-width':'1.5'});
-  // Points aux sommets
-  BIB_AXES.forEach((ax,i)=>{
-    const v=Math.min(maxVal,Math.max(0,parseInt(document.getElementById('bib-ax-'+ax.id)?.value||0)));
-    if(v===0) return;
-    const r=BIB_INNER+(BIB_OUTER-BIB_INNER)*(v/maxVal);
-    const p=bibPolar(r,i*45);
-    mk('circle',{cx:p.x.toFixed(1),cy:p.y.toFixed(1),r:'3',fill:'#1a4a2a'});
+  // Pour les 8 axes blancs : dessiner le polygone des valeurs bonus (vert) et malus (rouge)
+  const AXES_IDS=['feu','bile_j','terre','bile_n','eau','flegme','air','sang'];
+
+  ['b','n'].forEach((tokType,ti)=>{
+    const ptsB=[], ptsM=[], ptsR=[];
+    AXES_IDS.forEach((axe,i)=>{
+      const elId=axe+'_'+tokType;
+      const sel=document.getElementById('bib-type-'+elId);
+      const inp=document.getElementById('bib-val-'+elId);
+      const type=sel?.value||''; const val=parseInt(inp?.value||0);
+      const r=BIB_INNER+(BIB_OUTER-BIB_INNER)*(val/3);
+      const p=bibPolar(r,i*45);
+      const pt=`${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+      if(type==='B') ptsB.push(pt);
+      else if(type==='M') ptsM.push(pt);
+      else if(type==='R') ptsR.push(pt);
+    });
+    // Dessiner points individuels (pas polygone car non contigus)
+    AXES_IDS.forEach((axe,i)=>{
+      const elId=axe+'_'+tokType;
+      const sel=document.getElementById('bib-type-'+elId);
+      const inp=document.getElementById('bib-val-'+elId);
+      const type=sel?.value||''; const val=parseInt(inp?.value||0);
+      if(!type||val===0) return;
+      const r=BIB_INNER+(BIB_OUTER-BIB_INNER)*(val/3);
+      const p=bibPolar(r,i*45);
+      const color=type==='B'?'#1a4a2a':type==='M'?'#8b2020':'#c8860a';
+      const label=type==='B'?'B':type==='M'?'M':'R';
+      mk('circle',{cx:p.x.toFixed(1),cy:p.y.toFixed(1),r:'5',
+        fill:color,opacity:'0.7',stroke:'#fff','stroke-width':'0.8'});
+      const t=mk('text',{x:p.x.toFixed(1),y:p.y.toFixed(1),'text-anchor':'middle',
+        'dominant-baseline':'middle','font-size':'5','font-family':'Cinzel,serif',fill:'#fff'});
+      t.textContent=label+(tokType==='b'?'○':'●');
+    });
+  });
+
+  // Légende
+  [['#1a4a2a','B = Bonus'],['#8b2020','M = Malus'],['#c8860a','R = Rédhibitoire']].forEach(([c,t],i)=>{
+    mk('rect',{x:'10',y:String(260+i*12),width:'8',height:'8',fill:c,rx:'2'});
+    const tx=mk('text',{x:'22',y:String(266+i*12),'font-size':'7','font-family':'Arial',fill:'#3d342a'});
+    tx.textContent=t;
   });
 }
 
