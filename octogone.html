@@ -1970,7 +1970,7 @@ async function xferClearRequest(){
         <div class="dtrait-panel-title">Traits mobilisables</div>
         <div class="dtrait-list" id="dtrait-list"></div>
       </div>
-    </div></div>
+    </div></div></div>
 
 
 <!-- Bouton flottant -->
@@ -2087,7 +2087,6 @@ async function xferClearRequest(){
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
 
 <script>
-console.log("[Sifhr] octogone.html chargé — version debug");
 
 // ═══════════════════════════════════════════════
 // CONFIGURATION — remplace par tes vraies valeurs
@@ -2157,6 +2156,7 @@ async function doLogin(tryGM){
         if(!tryGM) window._playerPw = pw;
         document.getElementById('modal-overlay').style.display = 'none';
         document.getElementById('app').style.display = 'block';
+        console.log('[Sifhr] #app affiché, height=', document.getElementById('app').offsetHeight);
         showDiceFab();
         showEnvFab();
         if(tryGM){
@@ -2184,7 +2184,9 @@ async function doLogin(tryGM){
           });
           document.getElementById('perso-fab').style.display='flex';
         }
+        console.log('[Sifhr] avant applyRemoteState, etat keys=', row.etat ? Object.keys(row.etat).length : 0);
         if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);
+        console.log('[Sifhr] après applyRemoteState');
         startRealtime();
         // Démarrer le système de notifications après le login
         setTimeout(()=>NotifSystem.start(), 3000);
@@ -3881,8 +3883,12 @@ function applyRemoteState(saved){
     if(saved.duelInvite&&typeof checkIncomingDuelInvite==='function'){
       checkIncomingDuelInvite(saved);
     }
-  } catch(e){ console.error('applyRemoteState error',e); }
+  } catch(e){
+    console.error('[Sifhr] applyRemoteState ERREUR:', e);
+    console.error('[Sifhr] Stack:', e.stack);
+  }
   applyingRemote = false;
+  console.log('[Sifhr] applyRemoteState terminé, applyingRemote=false');
 }
 
 /* ── Realtime Supabase ────────────────────────── */
