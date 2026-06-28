@@ -2183,11 +2183,7 @@ async function doLogin(tryGM){
             else el.style.display='none';
           });
           document.getElementById('perso-fab').style.display='flex';
-        }
-        console.log('[Sifhr] avant applyRemoteState, etat keys=', row.etat ? Object.keys(row.etat).length : 0);
-        if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);
-        console.log('[Sifhr] après applyRemoteState');
-        startRealtime();
+        }        if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);        startRealtime();
         // Démarrer le système de notifications après le login
         setTimeout(()=>NotifSystem.start(), 3000);
         // Appliquer mode lecture seule si demandé
@@ -3883,12 +3879,8 @@ function applyRemoteState(saved){
     if(saved.duelInvite&&typeof checkIncomingDuelInvite==='function'){
       checkIncomingDuelInvite(saved);
     }
-  } catch(e){
-    console.error('[Sifhr] applyRemoteState ERREUR:', e);
-    console.error('[Sifhr] Stack:', e.stack);
-  }
+  } catch(e){ console.error('applyRemoteState error',e); }
   applyingRemote = false;
-  console.log('[Sifhr] applyRemoteState terminé, applyingRemote=false');
 }
 
 /* ── Realtime Supabase ────────────────────────── */
@@ -3910,6 +3902,9 @@ function startRealtime(){
       try {
         const m = JSON.parse(e.data);
         if(m.event==='UPDATE'||m.event==='INSERT'){
+          console.log('[RT] event reçu:', m.event, 'record keys:', Object.keys(m.payload?.record||{}));
+          console.log('[RT] etat keys:', Object.keys(m.payload?.record?.etat||{}));
+          if(m.payload?.record?.etat?.dice_share_incoming) console.log('[RT] dice_share_incoming détecté!', m.payload.record.etat.dice_share_incoming.active);
           const newEtat=m.payload?.record?.etat;
           if(newEtat) applyRemoteState(newEtat);
           // Vérifier si on est observateur d'un dice_share
@@ -7374,9 +7369,29 @@ async function dPushDiceShare(){
       ts: Date.now()
     };
     try{
-      // dice_share va dans state.dice_share (colonne etat de Supabase)
+      // 1. Écrire sur notre propre fiche (pour le MJ qui observe via mjObserveFiche)
       state.dice_share = shareData;
       await SB.upsert(FICHE_ID, state);
+      // 2. Écrire dice_share_incoming sur chaque fiche observatrice
+      //    pour que leur Realtime (sur leur propre fiche) le détecte
+      const observers = shareData.observers||[];
+      for(const obsId of observers){
+        try{
+          const r=await fetch(
+            `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(obsId)}&select=etat`,
+            {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+          );
+          const d=await r.json();
+          const obsEtat=d[0]?.etat||{};
+          obsEtat.dice_share_incoming={...shareData, ts:Date.now()};
+          await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+            method:'POST',
+            headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+              'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+            body:JSON.stringify({id:obsId, etat:obsEtat})
+          });
+        }catch(e2){}
+      }
     }catch(e){}
   }, 300);
 }
@@ -7403,6 +7418,24 @@ async function dDeactivateShare(){
   try{
     state.dice_share = {active:false, observers:_diceShareObservers, fiche:FICHE_ID, ts:Date.now()};
     await SB.upsert(FICHE_ID, state);
+    // Notifier les observateurs que le lancer est terminé
+    for(const obsId of _diceShareObservers){
+      try{
+        const r=await fetch(
+          `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(obsId)}&select=etat`,
+          {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+        );
+        const d=await r.json();
+        const obsEtat=d[0]?.etat||{};
+        obsEtat.dice_share_incoming={active:false, fiche:FICHE_ID, ts:Date.now()};
+        await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+          method:'POST',
+          headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+            'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+          body:JSON.stringify({id:obsId, etat:obsEtat})
+        });
+      }catch(e2){}
+    }
   }catch(e){}
 }
 
@@ -7507,13 +7540,11 @@ function renderObserverState(ds){
 
 // ── Vérifier à chaque Realtime si on est observateur d'un lancer ──
 function checkIncomingDiceShare(record){
-  // dice_share est dans etat (colonne Supabase)
-  const ds = record.etat?.dice_share || record.dice_share;
+  // dice_share_incoming = écrit par le lanceur directement sur notre fiche
+  // dice_share = notre propre lancer (à ignorer)
+  const ds = record.etat?.dice_share_incoming || record.dice_share_incoming;
   if(!ds) return;
-  if(ds.fiche===FICHE_ID) return; // notre propre lancer
-  // Vérifier qu'on est dans la liste des observateurs
-  const observers = ds.observers||[];
-  if(!observers.includes(FICHE_ID)) return;
+  if(ds.fiche===FICHE_ID) return; // c'est notre propre lancer (ne devrait pas arriver)
   if(!ds.active){
     // Lancer terminé : mettre à jour statut si fenêtre ouverte
     if(_obsSourceFiche===ds.fiche){
