@@ -1846,6 +1846,7 @@ async function xferClearRequest(){
           <span class="setup-label">Aptitude</span>
         </div>
         <div id="apt-btn-grid" class="apt-btn-grid"></div>
+        <span id="dwhite-count" style="display:none;"></span>
         <div id="dtrait-panel-inline" style="display:none;">
           <div class="dtrait-panel-title" style="margin-top:.4rem;">Traits mobilisables</div>
           <div class="dtrait-list" id="dtrait-list-inline"></div>
@@ -1938,7 +1939,7 @@ async function xferClearRequest(){
         <div id="dice-duel-perso-list" class="share-perso-list" style="margin-bottom:.3rem;">
           <span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Chargement des personnages…</span>
         </div>
-        <div id="dice-duel-selected" style="display:none;font-family:'Cinzel',serif;font-size:.72rem;padding:.3rem .6rem;border:1px solid #c8860a;border-radius:5px;background:rgba(200,134,10,.06);color:#c8860a;display:flex;align-items:center;gap:.5rem;">
+        <div id="dice-duel-selected" style="display:none;font-family:'Cinzel',serif;font-size:.72rem;padding:.3rem .6rem;border:1px solid #c8860a;border-radius:5px;background:rgba(200,134,10,.06);color:#c8860a;align-items:center;gap:.5rem;">
           ⚔ Défi lancé à <strong id="dice-duel-target-name"></strong>
           <button onclick="dClearDuelTarget()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#c8860a;font-size:.8rem;">✕</button>
         </div>
@@ -1952,6 +1953,7 @@ async function xferClearRequest(){
       <!-- ⑦ BOUTON LANCER -->
       <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
       <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
+      <div id="dice-legend" style="display:none;"></div>
 
       <!-- ⑦ RÉSULTAT DU LANCER -->
       <p class="dice-section-title" id="dice-section-lbl">Aucun bonus ni malus sélectionné</p>
