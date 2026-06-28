@@ -1932,7 +1932,24 @@ async function xferClearRequest(){
         <div id="dice-bm-explain" style="display:none;font-family:'Crimson Text',serif;font-size:.82rem;color:var(--ink2);padding:.35rem .5rem;background:rgba(24,95,165,.06);border-radius:5px;border-left:2px solid #185FA5;margin-top:.4rem;line-height:1.5;"></div>
       </div>
 
-      <!-- ⑥ BOUTON LANCER -->
+      <!-- ⑥ ADVERSAIRE (duel) -->
+      <div id="dice-duel-setup" style="margin-bottom:.5rem;">
+        <div class="dice-step-label" style="margin-bottom:.3rem;">⑥ Lancez-vous un défi ? <span style="font-size:.62rem;color:var(--ink3);font-weight:normal;">(optionnel)</span></div>
+        <div id="dice-duel-perso-list" class="share-perso-list" style="margin-bottom:.3rem;">
+          <span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Chargement des personnages…</span>
+        </div>
+        <div id="dice-duel-selected" style="display:none;font-family:'Cinzel',serif;font-size:.72rem;padding:.3rem .6rem;border:1px solid #c8860a;border-radius:5px;background:rgba(200,134,10,.06);color:#c8860a;display:flex;align-items:center;gap:.5rem;">
+          ⚔ Défi lancé à <strong id="dice-duel-target-name"></strong>
+          <button onclick="dClearDuelTarget()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#c8860a;font-size:.8rem;">✕</button>
+        </div>
+        <div id="dice-duel-incoming" style="display:none;font-family:'Cinzel',serif;font-size:.72rem;padding:.3rem .6rem;border:1px solid #4a90d9;border-radius:5px;background:rgba(74,144,217,.06);color:#4a90d9;">
+          ⚔ <strong id="dice-duel-challenger-name"></strong> vous invite à une épreuve en opposition
+          <button onclick="dAcceptDuelChallenge()" style="margin-left:.5rem;font-family:'Cinzel',serif;font-size:.65rem;padding:2px 7px;border:1px solid #4a90d9;border-radius:3px;background:none;color:#4a90d9;cursor:pointer;">Accepter →</button>
+          <button onclick="dDeclineDuelChallenge()" style="font-family:'Cinzel',serif;font-size:.65rem;padding:2px 7px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">Refuser</button>
+        </div>
+      </div>
+
+      <!-- ⑦ BOUTON LANCER -->
       <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
       <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
 
@@ -3856,6 +3873,10 @@ function applyRemoteState(saved){
         PersonnePanel._renderList(PersonnePanel._personnes);
       }
     }
+    // Détecter une invitation de duel
+    if(saved.duelInvite&&typeof checkIncomingDuelInvite==='function'){
+      checkIncomingDuelInvite(saved);
+    }
   } catch(e){ console.error('applyRemoteState error',e); }
   applyingRemote = false;
 }
@@ -3919,7 +3940,15 @@ function openDice(){
 function closeDice(){
   document.getElementById('dice-fab').classList.remove('open');
   document.getElementById('dice-overlay').classList.remove('open');
-  if(dCurrentRole==='launcher') dDeactivateShare();
+  if(dCurrentRole==='launcher'){
+    dDeactivateShare();
+    if(_duelTargetId) dCancelDuelInvite();
+    _duelTargetId=null; _duelChallengerId=null;
+    const banner=document.getElementById('dice-duel-incoming');
+    if(banner) banner.style.display='none';
+    const sel=document.getElementById('dice-duel-selected');
+    if(sel) sel.style.display='none';
+  }
 }
 function toggleDice(){
   const ol=document.getElementById('dice-overlay');
@@ -7148,37 +7177,29 @@ function _collectJetonsAcquis(){
 
 let _duelPollTimer = null;
 async function dPollAdversaireResult(){
-  const envId = getEnvFicheId();
-  if(!envId || envId===FICHE_ID) return;
+  // Lire directement la fiche de l'adversaire désigné
+  const advId = dGetAdversaireId();
+  if(!advId) return;
   clearTimeout(_duelPollTimer);
   _duelPollTimer = setTimeout(async ()=>{
     try{
       const r=await fetch(
-        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(advId)}&select=etat`,
         {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
       );
       const d=await r.json();
-      const fp=(d[0]?.etat?.fichePersonnages||[]);
-      for(const p of fp){
-        const pid=typeof p==='string'?p:p.id;
-        if(pid===FICHE_ID) continue;
-        const r2=await fetch(
-          `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(pid)}&select=etat`,
-          {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
-        );
-        const d2=await r2.json();
-        const advResult=d2[0]?.etat?.duelResult;
-        // Attendre que les DEUX aient choisi leur valeur finale
-        const myResult=state.duelResult;
-        if(advResult && myResult && advResult.valeur && myResult.valeur
-           && (Date.now()-advResult.ts)<600000){
-          dShowAdversaireResult(advResult, pid);
-          return;
-        }
+      const advResult=d[0]?.etat?.duelResult;
+      const myResult=state.duelResult;
+      if(advResult && myResult && advResult.valeur && myResult.valeur
+         && (Date.now()-advResult.ts)<600000
+         && advResult.joueur===advId){
+        dShowAdversaireResult(advResult, advId);
+        return;
       }
     }catch(e){}
-    _duelPollTimer = setTimeout(dPollAdversaireResult, 5000);
-  }, 2000);
+    // Continuer à poller
+    _duelPollTimer = setTimeout(dPollAdversaireResult, 4000);
+  }, 1000);
 }
 
 function dShowAdversaireResult(result, pid){
@@ -7354,6 +7375,8 @@ async function dPushDiceShare(){
 function dActivateShare(){
   _diceShareActive = true;
   dPushDiceShare();
+  // Charger la liste pour le duel
+  setTimeout(dLoadDuelPersonnes, 300);
 }
 
 // ── Désactiver quand le lanceur se ferme ──
@@ -7600,6 +7623,143 @@ function dShowBMExplain(){
   if(!parts.length){ el.style.display='none'; return; }
   el.innerHTML=parts.map(p=>`<div style="margin-bottom:.2rem;">• ${p}</div>`).join('');
   el.style.display='block';
+}
+
+
+// ══════════════════════════════════════════════
+//   DUEL — DÉSIGNATION ET INVITATION
+// ══════════════════════════════════════════════
+
+let _duelTargetId = null;     // adversaire désigné par nous
+let _duelChallengerId = null; // adversaire qui nous défie
+let _duelRtWs = null;         // Realtime pour écouter les invitations
+
+// ── Charger la liste des personnages pour le duel ──
+async function dLoadDuelPersonnes(){
+  const list = document.getElementById('dice-duel-perso-list');
+  if(!list) return;
+  const personnes = await getPersonnesEnv();
+  list.innerHTML = '';
+  if(!personnes.length){
+    list.innerHTML='<span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Aucun personnage lié.</span>';
+    return;
+  }
+  const visibilites = state.visibilites||{};
+  const visible = personnes.filter(p=> octIsGM || (visibilites[p.id]??p.niveauReveal??2) > 0);
+  visible.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='share-perso-btn'+(_duelTargetId===p.id?' selected':'');
+    btn.textContent='⚔ '+p.id;
+    btn.title='Désigner '+p.id+' comme adversaire';
+    btn.addEventListener('click',()=> _duelTargetId===p.id ? dClearDuelTarget() : dSetDuelTarget(p.id));
+    list.appendChild(btn);
+  });
+}
+
+// ── Désigner un adversaire et lui envoyer une invitation ──
+async function dSetDuelTarget(targetId){
+  _duelTargetId = targetId;
+  // Mettre à jour le bouton lancer
+  const launchBtn=document.getElementById('dlaunch-btn');
+  if(launchBtn) launchBtn.textContent='⚔ Lancer le défi contre '+targetId;
+  // Afficher la bannière
+  document.getElementById('dice-duel-target-name').textContent=targetId;
+  document.getElementById('dice-duel-selected').style.display='flex';
+  // Rafraîchir la liste
+  dLoadDuelPersonnes();
+  // Envoyer l'invitation sur la fiche de l'adversaire
+  await dSendDuelInvite(targetId);
+  dPushDiceShare(); // informer les observateurs
+}
+
+function dClearDuelTarget(){
+  _duelTargetId = null;
+  document.getElementById('dice-duel-selected').style.display='none';
+  const launchBtn=document.getElementById('dlaunch-btn');
+  if(launchBtn) launchBtn.textContent='🎲 Lancer les dés libres';
+  // Nettoyer l'invitation
+  dCancelDuelInvite();
+  dLoadDuelPersonnes();
+}
+
+// ── Écrire l'invitation sur la fiche de l'adversaire ──
+async function dSendDuelInvite(targetId){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(targetId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const etat=d[0]?.etat||{};
+    etat.duelInvite={from:FICHE_ID, ts:Date.now(), active:true};
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({id:targetId, etat})
+    });
+  }catch(e){}
+}
+
+async function dCancelDuelInvite(){
+  if(!_duelTargetId) return;
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(_duelTargetId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const etat=d[0]?.etat||{};
+    etat.duelInvite={from:FICHE_ID, ts:Date.now(), active:false};
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({id:_duelTargetId, etat})
+    });
+  }catch(e){}
+}
+
+// ── Détecter une invitation reçue via applyRemoteState ──
+function checkIncomingDuelInvite(saved){
+  const invite=saved.duelInvite;
+  if(!invite||!invite.active||invite.from===FICHE_ID) return;
+  if(Date.now()-invite.ts>300000) return; // expirée (5min)
+  // Vérifier qu'on n'a pas déjà un duel en cours
+  if(_duelChallengerId===invite.from) return;
+  _duelChallengerId=invite.from;
+  // Afficher l'invitation
+  const banner=document.getElementById('dice-duel-incoming');
+  const name=document.getElementById('dice-duel-challenger-name');
+  if(banner&&name){
+    name.textContent=invite.from;
+    banner.style.display='block';
+    // Ouvrir le lanceur si pas déjà ouvert
+    if(!document.getElementById('dice-overlay').classList.contains('open')){
+      openDice();
+    }
+  }
+}
+
+function dAcceptDuelChallenge(){
+  if(!_duelChallengerId) return;
+  _duelTargetId=_duelChallengerId;
+  document.getElementById('dice-duel-incoming').style.display='none';
+  document.getElementById('dice-duel-target-name').textContent=_duelTargetId;
+  document.getElementById('dice-duel-selected').style.display='flex';
+  const launchBtn=document.getElementById('dlaunch-btn');
+  if(launchBtn) launchBtn.textContent='⚔ Lancer le défi contre '+_duelTargetId;
+  dLoadDuelPersonnes();
+}
+
+function dDeclineDuelChallenge(){
+  _duelChallengerId=null;
+  document.getElementById('dice-duel-incoming').style.display='none';
+}
+
+// ══════════════════════════════════════════════
+//   REFONTE dPollAdversaireResult
+//   Lit directement la fiche de l'adversaire désigné
+// ══════════════════════════════════════════════
+
+function dGetAdversaireId(){
+  return _duelTargetId||null;
 }
 
 // ── Réception des messages depuis aventure.html ──
