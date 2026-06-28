@@ -1826,21 +1826,35 @@ async function xferClearRequest(){
         <span><span class="dsync-dot" id="dsync-dot"></span><span id="dsync-label">Connexion…</span></span>
         <span class="role-badge" id="drole-badge" style="font-size:.7rem;padding:2px 7px;border-radius:12px;"></span>
       </div>
+
+      <!-- ① PARTAGER CE LANCER (remonté tout en haut) -->
+      <button id="dice-share-btn" onclick="dToggleSharePanel()" title="Partager ce lancer">
+        👁 Partager ce lancer <span id="dice-share-count" style="display:none;background:#4a90d9;color:#fff;border-radius:8px;padding:0 5px;font-size:.6rem;"></span>
+      </button>
+      <div id="dice-share-panel">
+        <div style="font-family:'Cinzel',serif;font-size:.65rem;color:#4a90d9;letter-spacing:.05em;margin-bottom:.3rem;">Personnages qui voient ce lancer :</div>
+        <div class="share-perso-list" id="share-perso-list">
+          <span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Chargement…</span>
+        </div>
+      </div>
+
+      <!-- ② APTITUDE + TRAIT -->
       <div class="setup-card" id="dice-setup">
-        <!-- Étape 1 : Aptitude + Trait -->
-        <div class="dice-step-label">① Déterminez l'aptitude et le trait utilisés</div>
+        <div class="dice-step-label">① Aptitude et trait utilisés</div>
         <div class="setup-row apt-picker-row">
           <span class="color-dot dot-white"></span>
           <span class="setup-label">Aptitude</span>
         </div>
         <div id="apt-btn-grid" class="apt-btn-grid"></div>
-        <!-- Traits mobilisables : remontés ici sous l'aptitude -->
-        <div id="dtrait-panel-inline">
+        <div id="dtrait-panel-inline" style="display:none;">
           <div class="dtrait-panel-title" style="margin-top:.4rem;">Traits mobilisables</div>
           <div class="dtrait-list" id="dtrait-list-inline"></div>
         </div>
-        <!-- Étape 2 : Vigueur du souffle -->
-        <div class="dice-step-label" style="margin-top:.7rem;">② Vigueur de votre souffle <span style="font-size:.65rem;color:var(--ink3);font-weight:normal;">(max 3 dés rouges)</span></div>
+        <!-- Texte d'ambiance aptitude -->
+        <div id="dice-apt-ambiance" style="display:none;margin-top:.4rem;font-family:'Crimson Text',serif;font-style:italic;font-size:.85rem;color:var(--ink3);padding:.3rem .5rem;border-left:2px solid var(--accent);"></div>
+
+        <!-- ③ VIGUEUR DU SOUFFLE -->
+        <div class="dice-step-label" style="margin-top:.7rem;">② Vigueur du souffle <span style="font-size:.62rem;color:var(--ink3);font-weight:normal;">(max 3 dés rouges)</span></div>
         <div class="setup-row">
           <span class="color-dot dot-red"></span>
           <span class="setup-label">Dés rouges</span>
@@ -1851,23 +1865,32 @@ async function xferClearRequest(){
           </div>
         </div>
         <p class="dred-message" id="dred-message"></p>
+        <div id="dice-vigueur-ambiance" style="display:none;font-family:'Crimson Text',serif;font-style:italic;font-size:.82rem;color:var(--ink3);padding:.25rem .4rem;border-left:2px solid #c85a52;margin-top:.2rem;"></div>
       </div>
+
+      <!-- ④ VALEURS DE RÉUSSITE + PROUESSE + PRODIGE -->
       <div class="setup-card" id="dsuccess-setup">
         <div class="dice-step-label">③ Valeurs de réussite visées</div>
         <p class="dsuccess-question">Valeurs de réussite <span id="dsuccess-hint" class="dsuccess-hint">(choisissez 1 ou 2 valeurs)</span></p>
         <div id="dsuccess-unified" class="dsuccess-unified"></div>
-        <!-- Option prouesse / prodige (mutuellement exclusives) -->
-        <div class="dice-step-label" style="margin-top:.6rem;">④ Tentez-vous une prouesse ou un prodige ?</div>
+        <!-- Texte ambiance valeurs de réussite (affiché après choix) -->
+        <div id="dice-val-ambiance" style="display:none;font-family:'Crimson Text',serif;font-style:italic;font-size:.82rem;color:var(--ink3);margin:.4rem 0;padding:.3rem .5rem;background:rgba(200,134,10,.06);border-radius:5px;border-left:2px solid var(--accent);"></div>
+
+        <div class="dice-step-label" style="margin-top:.6rem;">④ Prouesse ou prodige ?</div>
         <div id="dprouesse-row">
           <input type="checkbox" id="dprouesse-toggle" onchange="dToggleProuesse()">
           <label class="dprouesse-label" for="dprouesse-toggle">Tenter une prouesse ?</label>
-          <span class="dprouesse-info" data-tip="Conditions : 1) Au moins un dé rouge (ou dévoyé) doit obtenir la valeur de réussite finale. 2) Aucun dé ne doit obtenir la valeur opposée. Réussite : les valeurs des dés rouges sont transférées dans votre octogone.">?</span>
+          <span class="dprouesse-info" data-tip="Conditions : 1) Au moins un dé rouge doit obtenir la valeur de réussite finale. 2) Aucun dé ne doit obtenir la valeur opposée. Réussite : les dés rouges sont transférés dans votre octogone.">?</span>
         </div>
         <div id="dprodige-row">
           <input type="checkbox" id="dprodige-toggle" onchange="dToggleProdige()">
           <label class="dprodige-label" for="dprodige-toggle">Tenter un prodige ?</label>
-          <span class="dprodige-info" data-tip="Mêmes conditions que la prouesse. Réussite : vos dés rouges sont transférés dans l'environnement, qui vous renvoie en échange des jetons selon ses axes dominants.">?</span>
+          <span class="dprodige-info" data-tip="Mêmes conditions. Réussite : vos dés rouges sont transférés dans l'environnement, qui vous renvoie des jetons en échange.">?</span>
         </div>
+        <!-- Texte ambiance prouesse/prodige -->
+        <div id="dice-prouesse-ambiance" style="display:none;font-family:'Crimson Text',serif;font-style:italic;font-size:.82rem;color:#c8860a;padding:.25rem .4rem;border-left:2px solid #c8860a;margin-top:.3rem;"></div>
+
+        <!-- ⑤ BONUS ET MALUS -->
         <div class="dice-step-label" style="margin-top:.6rem;">⑤ Bonus et malus octroyés</div>
         <div class="dbm-row">
           <div class="dbm-group">
@@ -1905,39 +1928,30 @@ async function xferClearRequest(){
             </div>
           </div>
         </div>
+        <!-- Texte explicatif bonus/malus actifs -->
+        <div id="dice-bm-explain" style="display:none;font-family:'Crimson Text',serif;font-size:.82rem;color:var(--ink2);padding:.35rem .5rem;background:rgba(24,95,165,.06);border-radius:5px;border-left:2px solid #185FA5;margin-top:.4rem;line-height:1.5;"></div>
       </div>
+
+      <!-- ⑥ BOUTON LANCER -->
+      <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
+      <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
+
+      <!-- ⑦ RÉSULTAT DU LANCER -->
       <p class="dice-section-title" id="dice-section-lbl">Aucun bonus ni malus sélectionné</p>
       <div class="dice-grid" id="dice-grid"></div>
       <div id="droll-history" class="droll-history" style="display:none;"></div>
-      <!-- Traits mobilisables depuis l'aptitude sélectionnée -->
-      <div id="dtrait-panel">
+      <!-- Explication dés verrouillés -->
+      <div id="dlock-explain" class="dlock-explain" style="display:none;"></div>
+
+      <!-- ⑧ BOUTONS DE RÉUSSITE (après les dés) -->
+      <div id="dsuccess-result" class="dsuccess-result" style="display:none;"></div>
+
+      <!-- Panneau traits (conservé pour compatibilité JS) -->
+      <div id="dtrait-panel" style="display:none;">
         <div class="dtrait-panel-title">Traits mobilisables</div>
         <div class="dtrait-list" id="dtrait-list"></div>
       </div>
-      <div id="dsuccess-result" class="dsuccess-result" style="display:none;"></div>
-      <div id="dlock-explain" class="dlock-explain" style="display:none;"></div>
-      <div class="dice-step-label" style="margin-bottom:.3rem;">⑥ Partagez et lancez</div>
-      <!-- Partage de lancer -->
-      <button id="dice-share-btn" onclick="dToggleSharePanel()" title="Partager ce lancer">
-        👁 Partager ce lancer <span id="dice-share-count" style="display:none;background:#4a90d9;color:#fff;border-radius:8px;padding:0 5px;font-size:.6rem;"></span>
-      </button>
-      <div id="dice-share-panel">
-        <div style="font-family:'Cinzel',serif;font-size:.65rem;color:#4a90d9;letter-spacing:.05em;margin-bottom:.3rem;">Personnages qui voient ce lancer :</div>
-        <div class="share-perso-list" id="share-perso-list">
-          <span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Chargement…</span>
-        </div>
-      </div>
-      <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
-      <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
-    <div id="dice-legend" style="display:none;margin-top:.6rem;padding:.5rem .6rem;background:#f0ede6;border-radius:6px;font-size:.72rem;color:#6b5d4f;line-height:1.6;">
-      <strong style="font-family:'Cinzel',serif;font-size:.7rem;color:#3d342a;">Légende des verrous</strong><br>
-      🔓 <em>Libre</em> — dé modifiable avant lancer<br>
-      <span style="display:inline-block;border:1.5px solid #1a1510;border-radius:3px;padding:0 2px;line-height:1.4;">🔒</span> <em>Dés dévoyés</em> — verrouillé au lancer<br>
-      ⬡ <em>Transférer</em> — ajoute un jeton sur la roue
-    </div>
-    </div>
-  </div>
-</div>
+    </div></div>
 
 
 <!-- Bouton flottant -->
@@ -4100,6 +4114,7 @@ function dSelectAptitude(key,score){
   dRenderAptGrid();
   dRenderTraitsMobilisables(key);
   dInitDice(true); dRenderDice(false); dUpdateRedMessage(); dPushState();
+  dShowAptAmbiance(key);
 }
 
 // ── Traits mobilisables pour l'aptitude sélectionnée ──
@@ -4539,6 +4554,7 @@ function dRenderSuccessUnified(){
 function dSyncSuccessInputs(){
   dRenderSuccessUnified();
   dUpdateProuesseRow();
+  const s=dS(); dShowValAmbiance(s.successVal1, s.successVal2);
 }
 
 // ══════════════════════════════════════════════
@@ -4602,6 +4618,7 @@ function dbmClick(type,level){
   dRenderDice(false);
   dUpdateRedMessage();
   dPushState();
+  dShowBMExplain();
 }
 
 // Désigne un dé blanc encore libre (non verrouillé, non déjà spécialisé) pour Expertise ou Maîtrise
@@ -4953,6 +4970,7 @@ function dChangeCount(color,delta){
     s.reds=Math.max(minReds,Math.min(3,wanted)); // max 3 dés rouges (vigueur du souffle)
     s._redBlockedWarning = blocked;
     document.getElementById('dred-count').textContent=s.reds;
+    if(dCurrentRole==='launcher') dShowVigueurAmbiance(s.reds);
     dUpdateRedMessage(); dRenderLockExplanations();
   }
   dInitDice(true); dRenderDice(false); dPushState();
@@ -7477,6 +7495,111 @@ function checkIncomingDiceShare(record){
   } else {
     renderObserverState(ds);
   }
+}
+
+
+// ══════════════════════════════════════════════
+//   TEXTES D'AMBIANCE DU LANCEUR
+// ══════════════════════════════════════════════
+
+const DICE_AMBIANCE = {
+  apt: {
+    se_deplacer: "Votre corps se prépare à l'effort. Chaque pas est une décision, chaque mouvement une intention gravée dans la pneuma.",
+    se_mesurer: "La tension monte. Vous jaugez l'adversaire, cherchez la faille dans sa garde, l'instant décisif où le souffle fera la différence.",
+    occulter: "Vous drapez votre présence d'ombre et de silence. La pneuma se rétracte autour de vous comme un manteau invisible.",
+    imaginer: "Votre esprit s'envole au-delà du visible. Les connexions s'éclairent, les possibilités se déploient comme un parchemin sans fin.",
+    fabriquer: "Vos mains sont votre voix. Matière et pneuma s'entrelacent sous vos doigts, cherchant la forme parfaite.",
+    devoiler: "Votre regard perçant s'affûte. Les voiles se lèvent un à un, révélant ce qui se cache derrière l'évidence.",
+    resister: "Vous ancrez votre souffle profond dans la terre. Aucune force ne saurait vous ébranler sans d'abord vous traverser tout entier.",
+    ravir: "Quelque chose d'insaisissable vous attire. Votre âme tend la main vers ce qui brille, ce qui chante, ce qui fuit."
+  },
+  vigueur: [
+    "Un souffle discret, presque imperceptible. La pneuma reste en retrait, préservée pour l'essentiel.",
+    "Un élan mesuré. Votre souffle s'avance sans se dévoiler, gardant ses forces en réserve.",
+    "Votre souffle s'embrase. Toute votre vigueur se concentre dans cet instant — c'est tout ou rien."
+  ],
+  valeurs: {
+    '1': "Ces valeurs appartiennent au feu et à la bile jaune — réactivité, force brute, assurance. L'instinct prime sur la réflexion.",
+    '2': "Ces valeurs appartiennent au feu et à la bile jaune — réactivité, force brute, assurance. L'instinct prime sur la réflexion.",
+    '3': "Ces valeurs évoquent la terre et la bile noire — clarté d'esprit, réflexion posée, rigueur de pensée. La raison guide le geste.",
+    '4': "Ces valeurs évoquent la terre et la bile noire — clarté d'esprit, réflexion posée, rigueur de pensée. La raison guide le geste.",
+    '5': "Ces valeurs appartiennent à l'eau et au flegme — calme, sang-froid, prudence et doigté. La patience est votre arme.",
+    '6': "Ces valeurs appartiennent à l'eau et au flegme — calme, sang-froid, prudence et doigté. La patience est votre arme.",
+    '7': "Ces valeurs appartiennent à l'air et au sang — inspiration, clairvoyance, soutien spirituel. L'invisible vous guide.",
+    '8': "Ces valeurs appartiennent à l'air et au sang — inspiration, clairvoyance, soutien spirituel. L'invisible vous guide."
+  },
+  prouesse: "Vous tendez votre souffle au maximum. Si les dés rouges s'alignent sur la bonne valeur sans opposition, leur énergie se transfèrera directement dans votre octogone.",
+  prodige: "Vous offrez votre souffle à l'environnement. En retour, si les conditions sont réunies, la pneuma ambiante vous reverrait ce qu'elle a de plus fort. Un échange entre deux âmes.",
+  bm: {
+    'bonus-1': "Avantage : vous pouvez modifier un dé blanc d'une valeur dans un sens ou l'autre après le lancer.",
+    'bonus-2': "Expertise : vous pouvez relancer tous les dés blancs n'ayant pas obtenu la valeur de réussite. Une seule fois.",
+    'bonus-3': "Maîtrise : vous pouvez relancer tous les dés blancs n'ayant pas obtenu la valeur de réussite, et choisir parmi les deux résultats.",
+    'malus-1': "Relance forcée : vous devez relancer tous vos dés blancs ayant obtenu la valeur de réussite.",
+    'malus-2': "Opposition : un dé supplémentaire est tiré pour votre adversaire sur la valeur opposée à la vôtre.",
+    'malus-3': "Négation : l'un de vos dés blancs est supprimé avant le lancer."
+  }
+};
+
+// Afficher le texte d'ambiance de l'aptitude
+function dShowAptAmbiance(aptKey){
+  const el=document.getElementById('dice-apt-ambiance');
+  if(!el) return;
+  const txt=DICE_AMBIANCE.apt[aptKey]||'';
+  el.textContent=txt;
+  el.style.display=txt?'block':'none';
+}
+
+// Afficher l'ambiance vigueur selon le nombre de dés rouges
+function dShowVigueurAmbiance(reds){
+  const el=document.getElementById('dice-vigueur-ambiance');
+  if(!el) return;
+  const idx=Math.min(Math.max(reds-1,0),2);
+  el.textContent=DICE_AMBIANCE.vigueur[idx];
+  el.style.display='block';
+}
+
+// Afficher l'ambiance valeurs après sélection
+function dShowValAmbiance(v1,v2){
+  const el=document.getElementById('dice-val-ambiance');
+  if(!el) return;
+  const vals=[v1,v2].filter(v=>v!=null);
+  if(!vals.length){ el.style.display='none'; return; }
+  // Prendre le texte de la première valeur (ou le plus élevé si deux valeurs)
+  const key=String(vals[0]);
+  const txt=DICE_AMBIANCE.valeurs[key]||'';
+  el.textContent=txt;
+  el.style.display=txt?'block':'none';
+}
+
+// Afficher l'ambiance prouesse/prodige
+function dShowProuesseAmbiance(){
+  const el=document.getElementById('dice-prouesse-ambiance');
+  if(!el) return;
+  if(_prouesseDeclared){ el.textContent=DICE_AMBIANCE.prouesse; el.style.display='block'; }
+  else if(_prodigeDeclared){ el.textContent=DICE_AMBIANCE.prodige; el.style.display='block'; }
+  else { el.style.display='none'; }
+}
+
+// Afficher les règles des bonus/malus actifs
+function dShowBMExplain(){
+  const el=document.getElementById('dice-bm-explain');
+  if(!el) return;
+  const s=dS();
+  const bm=s.bonusMalus||{};
+  const parts=[];
+  if(bm.bonus){
+    if(bm.bonus.avantage) for(let i=0;i<bm.bonus.avantage;i++) parts.push(DICE_AMBIANCE.bm['bonus-1']);
+    if(bm.bonus.expertise) for(let i=0;i<bm.bonus.expertise;i++) parts.push(DICE_AMBIANCE.bm['bonus-2']);
+    if(bm.bonus.maitrise) for(let i=0;i<bm.bonus.maitrise;i++) parts.push(DICE_AMBIANCE.bm['bonus-3']);
+  }
+  if(bm.malus){
+    if(bm.malus.relance) for(let i=0;i<bm.malus.relance;i++) parts.push(DICE_AMBIANCE.bm['malus-1']);
+    if(bm.malus.opposition) for(let i=0;i<bm.malus.opposition;i++) parts.push(DICE_AMBIANCE.bm['malus-2']);
+    if(bm.malus.negation) for(let i=0;i<bm.malus.negation;i++) parts.push(DICE_AMBIANCE.bm['malus-3']);
+  }
+  if(!parts.length){ el.style.display='none'; return; }
+  el.innerHTML=parts.map(p=>`<div style="margin-bottom:.2rem;">• ${p}</div>`).join('');
+  el.style.display='block';
 }
 
 // ── Réception des messages depuis aventure.html ──
