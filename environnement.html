@@ -719,6 +719,7 @@ async function gmReset(){
   <div class="fiche-add-row">
     <input id="fiche-add-input" class="fiche-add-input" type="text" placeholder="identifiant…" style="flex:1.5;">
     <input id="fiche-add-pw" class="fiche-add-input" type="password" placeholder="mdp MJ" style="flex:1;">
+    <input id="fiche-add-pwj" class="fiche-add-input" type="password" placeholder="mdp joueur" style="flex:1;">
     <button class="fiche-add-btn" onclick="addFichePersonnage()">+ Ajouter</button>
   </div>
 </div>
@@ -1986,17 +1987,19 @@ function saveFichesLiees(){
 function addFichePersonnage(){
   const inp=document.getElementById('fiche-add-input');
   const pwInp=document.getElementById('fiche-add-pw');
+  const pwJInp=document.getElementById('fiche-add-pwj');
   const id=inp.value.trim();
   const pw=pwInp?pwInp.value.trim():'';
+  const pwJ=pwJInp?pwJInp.value.trim():'';
   if(!id) return;
   if(!state.fichePersonnages) state.fichePersonnages=[];
   const exists=state.fichePersonnages.find(p=>(typeof p==='string'?p:p.id)===id);
   if(!exists){
-    state.fichePersonnages.push({id,niveauReveal:2,texteMJ:'',pwMJ:pw});
+    state.fichePersonnages.push({id,niveauReveal:2,texteMJ:'',pwMJ:pw,pwJoueur:pwJ,visibilitesVers:{}});
     saveState();
     renderFichesPersoList();
   }
-  inp.value=''; if(pwInp) pwInp.value='';
+  inp.value=''; if(pwInp) pwInp.value=''; if(pwJInp) pwJInp.value='';
 }
 
 function renderFichesPersoList(){
@@ -2004,41 +2007,148 @@ function renderFichesPersoList(){
   if(!list) return;
   list.innerHTML='';
   const fp=state.fichePersonnages||[];
+  const allIds=fp.map(p=>typeof p==='string'?p:p.id);
+
   fp.forEach((p,idx)=>{
     const id=typeof p==='string'?p:p.id;
-    const nr=(typeof p==='object'?p.niveauReveal:null)||2;
-    const row=document.createElement('div'); row.className='fiche-perso-row';
-    const idSpan=document.createElement('span'); idSpan.className='fiche-perso-id'; idSpan.textContent=id;
-    const revDiv=document.createElement('div'); revDiv.className='fiche-perso-reveal';
+    const pObj=typeof p==='object'?p:{id,niveauReveal:2,texteMJ:'',pwMJ:'',pwJoueur:'',visibilitesVers:{}};
+    const nr=pObj.niveauReveal||2;
+
+    // ── Conteneur accordéon ──
+    const wrap=document.createElement('div');
+    wrap.style.cssText='border:1px solid var(--border);border-radius:5px;margin-bottom:.4rem;overflow:hidden;';
+
+    // En-tête
+    const head=document.createElement('div');
+    head.style.cssText='display:flex;align-items:center;gap:.4rem;padding:.35rem .5rem;background:var(--section-bg);cursor:pointer;flex-wrap:wrap;';
+
+    const idSpan=document.createElement('span');
+    idSpan.style.cssText='font-family:Cinzel,serif;font-size:.78rem;color:var(--ink2);min-width:80px;flex:1;';
+    idSpan.textContent=id;
+
+    // Boutons niveauReveal global
+    const revDiv=document.createElement('div'); revDiv.style.cssText='display:flex;gap:.2rem;';
     [0,1,2,3].forEach(n=>{
-      const b=document.createElement('button'); b.className='fiche-reveal-btn'+(nr===n?' on':'');
+      const b=document.createElement('button');
+      b.style.cssText='font-family:Cinzel,serif;font-size:.6rem;padding:2px 6px;border-radius:3px;border:1px solid var(--border);background:'+(nr===n?'var(--accent)':'var(--input-bg)')+';color:'+(nr===n?'#f5f0e8':'var(--ink3)')+';cursor:pointer;';
       b.textContent=n===0?'N0':'N'+n;
-      b.title=['Masqué (non révélé)','Présence seule','Polarité dominante','Tout visible'][n];
-      b.addEventListener('click',()=>{
-        if(!Array.isArray(state.fichePersonnages)) return;
-        state.fichePersonnages[idx]=typeof state.fichePersonnages[idx]==='string'
-          ?{id,niveauReveal:n,texteMJ:''}
-          :{...state.fichePersonnages[idx],niveauReveal:n};
+      b.title=['Masqué de tous','Présence seule','Polarité dominante','Tout visible'][n];
+      b.addEventListener('click',(e)=>{
+        e.stopPropagation();
+        state.fichePersonnages[idx]={...pObj,niveauReveal:n};
         saveState(); renderFichesPersoList();
       });
       revDiv.appendChild(b);
     });
-    const del=document.createElement('button'); del.className='fiche-perso-del'; del.textContent='✕';
-    del.addEventListener('click',()=>{
-      state.fichePersonnages.splice(idx,1); saveState(); renderFichesPersoList();
-    });
-    // Bouton Épreuve (ouvre iframe octogone MJ si pwMJ disponible)
-    const pw=typeof p==='object'?p.pwMJ||'':'';
-    if(pw){
-      const epBtn=document.createElement('button'); epBtn.className='fiche-reveal-btn';
-      epBtn.textContent='⚔'; epBtn.title='Lancer une épreuve (ouvre la fiche MJ)';
-      epBtn.style.cssText='border-color:#c8860a;color:#c8860a;';
-      epBtn.addEventListener('click',()=>openDuel(id,pw));
+
+    // Bouton Épreuve
+    const pwMJ=pObj.pwMJ||'';
+    if(pwMJ){
+      const epBtn=document.createElement('button');
+      epBtn.style.cssText='font-family:Cinzel,serif;font-size:.6rem;padding:2px 6px;border:1px solid #c8860a;border-radius:3px;color:#c8860a;background:none;cursor:pointer;';
+      epBtn.textContent='⚔'; epBtn.title='Épreuve (fiche MJ)';
+      epBtn.addEventListener('click',(e)=>{ e.stopPropagation(); openDuel(id,pwMJ); });
       revDiv.appendChild(epBtn);
     }
-    row.appendChild(idSpan); row.appendChild(revDiv); row.appendChild(del);
-    list.appendChild(row);
+
+    // Bouton supprimer
+    const del=document.createElement('button');
+    del.style.cssText='background:none;border:none;cursor:pointer;color:var(--ink3);font-size:.85rem;margin-left:.2rem;';
+    del.textContent='✕';
+    del.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      state.fichePersonnages.splice(idx,1); saveState(); renderFichesPersoList();
+    });
+
+    // Toggle accordéon
+    const toggle=document.createElement('span');
+    toggle.textContent='▸'; toggle.style.cssText='font-size:.65rem;color:var(--ink3);transition:transform .2s;';
+    let bodyOpen=false;
+
+    head.appendChild(idSpan); head.appendChild(revDiv); head.appendChild(del); head.appendChild(toggle);
+    head.addEventListener('click',()=>{
+      bodyOpen=!bodyOpen;
+      body.style.display=bodyOpen?'block':'none';
+      toggle.style.transform=bodyOpen?'rotate(90deg)':'';
+    });
+
+    // ── Corps accordéon : visibilités par paire ──
+    const body=document.createElement('div');
+    body.style.cssText='display:none;padding:.5rem .6rem;background:var(--input-bg);border-top:1px solid var(--border2);';
+
+    // Titre section visibilités
+    const visTitle=document.createElement('div');
+    visTitle.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.4rem;';
+    visTitle.textContent=`Ce que ${id} voit de chaque personnage :`;
+    body.appendChild(visTitle);
+
+    // Grille des visibilités par paire
+    const visGrid=document.createElement('div');
+    visGrid.style.cssText='display:flex;flex-direction:column;gap:.3rem;';
+
+    const visVers=pObj.visibilitesVers||{};
+
+    allIds.filter(otherId=>otherId!==id).forEach(otherId=>{
+      const curVis=visVers[otherId]??2;
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:.4rem;';
+
+      const otherSpan=document.createElement('span');
+      otherSpan.style.cssText='font-family:Cinzel,serif;font-size:.7rem;color:var(--ink2);min-width:80px;';
+      otherSpan.textContent=otherId;
+
+      const btns=document.createElement('div'); btns.style.cssText='display:flex;gap:.2rem;';
+      const TITLES=['Masqué','Présence seule','Polarité dominante','Fiche complète'];
+      [0,1,2,3].forEach(n=>{
+        const b=document.createElement('button');
+        b.style.cssText='font-family:Cinzel,serif;font-size:.58rem;padding:2px 5px;border-radius:3px;border:1px solid var(--border);background:'+(curVis===n?'#185FA5':'var(--input-bg)')+';color:'+(curVis===n?'#fff':'var(--ink3)')+';cursor:pointer;';
+        b.textContent='N'+n; b.title=TITLES[n];
+        b.addEventListener('click',async()=>{
+          // Mettre à jour visibilitesVers sur la fiche de p (idx)
+          if(!state.fichePersonnages[idx].visibilitesVers)
+            state.fichePersonnages[idx].visibilitesVers={};
+          state.fichePersonnages[idx].visibilitesVers[otherId]=n;
+          saveState();
+          // Écrire sur la fiche Supabase du joueur concerné (id)
+          await pushVisibilitesToFiche(id, pObj.pwJoueur||pObj.pwMJ||'', otherId, n);
+          renderFichesPersoList();
+        });
+        btns.appendChild(b);
+      });
+      row.appendChild(otherSpan); row.appendChild(btns);
+      visGrid.appendChild(row);
+    });
+
+    if(allIds.filter(o=>o!==id).length===0){
+      visGrid.innerHTML='<span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Aucun autre personnage lié.</span>';
+    }
+
+    body.appendChild(visGrid);
+    wrap.appendChild(head); wrap.appendChild(body);
+    list.appendChild(wrap);
   });
+}
+
+// ── Pousser une visibilité sur la fiche Supabase du joueur ──
+async function pushVisibilitesToFiche(ficheId, pw, otherId, niveau){
+  try{
+    // Lire l'état actuel de la fiche
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}&select=etat`,{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    const d=await r.json();
+    const etat=d[0]?.etat||{};
+    // Mettre à jour visibilites
+    if(!etat.visibilites) etat.visibilites={};
+    etat.visibilites[otherId]=niveau;
+    // Sauvegarder
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({id:ficheId, etat})
+    });
+  }catch(e){ console.error('pushVisibilitesToFiche',e); }
 }
 
 // ── Polling des 9 depuis les fiches personnages liées ──

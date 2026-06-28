@@ -2135,6 +2135,21 @@ async function doLogin(tryGM){
         // Mode vue ciblée depuis aventure.html ou MJ observateur
         const viewMode=new URLSearchParams(location.search).get('view');
         const isMJObs=new URLSearchParams(location.search).get('mjobs')==='1';
+        const isReadOnly=new URLSearchParams(location.search).get('readonly')==='1';
+        if(isReadOnly){
+          // Mode lecture seule : masquer tous les contrôles d'édition
+          document.querySelectorAll('.gm-bm-btn,.gm-edit-only,.gm-only-el,.acc-del-btn,.acc-lock-btn').forEach(el=>el.style.display='none');
+          document.querySelectorAll('input,textarea,button:not(#dice-fab)').forEach(el=>{
+            if(el.tagName==='BUTTON'&&el.closest('#dice-overlay')) return;
+            if(el.tagName!=='BUTTON'){ el.readOnly=true; el.style.pointerEvents='none'; }
+          });
+          document.getElementById('gm-bar').style.display='none';
+          // Afficher un bandeau lecture seule
+          const ro=document.createElement('div');
+          ro.style.cssText='position:fixed;top:0;left:0;right:0;background:#185FA5;color:#fff;font-family:Cinzel,serif;font-size:.65rem;text-align:center;padding:.25rem;z-index:999;pointer-events:none;letter-spacing:.06em;';
+          ro.textContent='👁 VUE EN LECTURE SEULE';
+          document.body.prepend(ro);
+        }
         if(viewMode==='des'){
           // Masquer tout sauf le lanceur
           document.getElementById('app').style.display='none';
@@ -3793,6 +3808,13 @@ function applyRemoteState(saved){
           if(title) title.classList.add('collapsed');
         }
       });
+    }
+    if(saved.visibilites!==undefined){
+      state.visibilites=saved.visibilites;
+      // Re-render le panneau personnages si ouvert et chargé
+      if(typeof PersonnePanel!=='undefined'&&PersonnePanel._personnes){
+        PersonnePanel._renderList(PersonnePanel._personnes);
+      }
     }
   } catch(e){ console.error('applyRemoteState error',e); }
   applyingRemote = false;
@@ -6658,17 +6680,61 @@ const PersonnePanel = {
   _renderList(personnes){
     const cont = document.getElementById('perso-btn-list');
     cont.innerHTML='';
-    if(!personnes.length){
-      cont.innerHTML='<span style="font-size:.75rem;color:var(--ink3);font-style:italic;">Aucun personnage lié à cet environnement.</span>';
+    // Fusionner niveauReveal global avec visibilites par paire
+    const visibilites = state.visibilites||{};
+    const filtered = personnes.map(p=>{
+      const vis = visibilites[p.id] ?? p.niveauReveal ?? 2;
+      return {...p, niveauReveal: octIsGM ? (p.niveauReveal??2) : vis};
+    }).filter(p=> octIsGM || p.niveauReveal > 0);
+    if(!filtered.length){
+      cont.innerHTML='<span style="font-size:.75rem;color:var(--ink3);font-style:italic;">Aucun personnage visible pour l\'instant.</span>';
       return;
     }
-    personnes.forEach(p=>{
+    const NIV_LABELS=['','Présence','Polarité','Complet'];
+    const NIV_COLORS=['','#6b5d4f','#c8860a','#185FA5'];
+    filtered.forEach(p=>{
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:.4rem;margin-bottom:.3rem;';
       const btn=document.createElement('button'); btn.className='perso-btn';
       if(this._currentPerso?.id===p.id) btn.classList.add('active');
+      btn.style.cssText='flex:1;text-align:left;';
       btn.textContent=p.id;
       btn.addEventListener('click',()=>this.selectPerso(p));
-      cont.appendChild(btn);
+      // Badge niveau
+      const badge=document.createElement('span');
+      badge.style.cssText=`font-family:Cinzel,serif;font-size:.58rem;padding:1px 5px;border-radius:8px;border:1px solid ${NIV_COLORS[p.niveauReveal]||'#ccc'};color:${NIV_COLORS[p.niveauReveal]||'#ccc'};white-space:nowrap;`;
+      badge.textContent='N'+p.niveauReveal+(NIV_LABELS[p.niveauReveal]?' · '+NIV_LABELS[p.niveauReveal]:'');
+      row.appendChild(btn); row.appendChild(badge);
+      // N3 : bouton "Voir la fiche"
+      if(p.niveauReveal>=3){
+        const viewBtn=document.createElement('button');
+        viewBtn.style.cssText='font-family:Cinzel,serif;font-size:.6rem;padding:2px 7px;border:1px solid #185FA5;border-radius:3px;background:none;color:#185FA5;cursor:pointer;white-space:nowrap;';
+        viewBtn.textContent='Voir →';
+        viewBtn.title='Ouvrir la fiche de '+p.id;
+        viewBtn.addEventListener('click',(e)=>{ e.stopPropagation(); PersonnePanel.openFiche(p); });
+        row.appendChild(viewBtn);
+      }
+      cont.appendChild(row);
     });
+    // Mémoriser filtered pour selectPerso
+    this._visiblePersonnes = filtered;
+  },
+
+  // ── Ouvrir la fiche complète d'un personnage (N3) ──
+  openFiche(p){
+    const overlay=document.getElementById('perso-fiche-overlay');
+    const iframe=document.getElementById('perso-fiche-iframe');
+    if(!overlay||!iframe) return;
+    const base=window.location.href.replace(/[^/]*$/,'');
+    // Utiliser pwJoueur stocké dans fichePersonnages de l'env (via PersonnePanel._personnes)
+    const pData=this._personnes?.find(pp=>pp.id===p.id)||p;
+    const pw=pData.pwJoueur||pData.pwMJ||'';
+    const url=base+'octogone.html?fiche='+encodeURIComponent(p.id)
+      +'&pw='+encodeURIComponent(pw)
+      +'&readonly=1';
+    iframe.src=url;
+    document.getElementById('perso-fiche-title').textContent='Fiche de '+p.id;
+    overlay.style.display='flex';
   },
 
   // ── Sélectionner un personnage ──
@@ -7345,6 +7411,17 @@ window.addEventListener('message',(e)=>{
   }
 });
 </script>
+
+<!-- Overlay fiche personnage (N3) -->
+<div id="perso-fiche-overlay" style="display:none;position:fixed;inset:0;background:rgba(10,7,3,0.88);align-items:center;justify-content:center;z-index:350;">
+  <div style="background:var(--bg);border:1px solid #185FA5;border-radius:10px;width:min(720px,98vw);height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:.5rem .9rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;background:var(--panel-bg);flex-shrink:0;">
+      <span id="perso-fiche-title" style="font-family:'Cinzel',serif;font-size:.8rem;color:#185FA5;letter-spacing:.08em;flex:1;"></span>
+      <button onclick="document.getElementById('perso-fiche-overlay').style.display='none';document.getElementById('perso-fiche-iframe').src='about:blank';" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕ Fermer</button>
+    </div>
+    <iframe id="perso-fiche-iframe" src="about:blank" style="flex:1;border:none;width:100%;"></iframe>
+  </div>
+</div>
 
 <!-- Overlay observateur lanceur -->
 <div id="obs-overlay">
