@@ -2101,6 +2101,30 @@ const FICHE_ID = params.get('fiche') || 'test';
 document.getElementById('modal-fiche-name').textContent = FICHE_ID;
 document.getElementById('fiche-title').textContent = FICHE_ID;
 
+// ── Auto-login via paramètres URL (?pw=xxx&gm=1) ──
+// Utilisé par le MJ depuis environnement.html pour ouvrir les iframes sans modale
+(async () => {
+  const urlPw  = params.get('pw');
+  const urlGM  = params.get('gm') === '1';
+  if(!urlPw) return; // pas de pw dans l'URL → modale normale
+  // Attendre que le DOM soit prêt
+  await new Promise(r => {
+    if(document.readyState !== 'loading') r();
+    else document.addEventListener('DOMContentLoaded', r);
+  });
+  // Vérifier le mot de passe côté Supabase
+  try {
+    const row = await SB.get(FICHE_ID);
+    if(!row) return;
+    const pwField = urlGM ? 'mot_de_passe_mj' : 'mot_de_passe';
+    if(row[pwField] !== urlPw) return; // mdp incorrect → modale normale
+    // Simuler le login : remplir le champ et cliquer
+    document.getElementById('modal-pw').value = urlPw;
+    if(urlGM) document.getElementById('modal-btn-gm').click();
+    else      document.getElementById('modal-btn').click();
+  } catch(e) { /* réseau indisponible → modale normale */ }
+})();
+
 // ── Helpers Supabase REST ──────────────────────
 const SB = {
   headers: {
