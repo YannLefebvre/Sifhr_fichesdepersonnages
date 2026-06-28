@@ -2132,19 +2132,24 @@ async function doLogin(tryGM){
         startRealtime();
         // Démarrer le système de notifications après le login
         setTimeout(()=>NotifSystem.start(), 3000);
+        // Appliquer mode lecture seule si demandé
+        if(window._readOnlyMode){
+          document.getElementById('gm-bar').style.display='none';
+          document.querySelectorAll('.gm-bm-btn,.gm-edit-only,.gm-only-el,.acc-del-btn,.acc-lock-btn').forEach(el=>el.style.display='none');
+          setTimeout(()=>{
+            document.querySelectorAll('input:not([type=range]):not([type=checkbox]),textarea').forEach(el=>{
+              el.readOnly=true; el.style.pointerEvents='none'; el.style.background='transparent';
+            });
+          },500);
+        }
         // Mode vue ciblée depuis aventure.html ou MJ observateur
         const viewMode=new URLSearchParams(location.search).get('view');
         const isMJObs=new URLSearchParams(location.search).get('mjobs')==='1';
         const isReadOnly=new URLSearchParams(location.search).get('readonly')==='1';
         if(isReadOnly){
-          // Mode lecture seule : masquer tous les contrôles d'édition
-          document.querySelectorAll('.gm-bm-btn,.gm-edit-only,.gm-only-el,.acc-del-btn,.acc-lock-btn').forEach(el=>el.style.display='none');
-          document.querySelectorAll('input,textarea,button:not(#dice-fab)').forEach(el=>{
-            if(el.tagName==='BUTTON'&&el.closest('#dice-overlay')) return;
-            if(el.tagName!=='BUTTON'){ el.readOnly=true; el.style.pointerEvents='none'; }
-          });
-          document.getElementById('gm-bar').style.display='none';
-          // Afficher un bandeau lecture seule
+          // Mode lecture seule : appliquer les restrictions après chargement
+          window._readOnlyMode = true;
+          // Bannière lecture seule
           const ro=document.createElement('div');
           ro.style.cssText='position:fixed;top:0;left:0;right:0;background:#185FA5;color:#fff;font-family:Cinzel,serif;font-size:.65rem;text-align:center;padding:.25rem;z-index:999;pointer-events:none;letter-spacing:.06em;';
           ro.textContent='👁 VUE EN LECTURE SEULE';
@@ -3938,10 +3943,33 @@ function selectDiceRole(role){
 }
 
 function dLockControls(){
-  ['drb-minus','drb-plus','dlaunch-btn',
-   'dbm-bonus-1','dbm-bonus-2','dbm-bonus-3','dbm-malus-1','dbm-malus-2','dbm-malus-3'].forEach(id=>{
+  // Désactiver tous les contrôles du lanceur
+  ['drb-minus','drb-plus','dlaunch-btn','dreset-btn',
+   'dbm-bonus-1','dbm-bonus-2','dbm-bonus-3','dbm-malus-1','dbm-malus-2','dbm-malus-3',
+   'dprouesse-toggle','dprodige-toggle','dice-share-btn'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.disabled=true;
   });
+  // Désactiver toutes les interactions dans dice-box
+  const box=document.getElementById('dice-box');
+  if(box){
+    box.querySelectorAll('button:not(#dice-role-screen button),input[type=checkbox]').forEach(el=>{
+      if(!['dice-close'].includes(el.id)) el.disabled=true;
+    });
+    // Masquer le bouton partager
+    const shareBtn=document.getElementById('dice-share-btn');
+    if(shareBtn) shareBtn.style.display='none';
+    const sharePanel=document.getElementById('dice-share-panel');
+    if(sharePanel) sharePanel.style.display='none';
+    // Bannière lecture seule dans le lanceur
+    const existing=box.querySelector('.dice-readonly-banner');
+    if(!existing){
+      const banner=document.createElement('div');
+      banner.className='dice-readonly-banner';
+      banner.style.cssText='background:#185FA5;color:#fff;font-family:Cinzel,serif;font-size:.65rem;text-align:center;padding:.2rem;letter-spacing:.06em;border-radius:4px 4px 0 0;margin:-0px;';
+      banner.textContent='👁 Observation en direct — lecture seule';
+      box.insertBefore(banner, box.firstChild);
+    }
+  }
   dRenderAptGrid();
   dRenderSuccessUnified();
 }
@@ -4659,6 +4687,8 @@ function dToggleProuesse(){
     const cb = document.getElementById('dprodige-toggle');
     if(cb) cb.checked = false;
   }
+
+  if(dCurrentRole==='launcher') dPushDiceShare();
 }
 
 function dToggleProdige(){
@@ -4669,6 +4699,8 @@ function dToggleProdige(){
     const cb = document.getElementById('dprouesse-toggle');
     if(cb) cb.checked = false;
   }
+
+  if(dCurrentRole==='launcher') dPushDiceShare();
 }
 
 // Afficher/masquer le bouton prouesse selon les valeurs choisies
@@ -7254,6 +7286,9 @@ async function dPushDiceShare(){
       aptLabel: s._aptLabel||null,
       successes: s.successes||[],
       chosenVal: s.chosenVal||null,
+      prouesse: _prouesseDeclared||false,
+      prodige: _prodigeDeclared||false,
+      bonusMalus: s.bonusMalus||{},
       ts: Date.now()
     };
     try{
@@ -7356,13 +7391,32 @@ function renderObserverState(ds){
     succEl.textContent=ds.successes.map(s=>`${s.count} réussite(s) sur ${s.val}`).join(' · ');
   } else if(!ds.rolled){ succEl.textContent='En attente du lancer…'; }
   else { succEl.textContent=''; }
+  // Prouesse / Prodige
+  const ppEl=document.getElementById('obs-prouesse-prodige');
+  if(ppEl){
+    let ppTxt='';
+    if(ds.prouesse) ppTxt='⚡ Prouesse déclarée';
+    if(ds.prodige) ppTxt='✨ Prodige déclaré';
+    ppEl.textContent=ppTxt;
+    ppEl.style.display=ppTxt?'block':'none';
+  }
+  // Bonus/Malus actifs
+  const bmEl=document.getElementById('obs-bonus-malus');
+  if(bmEl&&ds.bonusMalus){
+    const parts=[];
+    const bm=ds.bonusMalus;
+    if(bm.bonus){Object.entries(bm.bonus).forEach(([k,v])=>{ if(v) parts.push('+ '+k); });}
+    if(bm.malus){Object.entries(bm.malus).forEach(([k,v])=>{ if(v) parts.push('- '+k); });}
+    bmEl.textContent=parts.length?parts.join(' · '):'';
+    bmEl.style.display=parts.length?'block':'none';
+  }
   // Verdict
   const vEl=document.getElementById('obs-verdict-el');
   vEl.innerHTML='';
   if(ds.chosenVal){
     const v=document.createElement('div');
-    v.className='obs-verdict '+(ds.chosenVal?'reussite':'echec');
-    v.textContent=ds.chosenVal?'✓ Réussite validée':'✕ Échec';
+    v.className='obs-verdict reussite';
+    v.textContent='✓ Réussite validée sur '+ds.chosenVal;
     vEl.appendChild(v);
   }
 }
@@ -7436,6 +7490,8 @@ window.addEventListener('message',(e)=>{
     <div class="obs-label" style="margin-top:.5rem;">Dés</div>
     <div class="obs-dice-row" id="obs-dice-row"></div>
     <div id="obs-successes" style="font-family:'Cinzel',serif;font-size:.75rem;color:var(--ink3);margin-top:.3rem;"></div>
+    <div id="obs-prouesse-prodige" style="display:none;font-family:'Cinzel',serif;font-size:.72rem;color:#c8860a;padding:.25rem .4rem;background:rgba(200,134,10,.08);border-radius:4px;margin-top:.3rem;"></div>
+    <div id="obs-bonus-malus" style="display:none;font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);margin-top:.2rem;font-style:italic;"></div>
     <div id="obs-verdict-el"></div>
   </div>
 </div>

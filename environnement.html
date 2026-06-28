@@ -2124,6 +2124,32 @@ function renderFichesPersoList(){
     }
 
     body.appendChild(visGrid);
+
+    // Bouton "Voir la fiche" (accès MJ complet)
+    const viewFicheRow=document.createElement('div');
+    viewFicheRow.style.cssText='margin-top:.5rem;padding-top:.4rem;border-top:1px solid var(--border2);display:flex;gap:.4rem;';
+    const viewFicheBtn=document.createElement('button');
+    viewFicheBtn.style.cssText='font-family:Cinzel,serif;font-size:.68rem;padding:3px 10px;border:1px solid var(--accent);border-radius:3px;background:none;color:var(--accent);cursor:pointer;';
+    viewFicheBtn.textContent='👁 Voir la fiche (MJ)';
+    viewFicheBtn.addEventListener('click',()=>openEnvFiche(id, pObj.pwMJ||''));
+    viewFicheRow.appendChild(viewFicheBtn);
+    // Bouton "Voir la fiche joueur" si pwJoueur disponible
+    if(pObj.pwJoueur){
+      const viewJBtn=document.createElement('button');
+      viewJBtn.style.cssText='font-family:Cinzel,serif;font-size:.68rem;padding:3px 10px;border:1px solid #185FA5;border-radius:3px;background:none;color:#185FA5;cursor:pointer;';
+      viewJBtn.textContent='👤 Voir (joueur)';
+      viewJBtn.addEventListener('click',()=>{
+        const base=window.location.href.replace(/[^/]*$/,'');
+        const overlay=document.getElementById('env-fiche-overlay');
+        const iframe=document.getElementById('env-fiche-iframe');
+        iframe.src=base+'octogone.html?fiche='+encodeURIComponent(id)+'&pw='+encodeURIComponent(pObj.pwJoueur)+'&readonly=1';
+        document.getElementById('env-fiche-title').textContent='Fiche de '+id+' (joueur — lecture seule)';
+        overlay.style.display='flex';
+      });
+      viewFicheRow.appendChild(viewJBtn);
+    }
+    body.appendChild(viewFicheRow);
+
     wrap.appendChild(head); wrap.appendChild(body);
     list.appendChild(wrap);
   });
@@ -2454,11 +2480,41 @@ function mjCloseObsCard(ficheId){
 }
 
 // Démarrer l'observation après login MJ
+// ── Ouvrir la fiche d'un personnage depuis env (MJ) ──
+function openEnvFiche(ficheId, pw){
+  const overlay=document.getElementById('env-fiche-overlay');
+  const iframe=document.getElementById('env-fiche-iframe');
+  const title=document.getElementById('env-fiche-title');
+  if(!overlay||!iframe) return;
+  const base=window.location.href.replace(/[^/]*$/,'');
+  const url=base+'octogone.html?fiche='+encodeURIComponent(ficheId)
+    +'&pw='+encodeURIComponent(pw||'')
+    +'&gm=1';
+  iframe.src=url;
+  title.textContent='Fiche de '+ficheId+' (MJ)';
+  overlay.style.display='flex';
+}
+function closeEnvFiche(){
+  document.getElementById('env-fiche-overlay').style.display='none';
+  document.getElementById('env-fiche-iframe').src='about:blank';
+}
+
 function startMjDiceObservation(){
   if(!isGM) return;
   mjStartObservingFiches();
 }
 
 </script>
+
+<!-- Overlay fiche personnage (vue MJ depuis env) -->
+<div id="env-fiche-overlay" style="display:none;position:fixed;inset:0;background:rgba(26,21,16,0.88);align-items:center;justify-content:center;z-index:500;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:8px;width:min(720px,98vw);height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+    <div style="padding:.5rem .9rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;background:var(--section-bg);flex-shrink:0;">
+      <span id="env-fiche-title" style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--accent);letter-spacing:.08em;flex:1;"></span>
+      <button onclick="closeEnvFiche()" style="font-family:'Cinzel',serif;font-size:.72rem;padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">✕ Fermer</button>
+    </div>
+    <iframe id="env-fiche-iframe" src="about:blank" style="flex:1;border:none;width:100%;"></iframe>
+  </div>
+</div>
 </body>
 </html>
