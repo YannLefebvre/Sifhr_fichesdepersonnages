@@ -461,8 +461,16 @@
     transform:translateY(-50%); background:#1a2a3a; color:#a0c8e8; font-family:'Crimson Text',serif;
     font-size:.75rem; padding:.5rem .7rem; border-radius:5px; width:220px; line-height:1.5;
     z-index:500; white-space:normal; pointer-events:none; }
-  /* Traits mobilisables */
-  #dtrait-panel { margin:.5rem 0; padding:.5rem .7rem; background:#f5f2ec;
+  /* Étapes guidées */
+  .dice-step-label { font-family:'Cinzel',serif; font-size:.68rem; color:#185FA5;
+    letter-spacing:.06em; text-transform:uppercase; margin-bottom:.3rem;
+    padding:.2rem 0; border-bottom:1px solid rgba(24,95,165,.15); }
+  /* Traits inline (sous l'aptitude) */
+  #dtrait-panel-inline { margin:.3rem 0 0; padding:.4rem .6rem; background:#f5f2ec;
+    border:1px solid #e0dcd4; border-radius:6px; display:none; }
+  /* Traits mobilisables (ancien panneau, masqué) */
+  #dtrait-panel { display:none !important; }
+  #dtrait-panel-orig { margin:.5rem 0; padding:.5rem .7rem; background:#f5f2ec;
     border:1px solid #e0dcd4; border-radius:8px; display:none; }
   .dtrait-panel-title { font-family:'Cinzel',serif; font-size:.72rem; color:#666;
     letter-spacing:.05em; margin-bottom:.4rem; text-transform:uppercase; }
@@ -1819,14 +1827,23 @@ async function xferClearRequest(){
         <span class="role-badge" id="drole-badge" style="font-size:.7rem;padding:2px 7px;border-radius:12px;"></span>
       </div>
       <div class="setup-card" id="dice-setup">
+        <!-- Étape 1 : Aptitude + Trait -->
+        <div class="dice-step-label">① Déterminez l'aptitude et le trait utilisés</div>
         <div class="setup-row apt-picker-row">
           <span class="color-dot dot-white"></span>
           <span class="setup-label">Aptitude</span>
         </div>
         <div id="apt-btn-grid" class="apt-btn-grid"></div>
+        <!-- Traits mobilisables : remontés ici sous l'aptitude -->
+        <div id="dtrait-panel-inline">
+          <div class="dtrait-panel-title" style="margin-top:.4rem;">Traits mobilisables</div>
+          <div class="dtrait-list" id="dtrait-list-inline"></div>
+        </div>
+        <!-- Étape 2 : Vigueur du souffle -->
+        <div class="dice-step-label" style="margin-top:.7rem;">② Vigueur de votre souffle <span style="font-size:.65rem;color:var(--ink3);font-weight:normal;">(max 3 dés rouges)</span></div>
         <div class="setup-row">
           <span class="color-dot dot-red"></span>
-          <span class="setup-label">Dés rouges — souffle</span>
+          <span class="setup-label">Dés rouges</span>
           <div class="count-ctrl">
             <button id="drb-minus" onclick="dChangeCount('red',-1)">−</button>
             <span id="dred-count">2</span>
@@ -1836,9 +1853,11 @@ async function xferClearRequest(){
         <p class="dred-message" id="dred-message"></p>
       </div>
       <div class="setup-card" id="dsuccess-setup">
+        <div class="dice-step-label">③ Valeurs de réussite visées</div>
         <p class="dsuccess-question">Valeurs de réussite <span id="dsuccess-hint" class="dsuccess-hint">(choisissez 1 ou 2 valeurs)</span></p>
         <div id="dsuccess-unified" class="dsuccess-unified"></div>
         <!-- Option prouesse / prodige (mutuellement exclusives) -->
+        <div class="dice-step-label" style="margin-top:.6rem;">④ Tentez-vous une prouesse ou un prodige ?</div>
         <div id="dprouesse-row">
           <input type="checkbox" id="dprouesse-toggle" onchange="dToggleProuesse()">
           <label class="dprouesse-label" for="dprouesse-toggle">Tenter une prouesse ?</label>
@@ -1849,6 +1868,7 @@ async function xferClearRequest(){
           <label class="dprodige-label" for="dprodige-toggle">Tenter un prodige ?</label>
           <span class="dprodige-info" data-tip="Mêmes conditions que la prouesse. Réussite : vos dés rouges sont transférés dans l'environnement, qui vous renvoie en échange des jetons selon ses axes dominants.">?</span>
         </div>
+        <div class="dice-step-label" style="margin-top:.6rem;">⑤ Bonus et malus octroyés</div>
         <div class="dbm-row">
           <div class="dbm-group">
             <span class="dbm-group-label">Bonus</span>
@@ -1896,6 +1916,7 @@ async function xferClearRequest(){
       </div>
       <div id="dsuccess-result" class="dsuccess-result" style="display:none;"></div>
       <div id="dlock-explain" class="dlock-explain" style="display:none;"></div>
+      <div class="dice-step-label" style="margin-bottom:.3rem;">⑥ Partagez et lancez</div>
       <!-- Partage de lancer -->
       <button id="dice-share-btn" onclick="dToggleSharePanel()" title="Partager ce lancer">
         👁 Partager ce lancer <span id="dice-share-count" style="display:none;background:#4a90d9;color:#fff;border-radius:8px;padding:0 5px;font-size:.6rem;"></span>
@@ -4100,33 +4121,41 @@ let _activeTraitKey = null;
 function dRenderTraitsMobilisables(aptKey){
   const panel = document.getElementById('dtrait-panel');
   const list = document.getElementById('dtrait-list');
-  if(!panel||!list) return;
+  const inlinePanel = document.getElementById('dtrait-panel-inline');
+  const inlineList = document.getElementById('dtrait-list-inline');
+  if(!list) return;
   const traits = (state.aptTraits&&state.aptTraits[aptKey])||[];
   const available = traits.filter(t=>t.level && LEVEL_LABELS[t.level]);
-  if(!available.length){ panel.style.display='none'; _activeTraitKey=null; return; }
-  panel.style.display='block';
+  if(!available.length){
+    if(panel) panel.style.display='none';
+    if(inlinePanel) inlinePanel.style.display='none';
+    _activeTraitKey=null; return;
+  }
+  if(panel) panel.style.display='none'; // masqué — on utilise le panel inline
+  if(inlinePanel) inlinePanel.style.display='block';
   list.innerHTML='';
+  if(inlineList) inlineList.innerHTML='';
   available.forEach((trait,idx)=>{
     const isBonus = LEVEL_TYPE[trait.level]==='bonus';
-    const btn=document.createElement('button');
-    btn.className='dtrait-btn'+(isBonus?'':' malus');
     const isActive=(_activeTraitKey&&_activeTraitKey.aptKey===aptKey&&_activeTraitKey.traitIdx===idx);
-    if(isActive) btn.classList.add('active');
-    btn.innerHTML=`<span>${trait.title||'Trait'}</span><span class="dtrait-level-badge">${LEVEL_LABELS[trait.level]}</span>`;
-    btn.addEventListener('click',()=>{
-      if(isActive){
-        // Désactiver : retirer le bonus/malus
-        _deactivateTrait(aptKey, idx, trait);
-        _activeTraitKey=null;
-      } else {
-        // Désactiver l'ancien si présent
-        if(_activeTraitKey) _deactivateTrait(_activeTraitKey.aptKey, _activeTraitKey.traitIdx, _getActiveTrait());
-        _activeTraitKey={aptKey,traitIdx:idx};
-        _activateTrait(trait);
-      }
-      dRenderTraitsMobilisables(aptKey);
+    [list, inlineList].forEach(targetList=>{
+      if(!targetList) return;
+      const btn=document.createElement('button');
+      btn.className='dtrait-btn'+(isBonus?'':' malus')+(isActive?' active':'');
+      btn.innerHTML=`<span>${trait.title||'Trait'}</span><span class="dtrait-level-badge">${LEVEL_LABELS[trait.level]}</span>`;
+      btn.addEventListener('click',()=>{
+        if(isActive){
+          _deactivateTrait(aptKey, idx, trait);
+          _activeTraitKey=null;
+        } else {
+          if(_activeTraitKey) _deactivateTrait(_activeTraitKey.aptKey, _activeTraitKey.traitIdx, _getActiveTrait());
+          _activeTraitKey={aptKey,traitIdx:idx};
+          _activateTrait(trait);
+        }
+        dRenderTraitsMobilisables(aptKey);
+      });
+      targetList.appendChild(btn);
     });
-    list.appendChild(btn);
   });
 }
 
@@ -4921,7 +4950,7 @@ function dChangeCount(color,delta){
     const minReds=dCountSaturatedAxes(); // axes saturés imposent un plancher
     const wanted=(s.reds||2)+delta;
     const blocked = delta<0 && wanted<minReds;
-    s.reds=Math.max(minReds,Math.min(2,wanted));
+    s.reds=Math.max(minReds,Math.min(3,wanted)); // max 3 dés rouges (vigueur du souffle)
     s._redBlockedWarning = blocked;
     document.getElementById('dred-count').textContent=s.reds;
     dUpdateRedMessage(); dRenderLockExplanations();
@@ -5105,6 +5134,7 @@ function dToggleLock(i){
 }
 
 function dResetAll(){
+  ProdigeSystem._fired = false;
   if(dCurrentRole!=='launcher') return;
   if(!confirm('Réinitialiser les dés ?')) return;
   const s=dS(); s.rolled=false; s.dice=[];
@@ -6456,6 +6486,8 @@ const ProdigeSystem = {
 
   // ── Prodige réussi : dés rouges → environnement, retour vers joueur ──
   async triggerProdige(diceState){
+    if(this._fired) return; // déjà déclenché pour ce lancer
+    this._fired = true;
     const envId = getEnvFicheId();
     if(!envId || envId===FICHE_ID){
       OccNotif.push("Aucun environnement lié — le prodige reste sans écho.");
@@ -6531,6 +6563,7 @@ const ProdigeSystem = {
 
   // Affiche le message narratif prodige puis propose les jetons retour
   _pendingRetour: [],
+  _fired: false,
 
   _proposeRetour(retourTokens){
     if(!retourTokens.length) return;
@@ -7423,14 +7456,26 @@ function renderObserverState(ds){
 
 // ── Vérifier à chaque Realtime si on est observateur d'un lancer ──
 function checkIncomingDiceShare(record){
-  // dice_share est dans etat (colonne Supabase), pas à la racine du record
+  // dice_share est dans etat (colonne Supabase)
   const ds = record.etat?.dice_share || record.dice_share;
-  if(!ds||!ds.active) return;
-  if(ds.fiche===FICHE_ID) return; // c'est notre propre lancer
-  if(!(ds.observers||[]).includes(FICHE_ID)) return; // on n'est pas observateur
-  // Ouvrir la vue observateur si pas déjà ouverte sur cette fiche
+  if(!ds) return;
+  if(ds.fiche===FICHE_ID) return; // notre propre lancer
+  // Vérifier qu'on est dans la liste des observateurs
+  const observers = ds.observers||[];
+  if(!observers.includes(FICHE_ID)) return;
+  if(!ds.active){
+    // Lancer terminé : mettre à jour statut si fenêtre ouverte
+    if(_obsSourceFiche===ds.fiche){
+      const statusEl=document.getElementById('obs-status');
+      if(statusEl) statusEl.textContent='Lancer terminé';
+    }
+    return;
+  }
+  // Ouvrir ou mettre à jour la vue observateur
   if(_obsSourceFiche!==ds.fiche){
     openObserver(ds.fiche);
+  } else {
+    renderObserverState(ds);
   }
 }
 
