@@ -7373,24 +7373,31 @@ async function dPushDiceShare(){
       state.dice_share = shareData;
       await SB.upsert(FICHE_ID, state);
       // 2. Écrire dice_share_incoming sur chaque fiche observatrice
-      //    pour que leur Realtime (sur leur propre fiche) le détecte
+      //    via PATCH partiel sur la colonne etat -> clé dice_share_incoming
+      //    Supabase permet de faire un update ciblé sans lire/réécrire tout l'état
       const observers = shareData.observers||[];
       for(const obsId of observers){
         try{
-          const r=await fetch(
+          // Utiliser RPC ou PATCH - ici on utilise un update direct
+          // qui ne touche que dice_share_incoming via jsonb_set côté Supabase
+          // Solution simple : écrire dans une colonne dédiée (aventure_state réutilisé)
+          // NON - on utilise un update Supabase avec merge sur etat seul
+          // En lisant d'abord l'etat, mais en ne modifiant QUE dice_share_incoming
+          const rRead=await fetch(
             `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(obsId)}&select=etat`,
             {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
           );
-          const d=await r.json();
-          const obsEtat=d[0]?.etat||{};
+          const dRead=await rRead.json();
+          if(!dRead[0]) continue; // fiche inexistante, skip
+          const obsEtat=JSON.parse(JSON.stringify(dRead[0].etat||{}));
           obsEtat.dice_share_incoming={...shareData, ts:Date.now()};
-          await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
-            method:'POST',
+          await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(obsId)}`,{
+            method:'PATCH',
             headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
-              'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-            body:JSON.stringify({id:obsId, etat:obsEtat})
+              'Content-Type':'application/json','Prefer':'return=minimal'},
+            body:JSON.stringify({etat:obsEtat})
           });
-        }catch(e2){}
+        }catch(e2){ console.error('dice_share_incoming write error',e2); }
       }
     }catch(e){}
   }, 300);
@@ -7421,20 +7428,21 @@ async function dDeactivateShare(){
     // Notifier les observateurs que le lancer est terminé
     for(const obsId of _diceShareObservers){
       try{
-        const r=await fetch(
+        const rRead=await fetch(
           `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(obsId)}&select=etat`,
           {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
         );
-        const d=await r.json();
-        const obsEtat=d[0]?.etat||{};
+        const dRead=await rRead.json();
+        if(!dRead[0]) continue;
+        const obsEtat=JSON.parse(JSON.stringify(dRead[0].etat||{}));
         obsEtat.dice_share_incoming={active:false, fiche:FICHE_ID, ts:Date.now()};
-        await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
-          method:'POST',
+        await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(obsId)}`,{
+          method:'PATCH',
           headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
-            'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-          body:JSON.stringify({id:obsId, etat:obsEtat})
+            'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify({etat:obsEtat})
         });
-      }catch(e2){}
+      }catch(e2){ console.error('dice_share_incoming deactivate error',e2); }
     }
   }catch(e){}
 }
