@@ -1142,6 +1142,25 @@
   .obs-verdict.echec { background:#fde8e8; color:#8b2020; }
   .obs-label { font-family:'Cinzel',serif; font-size:.65rem; color:var(--ink3);
     letter-spacing:.05em; text-transform:uppercase; margin-top:.4rem; margin-bottom:.15rem; }
+
+  /* ── Déviation octogone idéal ── */
+  .oct-ideal-badge { display:inline-flex; align-items:center; gap:.25rem;
+    font-family:'Cinzel',serif; font-size:.62rem; padding:2px 6px;
+    border-radius:3px; margin-left:.4rem; vertical-align:middle; cursor:help; }
+  .oct-ideal-badge.bonus  { background:#d4edda; color:#1a5c2a; border:1px solid #1a4a2a; }
+  .oct-ideal-badge.malus  { background:#fde8e8; color:#8b2020; border:1px solid #8b2020; }
+  .oct-ideal-badge.redh   { background:#1a1510; color:#f5f0e8; border:1px solid #c8860a; }
+  .oct-ideal-badge.neutre { background:#f0ede6; color:#6b5d4f; border:1px solid #c8b89a; }
+  .bm-num-display.degraded { opacity:.35; text-decoration:line-through; }
+  .bm-ideal-override { display:inline-block; font-family:'Cinzel',serif; font-size:.72rem;
+    padding:2px 7px; border-radius:3px; margin-left:.4rem;
+    animation:pulse-ideal .8s ease-in-out 3; }
+  .bm-ideal-override.bonus  { background:#d4edda; color:#1a5c2a; border:1px solid #1a4a2a; }
+  .bm-ideal-override.malus  { background:#fde8e8; color:#8b2020; border:1px solid #8b2020; }
+  .bm-ideal-override.redh   { background:#1a1510; color:#f5f0e8; }
+  @keyframes pulse-ideal {
+    0%,100%{box-shadow:0 0 0 0 rgba(138,32,32,0)} 50%{box-shadow:0 0 6px 2px rgba(138,32,32,.4)}
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -2253,6 +2272,11 @@ async function doLogin(tryGM){
         if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);        startRealtime();
         // Démarrer le système de notifications après le login
         setTimeout(()=>NotifSystem.start(), 3000);
+        // Charger la bibliothèque d'octogones idéaux et calculer
+        setTimeout(async()=>{
+          await loadBibIdeaux();
+          await recomputeAllDeviations();
+        }, 1500);
         // Appliquer mode lecture seule si demandé
         if(window._readOnlyMode){
           document.getElementById('gm-bar').style.display='none';
@@ -2805,6 +2829,8 @@ function addToken(sectorId, color){
   renderToken(sectorId,replaceIdx);
   updateSectorLane(sectorId);
   return true;
+
+  scheduleDeviationRecompute();
 }
 
 function cycleToken(sectorId,idx){
@@ -2831,6 +2857,8 @@ function cycleToken(sectorId,idx){
   }
   saveState();
   NotifSystem._checkSaturationImmediate(sectorId);
+
+  scheduleDeviationRecompute();
 }
 function renderToken(sectorId,idx){
   const g=document.getElementById(`tok-${sectorId}-${idx}`);
@@ -3948,6 +3976,8 @@ function applyRemoteState(saved){
     }
   } catch(e){ console.error('applyRemoteState error',e); }
   applyingRemote = false;
+  // Recalculer les déviations si les tokens ont changé
+  if(typeof scheduleDeviationRecompute==='function') scheduleDeviationRecompute();
 }
 
 /* ── Realtime Supabase ────────────────────────── */
@@ -7985,6 +8015,275 @@ async function loadEvtPanel(){
 
     if(!hasContent) body.innerHTML='<div class="evt-empty">Aucun événement visible pour l\'instant.</div>';
   }catch(e){body.innerHTML='<div class="evt-empty">Erreur de chargement.</div>';console.error('loadEvtPanel',e);}
+}
+
+
+// ══════════════════════════════════════════════
+//   MOTEUR DE COMPARAISON OCTOGONE IDÉAL
+// ══════════════════════════════════════════════
+
+let _bibIdeauxCache = null;  // cache de la bibliothèque chargée depuis l'env
+let _deviationResults = {};  // {nomElement: {result, details, score}}
+
+// ── Charger la bibliothèque depuis l'env ──
+async function loadBibIdeaux(){
+  const envId = state.envFiche||'';
+  if(!envId) return null;
+  try{
+    const r=await fetch(
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    const d=await r.json();
+    _bibIdeauxCache = d[0]?.etat?.bibliotheque_ideaux||{};
+    return _bibIdeauxCache;
+  }catch(e){ return null; }
+}
+
+// ── Obtenir la valeur d'un élément des 33 depuis state ──
+function getPersonnageVal(colId){
+  const s=state;
+  // Jetons blancs
+  if(colId.endsWith('_b')){
+    const axe=colId.slice(0,-2);
+    return (s.tokens[axe]||[]).filter(t=>t==='white').length;
+  }
+  // Jetons noirs
+  if(colId.endsWith('_n') && !colId.includes('_n_')){
+    const axe=colId.slice(0,-2);
+    return (s.tokens[axe]||[]).filter(t=>t==='black'||t==='black_token').length;
+  }
+  // Bile noire spécial (_n_ dans le nom)
+  if(colId==='bile_n_n'){
+    return (s.tokens['bile_n']||[]).filter(t=>t==='black'||t==='black_token').length;
+  }
+  // Dés dévoyés
+  if(colId==='des_devoyes'){
+    return (s.dice?.dice||[]).filter(d=>d.color==='black_token'||d.locked).length;
+  }
+  // Vices et vertus — mapper vers state.scores
+  const SCORE_MAP = {
+    feu_force:'feu_0',    feu_envie:'feu_1',
+    bile_j_charite:'bile_j_0', bile_j_luxure:'bile_j_1',
+    terre_loyaute:'terre_0',   terre_malignite:'terre_1',
+    bile_n_prudence:'bile_n_0',bile_n_acedie:'bile_n_1',
+    eau_temperance:'eau_0',    eau_lachete:'eau_1',
+    flegme_chastete:'flegme_0',flegme_avarice:'flegme_1',
+    air_foi:'air_0',           air_felonie:'air_1',
+    sang_esperance:'sang_0',   sang_temerite:'sang_1',
+  };
+  const scoreKey=SCORE_MAP[colId];
+  if(scoreKey) return parseInt(s.scores[scoreKey]||0);
+  return 0;
+}
+
+// ── Labels lisibles ──
+const COL_LABELS = {
+  feu_b:'Feu ○', bile_j_b:'Bile J. ○', terre_b:'Terre ○', bile_n_b:'Bile N. ○',
+  eau_b:'Eau ○', flegme_b:'Flegme ○', air_b:'Air ○', sang_b:'Sang ○',
+  feu_n:'Feu ●', bile_j_n:'Bile J. ●', terre_n:'Terre ●', bile_n_n:'Bile N. ●',
+  eau_n:'Eau ●', flegme_n:'Flegme ●', air_n:'Air ●', sang_n:'Sang ●',
+  feu_force:'Force', bile_j_charite:'Charité', terre_loyaute:'Loyauté',
+  bile_n_prudence:'Prudence', eau_temperance:'Tempérance', flegme_chastete:'Chasteté',
+  air_foi:'Foi', sang_esperance:'Espérance',
+  feu_envie:'Envie', bile_j_luxure:'Luxure', terre_malignite:'Malignité',
+  bile_n_acedie:'Acédie', eau_lachete:'Lâcheté', flegme_avarice:'Avarice',
+  air_felonie:'Félonie', sang_temerite:'Témérité',
+  des_devoyes:'Dés dévoyés',
+};
+
+// NIVEAUX de bonus et malus
+const BM_BONUS_LEVELS = ['Avantage','Expertise','Maîtrise'];
+const BM_MALUS_LEVELS = ['Relance','Opposition','Négation'];
+
+// ── Calculer le résultat pour un élément ──
+function computeDeviation(elementName){
+  const bib=_bibIdeauxCache||{};
+  const elData=bib[elementName];
+  if(!elData||!elData.conditions) return null;
+  const conds=elData.conditions;
+
+  let bonusCount=0, malusCount=0, redhibitoire=false;
+  const details=[];
+
+  Object.entries(conds).forEach(([colId,raw])=>{
+    if(!raw||!raw.includes(':')) return;
+    const [type,seuil]=raw.split(':');
+    const threshold=parseInt(seuil)||0;
+    const persoVal=getPersonnageVal(colId);
+    const label=COL_LABELS[colId]||colId;
+
+    if(type==='B'){
+      if(persoVal>=threshold){
+        bonusCount++;
+        details.push({type:'B',label,persoVal,threshold,active:true,
+          msg:`${label} : ${persoVal}/${threshold} ✓ → Bonus`});
+      } else {
+        details.push({type:'B',label,persoVal,threshold,active:false,
+          msg:`${label} : ${persoVal}/${threshold} — bonus non atteint`});
+      }
+    } else if(type==='M'){
+      if(persoVal>=threshold){
+        malusCount++;
+        details.push({type:'M',label,persoVal,threshold,active:true,
+          msg:`${label} : ${persoVal}/${threshold} → Malus`});
+      } else {
+        details.push({type:'M',label,persoVal,threshold,active:false,
+          msg:`${label} : ${persoVal}/${threshold} — malus non déclenché`});
+      }
+    } else if(type==='R'){
+      if(persoVal<threshold){
+        redhibitoire=true;
+        details.push({type:'R',label,persoVal,threshold,active:true,
+          msg:`${label} : ${persoVal} < ${threshold} requis ⛔ Inutilisable`});
+      } else {
+        details.push({type:'R',label,persoVal,threshold,active:false,
+          msg:`${label} : ${persoVal}/${threshold} ✓`});
+      }
+    }
+  });
+
+  // Règles de cumul
+  // 1 bonus + 1 malus s'annulent
+  const net=bonusCount-malusCount;
+  // 2 bonus → niveau supérieur, 2 malus → niveau supérieur
+  let result='neutre', bonusLevel=0, malusLevel=0;
+
+  if(redhibitoire){
+    result='redh';
+  } else if(net===0){
+    result='neutre';
+  } else if(net>0){
+    result='bonus';
+    bonusLevel=Math.min(net-1, BM_BONUS_LEVELS.length-1); // 1 bonus=Avantage, 2=Expertise...
+  } else {
+    result='malus';
+    malusLevel=Math.min((-net)-1, BM_MALUS_LEVELS.length-1);
+  }
+
+  return {result, bonusLevel, malusLevel, bonusCount, malusCount, redhibitoire, details};
+}
+
+// ── Mettre à jour l'affichage d'un widget acc-item ──
+function applyDeviationToWidget(item, elementName, baseBm){
+  const dev=computeDeviation(elementName);
+  if(!dev){ cleanDeviationFromWidget(item); return; }
+
+  _deviationResults[elementName]=dev;
+
+  // Badge sur le titre
+  let badge=item.querySelector('.oct-ideal-badge');
+  if(!badge){
+    badge=document.createElement('span');
+    badge.className='oct-ideal-badge';
+    badge.title='Comparaison avec l\u2019octogone id\u00e9al';
+    const titleWrap=item.querySelector('.acc-title-wrap');
+    if(titleWrap) titleWrap.appendChild(badge);
+  }
+
+  // bmDisplay : griser l'ancien
+  const bmDisplay=item.querySelector('.bm-num-display');
+  // Override : afficher le nouveau
+  let override=item.querySelector('.bm-ideal-override');
+  if(!override){
+    override=document.createElement('span');
+    override.className='bm-ideal-override';
+    if(bmDisplay) bmDisplay.parentNode.insertBefore(override, bmDisplay.nextSibling);
+  }
+
+  if(dev.result==='neutre'){
+    badge.className='oct-ideal-badge neutre'; badge.textContent='⚖ Neutre';
+    if(bmDisplay) bmDisplay.classList.remove('degraded');
+    override.style.display='none';
+  } else if(dev.result==='redh'){
+    badge.className='oct-ideal-badge redh'; badge.textContent='⛔ Inutilisable';
+    if(bmDisplay) bmDisplay.classList.add('degraded');
+    override.className='bm-ideal-override redh';
+    override.textContent='⛔ Inutilisable'; override.style.display='';
+  } else if(dev.result==='bonus'){
+    const lvl=BM_BONUS_LEVELS[dev.bonusLevel];
+    badge.className='oct-ideal-badge bonus'; badge.textContent='▲ '+lvl;
+    if(bmDisplay) bmDisplay.classList.remove('degraded');
+    override.className='bm-ideal-override bonus';
+    override.textContent='+ '+lvl; override.style.display='';
+  } else if(dev.result==='malus'){
+    const lvl=BM_MALUS_LEVELS[dev.malusLevel];
+    badge.className='oct-ideal-badge malus'; badge.textContent='▼ '+lvl;
+    if(bmDisplay) bmDisplay.classList.add('degraded');
+    override.className='bm-ideal-override malus';
+    override.textContent='− '+lvl; override.style.display='';
+  }
+
+  // Tooltip détaillé
+  const activeDetails=dev.details.filter(d=>d.active);
+  badge.title=activeDetails.length
+    ? activeDetails.map(d=>d.msg).join('\n')
+    : 'Aucune condition active';
+}
+
+function cleanDeviationFromWidget(item){
+  const badge=item.querySelector('.oct-ideal-badge');
+  if(badge) badge.remove();
+  const override=item.querySelector('.bm-ideal-override');
+  if(override) override.remove();
+  const bm=item.querySelector('.bm-num-display');
+  if(bm) bm.classList.remove('degraded');
+}
+
+// ── Recalculer tous les widgets ──
+async function recomputeAllDeviations(){
+  if(!state.envFiche) return;
+  if(!_bibIdeauxCache) await loadBibIdeaux();
+  if(!_bibIdeauxCache||!Object.keys(_bibIdeauxCache).length) return;
+
+  // Parcourir tous les items d'accordéon avec un titre
+  document.querySelectorAll('.acc-item').forEach(item=>{
+    const titleInp=item.querySelector('.acc-title');
+    if(!titleInp||!titleInp.value) return;
+    const nom=titleInp.value.trim();
+    if(!nom||!_bibIdeauxCache[nom]) return;
+    const curBm=parseInt(item.querySelector('.bm-num-display')?.textContent||0);
+    applyDeviationToWidget(item, nom, curBm);
+  });
+}
+
+// ── Notification NotifSystem quand un résultat change ──
+function notifyDeviationChanges(oldResults, newResults){
+  Object.entries(newResults).forEach(([nom,newDev])=>{
+    const old=oldResults[nom];
+    if(!old||old.result===newDev.result) return;
+    // Le résultat a changé → notifier
+    let msg='';
+    if(newDev.result==='redh')
+      msg=`⛔ ${nom} est désormais inutilisable.`;
+    else if(newDev.result==='bonus')
+      msg=`▲ ${nom} : bonus ${BM_BONUS_LEVELS[newDev.bonusLevel]} actif.`;
+    else if(newDev.result==='malus')
+      msg=`▼ ${nom} : malus ${BM_MALUS_LEVELS[newDev.malusLevel]} appliqué.`;
+    else
+      msg=`⚖ ${nom} : effets neutralisés.`;
+
+    // Détails des conditions actives
+    const active=newDev.details.filter(d=>d.active);
+    if(active.length) msg+=' ('+active.map(d=>d.msg).join(', ')+')';
+
+    if(typeof NotifSystem!=='undefined') NotifSystem.show(msg, 'Octogone idéal');
+  });
+}
+
+// ── Hook : déclencher après chaque changement de token ──
+const _origCycleToken = typeof cycleToken==='function' ? cycleToken : null;
+// On hook après le chargement (voir bas de script)
+
+// ── Planifier un recalcul (debounce 800ms) ──
+let _deviationTimer=null;
+function scheduleDeviationRecompute(){
+  clearTimeout(_deviationTimer);
+  _deviationTimer=setTimeout(async()=>{
+    const oldResults={..._deviationResults};
+    await recomputeAllDeviations();
+    notifyDeviationChanges(oldResults, _deviationResults);
+  }, 800);
 }
 
 // ── Réception des messages depuis aventure.html ──
