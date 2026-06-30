@@ -2042,6 +2042,14 @@ async function xferClearRequest(){
           <button onclick="dAcceptCollabInvite()" style="margin-left:.5rem;font-family:'Cinzel',serif;font-size:.65rem;padding:2px 7px;border:1px solid #1a4a6e;border-radius:3px;background:none;color:#1a4a6e;cursor:pointer;">Accepter →</button>
           <button onclick="dDeclineCollabInvite()" style="font-family:'Cinzel',serif;font-size:.65rem;padding:2px 7px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">Refuser</button>
         </div>
+        <!-- Résumé final unifié (solo / duel / collaboration) -->
+        <div id="dice-final-summary-overlay" style="display:none;position:fixed;inset:0;background:rgba(10,7,3,0.88);align-items:center;justify-content:center;z-index:455;">
+          <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem 1.4rem;max-width:440px;width:94vw;max-height:88vh;overflow-y:auto;">
+            <div id="dice-final-summary-title" style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;letter-spacing:.06em;margin-bottom:.7rem;">🎲 Résultat du lancer</div>
+            <div id="dice-final-summary-content"></div>
+            <button onclick="document.getElementById('dice-final-summary-overlay').style.display='none';" style="margin-top:.8rem;width:100%;font-family:Cinzel,serif;font-size:.72rem;padding:.4rem;border:1px solid var(--accent);border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;">Fermer</button>
+          </div>
+        </div>
         <div id="dice-collab-result-overlay" style="display:none;position:fixed;inset:0;background:rgba(10,7,3,0.88);align-items:center;justify-content:center;z-index:460;">
           <div style="background:var(--bg);border:1px solid #1a4a6e;border-radius:10px;padding:1.2rem 1.4rem;max-width:440px;width:94vw;max-height:88vh;overflow-y:auto;">
             <div style="font-family:'Cinzel',serif;color:#1a4a6e;font-size:.85rem;letter-spacing:.06em;margin-bottom:.7rem;">🤝 Résultat de la collaboration</div>
@@ -5141,6 +5149,8 @@ function dComputeSuccesses(){
       dSaveDuelResult(_chosenSuccessVal, count, values);
       // Pousser le résultat dans la collaboration en cours, le cas échéant
       if(typeof dPushCollabResult==='function') dPushCollabResult(_chosenSuccessVal, count);
+      // Afficher le résumé final adapté au contexte (solo / duel / collaboration)
+      setTimeout(()=>dShowFinalResultSummary(val, count, values), 150);
     });
     row.appendChild(selectBtn);
     // Clic sur la ligne = simple aperçu, ne verrouille rien
@@ -7536,6 +7546,10 @@ async function dPollAdversaireResult(){
 
 function dShowAdversaireResult(result, pid){
   clearTimeout(_duelPollTimer);
+  // Fermer le résumé solo intermédiaire — la comparaison duel prend le relais
+  const soloOverlay=document.getElementById('dice-final-summary-overlay');
+  if(soloOverlay) soloOverlay.style.display='none';
+
   const verdictLabel = {
     reussite:'✓ Réussite', echec:'✗ Échec', echec_critique:'✗✗ Échec critique'
   }[result.verdict]||result.verdict;
@@ -7543,6 +7557,26 @@ function dShowAdversaireResult(result, pid){
 
   const box = document.getElementById('dfb-content');
   box.innerHTML = '';
+
+  // ── Comparaison directe (moi vs adversaire) ──
+  const myReussites = (state.duelResult && state.duelResult.reussites) || 0;
+  const advReussites = result.reussites || 0;
+  const myWon = result.verdict !== 'reussite' || myReussites >= advReussites;
+  const compEl = document.createElement('div');
+  compEl.style.cssText = 'display:flex;justify-content:space-between;align-items:center;'
+    +'padding:.6rem .8rem;margin-bottom:.7rem;border-radius:7px;'
+    +'background:rgba(24,95,165,.06);border:1px solid #185FA5;';
+  compEl.innerHTML = `
+    <div style="text-align:center;flex:1;">
+      <div style="font-family:Cinzel,serif;font-size:.62rem;color:var(--ink3);letter-spacing:.05em;">VOUS</div>
+      <div style="font-family:Cinzel,serif;font-size:1.2rem;color:#1a4a2a;">${myReussites}</div>
+    </div>
+    <div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink3);">VS</div>
+    <div style="text-align:center;flex:1;">
+      <div style="font-family:Cinzel,serif;font-size:.62rem;color:var(--ink3);letter-spacing:.05em;">${pid.toUpperCase()}</div>
+      <div style="font-family:Cinzel,serif;font-size:1.2rem;color:#8b2020;">${advReussites}</div>
+    </div>`;
+  box.appendChild(compEl);
 
   // Verdict
   const vEl = document.createElement('div');
@@ -9037,6 +9071,10 @@ async function dCloseCollabSession(){
 
 // ── Afficher le résultat final à tout le monde ──
 function dShowCollabResult(session){
+  // Fermer le résumé solo intermédiaire — le résultat de groupe prend le relais
+  const soloOverlay=document.getElementById('dice-final-summary-overlay');
+  if(soloOverlay) soloOverlay.style.display='none';
+
   const overlay=document.getElementById('dice-collab-result-overlay');
   const content=document.getElementById('dice-collab-result-content');
   if(!overlay||!content) return;
@@ -9073,6 +9111,69 @@ function dShowCollabResult(session){
   if(box) box.style.display='none';
   const listEl=document.getElementById('dice-collab-perso-list');
   if(listEl) listEl.style.display='block';
+}
+
+
+// ══════════════════════════════════════════════
+//   RÉSUMÉ FINAL UNIFIÉ DU LANCER (solo / duel / collaboration)
+// ══════════════════════════════════════════════
+
+function dShowFinalResultSummary(val, count, allValues){
+  // Si une collaboration est active, le résumé collectif (dShowCollabResult) prendra le relais
+  // à la clôture — on n'affiche pas de doublon ici, juste une confirmation d'envoi.
+  if(_collabId){
+    dShowFinalSummarySolo(val, count, allValues, true);
+    return;
+  }
+  // Si un duel est engagé, on affiche un résumé solo en attendant la comparaison,
+  // qui sera mise à jour automatiquement par dShowAdversaireResult (overlay séparé).
+  if(typeof dGetAdversaireId==='function' && dGetAdversaireId()){
+    dShowFinalSummarySolo(val, count, allValues, false, true);
+    return;
+  }
+  // Lancer solo classique
+  dShowFinalSummarySolo(val, count, allValues, false, false);
+}
+
+function dShowFinalSummarySolo(val, count, allValues, isCollab, isDuel){
+  const overlay=document.getElementById('dice-final-summary-overlay');
+  const titleEl=document.getElementById('dice-final-summary-title');
+  const content=document.getElementById('dice-final-summary-content');
+  if(!overlay||!content) return;
+
+  const opp=OPPOSED_VALUES[val];
+  const oppCount=opp?allValues.filter(v=>v===opp).length:0;
+  let verdictTxt='', verdictColor='';
+  if(_prouesseDeclared){
+    const redWithVal=dS().dice.filter(d=>(d.color==='red'||d.color==='black_token')&&d.value===val).length;
+    if(redWithVal>0&&oppCount===0){ verdictTxt='✦ Prouesse réussie'; verdictColor='#c8860a'; }
+    else { verdictTxt='✗ Échec de la prouesse'; verdictColor='#8b2020'; }
+  } else if(_prodigeDeclared){
+    const redWithVal=dS().dice.filter(d=>(d.color==='red'||d.color==='black_token')&&d.value===val).length;
+    if(redWithVal>0&&oppCount===0){ verdictTxt='✦ Prodige réussi'; verdictColor='#1a4a6e'; }
+    else { verdictTxt='✗ Échec du prodige'; verdictColor='#8b2020'; }
+  } else {
+    if(oppCount===0||oppCount<count){ verdictTxt=`✓ Réussite — ${count} succès`; verdictColor='#1a4a2a'; }
+    else if(oppCount===count){ verdictTxt=`✗ Échec — opposition égale`; verdictColor='#8b2020'; }
+    else { verdictTxt=`✗✗ Échec critique`; verdictColor='#5a1010'; }
+  }
+
+  titleEl.textContent = isCollab ? '🤝 Votre résultat (collaboration)'
+    : isDuel ? '⚔ Votre résultat (en attente de l\'adversaire)'
+    : '🎲 Résultat du lancer';
+
+  let html = `<div style="font-family:Cinzel,serif;font-size:1rem;color:${verdictColor};text-align:center;padding:.5rem;margin-bottom:.5rem;border:1px solid ${verdictColor};border-radius:6px;background:${verdictColor}12;">${verdictTxt}</div>`;
+  html += `<div style="font-size:.85rem;color:var(--ink2);text-align:center;">Valeur de réussite : <strong>${val}</strong> — ${count} dé(s) sur cette valeur</div>`;
+
+  if(isCollab){
+    html += `<div style="margin-top:.6rem;padding:.4rem .6rem;background:rgba(26,74,110,.08);border-radius:5px;font-size:.78rem;color:#1a4a6e;text-align:center;">Votre résultat a été transmis à la collaboration. En attente des autres participants…</div>`;
+  } else if(isDuel){
+    const advId=dGetAdversaireId();
+    html += `<div style="margin-top:.6rem;padding:.4rem .6rem;background:rgba(74,144,217,.08);border-radius:5px;font-size:.78rem;color:#185FA5;text-align:center;">En attente du résultat de <strong>${advId}</strong>… La comparaison s'affichera automatiquement.</div>`;
+  }
+
+  content.innerHTML = html;
+  overlay.style.display='flex';
 }
 
 // ── Réception des messages depuis aventure.html ──
