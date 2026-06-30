@@ -2639,22 +2639,26 @@ function buildSegmentDefs(defs, sec){
   svgEl('stop', {offset:'70%', 'stop-color':pal.dark,  'stop-opacity':'0.55'}, grad);
   svgEl('stop', {offset:'100%','stop-color':pal.black, 'stop-opacity':'0.7'}, grad);
 
-  // Filtre texture pigmentaire — bruit fractal + déplacement pour effet "pigment déposé"
+  // Filtre texture pigmentaire — bruit doux, sans déformation géométrique
   const filt = svgEl('filter', {
-    id: tid, x:'-20%', y:'-20%', width:'140%', height:'140%'
+    id: tid, x:'-10%', y:'-10%', width:'120%', height:'120%'
   }, defs);
-  const turb = svgEl('feTurbulence', {
-    type:'fractalNoise', baseFrequency:'0.012 0.018', numOctaves:'4',
-    seed: String(sec.num*17+3), result:'noise', stitchTiles:'stitch'
+  svgEl('feTurbulence', {
+    type:'fractalNoise', baseFrequency:'0.04 0.05', numOctaves:'2',
+    seed: String(sec.num*17+3), result:'noise'
   }, filt);
   svgEl('feColorMatrix', {
     in:'noise', type:'matrix',
-    values:'0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.9 0.9 0.9 0 0',
+    values:'0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.5 0.5 0.5 0 0',
     result:'noiseAlpha'
   }, filt);
+  // Multiplier le bruit sur le graphisme source SANS déplacer ses contours
+  svgEl('feComponentTransfer', {in:'noiseAlpha', result:'noiseSoft'}, filt)
+    .appendChild((()=>{const f=document.createElementNS('http://www.w3.org/2000/svg','feFuncA');
+      f.setAttribute('type','gamma'); f.setAttribute('amplitude','1');
+      f.setAttribute('exponent','1'); f.setAttribute('offset','0.7'); return f;})());
   svgEl('feComposite', {
-    in:'SourceGraphic', in2:'noiseAlpha', operator:'arithmetic',
-    k1:'0', k2:'1', k3:'0.18', k4:'0'
+    in:'SourceGraphic', in2:'noiseSoft', operator:'in'
   }, filt);
 }
 
@@ -2706,8 +2710,8 @@ function renderSegmentColors(){
     ].join(' ');
 
     // Opacité globale du segment selon intensité (jetons remplis)
-    // 0 jeton = quasi invisible, plein = pigment dense
-    const baseOpacity = 0.12 + intensity*0.55;
+    // 0 jeton = invisible, plein = pigment visible mais discret
+    const baseOpacity = 0.05 + intensity*0.35;
 
     // Teinte selon polarité : décale vers le gradient noir si polarité négative
     const pal = getSegmentPalette(sec.num);
@@ -2727,7 +2731,7 @@ function renderSegmentColors(){
     const overlay = svgEl('path', {
       d: pathD,
       fill: fillColor,
-      opacity: (0.08 + Math.abs(polarity)*0.22).toFixed(2),
+      opacity: (0.04 + Math.abs(polarity)*0.14).toFixed(2),
       style: 'mix-blend-mode:multiply;',
     }, layer);
   });
@@ -2738,7 +2742,10 @@ const roue=document.getElementById('roue');
 // Rings
 for(let i=1;i<=RINGS;i++){
   const r=INNER_R+(OUTER_R-INNER_R)*i/RINGS;
-  svgEl('polygon',{points:buildOctPts(r),fill:i%2===0?'#ede5d2':'#e8e0cc',stroke:'#c8b89a','stroke-width':'0.8'},roue);
+  svgEl('polygon',{points:buildOctPts(r),
+    fill:i%2===0?'#ede5d2':'#e8e0cc',
+    'fill-opacity':'0.55',
+    stroke:'#c8b89a','stroke-width':'0.8'},roue);
 }
 // Spokes
 for(let i=0;i<8;i++){
