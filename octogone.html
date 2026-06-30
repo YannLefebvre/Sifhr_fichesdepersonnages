@@ -3770,6 +3770,20 @@ async function getPersonnesEnv(){
 // Invalider le cache quand l'env change
 function invalidatePersonnesCache(){ _cachedPersonnes=null; }
 
+// ── Tous les personnages connus : liés à l'env + mentionnés dans HC/Dettes ──
+async function getAllKnownPersonnes(){
+  const envPersonnes = await getPersonnesEnv();
+  const known = new Map();
+  envPersonnes.forEach(p=>known.set(p.id, p));
+  (state.histoiresCroisees||[]).forEach(hc=>{
+    if(hc.perso && !known.has(hc.perso)) known.set(hc.perso, {id:hc.perso, niveauReveal:2, fromHistorique:true});
+  });
+  (state.dettes||[]).forEach(d=>{
+    if(d.perso && !known.has(d.perso)) known.set(d.perso, {id:d.perso, niveauReveal:2, fromHistorique:true});
+  });
+  return Array.from(known.values());
+}
+
 // ── Construire un select personnages (avec option saisie libre) ──
 // Retourne {el, getValue, setValue}
 function buildPersoSelect(currentVal, onChange){
@@ -3781,8 +3795,8 @@ function buildPersoSelect(currentVal, onChange){
   inp.setAttribute('list','perso-datalist-'+Math.random().toString(36).slice(2));
   const dl=document.createElement('datalist'); dl.id=inp.getAttribute('list');
   wrap.appendChild(inp); wrap.appendChild(dl);
-  // Charger les options en async
-  getPersonnesEnv().then(personnes=>{
+  // Charger les options en async (env + historique)
+  getAllKnownPersonnes().then(personnes=>{
     dl.innerHTML='';
     // Filtrer selon niveauReveal (N0 masqué aux joueurs)
     const visible=personnes.filter(p=>octIsGM||p.niveauReveal>0);
@@ -3822,7 +3836,11 @@ function renderHistoiresCroisees(){
   hcWrap.appendChild(addBtn);
 }
 renderHistoiresCroisees();
-buildHistSection('Histoires Croisées', hcWrap);
+// Attacher hcWrap au panneau Personnages (DOM réel, pas de clonage)
+(function(){
+  const target=document.getElementById('perso-hc-body');
+  if(target) target.appendChild(hcWrap);
+})();
 
 // ── 3. Dettes et Créances ──
 const detteWrap=document.createElement('div');
@@ -3891,7 +3909,11 @@ function renderDettes(){
   detteWrap.appendChild(addBtn);
 }
 renderDettes();
-buildHistSection('Dettes et Créances', detteWrap);
+// Attacher detteWrap au panneau Personnages (DOM réel, pas de clonage)
+(function(){
+  const target=document.getElementById('perso-dettes-body');
+  if(target) target.appendChild(detteWrap);
+})();
 
 /* ── Portrait ── */
 const portraitFileInput = document.getElementById('portrait-file-input');
@@ -7030,6 +7052,23 @@ const ProdigeSystem = {
       <span style="font-size:.75rem;color:var(--ink3);font-style:italic;">Chargement…</span>
     </div>
   </div>
+
+  <!-- Histoires Croisées (indépendant de la sélection d'un personnage) -->
+  <div class="perso-section" id="perso-sec-hc">
+    <div class="perso-section-head">
+      <span>▶</span><span>Histoires Croisées</span>
+    </div>
+    <div class="perso-section-body" id="perso-hc-body"></div>
+  </div>
+
+  <!-- Dettes et Créances (indépendant de la sélection d'un personnage) -->
+  <div class="perso-section" id="perso-sec-dettes">
+    <div class="perso-section-head">
+      <span>▶</span><span>Dettes et Créances</span>
+    </div>
+    <div class="perso-section-body" id="perso-dettes-body"></div>
+  </div>
+
   <div id="perso-detail">
     <!-- Section Octogone -->
     <div class="perso-section" id="perso-sec-oct">
@@ -7106,6 +7145,24 @@ const PersonnePanel = {
     }
     panel.classList.add('open');
     this.loadPersonnes();
+    // Attacher les handlers de clic des sections (HC, Dettes, etc.) sans en ouvrir une
+    this._bindSectionHandlers();
+  },
+
+  // ── Attacher les handlers de clic à toutes les .perso-section sans forcer l'ouverture ──
+  _bindSectionHandlers(){
+    document.querySelectorAll('.perso-section-head').forEach(head=>{
+      if(head._bound) return; // éviter les doublons
+      head._bound = true;
+      head.onclick=()=>{
+        const body=head.nextElementSibling;
+        const tog=head.querySelector('span');
+        const wasOpen=body.classList.contains('open');
+        document.querySelectorAll('.perso-section-body').forEach(b=>b.classList.remove('open'));
+        document.querySelectorAll('.perso-section-head span').forEach(t=>t.textContent='▶');
+        if(!wasOpen){ body.classList.add('open'); tog.textContent='▼'; }
+      };
+    });
   },
 
   // ── Charger la liste depuis la fiche d'environnement ──
