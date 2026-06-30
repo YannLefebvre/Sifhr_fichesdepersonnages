@@ -2024,6 +2024,33 @@ async function xferClearRequest(){
         </div>
       </div>
 
+      <!-- ⑥bis COLLABORATION -->
+      <div id="dice-collab-setup" style="margin-bottom:.5rem;">
+        <div class="dice-step-label" style="margin-bottom:.3rem;">🤝 Collaborer avec d'autres personnages ? <span style="font-size:.62rem;color:var(--ink3);font-weight:normal;">(optionnel)</span></div>
+        <div id="dice-collab-perso-list" class="share-perso-list" style="margin-bottom:.3rem;">
+          <span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Chargement des personnages…</span>
+        </div>
+        <div id="dice-collab-active" style="display:none;font-family:'Cinzel',serif;font-size:.72rem;padding:.4rem .6rem;border:1px solid #1a4a6e;border-radius:5px;background:rgba(26,74,110,.06);color:#1a4a6e;">
+          <div style="display:flex;align-items:center;margin-bottom:.3rem;">
+            🤝 Collaboration en cours avec <strong id="dice-collab-names"></strong>
+            <button onclick="dCloseCollabSession()" id="dice-collab-close-btn" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#1a4a6e;font-size:.8rem;" title="Fermer la collaboration">✕</button>
+          </div>
+          <div id="dice-collab-status-list" style="font-size:.68rem;"></div>
+        </div>
+        <div id="dice-collab-incoming" style="display:none;font-family:'Cinzel',serif;font-size:.72rem;padding:.3rem .6rem;border:1px solid #1a4a6e;border-radius:5px;background:rgba(26,74,110,.06);color:#1a4a6e;">
+          🤝 <strong id="dice-collab-initiator-name"></strong> vous invite à une collaboration
+          <button onclick="dAcceptCollabInvite()" style="margin-left:.5rem;font-family:'Cinzel',serif;font-size:.65rem;padding:2px 7px;border:1px solid #1a4a6e;border-radius:3px;background:none;color:#1a4a6e;cursor:pointer;">Accepter →</button>
+          <button onclick="dDeclineCollabInvite()" style="font-family:'Cinzel',serif;font-size:.65rem;padding:2px 7px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">Refuser</button>
+        </div>
+        <div id="dice-collab-result-overlay" style="display:none;position:fixed;inset:0;background:rgba(10,7,3,0.88);align-items:center;justify-content:center;z-index:460;">
+          <div style="background:var(--bg);border:1px solid #1a4a6e;border-radius:10px;padding:1.2rem 1.4rem;max-width:440px;width:94vw;max-height:88vh;overflow-y:auto;">
+            <div style="font-family:'Cinzel',serif;color:#1a4a6e;font-size:.85rem;letter-spacing:.06em;margin-bottom:.7rem;">🤝 Résultat de la collaboration</div>
+            <div id="dice-collab-result-content"></div>
+            <button onclick="document.getElementById('dice-collab-result-overlay').style.display='none';" style="margin-top:.8rem;width:100%;font-family:Cinzel,serif;font-size:.72rem;padding:.4rem;border:1px solid #1a4a6e;border-radius:4px;background:#1a4a6e;color:#fff;cursor:pointer;">Fermer</button>
+          </div>
+        </div>
+      </div>
+
       <div id="dice-legend" style="display:none;"></div>
 
       <!-- ⑦ DÉS, SATURATION ET DÉVOIEMENT -->
@@ -4133,6 +4160,10 @@ function applyRemoteState(saved){
     if(saved.duelInvite&&typeof checkIncomingDuelInvite==='function'){
       checkIncomingDuelInvite(saved);
     }
+    // Détecter une invitation de collaboration
+    if(saved.collabInvite&&typeof checkIncomingCollabInvite==='function'){
+      checkIncomingCollabInvite(saved);
+    }
   } catch(e){ console.error('applyRemoteState error',e); }
   applyingRemote = false;
   // Recalculer les déviations si les tokens ont changé
@@ -4208,6 +4239,9 @@ function closeDice(){
     if(banner) banner.style.display='none';
     const sel=document.getElementById('dice-duel-selected');
     if(sel) sel.style.display='none';
+    // Collaboration : on ne ferme pas la session (les autres peuvent encore lancer),
+    // on arrête juste notre polling local
+    clearInterval(_collabRtTimer);
   }
 }
 function toggleDice(){
@@ -5105,6 +5139,8 @@ function dComputeSuccesses(){
       dLockLauncherFinal();
       // Sauvegarder le résultat du duel pour l'adversaire (déclenche aussi le retour d'info)
       dSaveDuelResult(_chosenSuccessVal, count, values);
+      // Pousser le résultat dans la collaboration en cours, le cas échéant
+      if(typeof dPushCollabResult==='function') dPushCollabResult(_chosenSuccessVal, count);
     });
     row.appendChild(selectBtn);
     // Clic sur la ligne = simple aperçu, ne verrouille rien
@@ -7698,8 +7734,9 @@ async function dPushDiceShare(){
 function dActivateShare(){
   _diceShareActive = true;
   dPushDiceShare();
-  // Charger la liste pour le duel
+  // Charger la liste pour le duel et la collaboration
   setTimeout(dLoadDuelPersonnes, 300);
+  setTimeout(dLoadCollabPersonnes, 300);
 }
 
 // ── Désactiver quand le lanceur se ferme ──
@@ -8717,6 +8754,325 @@ function dUnlockLauncherFinal(){
   ['drb-minus','drb-plus','dprouesse-toggle','dprodige-toggle','dpneuma-toggle','dice-share-btn','dlaunch-btn'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.disabled=false;
   });
+}
+
+
+// ══════════════════════════════════════════════
+//   COLLABORATION ENTRE PERSONNAGES
+// ══════════════════════════════════════════════
+
+let _collabId = null;          // identifiant de session en cours
+let _collabIsInitiator = false;
+let _collabParticipants = [];  // tous les participants désignés (par l'initiateur)
+let _collabSelected = [];      // sélection en cours (avant lancement de l'invitation)
+let _collabIncomingFrom = null;
+let _collabRtTimer = null;
+
+function dGenerateCollabId(){
+  return 'collab_'+Date.now()+'_'+Math.floor(Math.random()*10000);
+}
+
+// ── Charger la liste de personnages pour la collaboration ──
+async function dLoadCollabPersonnes(){
+  const list = document.getElementById('dice-collab-perso-list');
+  if(!list) return;
+  const personnes = await getPersonnesEnv();
+  list.innerHTML = '';
+  if(!personnes.length){
+    list.innerHTML='<span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Aucun personnage lié.</span>';
+    return;
+  }
+  const visibilites = state.visibilites||{};
+  const visible = personnes.filter(p=> octIsGM || (visibilites[p.id]??p.niveauReveal??2) > 0);
+  visible.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='share-perso-btn'+(_collabSelected.includes(p.id)?' selected':'');
+    btn.textContent='🤝 '+p.id;
+    btn.title='Inviter '+p.id+' à collaborer';
+    btn.addEventListener('click',()=>{
+      if(_collabId) return; // collaboration déjà active, pas de modification
+      if(_collabSelected.includes(p.id)) _collabSelected=_collabSelected.filter(id=>id!==p.id);
+      else _collabSelected.push(p.id);
+      dLoadCollabPersonnes();
+    });
+    list.appendChild(btn);
+  });
+  // Bouton de lancement de la collaboration si sélection non vide
+  if(_collabSelected.length && !_collabId){
+    const launchBtn=document.createElement('button');
+    launchBtn.style.cssText='font-family:Cinzel,serif;font-size:.65rem;padding:3px 10px;border:1px solid #1a4a6e;border-radius:5px;background:#1a4a6e;color:#fff;cursor:pointer;';
+    launchBtn.textContent='Démarrer la collaboration →';
+    launchBtn.addEventListener('click', dStartCollabSession);
+    list.appendChild(launchBtn);
+  }
+}
+
+// ── Démarrer une session de collaboration (initiateur) ──
+async function dStartCollabSession(){
+  if(!_collabSelected.length) return;
+  _collabId = dGenerateCollabId();
+  _collabIsInitiator = true;
+  _collabParticipants = [FICHE_ID, ..._collabSelected];
+
+  // Initialiser la session sur notre propre fiche
+  state.collabSession = {
+    collabId: _collabId,
+    initiator: FICHE_ID,
+    participants: _collabParticipants,
+    accepted: [FICHE_ID],
+    results: {},
+    closed: false,
+    ts: Date.now()
+  };
+  await saveState();
+
+  // Envoyer une invitation à chaque participant désigné
+  for(const targetId of _collabSelected){
+    await dSendCollabInvite(targetId);
+  }
+
+  dRenderCollabActive();
+  dStartCollabPolling();
+}
+
+// ── Envoyer une invitation de collaboration ──
+async function dSendCollabInvite(targetId){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(targetId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const etat=d[0]?.etat||{};
+    etat.collabInvite={
+      from: FICHE_ID,
+      collabId: _collabId,
+      participants: _collabParticipants,
+      active: true,
+      ts: Date.now()
+    };
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(targetId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+  }catch(e){}
+}
+
+// ── Détecter une invitation entrante (via applyRemoteState) ──
+function checkIncomingCollabInvite(saved){
+  const invite=saved.collabInvite;
+  if(!invite||!invite.active||invite.from===FICHE_ID) return;
+  if(Date.now()-invite.ts>600000) return; // expirée (10min)
+  if(_collabId===invite.collabId) return; // déjà traité
+  _collabIncomingFrom=invite.from;
+  _collabId=invite.collabId; // pré-rempli, confirmé à l'acceptation
+  _collabParticipants=invite.participants||[];
+
+  const banner=document.getElementById('dice-collab-incoming');
+  const name=document.getElementById('dice-collab-initiator-name');
+  if(banner&&name){
+    name.textContent=invite.from;
+    banner.style.display='block';
+    if(!document.getElementById('dice-overlay').classList.contains('open')){
+      openDice();
+    }
+  }
+}
+
+function dAcceptCollabInvite(){
+  if(!_collabIncomingFrom) return;
+  document.getElementById('dice-collab-incoming').style.display='none';
+  _collabIsInitiator=false;
+  dRenderCollabActive();
+  dStartCollabPolling();
+}
+
+async function dDeclineCollabInvite(){
+  if(!_collabIncomingFrom) return;
+  document.getElementById('dice-collab-incoming').style.display='none';
+  // Notifier l'initiateur du refus (optionnel, juste retirer notre invite locale)
+  state.collabInvite={active:false, ts:Date.now()};
+  saveState();
+  _collabId=null; _collabIncomingFrom=null; _collabParticipants=[];
+}
+
+// ── Affichage de l'état de la collaboration en cours ──
+function dRenderCollabActive(){
+  const box=document.getElementById('dice-collab-active');
+  const namesEl=document.getElementById('dice-collab-names');
+  const closeBtn=document.getElementById('dice-collab-close-btn');
+  if(!box) return;
+  box.style.display='block';
+  document.getElementById('dice-collab-setup').querySelector('#dice-collab-perso-list').style.display='none';
+  const others=_collabParticipants.filter(id=>id!==FICHE_ID);
+  namesEl.textContent=others.join(', ');
+  closeBtn.style.display=_collabIsInitiator?'':'none';
+}
+
+// ── Polling : suivre l'avancement de la session (lit la fiche de l'initiateur) ──
+function dStartCollabPolling(){
+  clearInterval(_collabRtTimer);
+  _collabRtTimer=setInterval(dPollCollabSession, 3000);
+  dPollCollabSession();
+}
+
+async function dPollCollabSession(){
+  if(!_collabId) { clearInterval(_collabRtTimer); return; }
+  const initiatorId = _collabIsInitiator ? FICHE_ID : _collabIncomingFrom;
+  if(!initiatorId) return;
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(initiatorId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const session=d[0]?.etat?.collabSession;
+    if(!session||session.collabId!==_collabId) return;
+
+    // Mettre à jour l'affichage du statut
+    const statusList=document.getElementById('dice-collab-status-list');
+    if(statusList){
+      statusList.innerHTML='';
+      session.participants.forEach(pid=>{
+        const res=session.results[pid];
+        const row=document.createElement('div');
+        let txt;
+        if(!res) txt='⏳ '+pid+' — en attente';
+        else if(res.echecCritique) txt='✗✗ '+pid+' — échec critique';
+        else if(res.prouesse) txt='✦ '+pid+' — prouesse réussie';
+        else txt='✓ '+pid+' — '+res.reussites+' réussite(s)';
+        row.textContent=txt;
+        statusList.appendChild(row);
+      });
+    }
+
+    if(session.closed){
+      dShowCollabResult(session);
+      clearInterval(_collabRtTimer);
+    }
+  }catch(e){}
+}
+
+// ── Pousser notre résultat verrouillé dans la session de collab ──
+async function dPushCollabResult(chosenVal, successes){
+  if(!_collabId) return;
+  const initiatorId = _collabIsInitiator ? FICHE_ID : _collabIncomingFrom;
+  if(!initiatorId) return;
+
+  const myResult = {
+    reussites: successes||0,
+    prouesse: !!(_prouesseDeclared && document.querySelector('.dsuccess-opposition.prouesse')),
+    echecCritique: false, // déterminé via le verdict normal (échec critique)
+    locked: true,
+    ts: Date.now()
+  };
+  // Détecter un échec critique sur la valeur normale (hors prouesse/prodige)
+  const echecCritEl = document.querySelector('.dsuccess-opposition.echec-critique');
+  if(echecCritEl) myResult.echecCritique = true;
+
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(initiatorId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    if(!etat.collabSession||etat.collabSession.collabId!==_collabId) return;
+    etat.collabSession.results[FICHE_ID]=myResult;
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(initiatorId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+  }catch(e){}
+}
+
+// ── Calculer et fermer la collaboration (initiateur uniquement) ──
+async function dCloseCollabSession(){
+  if(!_collabIsInitiator||!_collabId) return;
+  if(!confirm('Fermer la collaboration et calculer le résultat final ?')) return;
+
+  if(!state.collabSession||state.collabSession.collabId!==_collabId) return;
+  const session=state.collabSession;
+
+  // Calcul du total selon les règles
+  const results=session.results;
+  const participants=session.participants;
+  let totalReussites=0, totalProuesseReussites=0;
+  let echecsCritiques=0, prouessesReussies=0;
+
+  participants.forEach(pid=>{
+    const res=results[pid];
+    if(!res) return;
+    if(res.echecCritique) echecsCritiques++;
+    if(res.prouesse) prouessesReussies++;
+  });
+
+  const echecsNonCompenses = Math.max(0, echecsCritiques - prouessesReussies);
+  const prouessesUtiliseesPourCompenser = Math.min(echecsCritiques, prouessesReussies);
+  const prouessesRestantes = prouessesReussies - prouessesUtiliseesPourCompenser;
+
+  if(echecsNonCompenses>0){
+    totalReussites=0; // annulation totale
+  } else {
+    participants.forEach(pid=>{
+      const res=results[pid];
+      if(!res||res.echecCritique) return; // échecs critiques (compensés) n'ajoutent rien
+      totalReussites += res.reussites||0;
+    });
+  }
+  // Les prouesses ajoutent leurs propres réussites SAUF celles utilisées pour compenser
+  // (règle : une prouesse qui compense un échec critique n'ajoute que la neutralisation, pas de bonus)
+  // → seules les prouesses "restantes" comptent leurs réussites (ici fixées à une réussite symbolique par prouesse réussie)
+
+  session.closed=true;
+  session.computed={
+    totalReussites,
+    echecsCritiques,
+    prouessesReussies,
+    echecsNonCompenses,
+    ts:Date.now()
+  };
+  state.collabSession=session;
+  await saveState();
+  dShowCollabResult(session);
+}
+
+// ── Afficher le résultat final à tout le monde ──
+function dShowCollabResult(session){
+  const overlay=document.getElementById('dice-collab-result-overlay');
+  const content=document.getElementById('dice-collab-result-content');
+  if(!overlay||!content) return;
+
+  const lines=[];
+  session.participants.forEach(pid=>{
+    const res=session.results[pid];
+    if(!res) { lines.push(`<div>${pid} n'a pas participé.</div>`); return; }
+    if(res.echecCritique) lines.push(`<div><strong>${pid}</strong> a fait un échec critique.</div>`);
+    else if(res.prouesse) lines.push(`<div><strong>${pid}</strong> a réalisé une prouesse.</div>`);
+    else lines.push(`<div><strong>${pid}</strong> a fait ${res.reussites} réussite${res.reussites>1?'s':''}.</div>`);
+  });
+
+  const comp=session.computed||{};
+  lines.push('<div style="margin-top:.6rem;padding-top:.5rem;border-top:1px solid var(--border2);font-family:Cinzel,serif;font-size:.85rem;color:#1a4a6e;">');
+  if(comp.echecsNonCompenses>0){
+    lines.push(`L'équipe a subi ${comp.echecsCritiques} échec(s) critique(s) non compensé(s) — <strong>0 réussite accumulée</strong>.`);
+  } else {
+    lines.push(`L'équipe a accumulé <strong>${comp.totalReussites} réussite${comp.totalReussites>1?'s':''}</strong>.`);
+    if(comp.prouessesReussies>0){
+      lines.push(`<br><span style="font-size:.72rem;color:var(--ink3);">(dont ${comp.prouessesReussies} prouesse(s) réalisée(s)${comp.echecsCritiques>0?', utilisée(s) pour compenser '+comp.echecsCritiques+' échec(s) critique(s)':''})</span>`);
+    }
+  }
+  lines.push('</div>');
+
+  content.innerHTML=lines.join('');
+  overlay.style.display='flex';
+
+  // Réinitialiser l'état local de collaboration
+  _collabId=null; _collabIsInitiator=false; _collabParticipants=[]; _collabSelected=[];
+  _collabIncomingFrom=null;
+  clearInterval(_collabRtTimer);
+  const box=document.getElementById('dice-collab-active');
+  if(box) box.style.display='none';
+  const listEl=document.getElementById('dice-collab-perso-list');
+  if(listEl) listEl.style.display='block';
 }
 
 // ── Réception des messages depuis aventure.html ──
