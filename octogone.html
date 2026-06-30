@@ -1944,6 +1944,23 @@ async function xferClearRequest(){
           <label class="dprodige-label" for="dprodige-toggle">Tenter un prodige ?</label>
           <span class="dprodige-info" data-tip="Mêmes conditions. Réussite : vos dés rouges sont transférés dans l'environnement, qui vous renvoie des jetons en échange.">?</span>
         </div>
+        <div id="dpneuma-row">
+          <input type="checkbox" id="dpneuma-toggle" onchange="dTogglePneuma()">
+          <label class="dpneuma-label" for="dpneuma-toggle">Extraire des valeurs de la pneuma ?</label>
+          <span class="dpneuma-info" data-tip="Ajoute des dés rouges dont la valeur provient de l'octogone de l'environnement, pondérée par les jetons en place. Limité par votre score d'Éther. Supprimer un dé extrait coûte 1 point d'Éther.">?</span>
+        </div>
+        <div id="dpneuma-selector" style="display:none;margin:.4rem 0;padding:.5rem .7rem;background:#f7f4ee;border-radius:6px;border:1px solid #c8860a;">
+          <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#c8860a;margin-bottom:.3rem;">
+            Nombre de dés à extraire <span id="dpneuma-max-label" style="color:var(--ink3);font-weight:normal;"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.6rem;">
+            <button class="count-ctrl-btn" onclick="dPneumaChangeCount(-1)" style="width:28px;height:28px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);cursor:pointer;font-size:1rem;">−</button>
+            <span id="dpneuma-count" style="font-family:Cinzel,serif;font-size:1rem;min-width:24px;text-align:center;">0</span>
+            <button class="count-ctrl-btn" onclick="dPneumaChangeCount(1)" style="width:28px;height:28px;border-radius:4px;border:1px solid var(--border);background:var(--input-bg);cursor:pointer;font-size:1rem;">+</button>
+            <button onclick="dPneumaExtract()" style="margin-left:auto;font-family:Cinzel,serif;font-size:.7rem;padding:5px 12px;border:1px solid #c8860a;border-radius:4px;background:#c8860a;color:#fff;cursor:pointer;">Insuffler →</button>
+          </div>
+        </div>
+        <div id="dpneuma-extracted-list" style="display:none;margin:.4rem 0;"></div>
         <!-- Texte ambiance prouesse/prodige -->
         <div id="dice-prouesse-ambiance" style="display:none;font-family:'Crimson Text',serif;font-style:italic;font-size:.82rem;color:#c8860a;padding:.25rem .4rem;border-left:2px solid #c8860a;margin-top:.3rem;"></div>
 
@@ -3912,11 +3929,13 @@ occultationInput.addEventListener('input',()=>{state.occultation=occultationInpu
 
 /* ── Sauvegarde Supabase ──────────────────────── */
 let saveTimer=null;
+let _lastLocalWriteTs = 0;
 function saveState(){
   if(applyingRemote) return;
   if(!authenticated) return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async ()=>{
+    _lastLocalWriteTs = Date.now();
     const msg=document.getElementById('save-msg');
     try {
       const ok = await SB.upsert(FICHE_ID, state);
@@ -4139,11 +4158,9 @@ function startRealtime(){
       try {
         const m = JSON.parse(e.data);
         if(m.event==='UPDATE'||m.event==='INSERT'){
-          console.log('[RT] event reçu:', m.event, 'record keys:', Object.keys(m.payload?.record||{}));
-          console.log('[RT] etat keys:', Object.keys(m.payload?.record?.etat||{}));
-          if(m.payload?.record?.etat?.dice_share_incoming) console.log('[RT] dice_share_incoming détecté!', m.payload.record.etat.dice_share_incoming.active);
           const newEtat=m.payload?.record?.etat;
-          if(newEtat) applyRemoteState(newEtat);
+          const isEcho = (Date.now() - _lastLocalWriteTs) < 1500;
+          if(newEtat && !isEcho) applyRemoteState(newEtat);
           // Vérifier si on est observateur d'un dice_share
           if(typeof checkIncomingDiceShare==='function'&&m.payload?.record){
             checkIncomingDiceShare(m.payload.record);
@@ -5443,6 +5460,9 @@ function dResetAll(){
   ProdigeSystem._fired = false;
   if(dCurrentRole!=='launcher') return;
   if(!confirm('Réinitialiser les dés ?')) return;
+  _pneumaExtractedDice = []; _pneumaSelectedCount = 0;
+  const dpneumaList=document.getElementById('dpneuma-extracted-list');
+  if(dpneumaList){ dpneumaList.style.display='none'; dpneumaList.innerHTML=''; }
   const s=dS(); s.rolled=false; s.dice=[];
   s.bonusMalus={bonus:{1:0,2:0,3:0},malus:{1:0,2:0,3:0}};
   s.specialDice={};
@@ -8457,6 +8477,178 @@ function scheduleDeviationRecompute(){
     await recomputeAllDeviations();
     notifyDeviationChanges(oldResults, _deviationResults);
   }, 800);
+}
+
+
+// ══════════════════════════════════════════════
+//   EXTRACTION DE VALEURS DE LA PNEUMA LOCALE
+// ══════════════════════════════════════════════
+
+let _pneumaExtractedDice = []; // indices dans s.dice des dés extraits
+let _pneumaSelectedCount = 0;
+
+function dGetEtherScore(){
+  return parseInt(state.ether)||0;
+}
+
+function dTogglePneuma(){
+  const checked = document.getElementById('dpneuma-toggle').checked;
+  const sel = document.getElementById('dpneuma-selector');
+  const maxEther = dGetEtherScore();
+  if(checked){
+    if(maxEther<=0){
+      alert("Votre score d'Éther est insuffisant pour extraire des valeurs de la pneuma.");
+      document.getElementById('dpneuma-toggle').checked=false;
+      return;
+    }
+    _pneumaSelectedCount = Math.min(1, maxEther);
+    document.getElementById('dpneuma-count').textContent = _pneumaSelectedCount;
+    document.getElementById('dpneuma-max-label').textContent = '(max '+maxEther+', limité par votre Éther)';
+    sel.style.display='block';
+  } else {
+    sel.style.display='none';
+    _pneumaSelectedCount = 0;
+  }
+}
+
+function dPneumaChangeCount(delta){
+  const maxEther = dGetEtherScore();
+  _pneumaSelectedCount = Math.max(0, Math.min(maxEther, _pneumaSelectedCount+delta));
+  document.getElementById('dpneuma-count').textContent = _pneumaSelectedCount;
+}
+
+// ── Tirage pondéré d'un axe selon le nombre de jetons dans l'env ──
+function dPneumaWeightedAxisPick(envTokens, usedAxes){
+  // Construire la liste pondérée : chaque axe apparaît N fois (N = jetons posés)
+  const pool = [];
+  OCC_SECTORS.forEach(sec=>{
+    if(usedAxes.has(sec.num)) return;
+    const arr = envTokens?.[sec.id]||[];
+    const count = arr.filter(t=>t==='white'||t==='black').length;
+    // Poids minimum de 1 même si l'axe est vide, pour garder une chance résiduelle
+    const weight = Math.max(1, count*2);
+    for(let i=0;i<weight;i++) pool.push(sec);
+  });
+  if(!pool.length) return null;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+// ── Tirage pondéré de la polarité (blanc/noir) selon la composition de l'axe ──
+function dPneumaWeightedPolarity(envTokens, axe){
+  const arr = envTokens?.[axe.id]||[];
+  const whites = arr.filter(t=>t==='white').length;
+  const blacks = arr.filter(t=>t==='black').length;
+  const total = whites+blacks;
+  if(total===0) return Math.random()<0.5?'white':'black';
+  // Poids proportionnel au nombre de jetons de chaque couleur
+  return Math.random() < (whites/total) ? 'white' : 'black';
+}
+
+// ── Extraction proprement dite ──
+async function dPneumaExtract(){
+  if(_pneumaSelectedCount<=0) return;
+  const s=dS();
+
+  // Charger l'octogone de l'environnement
+  const envId = getEnvFicheId ? getEnvFicheId() : state.envFiche;
+  let envTokens = null;
+  if(envId && envId!==FICHE_ID){
+    try{
+      const r=await fetch(
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+      );
+      const d=await r.json();
+      envTokens = d[0]?.etat?.tokens||null;
+    }catch(e){ envTokens=null; }
+  }
+
+  const usedAxes = new Set();
+  const extracted = [];
+
+  for(let i=0;i<_pneumaSelectedCount;i++){
+    const axe = dPneumaWeightedAxisPick(envTokens, usedAxes);
+    if(!axe) break;
+    usedAxes.add(axe.num);
+    const polarity = dPneumaWeightedPolarity(envTokens, axe);
+    extracted.push({axeNum:axe.num, axeLabel:axe.label, polarity, value:axe.num});
+  }
+
+  if(!extracted.length) return;
+
+  // Ajouter les dés rouges extraits à s.dice
+  if(!s.dice) s.dice=[];
+  _pneumaExtractedDice = [];
+  extracted.forEach(ex=>{
+    const idx = s.dice.length;
+    s.dice.push({
+      color: ex.polarity==='black' ? 'black_token' : 'red',
+      value: ex.value,
+      locked: true, // extrait, ne sera pas relancé
+      modified: false,
+      pneumaExtracted: true,
+      pneumaAxe: ex.axeLabel,
+    });
+    _pneumaExtractedDice.push(idx);
+  });
+
+  s.rolled = true;
+  document.getElementById('dpneuma-selector').style.display='none';
+  document.getElementById('dpneuma-toggle').checked=false;
+
+  dRenderDice(false);
+  dComputeSuccesses();
+  dRenderExtractedPneumaList();
+  dPushState();
+
+  if(typeof NotifSystem!=='undefined'){
+    const summary = extracted.map(e=>`${e.axeLabel} (${e.polarity==='white'?'blanc':'noir'})`).join(', ');
+    NotifSystem.show(`Vous insufflez ${extracted.length} valeur(s) de la pneuma locale : ${summary}.`, 'Extraction');
+  }
+}
+
+// ── Liste des dés extraits avec bouton de suppression (coût Éther) ──
+function dRenderExtractedPneumaList(){
+  const list = document.getElementById('dpneuma-extracted-list');
+  const s = dS();
+  const extractedIdx = (s.dice||[]).map((d,i)=>({d,i})).filter(o=>o.d.pneumaExtracted);
+  if(!extractedIdx.length){
+    list.style.display='none';
+    list.innerHTML='';
+    return;
+  }
+  list.style.display='block';
+  list.innerHTML = '<div style="font-family:Cinzel,serif;font-size:.65rem;color:#c8860a;margin-bottom:.3rem;">Valeurs insufflées de la pneuma :</div>';
+  extractedIdx.forEach(({d,i})=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:.5rem;padding:.25rem .5rem;background:#fdf6e8;border-radius:4px;margin-bottom:.2rem;font-size:.8rem;';
+    row.innerHTML = `<span style="flex:1;">${d.pneumaAxe} — valeur ${d.value} (${d.color==='black_token'?'noir':'blanc'})</span>
+      <button style="font-family:Cinzel,serif;font-size:.62rem;padding:2px 8px;border:1px solid #8b2020;border-radius:3px;background:none;color:#8b2020;cursor:pointer;">Supprimer (−1 Éther)</button>`;
+    row.querySelector('button').addEventListener('click',()=>dPneumaRemoveDie(i));
+    list.appendChild(row);
+  });
+}
+
+// ── Suppression d'un dé extrait : coûte 1 point d'Éther ──
+function dPneumaRemoveDie(idx){
+  const ether = dGetEtherScore();
+  if(ether<=0){
+    alert("Vous n'avez plus assez d'Éther pour supprimer cette valeur.");
+    return;
+  }
+  if(!confirm("Supprimer cette valeur de la pneuma ? Cela coûtera 1 point d'Éther.")) return;
+  const s=dS();
+  s.dice.splice(idx,1);
+  state.ether = String(ether-1);
+  const etherInput=document.getElementById('ether-val');
+  if(etherInput) etherInput.value=state.ether;
+  dRenderDice(false);
+  dComputeSuccesses();
+  dRenderExtractedPneumaList();
+  dPushState();
+  if(typeof NotifSystem!=='undefined'){
+    NotifSystem.show('Une valeur de la pneuma est rejetée. Votre Éther diminue.', 'Extraction');
+  }
 }
 
 // ── Réception des messages depuis aventure.html ──
