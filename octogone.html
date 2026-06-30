@@ -2596,6 +2596,146 @@ function svgEl(tag,attrs={},parent=svg){
   return el;
 }
 
+
+// ══════════════════════════════════════════════
+//   COLORATION PIGMENTAIRE DES SEGMENTS
+// ══════════════════════════════════════════════
+
+// Palette par paire de segments (chaud / terreux / bleu / vert)
+const SEGMENT_PALETTES = {
+  // segments 1-2 : Feu, Bile Jaune — jaune/orange/rouge
+  warm:  { light:'#f0c674', mid:'#d97f3a', dark:'#a8331f', black:'#5a2010' },
+  // segments 3-4 : Terre, Bile Noire — marron/gris/noirâtre
+  earth: { light:'#c4b090', mid:'#8a7458', dark:'#4a3a28', black:'#1f1812' },
+  // segments 5-6 : Eau, Flegme — bleu
+  water: { light:'#a8c8d8', mid:'#5a8aa8', dark:'#2a4a68', black:'#10202e' },
+  // segments 7-8 : Air, Sang — vert
+  air:   { light:'#a8c890', mid:'#5a8a52', dark:'#2a4a28', black:'#0f2010' },
+};
+
+function getSegmentPalette(num){
+  if(num<=2) return SEGMENT_PALETTES.warm;
+  if(num<=4) return SEGMENT_PALETTES.earth;
+  if(num<=6) return SEGMENT_PALETTES.water;
+  return SEGMENT_PALETTES.air;
+}
+
+// Construire un identifiant de gradient unique par secteur
+function segGradId(sectorId){ return 'segpig-'+sectorId; }
+function segTextureId(sectorId){ return 'segtex-'+sectorId; }
+
+// Créer les défs (gradients + filtres texture) pour un secteur
+function buildSegmentDefs(defs, sec){
+  const pal = getSegmentPalette(sec.num);
+  const gid = segGradId(sec.id);
+  const tid = segTextureId(sec.id);
+
+  // Gradient radial — du centre (clair) vers l'extérieur (sombre), simulant un dépôt de pigment
+  const grad = svgEl('radialGradient', {
+    id: gid, cx:'50%', cy:'50%', r:'75%'
+  }, defs);
+  svgEl('stop', {offset:'0%',  'stop-color':pal.light, 'stop-opacity':'0.15'}, grad);
+  svgEl('stop', {offset:'35%', 'stop-color':pal.mid,   'stop-opacity':'0.35'}, grad);
+  svgEl('stop', {offset:'70%', 'stop-color':pal.dark,  'stop-opacity':'0.55'}, grad);
+  svgEl('stop', {offset:'100%','stop-color':pal.black, 'stop-opacity':'0.7'}, grad);
+
+  // Filtre texture pigmentaire — bruit fractal + déplacement pour effet "pigment déposé"
+  const filt = svgEl('filter', {
+    id: tid, x:'-20%', y:'-20%', width:'140%', height:'140%'
+  }, defs);
+  const turb = svgEl('feTurbulence', {
+    type:'fractalNoise', baseFrequency:'0.012 0.018', numOctaves:'4',
+    seed: String(sec.num*17+3), result:'noise', stitchTiles:'stitch'
+  }, filt);
+  svgEl('feColorMatrix', {
+    in:'noise', type:'matrix',
+    values:'0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.9 0.9 0.9 0 0',
+    result:'noiseAlpha'
+  }, filt);
+  svgEl('feComposite', {
+    in:'SourceGraphic', in2:'noiseAlpha', operator:'arithmetic',
+    k1:'0', k2:'1', k3:'0.18', k4:'0'
+  }, filt);
+}
+
+// Calculer l'intensité/polarité d'un secteur depuis state.tokens
+function getSegmentIntensity(sectorId){
+  const toks = state.tokens[sectorId]||[];
+  const whites = toks.filter(t=>t==='white').length;
+  const blacks = toks.filter(t=>t==='black'||t==='black_token').length;
+  const total = whites+blacks;
+  const max = toks.length||3;
+  // Intensité 0-1 : proportion de jetons remplis
+  const intensity = total/max;
+  // Polarité -1 (tout noir) à +1 (tout blanc), 0 si vide
+  const polarity = total>0 ? (whites-blacks)/total : 0;
+  return {intensity, polarity, whites, blacks, total};
+}
+
+// Construire/mettre à jour la couche de coloration des segments
+function renderSegmentColors(){
+  const roue = document.getElementById('roue');
+  let defs = document.getElementById('segment-defs');
+  if(!defs){
+    defs = svgEl('defs', {id:'segment-defs'}, roue);
+  }
+  let layer = document.getElementById('segment-color-layer');
+  if(!layer){
+    layer = svgEl('g', {id:'segment-color-layer'}, roue);
+    // Insérer en tout premier (sous les anneaux existants)
+    roue.insertBefore(layer, roue.firstChild);
+  }
+  layer.innerHTML = '';
+  defs.innerHTML = '';
+
+  SECTORS.forEach(sec=>{
+    buildSegmentDefs(defs, sec);
+    const {intensity, polarity} = getSegmentIntensity(sec.id);
+
+    // Forme du segment (coin de tarte de 45°, du centre au bord externe)
+    const a0 = sec.angle - 22.5, a1 = sec.angle + 22.5;
+    const pOuterStart = polar(CX, CY, OUTER_R, a0);
+    const pOuterEnd   = polar(CX, CY, OUTER_R, a1);
+    const pInnerStart = polar(CX, CY, INNER_R, a0);
+    const pInnerEnd   = polar(CX, CY, INNER_R, a1);
+
+    const pathD = [
+      `M ${pInnerStart.x.toFixed(2)},${pInnerStart.y.toFixed(2)}`,
+      `L ${pOuterStart.x.toFixed(2)},${pOuterStart.y.toFixed(2)}`,
+      `A ${OUTER_R},${OUTER_R} 0 0 1 ${pOuterEnd.x.toFixed(2)},${pOuterEnd.y.toFixed(2)}`,
+      `L ${pInnerEnd.x.toFixed(2)},${pInnerEnd.y.toFixed(2)}`,
+      `A ${INNER_R},${INNER_R} 0 0 0 ${pInnerStart.x.toFixed(2)},${pInnerStart.y.toFixed(2)}`,
+      'Z'
+    ].join(' ');
+
+    // Opacité globale du segment selon intensité (jetons remplis)
+    // 0 jeton = quasi invisible, plein = pigment dense
+    const baseOpacity = 0.12 + intensity*0.55;
+
+    // Teinte selon polarité : décale vers le gradient noir si polarité négative
+    const pal = getSegmentPalette(sec.num);
+    let fillColor;
+    if(polarity >= 0.34) fillColor = pal.light;
+    else if(polarity >= -0.33) fillColor = pal.mid;
+    else fillColor = pal.dark;
+
+    const path = svgEl('path', {
+      d: pathD,
+      fill: `url(#${segGradId(sec.id)})`,
+      opacity: baseOpacity.toFixed(2),
+      filter: `url(#${segTextureId(sec.id)})`,
+    }, layer);
+
+    // Surcouche teinte selon polarité (mode multiply pour effet pigment superposé)
+    const overlay = svgEl('path', {
+      d: pathD,
+      fill: fillColor,
+      opacity: (0.08 + Math.abs(polarity)*0.22).toFixed(2),
+      style: 'mix-blend-mode:multiply;',
+    }, layer);
+  });
+}
+
 const roue=document.getElementById('roue');
 
 // Rings
@@ -2608,6 +2748,8 @@ for(let i=0;i<8;i++){
   const p=polar(CX,CY,OUTER_R,i*45);
   svgEl('line',{x1:CX,y1:CY,x2:p.x.toFixed(2),y2:p.y.toFixed(2),stroke:'#c8b89a','stroke-width':'0.8'},roue);
 }
+// Couche de coloration pigmentaire des segments (sous les anneaux)
+renderSegmentColors();
 // Center disc
 // Center image (clipPath defined inline via defs)
 const defs = svgEl('defs',{},roue);
@@ -2831,6 +2973,8 @@ function addToken(sectorId, color){
   return true;
 
   scheduleDeviationRecompute();
+
+  renderSegmentColors();
 }
 
 function cycleToken(sectorId,idx){
@@ -2859,6 +3003,8 @@ function cycleToken(sectorId,idx){
   NotifSystem._checkSaturationImmediate(sectorId);
 
   scheduleDeviationRecompute();
+
+  renderSegmentColors();
 }
 function renderToken(sectorId,idx){
   const g=document.getElementById(`tok-${sectorId}-${idx}`);
@@ -3978,6 +4124,7 @@ function applyRemoteState(saved){
   applyingRemote = false;
   // Recalculer les déviations si les tokens ont changé
   if(typeof scheduleDeviationRecompute==='function') scheduleDeviationRecompute();
+  if(typeof renderSegmentColors==='function') renderSegmentColors();
 }
 
 /* ── Realtime Supabase ────────────────────────── */
