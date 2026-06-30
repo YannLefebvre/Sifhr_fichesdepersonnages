@@ -2696,16 +2696,13 @@ function renderSegmentColors(){
     const a0 = sec.angle - 22.5, a1 = sec.angle + 22.5;
     const pOuterStart = polar(CX, CY, OUTER_R, a0);
     const pOuterEnd   = polar(CX, CY, OUTER_R, a1);
-    const pInnerStart = polar(CX, CY, INNER_R, a0);
-    const pInnerEnd   = polar(CX, CY, INNER_R, a1);
 
+    // Étendu jusqu'au centre exact (CX,CY) — passe SOUS le disque/portrait central
     const pathD = [
-      `M ${pInnerStart.x.toFixed(2)},${pInnerStart.y.toFixed(2)}`,
+      `M ${CX},${CY}`,
       `L ${pOuterStart.x.toFixed(2)},${pOuterStart.y.toFixed(2)}`,
       `A ${OUTER_R},${OUTER_R} 0 0 1 ${pOuterEnd.x.toFixed(2)},${pOuterEnd.y.toFixed(2)}`,
-      `L ${pInnerEnd.x.toFixed(2)},${pInnerEnd.y.toFixed(2)}`,
-      `A ${INNER_R},${INNER_R} 0 0 0 ${pInnerStart.x.toFixed(2)},${pInnerStart.y.toFixed(2)}`,
-      'Z'
+      `Z`
     ].join(' ');
 
     // Opacité globale du segment selon intensité (jetons remplis)
