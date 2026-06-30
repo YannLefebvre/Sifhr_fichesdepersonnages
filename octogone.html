@@ -2710,8 +2710,8 @@ function renderSegmentColors(){
     ].join(' ');
 
     // Opacité globale du segment selon intensité (jetons remplis)
-    // 0 jeton = invisible, plein = pigment visible mais discret
-    const baseOpacity = 0.05 + intensity*0.35;
+    // 0 jeton = quasi invisible, plein = pigment bien visible
+    const baseOpacity = 0.10 + intensity*0.50;
 
     // Teinte selon polarité : décale vers le gradient noir si polarité négative
     const pal = getSegmentPalette(sec.num);
@@ -2731,7 +2731,7 @@ function renderSegmentColors(){
     const overlay = svgEl('path', {
       d: pathD,
       fill: fillColor,
-      opacity: (0.04 + Math.abs(polarity)*0.14).toFixed(2),
+      opacity: (0.08 + Math.abs(polarity)*0.22).toFixed(2),
       style: 'mix-blend-mode:multiply;',
     }, layer);
   });
@@ -2744,7 +2744,7 @@ for(let i=1;i<=RINGS;i++){
   const r=INNER_R+(OUTER_R-INNER_R)*i/RINGS;
   svgEl('polygon',{points:buildOctPts(r),
     fill:i%2===0?'#ede5d2':'#e8e0cc',
-    'fill-opacity':'0.55',
+    'fill-opacity':'0.42',
     stroke:'#c8b89a','stroke-width':'0.8'},roue);
 }
 // Spokes
@@ -2922,20 +2922,11 @@ function rebuildLabels(){
 
 /* ── Sector lane coloring ── */
 function updateSectorLane(sectorId){
+  // Désactivé : remplacé par la coloration pigmentaire des segments (renderSegmentColors)
   const lane=document.getElementById(`lane-${sectorId}`);
   if(!lane) return;
-  const key=laneColorKey(state.tokens[sectorId]);
-  const col=LANE_COLORS[key];
-  if(!col){
-    lane.setAttribute('fill','none');
-    lane.setAttribute('stroke','none');
-  } else {
-    lane.setAttribute('fill',col.fill);
-    lane.setAttribute('fill-opacity',col.opacity);
-    lane.setAttribute('stroke',col.stroke);
-    lane.setAttribute('stroke-width','0.5');
-    lane.setAttribute('stroke-opacity','0.6');
-  }
+  lane.setAttribute('fill','none');
+  lane.setAttribute('stroke','none');
 }
 
 /* ── Apply rotation ── */
