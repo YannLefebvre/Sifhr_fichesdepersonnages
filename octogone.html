@@ -1875,10 +1875,7 @@ async function xferClearRequest(){
         🎯 Lanceur de dés
         <small>Vous contrôlez les dés</small>
       </button>
-      <button class="drole-btn viewer" onclick="selectDiceRole('viewer')">
-        👁️ Spectateur
-        <small>Vous observez en temps réel</small>
-      </button>
+      
     </div>
     <div id="dice-app" style="display:none">
       <div class="dice-sync-bar">
@@ -2009,17 +2006,18 @@ async function xferClearRequest(){
         </div>
       </div>
 
-      <!-- ⑦ BOUTON LANCER -->
-      <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
-      <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
       <div id="dice-legend" style="display:none;"></div>
 
-      <!-- ⑦ RÉSULTAT DU LANCER -->
+      <!-- ⑦ DÉS, SATURATION ET DÉVOIEMENT -->
       <p class="dice-section-title" id="dice-section-lbl">Aucun bonus ni malus sélectionné</p>
       <div class="dice-grid" id="dice-grid"></div>
       <div id="droll-history" class="droll-history" style="display:none;"></div>
       <!-- Explication dés verrouillés -->
       <div id="dlock-explain" class="dlock-explain" style="display:none;"></div>
+
+      <!-- ⑦bis BOUTON LANCER (sous les dés et les explications) -->
+      <button class="dlaunch-btn" id="dlaunch-btn" onclick="dRollDice()">🎲 Lancer les dés libres</button>
+      <button class="dreset-btn" id="dreset-btn" onclick="dResetAll()" style="display:none">🔄 Nouvelle partie</button>
 
       <!-- ⑧ BOUTONS DE RÉUSSITE (après les dés) -->
       <div id="dsuccess-result" class="dsuccess-result" style="display:none;"></div>
@@ -5061,6 +5059,23 @@ function dComputeSuccesses(){
     const row=document.createElement('div');
     row.className='dsuccess-result-row'+(val===_chosenSuccessVal?' chosen':'');
     row.innerHTML=`<span class="dsuccess-result-label">Réussites sur ${val}</span><span class="dsuccess-result-count">${count}</span>`;
+    // Bouton explicite de sélection finale
+    const selectBtn=document.createElement('button');
+    selectBtn.className='dsuccess-select-btn';
+    selectBtn.textContent=(val===_chosenSuccessVal)?'✓ Sélectionnée':'Choisir cette valeur →';
+    selectBtn.style.cssText='font-family:Cinzel,serif;font-size:.65rem;padding:3px 9px;margin-left:.5rem;'
+      +'border-radius:4px;cursor:pointer;white-space:nowrap;'
+      +(val===_chosenSuccessVal
+        ?'background:#1a4a2a;border:1px solid #1a4a2a;color:#f5f0e8;'
+        :'background:none;border:1px solid var(--border);color:var(--ink3);');
+    selectBtn.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      _chosenSuccessVal=(_chosenSuccessVal===val)?null:val;
+      dComputeSuccesses();
+      // Sauvegarder le résultat du duel pour l'adversaire
+      if(_chosenSuccessVal) dSaveDuelResult(_chosenSuccessVal, count, values);
+    });
+    row.appendChild(selectBtn);
     row.addEventListener('click',()=>{
       _chosenSuccessVal=(_chosenSuccessVal===val)?null:val;
       dComputeSuccesses();
@@ -7397,13 +7412,14 @@ async function dSaveDuelResult(chosenVal, successes, allValues){
   state.duelResult = result;
   saveState();
 
-  // Ouvrir le panneau d'attente
-  document.getElementById('dfb-title').textContent = "Résultat de l'adversaire";
-  document.getElementById('dfb-content').innerHTML =
-    '<div class="dfb-waiting">En attente du choix de l\'adversaire…</div>';
-  document.getElementById('duel-feedback-overlay').classList.add('open');
-
-  dPollAdversaireResult();
+  // N'ouvrir le panneau d'attente que si un duel est réellement engagé
+  if(typeof dGetAdversaireId==='function' && dGetAdversaireId()){
+    document.getElementById('dfb-title').textContent = "Résultat de l'adversaire";
+    document.getElementById('dfb-content').innerHTML =
+      '<div class="dfb-waiting">En attente du choix de l\'adversaire…</div>';
+    document.getElementById('duel-feedback-overlay').classList.add('open');
+    dPollAdversaireResult();
+  }
 }
 
 function _collectJetonsAcquis(){
