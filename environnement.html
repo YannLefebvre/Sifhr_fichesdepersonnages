@@ -1173,12 +1173,158 @@ function svgEl(tag,attrs={},parent=svg){
   return el;
 }
 
+// ══════════════════════════════════════════════
+//   COLORATION PIGMENTAIRE DES SEGMENTS
+// ══════════════════════════════════════════════
+
+// Palette par paire de segments (chaud / terreux / bleu / vert)
+const SEGMENT_PALETTES = {
+  // segments 1-2 : Feu, Bile Jaune — jaune/orange/rouge
+  warm:  { light:'#f0c674', mid:'#d97f3a', dark:'#a8331f', black:'#5a2010' },
+  // segments 3-4 : Terre, Bile Noire — marron/gris/noirâtre
+  earth: { light:'#c4b090', mid:'#8a7458', dark:'#4a3a28', black:'#1f1812' },
+  // segments 5-6 : Eau, Flegme — bleu
+  water: { light:'#a8c8d8', mid:'#5a8aa8', dark:'#2a4a68', black:'#10202e' },
+  // segments 7-8 : Air, Sang — vert
+  air:   { light:'#a8c890', mid:'#5a8a52', dark:'#2a4a28', black:'#0f2010' },
+};
+
+function getSegmentPalette(num){
+  if(num<=2) return SEGMENT_PALETTES.warm;
+  if(num<=4) return SEGMENT_PALETTES.earth;
+  if(num<=6) return SEGMENT_PALETTES.water;
+  return SEGMENT_PALETTES.air;
+}
+
+// Construire un identifiant de gradient unique par secteur
+function segGradId(sectorId){ return 'segpig-'+sectorId; }
+function segTextureId(sectorId){ return 'segtex-'+sectorId; }
+
+// Créer les défs (gradients + filtres texture) pour un secteur
+function buildSegmentDefs(defs, sec){
+  const pal = getSegmentPalette(sec.num);
+  const gid = segGradId(sec.id);
+  const tid = segTextureId(sec.id);
+
+  // Gradient radial — du centre (clair) vers l'extérieur (sombre), simulant un dépôt de pigment
+  const grad = svgEl('radialGradient', {
+    id: gid, cx:'50%', cy:'50%', r:'75%'
+  }, defs);
+  svgEl('stop', {offset:'0%',  'stop-color':pal.light, 'stop-opacity':'0.15'}, grad);
+  svgEl('stop', {offset:'35%', 'stop-color':pal.mid,   'stop-opacity':'0.35'}, grad);
+  svgEl('stop', {offset:'70%', 'stop-color':pal.dark,  'stop-opacity':'0.55'}, grad);
+  svgEl('stop', {offset:'100%','stop-color':pal.black, 'stop-opacity':'0.7'}, grad);
+
+  // Filtre texture pigmentaire — bruit doux, sans déformation géométrique
+  const filt = svgEl('filter', {
+    id: tid, x:'-10%', y:'-10%', width:'120%', height:'120%'
+  }, defs);
+  svgEl('feTurbulence', {
+    type:'fractalNoise', baseFrequency:'0.04 0.05', numOctaves:'2',
+    seed: String(sec.num*17+3), result:'noise'
+  }, filt);
+  svgEl('feColorMatrix', {
+    in:'noise', type:'matrix',
+    values:'0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.5 0.5 0.5 0 0',
+    result:'noiseAlpha'
+  }, filt);
+  // Multiplier le bruit sur le graphisme source SANS déplacer ses contours
+  svgEl('feComponentTransfer', {in:'noiseAlpha', result:'noiseSoft'}, filt)
+    .appendChild((()=>{const f=document.createElementNS('http://www.w3.org/2000/svg','feFuncA');
+      f.setAttribute('type','gamma'); f.setAttribute('amplitude','1');
+      f.setAttribute('exponent','1'); f.setAttribute('offset','0.7'); return f;})());
+  svgEl('feComposite', {
+    in:'SourceGraphic', in2:'noiseSoft', operator:'in'
+  }, filt);
+}
+
+// Calculer l'intensité/polarité d'un secteur depuis state.tokens
+function getSegmentIntensity(sectorId){
+  const toks = state.tokens[sectorId]||[];
+  const whites = toks.filter(t=>t==='white').length;
+  const blacks = toks.filter(t=>t==='black'||t==='black_token').length;
+  const total = whites+blacks;
+  const max = toks.length||3;
+  // Intensité 0-1 : proportion de jetons remplis
+  const intensity = total/max;
+  // Polarité -1 (tout noir) à +1 (tout blanc), 0 si vide
+  const polarity = total>0 ? (whites-blacks)/total : 0;
+  return {intensity, polarity, whites, blacks, total};
+}
+
+// Construire/mettre à jour la couche de coloration des segments
+function renderSegmentColors(){
+  const roue = document.getElementById('roue');
+  let defs = document.getElementById('segment-defs');
+  if(!defs){
+    defs = svgEl('defs', {id:'segment-defs'}, roue);
+  }
+  let layer = document.getElementById('segment-color-layer');
+  if(!layer){
+    layer = svgEl('g', {id:'segment-color-layer'}, roue);
+    // Insérer en tout premier (sous les anneaux existants)
+    roue.insertBefore(layer, roue.firstChild);
+  }
+  layer.innerHTML = '';
+  defs.innerHTML = '';
+
+  SECTORS.forEach(sec=>{
+    buildSegmentDefs(defs, sec);
+    const {intensity, polarity} = getSegmentIntensity(sec.id);
+
+    // Forme du segment (coin de tarte de 45°, du centre au bord externe)
+    const a0 = sec.angle - 22.5, a1 = sec.angle + 22.5;
+    const pOuterStart = polar(CX, CY, OUTER_R, a0);
+    const pOuterEnd   = polar(CX, CY, OUTER_R, a1);
+
+    // Étendu jusqu'au centre exact (CX,CY) — passe SOUS le disque/portrait central
+    const pathD = [
+      `M ${CX},${CY}`,
+      `L ${pOuterStart.x.toFixed(2)},${pOuterStart.y.toFixed(2)}`,
+      `A ${OUTER_R},${OUTER_R} 0 0 1 ${pOuterEnd.x.toFixed(2)},${pOuterEnd.y.toFixed(2)}`,
+      `Z`
+    ].join(' ');
+
+    // Opacité globale du segment selon intensité (jetons remplis)
+    // 0 jeton = quasi invisible, plein = pigment bien visible
+    const baseOpacity = 0.10 + intensity*0.50;
+
+    // Teinte selon polarité : décale vers le gradient noir si polarité négative
+    const pal = getSegmentPalette(sec.num);
+    let fillColor;
+    if(polarity >= 0.34) fillColor = pal.light;
+    else if(polarity >= -0.33) fillColor = pal.mid;
+    else fillColor = pal.dark;
+
+    const path = svgEl('path', {
+      d: pathD,
+      fill: `url(#${segGradId(sec.id)})`,
+      opacity: baseOpacity.toFixed(2),
+      filter: `url(#${segTextureId(sec.id)})`,
+    }, layer);
+
+    // Surcouche teinte selon polarité (mode multiply pour effet pigment superposé)
+    const overlay = svgEl('path', {
+      d: pathD,
+      fill: fillColor,
+      opacity: (0.08 + Math.abs(polarity)*0.22).toFixed(2),
+      style: 'mix-blend-mode:multiply;',
+    }, layer);
+  });
+}
+
+
 const roue=document.getElementById('roue');
 
 for(let i=1;i<=RINGS;i++){
   const r=INNER_R+(OUTER_R-INNER_R)*i/RINGS;
-  svgEl('polygon',{points:buildOctPts(r),fill:i%2===0?'#ede5d2':'#e8e0cc',stroke:'#c8b89a','stroke-width':'0.8'},roue);
+  svgEl('polygon',{points:buildOctPts(r),
+    fill:i%2===0?'#ede5d2':'#e8e0cc',
+    'fill-opacity':'0.42',
+    stroke:'#c8b89a','stroke-width':'0.8'},roue);
 }
+// Couche de coloration pigmentaire des segments (sous les anneaux)
+renderSegmentColors();
 for(let i=0;i<8;i++){
   const p=polar(CX,CY,OUTER_R,i*45);
   svgEl('line',{x1:CX,y1:CY,x2:p.x.toFixed(2),y2:p.y.toFixed(2),stroke:'#c8b89a','stroke-width':'0.8'},roue);
@@ -1304,6 +1450,8 @@ function addToken(sectorId,color){
   const replaceIdx=tokens.indexOf(opposite);
   if(replaceIdx===-1) return false;
   tokens[replaceIdx]=color; renderToken(sectorId,replaceIdx); updateSectorLane(sectorId); return true;
+
+  renderSegmentColors();
 }
 
 function cycleToken(sectorId,idx){
@@ -1328,6 +1476,8 @@ function cycleToken(sectorId,idx){
   }
   renderToken(sectorId,idx); updateSectorLane(sectorId); saveState();
   renderDynamiqueLog();
+
+  renderSegmentColors();
 }
 
 function renderToken(sectorId,idx){
@@ -1347,16 +1497,11 @@ function renderToken(sectorId,idx){
 }
 
 function updateSectorLane(sectorId){
-  const lane=document.getElementById(`lane-${sectorId}`); if(!lane) return;
-  if(!isGM){
-    // Joueur : pas de couleur de lane visible (géré par les fantômes)
-    lane.setAttribute('fill','none'); lane.setAttribute('stroke','none');
-    return;
-  }
-  const key=laneColorKey(state.tokens[sectorId]);
-  const col=LANE_COLORS[key];
-  if(!col){lane.setAttribute('fill','none');lane.setAttribute('stroke','none');}
-  else{lane.setAttribute('fill',col.fill);lane.setAttribute('fill-opacity',col.opacity);lane.setAttribute('stroke',col.stroke);lane.setAttribute('stroke-width','0.5');lane.setAttribute('stroke-opacity','0.6');}
+  // Désactivé : remplacé par la coloration pigmentaire des segments (renderSegmentColors)
+  const lane=document.getElementById(`lane-${sectorId}`);
+  if(!lane) return;
+  lane.setAttribute('fill','none');
+  lane.setAttribute('stroke','none');
 }
 
 // ── Scores ──
@@ -1586,6 +1731,7 @@ function applyRemoteState(saved){
     if(saved._xferRequest){ const req=saved._xferRequest; if(!xferPending||xferPending.ts!==req.ts) xferShowNotif(req); }
   }catch(e){console.error('applyRemoteState',e);}
   applyingRemote=false;
+  if(typeof renderSegmentColors==='function') renderSegmentColors();
 }
 
 // ── Realtime ──
