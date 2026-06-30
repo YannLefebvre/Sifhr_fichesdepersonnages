@@ -416,7 +416,8 @@
     transition:background .12s; padding:5px 6px; margin:0 -6px;
   }
   .dsuccess-result-row:hover { background:#f0ede6; }
-  .dsuccess-result-row.chosen { background:#e6f1fb; border:1px solid #185FA5; border-radius:5px; }
+  .dsuccess-result-row.chosen { background:#d4edda; border:1px solid #1a4a2a; border-radius:5px; }
+  .dsuccess-result-row.previewed:not(.chosen) { background:#e6f1fb; border:1px solid #185FA5; border-radius:5px; }
   .dsuccess-result-row.chosen .dsuccess-result-label { color:#185FA5; font-weight:600; }
   .dsuccess-result-row + .dsuccess-result-row { border-top:1px dashed #e8e4dc; }
   .dsuccess-result-label { color:#555; }
@@ -5009,6 +5010,10 @@ function dUpdateSectionLabel(){
 const OPPOSED_VALUES = {1:5, 2:6, 3:7, 4:8, 5:1, 6:2, 7:3, 8:4};
 // Valeur de réussite finale choisie par le joueur après le lancer
 let _chosenSuccessVal = null;
+// Valeur simplement survolée/cliquée pour aperçu (ne verrouille rien)
+let _previewVal = null;
+// Verrou final : true une fois la sélection confirmée, bloque toute modification
+let _finalLocked = false;
 // Prouesse déclarée avant le lancer
 let _prouesseDeclared = false;
 let _prodigeDeclared = false;
@@ -5073,35 +5078,44 @@ function dComputeSuccesses(){
   const makeRow=(val)=>{
     if(val==null) return;
     const count=values.filter(v=>v===val).length;
+    const isPreviewed = (val===_previewVal);
+    const isChosen = (val===_chosenSuccessVal);
     const row=document.createElement('div');
-    row.className='dsuccess-result-row'+(val===_chosenSuccessVal?' chosen':'');
+    row.className='dsuccess-result-row'+(isPreviewed?' previewed':'')+(isChosen?' chosen':'');
     row.innerHTML=`<span class="dsuccess-result-label">Réussites sur ${val}</span><span class="dsuccess-result-count">${count}</span>`;
-    // Bouton explicite de sélection finale
+    // Bouton explicite de sélection finale — verrouille le lanceur
     const selectBtn=document.createElement('button');
     selectBtn.className='dsuccess-select-btn';
-    selectBtn.textContent=(val===_chosenSuccessVal)?'✓ Sélectionnée':'Choisir cette valeur →';
+    selectBtn.disabled = !!_finalLocked;
+    selectBtn.textContent = isChosen ? '✓ Verrouillée' : 'Choisir cette valeur →';
     selectBtn.style.cssText='font-family:Cinzel,serif;font-size:.65rem;padding:3px 9px;margin-left:.5rem;'
-      +'border-radius:4px;cursor:pointer;white-space:nowrap;'
-      +(val===_chosenSuccessVal
+      +'border-radius:4px;white-space:nowrap;'
+      +(_finalLocked ? 'opacity:.4;cursor:not-allowed;' : 'cursor:pointer;')
+      +(isChosen
         ?'background:#1a4a2a;border:1px solid #1a4a2a;color:#f5f0e8;'
         :'background:none;border:1px solid var(--border);color:var(--ink3);');
     selectBtn.addEventListener('click',(e)=>{
       e.stopPropagation();
-      _chosenSuccessVal=(_chosenSuccessVal===val)?null:val;
+      if(_finalLocked) return;
+      if(!confirm('Confirmer la valeur de réussite '+val+' ? Cette action verrouille le lanceur : plus aucune modification ne sera possible.')) return;
+      _chosenSuccessVal = val;
+      _previewVal = val;
+      _finalLocked = true;
       dComputeSuccesses();
-      // Sauvegarder le résultat du duel pour l'adversaire
-      if(_chosenSuccessVal) dSaveDuelResult(_chosenSuccessVal, count, values);
+      dLockLauncherFinal();
+      // Sauvegarder le résultat du duel pour l'adversaire (déclenche aussi le retour d'info)
+      dSaveDuelResult(_chosenSuccessVal, count, values);
     });
     row.appendChild(selectBtn);
+    // Clic sur la ligne = simple aperçu, ne verrouille rien
     row.addEventListener('click',()=>{
-      _chosenSuccessVal=(_chosenSuccessVal===val)?null:val;
+      if(_finalLocked) return;
+      _previewVal=(_previewVal===val)?null:val;
       dComputeSuccesses();
-      // Sauvegarder le résultat du duel pour l'adversaire
-      if(_chosenSuccessVal) dSaveDuelResult(_chosenSuccessVal, count, values);
     });
     resultEl.appendChild(row);
 
-    if(val===_chosenSuccessVal){
+    if(isPreviewed || isChosen){
       const opp=OPPOSED_VALUES[val];
       const oppCount=opp?values.filter(v=>v===opp).length:0;
 
@@ -5460,6 +5474,7 @@ function dResetAll(){
   ProdigeSystem._fired = false;
   if(dCurrentRole!=='launcher') return;
   if(!confirm('Réinitialiser les dés ?')) return;
+  dUnlockLauncherFinal();
   _pneumaExtractedDice = []; _pneumaSelectedCount = 0;
   const dpneumaList=document.getElementById('dpneuma-extracted-list');
   if(dpneumaList){ dpneumaList.style.display='none'; dpneumaList.innerHTML=''; }
@@ -8649,6 +8664,59 @@ function dPneumaRemoveDie(idx){
   if(typeof NotifSystem!=='undefined'){
     NotifSystem.show('Une valeur de la pneuma est rejetée. Votre Éther diminue.', 'Extraction');
   }
+}
+
+
+// ── Verrouillage final du lanceur après sélection de la valeur de réussite ──
+function dLockLauncherFinal(){
+  // ① Aptitude
+  document.querySelectorAll('#apt-btn-grid button').forEach(b=>b.disabled=true);
+  // ② Vigueur du souffle
+  ['drb-minus','drb-plus'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.disabled=true;
+  });
+  // ③ Valeurs de réussite (sélecteurs eux-mêmes)
+  document.querySelectorAll('#dsuccess-unified button, #dsuccess-unified input').forEach(el=>el.disabled=true);
+  // ④ Prouesse / Prodige / Pneuma
+  ['dprouesse-toggle','dprodige-toggle','dpneuma-toggle'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.disabled=true;
+  });
+  const pneumaSel=document.getElementById('dpneuma-selector');
+  if(pneumaSel) pneumaSel.querySelectorAll('button').forEach(b=>b.disabled=true);
+  // ⑤ Bonus / Malus
+  document.querySelectorAll('.dbm-btn').forEach(b=>b.disabled=true);
+  // ⑥ Duel — désigner un adversaire
+  document.querySelectorAll('#dice-duel-perso-list button').forEach(b=>b.disabled=true);
+  const clearBtn=document.getElementById('dice-duel-selected');
+  if(clearBtn) clearBtn.querySelectorAll('button').forEach(b=>b.disabled=true);
+  // Partager ce lancer
+  const shareBtn=document.getElementById('dice-share-btn');
+  if(shareBtn) shareBtn.disabled=true;
+  // Bouton lancer lui-même
+  const launchBtn=document.getElementById('dlaunch-btn');
+  if(launchBtn) launchBtn.disabled=true;
+  // Dés individuels (verrou, transfert, modification de valeur)
+  document.querySelectorAll('#dice-grid button, #dice-grid input').forEach(el=>el.disabled=true);
+
+  // Bannière de verrouillage
+  const setup=document.getElementById('dice-setup');
+  if(setup && !setup.querySelector('.dlock-final-banner')){
+    const banner=document.createElement('div');
+    banner.className='dlock-final-banner';
+    banner.style.cssText='background:#1a4a2a;color:#f5f0e8;font-family:Cinzel,serif;font-size:.68rem;text-align:center;padding:.35rem;border-radius:4px;margin-bottom:.5rem;letter-spacing:.05em;';
+    banner.textContent='🔒 Lancer verrouillé — résultat final confirmé';
+    setup.insertBefore(banner, setup.firstChild);
+  }
+}
+
+// ── Déverrouiller à la réinitialisation ──
+function dUnlockLauncherFinal(){
+  _finalLocked=false; _previewVal=null; _chosenSuccessVal=null;
+  document.querySelectorAll('.dlock-final-banner').forEach(b=>b.remove());
+  document.querySelectorAll('#apt-btn-grid button, #dsuccess-unified button, #dsuccess-unified input, .dbm-btn, #dice-duel-perso-list button, #dice-grid button, #dice-grid input').forEach(el=>el.disabled=false);
+  ['drb-minus','drb-plus','dprouesse-toggle','dprodige-toggle','dpneuma-toggle','dice-share-btn','dlaunch-btn'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.disabled=false;
+  });
 }
 
 // ── Réception des messages depuis aventure.html ──
