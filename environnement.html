@@ -919,6 +919,44 @@ async function gmReset(){
     flex-wrap:wrap; margin-bottom:.4rem; }
   .chrono-perso-check { display:flex; align-items:center; gap:.3rem;
     font-family:'Crimson Text',serif; font-size:.85rem; cursor:pointer; }
+
+  /* ── Zoom frise ── */
+  #chrono-zoom-bar { display:flex; align-items:center; gap:.4rem;
+    padding:.3rem 60px; background:rgba(200,134,10,.05);
+    border-bottom:1px solid rgba(200,134,10,.15); }
+  .chrono-zoom-btn { font-family:'Cinzel',serif; font-size:.62rem;
+    padding:2px 10px; border:1px solid #c8860a; border-radius:4px;
+    background:#fff8e8; color:#c8860a; cursor:pointer; transition:all .15s; }
+  .chrono-zoom-btn.active { background:#c8860a; color:#fff8e8; }
+  .chrono-zoom-btn:hover { background:#c8860a; color:#fff8e8; }
+
+  /* ── Routines ── */
+  #chrono-routines { margin-top:.8rem; }
+  .routines-title { font-family:'Cinzel',serif; font-size:.75rem;
+    color:#1a4a6e; letter-spacing:.07em; margin-bottom:.5rem; }
+  .routine-card { background:#f0f4ff; border:1px solid #c0cce8;
+    border-radius:7px; padding:.5rem .7rem; margin-bottom:.4rem;
+    transition:opacity .2s; }
+  .routine-card.used { opacity:.45; background:#e8eaf0; }
+  .routine-card-header { display:flex; align-items:center; gap:.4rem;
+    margin-bottom:.3rem; }
+  .routine-card-nom { font-family:'Cinzel',serif; font-size:.72rem;
+    color:#1a4a6e; flex:1; }
+  .routine-card-niv { font-family:'Cinzel',serif; font-size:.58rem;
+    padding:1px 6px; border-radius:8px; background:#1a4a6e; color:#fff; }
+  .routine-card-desc { font-family:'Crimson Text',serif; font-size:.8rem;
+    color:#3a3a5a; line-height:1.5; margin-bottom:.3rem; }
+  .routine-use-btn { font-family:'Cinzel',serif; font-size:.65rem;
+    padding:3px 10px; border:1px solid #1a4a6e; border-radius:4px;
+    background:#1a4a6e; color:#fff; cursor:pointer; }
+  .routine-use-btn:disabled { background:#aaa; border-color:#aaa; cursor:not-allowed; }
+  .routine-cooldown { font-family:'Cinzel',serif; font-size:.62rem;
+    color:#8a8aaa; font-style:italic; }
+
+  /* MJ : unlock routines par joueur */
+  .routine-unlock-row { display:flex; align-items:center; gap:.4rem;
+    font-family:'Crimson Text',serif; font-size:.82rem; margin-bottom:.2rem; }
+  .routine-unlock-cb { accent-color:#1a4a6e; }
 </style>
 </head>
 <body>
@@ -1186,6 +1224,13 @@ async function gmReset(){
   <!-- Date courante affichée -->
   <div id="chrono-date-courante">☽ Chargement…</div>
 
+  <!-- Barre de zoom -->
+  <div id="chrono-zoom-bar">
+    <span style="font-family:Cinzel,serif;font-size:.65rem;color:#8a6a20;">Zoom :</span>
+    <button class="chrono-zoom-btn active" onclick="chronoSetZoom('heure')" id="zoom-heure">Heure</button>
+    <button class="chrono-zoom-btn" onclick="chronoSetZoom('jour')" id="zoom-jour">Jour</button>
+    <button class="chrono-zoom-btn" onclick="chronoSetZoom('semaine')" id="zoom-semaine">Semaine</button>
+  </div>
   <!-- La frise -->
   <div id="chrono-frise-wrap">
     <div id="chrono-frise">
@@ -1217,6 +1262,23 @@ async function gmReset(){
     </div>
     <div id="chrono-sante-log" style="font-family:'Crimson Text',serif;font-size:.8rem;
       color:#1a4a2a;margin-top:.4rem;min-height:1rem;"></div>
+
+    <!-- MJ : débloquer routines par joueur -->
+    <div id="chrono-routines-mj" class="gm-only-section" style="margin-top:.7rem;border-top:1px solid rgba(26,74,110,.2);padding-top:.6rem;">
+      <div class="routines-title">🔓 Débloquer des routines par joueur</div>
+      <div id="chrono-routines-mj-content">
+        <span style="font-size:.75rem;color:var(--ink3);font-style:italic;">Sélectionnez un joueur pour gérer ses routines.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Routines joueur (visible via env depuis octogone, identité vérifiée) -->
+  <div id="chrono-routines" style="display:none;margin-top:.8rem;background:#f0f4ff;
+    border:1px solid #c0cce8;border-radius:8px;padding:.8rem 1rem;">
+    <div class="routines-title">⚗ Mes routines</div>
+    <div id="chrono-routines-content">
+      <span style="font-size:.75rem;color:var(--ink3);font-style:italic;">Chargement…</span>
+    </div>
   </div>
 </div>
 
@@ -1358,7 +1420,11 @@ const FICHE_ID = params.get('fiche') || 'env-test';
 const _isPlayerView = new URLSearchParams(location.search).get('player') === '1';
 if(_isPlayerView){
   document.addEventListener('DOMContentLoaded',()=>{
-    document.querySelectorAll('.pneumato-panel,.gm-only-zone').forEach(el=>el.style.display='none');
+    document.querySelectorAll('.pneumato-panel,.gm-only-zone,.gm-only-section').forEach(el=>{
+      // Garder #chrono-routines (routines joueur) visible
+      if(el.id==='chrono-routines') return;
+      el.style.display='none';
+    });
   });
 }
 
@@ -2092,6 +2158,10 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
         // Chronologie
         document.getElementById('chrono-section').style.display='block';
         setTimeout(chronoInit, 400);
+        // Routines joueur si identifié
+        if(!tryGM && resolvedPid){
+          setTimeout(()=>chronoRenderRoutinesJoueur(resolvedPid), 600);
+        }
       }
     }
   }catch(e){err.textContent='Erreur réseau.';}
@@ -3724,7 +3794,7 @@ function chronoRender(){
 
   const debut=ch.dateDebut, fin=ch.dateFin;
   const totalJours=Math.max(1,diffJours(debut,fin));
-  const PX_PAR_JOUR=totalJours<=14?60:totalJours<=60?28:12;
+  const PX_PAR_JOUR=chronoGetPxParJour();
   const OFFSET_G=60, OFFSET_D=60;
   const largeur=OFFSET_G+totalJours*PX_PAR_JOUR+OFFSET_D;
 
@@ -4026,6 +4096,214 @@ function chronoImportCarteEvt(){
   sel.style.display='none';
 }
 
+
+// ══════════════════════════════════════════════
+//   ZOOM FRISE
+// ══════════════════════════════════════════════
+let _chronoZoom = 'jour'; // 'heure' | 'jour' | 'semaine'
+
+function chronoSetZoom(z){
+  _chronoZoom=z;
+  document.querySelectorAll('.chrono-zoom-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('zoom-'+z)?.classList.add('active');
+  chronoRender();
+}
+
+function chronoGetPxParJour(){
+  if(_chronoZoom==='heure')  return 120;
+  if(_chronoZoom==='semaine') return 8;
+  // 'jour' : adaptatif selon amplitude
+  const ch=state.chronologie;
+  if(!ch||!ch.dateDebut||!ch.dateFin) return 28;
+  const total=Math.max(1,diffJours(ch.dateDebut,ch.dateFin));
+  return total<=14?60:total<=60?28:12;
+}
+
+// ══════════════════════════════════════════════
+//   ROUTINES ÉLÉMENTAIRES & HUMORALES
+// ══════════════════════════════════════════════
+
+const ROUTINES_DATA = [
+  {nom:'Aspiration élémentaire', niveau:'N1',
+   desc:"L'initié possédant encore de l'éther prie dans son environnement et y puise un jeton de l'élément de son choix. La polarité est laissée à l'appréciation du MJ."},
+  {nom:'Fabrication d\'humeur', niveau:'N1',
+   desc:"L'initié puise dans son énergie élémentaire pour nourrir l'humeur correspondante. Il transfère un jeton de l'élément dans l'humeur."},
+  {nom:'Inspiration morale', niveau:'N1',
+   desc:"L'initié s'appuie sur ses valeurs morales pour récupérer des jetons de la polarité correspondante. Exemple : des points en luxure permettent d'obtenir un jeton dévoyé de Bile Jaune."},
+  {nom:'Hygiène de l\'octogone', niveau:'N1',
+   desc:"L'initié connaît les aliments ou pratiques influençant sa santé. S'il les possède ou peut se les procurer, il gagne ou perd le jeton correspondant."},
+  {nom:'Influence du groupe', niveau:'N2',
+   desc:"Un initié réalisant un résultat important à une épreuve humorale permet aux initiés à ses côtés de gagner un jeton de même valeur."},
+  {nom:'Méditation pneumatique', niveau:'N2',
+   desc:"L'initié recentre son énergie mystique et récupère son éther. En réalisant une épreuve de Dévoiler ou Occulter (7 ou 8), il récupère des points d'éther."},
+];
+
+// Clé unique pour identifier la période/journée en cours
+function chronoPeriodeKey(){
+  const ch=state.chronologie;
+  const cur=ch?.dateCourante||ch?.dateDebut;
+  if(!cur) return 'unknown';
+  const p=getPeriode(cur.heure||0);
+  return `${p.nom}_${cur.jour}_${cur.mois}_${cur.annee}`;
+}
+function chronoJourKey(){
+  const ch=state.chronologie;
+  const cur=ch?.dateCourante||ch?.dateDebut;
+  if(!cur) return 'unknown';
+  return `${cur.jour}_${cur.mois}_${cur.annee}`;
+}
+
+// ── MJ : panneau de déblocage des routines par joueur ──
+function chronoRenderRoutinesMJ(){
+  const cont=document.getElementById('chrono-routines-mj-content');
+  if(!cont||!isGM) return;
+  const fp=state.fichePersonnages||[];
+  if(!fp.length){
+    cont.innerHTML='<span style="font-size:.75rem;color:var(--ink3);">Aucun personnage lié.</span>';
+    return;
+  }
+  cont.innerHTML='';
+
+  // Sélecteur de joueur
+  const sel=document.createElement('select');
+  sel.style.cssText='font-family:Cinzel,serif;font-size:.72rem;padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);margin-bottom:.5rem;width:100%;';
+  sel.innerHTML='<option value="">— Choisir un joueur —</option>';
+  fp.forEach(p=>{
+    const id=typeof p==='string'?p:p.id;
+    const o=document.createElement('option'); o.value=id; o.textContent=id;
+    sel.appendChild(o);
+  });
+  cont.appendChild(sel);
+
+  const routineList=document.createElement('div');
+  routineList.id='mj-routine-list';
+  cont.appendChild(routineList);
+
+  sel.addEventListener('change',()=>chronoRenderMJRoutineList(sel.value, routineList));
+}
+
+async function chronoRenderMJRoutineList(joueurId, container){
+  if(!joueurId){ container.innerHTML=''; return; }
+  container.innerHTML='<span style="font-size:.75rem;color:var(--ink3);">Chargement…</span>';
+  // Lire les routines débloquées depuis la fiche joueur
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(joueurId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const routinesOk=d[0]?.etat?.routinesDebloquees||[];
+    container.innerHTML='';
+    ROUTINES_DATA.forEach(rt=>{
+      const row=document.createElement('div'); row.className='routine-unlock-row';
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.className='routine-unlock-cb';
+      cb.checked=routinesOk.includes(rt.nom);
+      cb.addEventListener('change',async()=>{
+        await chronoToggleRoutineDeblocage(joueurId, rt.nom, cb.checked);
+      });
+      const lbl=document.createElement('label');
+      lbl.style.cssText='display:flex;align-items:center;gap:.4rem;cursor:pointer;flex:1;';
+      lbl.appendChild(cb);
+      lbl.innerHTML+=`<span style="font-family:Cinzel,serif;font-size:.7rem;">${rt.nom}</span>
+        <span style="font-family:Cinzel,serif;font-size:.58rem;padding:1px 5px;
+          background:#1a4a6e;color:#fff;border-radius:8px;">${rt.niveau}</span>`;
+      row.appendChild(lbl);
+      container.appendChild(row);
+    });
+  }catch(e){ container.innerHTML='<span style="color:red;font-size:.75rem;">Erreur de chargement.</span>'; }
+}
+
+async function chronoToggleRoutineDeblocage(joueurId, nomRoutine, activer){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(joueurId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    if(!etat.routinesDebloquees) etat.routinesDebloquees=[];
+    if(activer&&!etat.routinesDebloquees.includes(nomRoutine))
+      etat.routinesDebloquees.push(nomRoutine);
+    else if(!activer)
+      etat.routinesDebloquees=etat.routinesDebloquees.filter(n=>n!==nomRoutine);
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(joueurId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+  }catch(e){}
+}
+
+// ── JOUEUR : afficher et utiliser ses routines ──
+async function chronoRenderRoutinesJoueur(joueurId){
+  const section=document.getElementById('chrono-routines');
+  const cont=document.getElementById('chrono-routines-content');
+  if(!section||!cont||!joueurId) return;
+  section.style.display='block';
+  cont.innerHTML='<span style="font-size:.75rem;color:var(--ink3);">Chargement…</span>';
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(joueurId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const etat=d[0]?.etat||{};
+    const debloquees=etat.routinesDebloquees||[];
+    const usees=etat.routinesUsees||{};
+    if(!debloquees.length){
+      cont.innerHTML='<span style="font-size:.8rem;color:var(--ink3);font-style:italic;">Aucune routine débloquée.</span>';
+      return;
+    }
+    cont.innerHTML='';
+    const periodeKey=chronoPeriodeKey();
+    const jourKey=chronoJourKey();
+
+    debloquees.forEach(nomRoutine=>{
+      const rt=ROUTINES_DATA.find(r=>r.nom===nomRoutine);
+      if(!rt) return;
+      const card=document.createElement('div'); card.className='routine-card';
+      const isN1=rt.niveau==='N1';
+      const cooldownKey=isN1?periodeKey:jourKey;
+      const isUsed=usees[nomRoutine]===cooldownKey;
+      if(isUsed) card.classList.add('used');
+
+      card.innerHTML=`<div class="routine-card-header">
+        <span class="routine-card-nom">${rt.nom}</span>
+        <span class="routine-card-niv">${rt.niveau}</span>
+      </div>
+      <div class="routine-card-desc">${rt.desc}</div>`;
+
+      if(isUsed){
+        const cd=document.createElement('div'); cd.className='routine-cooldown';
+        cd.textContent=isN1?'Déjà utilisée cette période':'Déjà utilisée aujourd\'hui';
+        card.appendChild(cd);
+      } else {
+        const btn=document.createElement('button'); btn.className='routine-use-btn';
+        btn.textContent='Utiliser cette routine';
+        btn.addEventListener('click',async()=>{
+          btn.disabled=true; btn.textContent='En cours…';
+          await chronoUseRoutine(joueurId, nomRoutine, cooldownKey);
+          chronoRenderRoutinesJoueur(joueurId);
+        });
+        card.appendChild(btn);
+      }
+      cont.appendChild(card);
+    });
+  }catch(e){ cont.innerHTML='<span style="color:red;">Erreur de chargement.</span>'; }
+}
+
+async function chronoUseRoutine(joueurId, nomRoutine, cooldownKey){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(joueurId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    if(!etat.routinesUsees) etat.routinesUsees={};
+    etat.routinesUsees[nomRoutine]=cooldownKey;
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(joueurId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+  }catch(e){}
+}
+
 // ── Init ──
 function chronoInit(){
   chronoInitMoisSelects();
@@ -4037,6 +4315,11 @@ function chronoInit(){
   }
   chronoRender();
   chronoRenderPersonneChecks();
+  // MJ : panneau de déblocage routines
+  if(isGM) chronoRenderRoutinesMJ();
+  // Joueur identifié : afficher ses routines
+  if(!isGM && playerId && playerId!=='joueur')
+    chronoRenderRoutinesJoueur(playerId);
 }
 
 </script>
