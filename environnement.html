@@ -801,30 +801,53 @@ async function gmReset(){
   #chrono-date-courante { font-family:'Cinzel',serif; font-size:.78rem;
     color:#c8860a; text-align:center; margin-bottom:.6rem; letter-spacing:.06em; }
 
-  /* La frise elle-même */
+  /* Wrapper global de la frise */
   #chrono-frise-wrap {
-    position:relative; overflow-x:auto; padding-bottom:1.2rem;
-    background:linear-gradient(135deg,#fdf6e3 25%,#faf0d0 50%,#fdf6e3 75%);
-    border:1px solid #c8860a; border-radius:10px;
-    box-shadow:inset 0 2px 8px rgba(200,134,10,.12);
+    position:relative; overflow-x:auto; overflow-y:visible;
+    border:2px solid #c8860a; border-radius:10px;
+    box-shadow:0 4px 18px rgba(200,134,10,.2);
+    margin-bottom:.5rem;
   }
-  /* Motif géométrique islamique en arrière-plan */
-  #chrono-frise-wrap::before {
+  /* Bande parchemin (intérieur de la frise) */
+  #chrono-bande {
+    position:relative;
+    min-width:100%;
+    background:
+      linear-gradient(180deg,#fdf0c8 0%,#fae8a0 30%,#f8e090 60%,#fdf0c8 100%);
+    border-radius:8px 8px 0 0;
+    height:72px; overflow:visible;
+    border-bottom:2px solid #c8860a;
+    box-shadow:inset 0 2px 8px rgba(200,134,10,.15),inset 0 -2px 6px rgba(200,134,10,.1);
+  }
+  /* Motif géométrique en filigrane sur la bande */
+  #chrono-bande::before {
     content:''; position:absolute; inset:0;
     background-image:
-      repeating-linear-gradient(45deg,rgba(200,134,10,.04) 0,rgba(200,134,10,.04) 1px,transparent 0,transparent 50%),
-      repeating-linear-gradient(-45deg,rgba(200,134,10,.04) 0,rgba(200,134,10,.04) 1px,transparent 0,transparent 50%);
-    background-size:20px 20px;
-    border-radius:10px; pointer-events:none;
+      repeating-linear-gradient(45deg,rgba(200,134,10,.06) 0,rgba(200,134,10,.06) 1px,transparent 0,transparent 18px),
+      repeating-linear-gradient(-45deg,rgba(200,134,10,.06) 0,rgba(200,134,10,.06) 1px,transparent 0,transparent 18px);
+    background-size:18px 18px; border-radius:8px 8px 0 0; pointer-events:none;
   }
-  #chrono-frise { display:flex; align-items:flex-start;
-    min-height:160px; padding:1.2rem 1rem .4rem; position:relative; }
-
-  /* Ligne de temps */
-  .chrono-line { position:absolute; left:1rem; right:1rem; top:2.4rem;
-    height:3px;
-    background:linear-gradient(90deg,#c8860a,#e8b84a,#c8860a);
-    border-radius:2px; box-shadow:0 1px 4px rgba(200,134,10,.4); }
+  /* Zone sous la bande : fond parchemin clair pour événements */
+  #chrono-sous-bande {
+    position:relative; min-width:100%;
+    background:linear-gradient(135deg,#fdf6e3 25%,#faf0d0 50%,#fdf6e3 75%);
+    border-radius:0 0 8px 8px;
+    min-height:80px; overflow:visible;
+  }
+  #chrono-frise { position:relative; display:block; }
+  /* Slider de date courante */
+  #chrono-slider-wrap {
+    padding:.3rem 60px .2rem;
+    background:rgba(200,134,10,.06);
+    border-top:1px solid rgba(200,134,10,.2);
+  }
+  #chrono-slider {
+    width:100%; accent-color:#c8860a; cursor:pointer; height:4px;
+  }
+  #chrono-slider-label {
+    font-family:Cinzel,serif;font-size:.62rem;color:#8a6a20;
+    text-align:center;margin-top:2px;
+  }
 
   /* Mois */
   .chrono-mois { position:relative; display:flex; flex-direction:column;
@@ -1165,7 +1188,18 @@ async function gmReset(){
 
   <!-- La frise -->
   <div id="chrono-frise-wrap">
-    <div id="chrono-frise"></div>
+    <div id="chrono-frise">
+      <!-- Bande parchemin avec jours et prières -->
+      <div id="chrono-bande"></div>
+      <!-- Slider de navigation temporelle -->
+      <div id="chrono-slider-wrap" style="display:none;">
+        <input type="range" id="chrono-slider" min="0" step="1" value="0"
+          oninput="chronoSliderMove(this.value)" onchange="chronoSliderCommit(this.value)">
+        <div id="chrono-slider-label">—</div>
+      </div>
+      <!-- Zone des événements sous la bande -->
+      <div id="chrono-sous-bande"></div>
+    </div>
   </div>
 
   <!-- Panneau repos / santé -->
@@ -1215,9 +1249,16 @@ async function gmReset(){
         <label style="font-family:Cinzel,serif;font-size:.65rem;color:#8a6a20;display:flex;align-items:center;gap:.3rem;">
           <input type="checkbox" id="chrono-evt-ed-revele"> Révélé aux joueurs
         </label>
+        <button class="chrono-btn secondary" onclick="chronoShowCarteSelector()">📍 Importer depuis la carte</button>
         <button class="chrono-btn" onclick="chronoSaveEvt()">💾 Sauvegarder</button>
         <button class="chrono-btn danger" onclick="chronoDeleteEvt()">🗑 Supprimer</button>
       </div>
+      <select id="chrono-carte-sel" style="display:none;width:100%;margin-top:.4rem;
+        font-family:'Crimson Text',serif;font-size:.82rem;padding:4px 8px;
+        border:1px solid #c8860a;border-radius:4px;background:#fff8e8;"
+        onchange="chronoImportCarteEvt()">
+        <option value="">— Sélectionner un événement —</option>
+      </select>
     </div>
   </div>
 </div>
@@ -1314,6 +1355,12 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const params   = new URLSearchParams(location.search);
 const FICHE_ID = params.get('fiche') || 'env-test';
+const _isPlayerView = new URLSearchParams(location.search).get('player') === '1';
+if(_isPlayerView){
+  document.addEventListener('DOMContentLoaded',()=>{
+    document.querySelectorAll('.pneumato-panel,.gm-only-zone').forEach(el=>el.style.display='none');
+  });
+}
 
 document.getElementById('modal-fiche-name').textContent = FICHE_ID;
 document.getElementById('fiche-title').textContent = FICHE_ID;
@@ -2876,14 +2923,20 @@ function closeDuel(){
 
 </script>
 
-<!-- FAB Bibliothèque idéaux -->
-<button id="bib-ideaux-fab" onclick="toggleBibIdeaux()">📚 Octogones idéaux</button>
-<!-- FAB Chronologie -->
-<button id="chrono-fab" onclick="chronoToggle()"
-  style="position:fixed;bottom:3.5rem;left:1rem;background:#c8860a;color:#fff8e8;
-  border:none;border-radius:8px;padding:.5rem .9rem;font-family:Cinzel,serif;
-  font-size:.72rem;letter-spacing:.06em;cursor:pointer;z-index:300;display:none;
-  box-shadow:0 3px 12px rgba(0,0,0,0.3);">☽ Chronologie</button>
+<!-- FABs groupés en bas à droite -->
+<div id="env-fabs" style="position:fixed;bottom:1.2rem;right:1rem;display:flex;
+  flex-direction:column;gap:.4rem;align-items:flex-end;z-index:300;">
+  <button id="chrono-fab" onclick="chronoToggle()" style="display:none;
+    background:#c8860a;color:#fff8e8;border:none;border-radius:8px;
+    padding:.45rem .9rem;font-family:Cinzel,serif;font-size:.72rem;
+    letter-spacing:.06em;cursor:pointer;
+    box-shadow:0 3px 12px rgba(0,0,0,0.3);">☽ Chronologie</button>
+  <button id="bib-ideaux-fab" onclick="toggleBibIdeaux()" style="display:none;
+    background:#1a4a2a;color:#f5f0e8;border:none;border-radius:8px;
+    padding:.45rem .9rem;font-family:Cinzel,serif;font-size:.72rem;
+    letter-spacing:.06em;cursor:pointer;
+    box-shadow:0 3px 12px rgba(0,0,0,0.3);">📚 Octogones idéaux</button>
+</div>
 
 <!-- Panneau MJ observateur de lancers -->
 <div id="mj-obs-overlay"></div>
@@ -3647,149 +3700,195 @@ function chronoCloseEvtOverlay(){
 // ══════════════════════════════════════════════
 // RENDU DE LA FRISE
 // ══════════════════════════════════════════════
+// Prières avec heures indicatives et couleurs
+const PRIERES = [
+  {nom:'Fajr',   heure:5,  couleur:'rgba(255,200,100,.25)', trait:'rgba(200,134,10,.5)'},
+  {nom:'Dhuhr',  heure:12, couleur:'rgba(255,160,50,.2)',   trait:'rgba(200,100,10,.5)'},
+  {nom:'Asr',    heure:15, couleur:'rgba(220,140,40,.2)',   trait:'rgba(180,90,10,.5)'},
+  {nom:'Maghrib',heure:18, couleur:'rgba(180,80,80,.2)',    trait:'rgba(150,60,60,.5)'},
+  {nom:'Isha',   heure:20, couleur:'rgba(80,80,150,.15)',   trait:'rgba(60,60,120,.5)'},
+];
+
 function chronoRender(){
   const ch=state.chronologie;
+  const dateLbl=document.getElementById('chrono-date-courante');
   if(!ch||!ch.dateDebut||!ch.dateFin){
-    document.getElementById('chrono-date-courante').textContent='☽ Dates non configurées';
-    document.getElementById('chrono-frise').innerHTML=
-      '<div style="font-family:Cinzel,serif;font-size:.75rem;color:#8a6a20;padding:1rem;">Configurez les dates de début et de fin pour afficher la frise.</div>';
+    if(dateLbl) dateLbl.textContent='☽ Dates non configurées';
+    const bande=document.getElementById('chrono-bande');
+    if(bande) bande.innerHTML='<div style="font-family:Cinzel,serif;font-size:.75rem;color:#8a6a20;padding:1rem 60px;">Configurez les dates de début et de fin.</div>';
     return;
   }
-
-  // Date courante
   const cur=ch.dateCourante||ch.dateDebut;
   const p=getPeriode(cur.heure||0);
-  document.getElementById('chrono-date-courante').textContent=
-    `☽  ${p.ar}  ${p.nom} (${cur.heure||0}h)  ·  ${formatDate(cur)}`;
+  if(dateLbl) dateLbl.textContent=`☽ ${p.ar}  ${p.nom} (${cur.heure||0}h)  ·  ${formatDate(cur)}`;
 
   const debut=ch.dateDebut, fin=ch.dateFin;
   const totalJours=Math.max(1,diffJours(debut,fin));
+  const PX_PAR_JOUR=totalJours<=14?60:totalJours<=60?28:12;
+  const OFFSET_G=60, OFFSET_D=60;
+  const largeur=OFFSET_G+totalJours*PX_PAR_JOUR+OFFSET_D;
 
-  // Granularité adaptative
-  const PX_PAR_JOUR = totalJours<=14 ? 48 : totalJours<=60 ? 24 : 10;
-  const largeurTotale=totalJours*PX_PAR_JOUR+120;
+  // ── Bande parchemin ──
+  const bande=document.getElementById('chrono-bande');
+  bande.innerHTML=''; bande.style.width=largeur+'px';
 
-  const frise=document.getElementById('chrono-frise');
-  frise.innerHTML='';
-  frise.style.width=largeurTotale+'px';
-  frise.style.minWidth='100%';
-
-  // Ligne de temps
-  const line=document.createElement('div'); line.className='chrono-line';
-  line.style.cssText=`position:absolute;left:60px;right:60px;top:2.4rem;height:3px;
-    background:linear-gradient(90deg,#c8860a,#e8b84a,#c8860a);border-radius:2px;
-    box-shadow:0 1px 4px rgba(200,134,10,.4);`;
-  frise.appendChild(line);
-
-  // Itérer jour par jour
-  let moisCourant=null;
   for(let j=0;j<=totalJours;j++){
     const dateJ=avancerDate(debut,j);
-    const x=60+j*PX_PAR_JOUR;
-    const estDebMois=(dateJ.jour===1);
-    const estSemaine=(j%7===0);
+    const x=OFFSET_G+j*PX_PAR_JOUR;
+    const estDebMois=dateJ.jour===1;
+    const estSemaine=j%7===0;
 
-    // Label mois
-    if(estDebMois&&dateJ.mois!==moisCourant){
-      moisCourant=dateJ.mois;
-      const mlbl=document.createElement('div');
-      mlbl.style.cssText=`position:absolute;left:${x}px;top:.2rem;
-        font-family:Cinzel,serif;font-size:.62rem;color:#c8860a;
-        letter-spacing:.04em;white-space:nowrap;
+    // Label mois (au-dessus)
+    if(estDebMois){
+      const ml=document.createElement('div');
+      ml.style.cssText=`position:absolute;left:${x}px;top:4px;
         transform:translateX(-50%);
-        border-bottom:1px solid rgba(200,134,10,.3);padding-bottom:2px;`;
-      mlbl.textContent=MOIS_SHORT[dateJ.mois-1]+' '+dateJ.annee+'H';
-      frise.appendChild(mlbl);
+        font-family:Cinzel,serif;font-size:.58rem;color:#8a6a20;
+        white-space:nowrap;letter-spacing:.03em;`;
+      ml.textContent=MOIS_SHORT[dateJ.mois-1]+' '+dateJ.annee+'H';
+      bande.appendChild(ml);
     }
 
-    // Tick jour
-    const tick=document.createElement('div');
-    tick.style.cssText=`position:absolute;left:${x}px;top:2.2rem;
-      transform:translateX(-50%);
-      width:${estDebMois?'2':'1'}px;
-      height:${estDebMois?'14':estSemaine?'10':'6'}px;
-      background:rgba(200,134,10,${estDebMois?'1':estSemaine?'.7':'.4'});`;
-    frise.appendChild(tick);
-
-    // Numéro jour (tous les N jours selon granularité)
-    const showNum = PX_PAR_JOUR>=24?true:(j%7===0);
+    // Numéro de jour
+    const showNum=PX_PAR_JOUR>=28||(j%7===0&&PX_PAR_JOUR>=12);
     if(showNum){
-      const num=document.createElement('div');
-      num.style.cssText=`position:absolute;left:${x}px;top:3.0rem;
+      const nl=document.createElement('div');
+      nl.style.cssText=`position:absolute;left:${x}px;top:18px;
         transform:translateX(-50%);
-        font-family:Cinzel,serif;font-size:.48rem;color:#a07830;line-height:1;`;
-      num.textContent=dateJ.jour;
-      frise.appendChild(num);
+        font-family:Cinzel,serif;font-size:.54rem;color:#a07030;`;
+      nl.textContent=dateJ.jour;
+      bande.appendChild(nl);
+    }
+
+    // Trait vertical principal
+    const tk=document.createElement('div');
+    tk.style.cssText=`position:absolute;left:${x}px;bottom:0;
+      width:${estDebMois?2:estSemaine?1.5:1}px;
+      height:${estDebMois?36:estSemaine?28:16}px;
+      background:rgba(200,134,10,${estDebMois?'.9':estSemaine?'.6':'.35'});`;
+    bande.appendChild(tk);
+
+    // Prières (traits colorés à l'intérieur de la bande, si granularité jours)
+    if(PX_PAR_JOUR>=28){
+      PRIERES.forEach(pr=>{
+        const xP=x+Math.round(pr.heure/24*PX_PAR_JOUR);
+        // Zone colorée entre prières (sur le jour j uniquement, pas débordement)
+        const trait=document.createElement('div');
+        trait.style.cssText=`position:absolute;left:${xP}px;bottom:0;
+          width:1px;height:22px;
+          background:${pr.trait};`;
+        trait.title=pr.nom+' (~'+pr.heure+'h)';
+        bande.appendChild(trait);
+        // Label prière (si assez de place)
+        if(PX_PAR_JOUR>=48){
+          const pl=document.createElement('div');
+          pl.style.cssText=`position:absolute;left:${xP+2}px;bottom:4px;
+            font-family:Cinzel,serif;font-size:.44rem;color:#a07030;
+            white-space:nowrap;letter-spacing:.02em;`;
+          pl.textContent=pr.nom;
+          bande.appendChild(pl);
+        }
+      });
     }
   }
 
-  // Marqueur date courante
-  const joursCur=diffJours(debut,cur);
-  if(joursCur>=0&&joursCur<=totalJours){
-    const cx=60+joursCur*PX_PAR_JOUR;
-    const cursor=document.createElement('div');
-    cursor.style.cssText=`position:absolute;left:${cx}px;top:0.8rem;
-      transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:10;`;
-    cursor.innerHTML=`<div style="font-size:1.3rem;animation:moonpulse 2s ease-in-out infinite;
-      filter:drop-shadow(0 0 5px rgba(200,134,10,.9));">☽</div>
-      <div style="width:2px;height:20px;background:linear-gradient(#c8860a,transparent);"></div>`;
-    frise.appendChild(cursor);
+  // Marqueur date courante (☽) sur la bande
+  const joursCur=Math.max(0,Math.min(totalJours,diffJours(debut,cur)));
+  const fracH=(cur.heure||0)/24;
+  const xCur=OFFSET_G+joursCur*PX_PAR_JOUR+Math.round(fracH*PX_PAR_JOUR);
+  const moon=document.createElement('div');
+  moon.style.cssText=`position:absolute;left:${xCur}px;top:0;
+    transform:translateX(-50%);z-index:10;
+    display:flex;flex-direction:column;align-items:center;pointer-events:none;`;
+  moon.innerHTML=`<div style="font-size:1.5rem;line-height:1;
+    animation:moonpulse 2s ease-in-out infinite;
+    filter:drop-shadow(0 0 5px rgba(200,134,10,.9));">☽</div>
+    <div style="width:2px;height:20px;background:linear-gradient(#c8860a,transparent);"></div>`;
+  bande.appendChild(moon);
+
+  // ── Slider ──
+  const sliderWrap=document.getElementById('chrono-slider-wrap');
+  const slider=document.getElementById('chrono-slider');
+  const sliderLbl=document.getElementById('chrono-slider-label');
+  if(sliderWrap&&slider){
+    sliderWrap.style.display='block';
+    sliderWrap.style.width=largeur+'px';
+    slider.min=0; slider.max=totalJours*24; slider.style.width=(largeur-120)+'px';
+    slider.value=joursCur*24+(cur.heure||0);
   }
 
-  // Événements
+  // ── Zone événements sous la bande ──
+  const sousBande=document.getElementById('chrono-sous-bande');
+  sousBande.innerHTML=''; sousBande.style.width=largeur+'px';
+
+  // Ligne de connexion bande→événements
+  const connexLine=document.createElement('div');
+  connexLine.style.cssText=`position:absolute;left:${OFFSET_G}px;top:0;
+    width:${totalJours*PX_PAR_JOUR}px;height:2px;
+    background:linear-gradient(90deg,transparent,rgba(200,134,10,.3),transparent);`;
+  sousBande.appendChild(connexLine);
+
   const evts=(ch.evenements||[]).filter(e=>{
     if(!e.date?.annee) return false;
     if(!isGM&&!e.revele) return false;
-    // Ne pas afficher si la date est dans le futur (au-delà de la date courante) SAUF si MJ
     if(!isGM){
-      const jourEvt=diffJours(debut,e.date);
-      const jourCur=diffJours(debut,cur);
-      if(jourEvt>jourCur) return false;
+      if(diffJours(debut,e.date)>diffJours(debut,cur)) return false;
     }
     return true;
   });
 
-  // Gérer les collisions verticales (décaler les stems)
+  // Calculer positions et niveaux (éviter collisions)
   const colMap={};
   evts.forEach(e=>{
     const je=Math.max(0,Math.min(totalJours,diffJours(debut,e.date)));
-    colMap[je]=(colMap[je]||0);
+    const xB=Math.round(je*PX_PAR_JOUR/8)*8; // quantifier pour regrouper
+    colMap[xB]=(colMap[xB]||0);
   });
 
   evts.forEach(e=>{
     const je=diffJours(debut,e.date);
     if(je<-1||je>totalJours+1) return;
-    const ex=60+Math.max(0,Math.min(totalJours,je))*PX_PAR_JOUR;
-    const nivel=colMap[Math.max(0,Math.min(totalJours,je))];
-    colMap[Math.max(0,Math.min(totalJours,je))]++;
-    const stemH=22+nivel*18;
+    const fracHE=(e.date?.heure!=null?e.date.heure:0)/24;
+    const ex=OFFSET_G+Math.max(0,Math.min(totalJours,je))*PX_PAR_JOUR+Math.round(fracHE*PX_PAR_JOUR);
+    const xB=Math.round(Math.max(0,je)*PX_PAR_JOUR/8)*8;
+    const nivel=colMap[xB]; colMap[xB]++;
+    const stemH=16+nivel*36;
 
     const evtEl=document.createElement('div');
-    evtEl.style.cssText=`position:absolute;left:${ex}px;top:2.8rem;
-      transform:translateX(-50%);display:flex;flex-direction:column;
-      align-items:center;z-index:8;cursor:pointer;`;
-    const dot=document.createElement('div');
-    dot.style.cssText=`width:10px;height:10px;border-radius:50%;flex-shrink:0;
-      border:2px solid #c8860a;
-      background:${e.revele?'#c8860a':'rgba(200,134,10,.2)'};
-      box-shadow:${e.revele?'0 0 6px rgba(200,134,10,.7)':'none'};`;
+    evtEl.style.cssText=`position:absolute;left:${ex}px;top:4px;
+      transform:translateX(-50%);z-index:8;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;`;
+
     const stem=document.createElement('div');
-    stem.style.cssText=`width:1px;height:${stemH}px;background:rgba(200,134,10,.5);`;
+    stem.style.cssText=`width:1px;height:${stemH}px;
+      background:linear-gradient(${e.revele?'#c8860a':'rgba(200,134,10,.3)'},transparent);`;
+
+    const dot=document.createElement('div');
+    dot.style.cssText=`width:11px;height:11px;border-radius:50%;flex-shrink:0;
+      border:2px solid ${e.revele?'#c8860a':'rgba(200,134,10,.4)'};
+      background:${e.revele?'#c8860a':'rgba(255,248,232,.8)'};
+      box-shadow:${e.revele?'0 0 7px rgba(200,134,10,.7)':'none'};`;
+
     const lbl=document.createElement('div');
-    lbl.style.cssText=`font-family:Cinzel,serif;font-size:.5rem;color:#8a6a20;
+    lbl.style.cssText=`font-family:Cinzel,serif;font-size:.5rem;
+      color:${e.revele?'#8a6a20':'rgba(138,106,32,.5)'};
       white-space:nowrap;max-width:72px;overflow:hidden;text-overflow:ellipsis;
-      text-align:center;margin-top:2px;
-      opacity:${e.revele?'1':'.5'};`;
+      text-align:center;margin-top:2px;`;
     lbl.textContent=e.titre||(isGM?'(sans titre)':'');
-    evtEl.appendChild(dot); evtEl.appendChild(stem); evtEl.appendChild(lbl);
+
+    evtEl.appendChild(stem); evtEl.appendChild(dot); evtEl.appendChild(lbl);
     evtEl.addEventListener('click',()=>chronoOpenEvt(e));
-    frise.appendChild(evtEl);
+
+    // Tooltip date
+    const dateTip=formatDate(e.date,true);
+    evtEl.title=e.titre+(dateTip?' — '+dateTip:'');
+    sousBande.appendChild(evtEl);
   });
 
-  // Hauteur min de la frise selon events
   const maxNivel=Math.max(0,...Object.values(colMap));
-  frise.style.minHeight=(180+maxNivel*18)+'px';
+  sousBande.style.minHeight=(60+maxNivel*36)+'px';
 }
+
 
 // ══════════════════════════════════════════════
 // REPOS & RÉCUPÉRATION
@@ -3864,6 +3963,67 @@ async function chronoRepos(){
   }
   document.getElementById('chrono-sante-log').textContent=[...log,...errors].join(' · ');
   setTimeout(()=>{ document.getElementById('chrono-sante-log').textContent=''; },4000);
+}
+
+
+// ── Slider de navigation temporelle ──
+function chronoSliderMove(val){
+  const ch=state.chronologie; if(!ch||!ch.dateDebut) return;
+  const totalH=parseInt(val);
+  const j=Math.floor(totalH/24), h=totalH%24;
+  const d=avancerDate(ch.dateDebut,j);
+  d.heure=h;
+  const p=getPeriode(h);
+  const lbl=document.getElementById('chrono-slider-label');
+  if(lbl) lbl.textContent=`${p.nom} (${h}h) · ${formatDate(d)}`;
+}
+function chronoSliderCommit(val){
+  const ch=state.chronologie; if(!ch||!ch.dateDebut) return;
+  const totalH=parseInt(val);
+  const j=Math.floor(totalH/24), h=totalH%24;
+  const d=avancerDate(ch.dateDebut,j); d.heure=h;
+  ch.dateCourante=d;
+  document.getElementById('ch-cur-an').value=d.annee;
+  document.getElementById('ch-cur-mois').value=d.mois;
+  document.getElementById('ch-cur-jour').value=d.jour;
+  document.getElementById('ch-cur-heure').value=h;
+  saveState(); chronoRender();
+}
+
+// ── Import d'un événement depuis carte.html ──
+async function chronoLoadCarteEvts(){
+  const envId=FICHE_ID;
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=carte`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const slots=d[0]?.carte?.slots||{};
+    return Object.entries(slots).filter(([,s])=>s&&(s.titre||s.texte));
+  }catch(e){ return []; }
+}
+
+async function chronoShowCarteSelector(){
+  const sel=document.getElementById('chrono-carte-sel');
+  if(!sel) return;
+  sel.innerHTML='<option value="">Chargement…</option>';
+  const evts=await chronoLoadCarteEvts();
+  sel.innerHTML='<option value="">— Sélectionner un événement de la carte —</option>';
+  evts.forEach(([key,s])=>{
+    const o=document.createElement('option'); o.value=key;
+    o.textContent=(s.titre||'(sans titre)')+(s.texte?' — '+s.texte.slice(0,40)+'…':'');
+    sel.appendChild(o);
+  });
+  sel.style.display='block';
+  window._carteEvtCache=Object.fromEntries(evts);
+}
+
+function chronoImportCarteEvt(){
+  const sel=document.getElementById('chrono-carte-sel');
+  if(!sel||!sel.value) return;
+  const slot=window._carteEvtCache?.[sel.value]; if(!slot) return;
+  document.getElementById('chrono-evt-ed-titre').value=slot.titre||'';
+  document.getElementById('chrono-evt-ed-texte').value=slot.texte||'';
+  sel.style.display='none';
 }
 
 // ── Init ──
