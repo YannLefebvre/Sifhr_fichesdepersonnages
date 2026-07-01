@@ -959,8 +959,8 @@ async function gmReset(){
   .routine-unlock-cb { accent-color:#1a4a6e; }
 
   /* ── Panneau navigation fiches MJ ── */
-  #mj-fiches-nav { position:fixed; top:50%; right:0;
-    transform:translateY(-50%); z-index:280; }
+  #mj-fiches-nav { position:fixed; top:calc(50vh - 9rem); right:0;
+    z-index:280; }
   #mj-fiches-nav-toggle { writing-mode:vertical-rl;
     font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.08em;
     padding:.6rem .35rem; background:var(--accent); color:#f5f0e8;
@@ -1270,12 +1270,16 @@ async function gmReset(){
   <!-- Date courante affichée -->
   <div id="chrono-date-courante">☽ Chargement…</div>
 
-  <!-- Barre de zoom -->
-  <div id="chrono-zoom-bar">
-    <span style="font-family:Cinzel,serif;font-size:.65rem;color:#8a6a20;">Zoom :</span>
-    <button class="chrono-zoom-btn active" onclick="chronoSetZoom('heure')" id="zoom-heure">Heure</button>
-    <button class="chrono-zoom-btn" onclick="chronoSetZoom('jour')" id="zoom-jour">Jour</button>
-    <button class="chrono-zoom-btn" onclick="chronoSetZoom('semaine')" id="zoom-semaine">Semaine</button>
+  <!-- Indicateur de zoom -->
+  <div id="chrono-zoom-bar" style="display:flex;align-items:center;justify-content:space-between;padding:.25rem 60px;">
+    <span style="font-family:Cinzel,serif;font-size:.6rem;color:#8a6a20;">
+      ☽ Molette ou pincement pour zoomer
+    </span>
+    <span id="chrono-zoom-label" style="font-family:Cinzel,serif;font-size:.6rem;color:#c8860a;"></span>
+    <button onclick="chronoResetZoom()"
+      style="font-family:Cinzel,serif;font-size:.6rem;padding:1px 8px;border:1px solid #c8860a;border-radius:4px;background:none;color:#c8860a;cursor:pointer;">
+      Réinitialiser
+    </button>
   </div>
   <!-- La frise -->
   <div id="chrono-frise-wrap">
@@ -3048,8 +3052,7 @@ function closeDuel(){
 </script>
 
 <!-- Onglet vertical Chronologie (gauche, au-dessus de Fiches) -->
-<div id="chrono-tab-wrap" style="position:fixed;right:0;top:calc(50% + 5rem);
-  transform:translateY(-50%);z-index:280;display:none;">
+<div id="chrono-tab-wrap" style="position:fixed;right:0;top:calc(50vh - 3rem);z-index:280;display:none;">
   <button id="chrono-fab" onclick="chronoToggle()"
     style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
     letter-spacing:.08em;padding:.6rem .35rem;background:#c8860a;color:#fff8e8;
@@ -3058,8 +3061,7 @@ function closeDuel(){
 </div>
 
 <!-- Onglet vertical Octogones idéaux -->
-<div id="bib-tab-wrap" style="position:fixed;right:0;top:calc(50% + 9rem);
-  transform:translateY(-50%);z-index:280;display:none;">
+<div id="bib-tab-wrap" style="position:fixed;right:0;top:calc(50vh + 3rem);z-index:280;display:none;">
   <button id="bib-ideaux-fab" onclick="toggleBibIdeaux()"
     style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
     letter-spacing:.08em;padding:.6rem .35rem;background:#1a4a2a;color:#f5f0e8;
@@ -4010,6 +4012,14 @@ function chronoRender(){
 
   const debut=ch.dateDebut, fin=ch.dateFin;
   const totalJours=Math.max(1,diffJours(debut,fin));
+  // Calculer la base adaptative (la première fois ou après reset)
+  const _baseCalc = totalJours<=7?80:totalJours<=14?48:totalJours<=60?24:10;
+  if(_chronoPxBase !== _baseCalc && _chronoPxParJour === _chronoPxBase){
+    // Adapter le px au changement d'amplitude si pas de zoom manuel
+    _chronoPxParJour = _baseCalc;
+  }
+  _chronoPxBase = _baseCalc;
+  _updateZoomLabel();
   const PX_PAR_JOUR=chronoGetPxParJour();
   const OFFSET_G=60, OFFSET_D=60;
   const largeur=OFFSET_G+totalJours*PX_PAR_JOUR+OFFSET_D;
@@ -4173,6 +4183,7 @@ function chronoRender(){
 
   const maxNivel=Math.max(0,...Object.values(colMap));
   sousBande.style.minHeight=(60+maxNivel*36)+'px';
+  chronoAttachZoomListeners();
 }
 
 
@@ -4314,25 +4325,104 @@ function chronoImportCarteEvt(){
 
 
 // ══════════════════════════════════════════════
-//   ZOOM FRISE
+//   ZOOM FRISE — molette + pincement tactile
 // ══════════════════════════════════════════════
-let _chronoZoom = 'jour'; // 'heure' | 'jour' | 'semaine'
 
-function chronoSetZoom(z){
-  _chronoZoom=z;
-  document.querySelectorAll('.chrono-zoom-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('zoom-'+z)?.classList.add('active');
+// Valeur de base calculée selon l'amplitude du scénario
+// _chronoPxBase est recalculé à chaque chronoRender initial
+let _chronoPxBase = 28;
+let _chronoPxParJour = 28;
+const CHRONO_PX_MIN = 4;
+const CHRONO_PX_MAX = 200;
+
+function chronoGetPxParJour(){ return _chronoPxParJour; }
+
+function chronoResetZoom(){
+  _chronoPxParJour = _chronoPxBase;
+  _updateZoomLabel();
   chronoRender();
 }
 
-function chronoGetPxParJour(){
-  if(_chronoZoom==='heure')  return 120;
-  if(_chronoZoom==='semaine') return 8;
-  // 'jour' : adaptatif selon amplitude
-  const ch=state.chronologie;
-  if(!ch||!ch.dateDebut||!ch.dateFin) return 28;
-  const total=Math.max(1,diffJours(ch.dateDebut,ch.dateFin));
-  return total<=14?60:total<=60?28:12;
+function _updateZoomLabel(){
+  const lbl=document.getElementById('chrono-zoom-label');
+  if(!lbl) return;
+  if(_chronoPxParJour >= 100) lbl.textContent='Zoom : Heure';
+  else if(_chronoPxParJour >= 24) lbl.textContent='Zoom : Jour';
+  else if(_chronoPxParJour >= 10) lbl.textContent='Zoom : Semaine';
+  else lbl.textContent='Zoom : Mois';
+}
+
+// ── Molette souris ──
+function _chronoWheelZoom(e){
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.15 : 0.87;
+  const wrap=document.getElementById('chrono-frise-wrap');
+  // Conserver la position de la molette dans la frise
+  const scrollBefore = wrap.scrollLeft;
+  const xInFrise = e.clientX - wrap.getBoundingClientRect().left + scrollBefore;
+  const jBefore = Math.max(0, (xInFrise - 60) / _chronoPxParJour);
+  _chronoPxParJour = Math.max(CHRONO_PX_MIN, Math.min(CHRONO_PX_MAX, _chronoPxParJour * factor));
+  _updateZoomLabel();
+  chronoRender();
+  // Recentrer sur le même point
+  requestAnimationFrame(()=>{
+    wrap.scrollLeft = 60 + jBefore * _chronoPxParJour - (e.clientX - wrap.getBoundingClientRect().left);
+  });
+}
+
+// ── Pincement tactile (touch) ──
+let _touchDist0 = null;
+let _touchPx0   = null;
+let _touchScrollX0 = null;
+let _touchMidX0 = null;
+
+function _chronoTouchStart(e){
+  if(e.touches.length === 2){
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    _touchDist0 = Math.sqrt(dx*dx + dy*dy);
+    _touchPx0   = _chronoPxParJour;
+    const wrap=document.getElementById('chrono-frise-wrap');
+    _touchScrollX0 = wrap.scrollLeft;
+    _touchMidX0 = (e.touches[0].clientX + e.touches[1].clientX) / 2
+                  - wrap.getBoundingClientRect().left + wrap.scrollLeft;
+  }
+}
+
+function _chronoTouchMove(e){
+  if(e.touches.length !== 2 || _touchDist0 === null) return;
+  e.preventDefault();
+  const dx = e.touches[0].clientX - e.touches[1].clientX;
+  const dy = e.touches[0].clientY - e.touches[1].clientY;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const factor = dist / _touchDist0;
+  _chronoPxParJour = Math.max(CHRONO_PX_MIN, Math.min(CHRONO_PX_MAX, _touchPx0 * factor));
+  _updateZoomLabel();
+  chronoRender();
+  // Recentrer sur le point de pincement
+  const wrap=document.getElementById('chrono-frise-wrap');
+  const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2
+               - wrap.getBoundingClientRect().left + wrap.scrollLeft;
+  requestAnimationFrame(()=>{
+    wrap.scrollLeft = _touchMidX0 * (_chronoPxParJour / _touchPx0)
+                    - (midX - wrap.scrollLeft);
+  });
+}
+
+function _chronoTouchEnd(){
+  _touchDist0=null; _touchPx0=null;
+  _touchScrollX0=null; _touchMidX0=null;
+}
+
+// ── Attacher les listeners sur le wrapper de la frise ──
+function chronoAttachZoomListeners(){
+  const wrap=document.getElementById('chrono-frise-wrap');
+  if(!wrap||wrap._zoomBound) return;
+  wrap._zoomBound=true;
+  wrap.addEventListener('wheel', _chronoWheelZoom, {passive:false});
+  wrap.addEventListener('touchstart', _chronoTouchStart, {passive:true});
+  wrap.addEventListener('touchmove', _chronoTouchMove, {passive:false});
+  wrap.addEventListener('touchend', _chronoTouchEnd, {passive:true});
 }
 
 // ══════════════════════════════════════════════
