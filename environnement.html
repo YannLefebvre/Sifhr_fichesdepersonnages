@@ -1220,7 +1220,13 @@ async function gmReset(){
   <button class="gm-btn safe" onclick="gmSyncEnvFiche()" title="Écrit l'id de cette fiche env dans la fiche de chaque joueur lié">🔗 Sync fiche env → joueurs</button>
   <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser à l'état d'origine</button>
   <button class="gm-btn danger" onclick="gmResetFull()">🗑 Réinitialisation complète</button>
-
+  <span class="gm-bar-label" style="margin-left:.6rem;">Sauvegardes</span>
+  <button class="gm-btn safe" onclick="exportEnvComplet()">⬇ Exporter environnement</button>
+  <button class="gm-btn safe" onclick="exportFichesSeparees()">⬇ Exporter fiches</button>
+  <label class="gm-btn" style="cursor:pointer;background:var(--input-bg);">
+    ⬆ Importer
+    <input type="file" accept=".json" style="display:none" onchange="importerSauvegarde(this)">
+  </label>
 </div>
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
 
@@ -3522,6 +3528,204 @@ function closeEnvFiche(){
 
 // ── Stocker le mot de passe MJ au login pour auto-remplir les fiches ──
 let _mjPw = '';
+
+
+// ══════════════════════════════════════════════
+//   EXPORT / IMPORT DE SAUVEGARDES
+// ══════════════════════════════════════════════
+
+// ── Utilitaire : télécharger un fichier JSON ──
+function _downloadJSON(data, filename){
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+
+// ── Lire toutes les colonnes d'une fiche ──
+async function _fetchFicheComplete(ficheId){
+  const r=await fetch(
+    `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}&select=id,nom,etat,etat_origine,etat_env,carte`,
+    {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+  );
+  const d=await r.json();
+  return d[0]||null;
+}
+
+// ────────────────────────────────────────────
+// EXPORT 1 — Environnement complet
+// (env + toutes les fiches joueurs liées)
+// ────────────────────────────────────────────
+async function exportEnvComplet(){
+  const msg=document.getElementById('save-msg');
+  msg.textContent='Export en cours…'; msg.className='save-info';
+  try{
+    // Fiche env
+    const envData=await _fetchFicheComplete(FICHE_ID);
+    if(!envData){ msg.textContent='Erreur : fiche env introuvable.'; return; }
+
+    // Fiches joueurs liées
+    const fp=state.fichePersonnages||[];
+    const joueurIds=fp.map(p=>typeof p==='string'?p:p.id).filter(Boolean);
+    const joueurFiches=[];
+    for(const jid of joueurIds){
+      const jData=await _fetchFicheComplete(jid);
+      if(jData) joueurFiches.push(jData);
+    }
+
+    const sauvegarde={
+      type:'environnement_complet',
+      version:1,
+      date:new Date().toISOString(),
+      env_id:FICHE_ID,
+      environnement:envData,
+      fiches_joueurs:joueurFiches,
+    };
+
+    const dateStr=new Date().toISOString().slice(0,10);
+    _downloadJSON(sauvegarde, `sifhr_env_${FICHE_ID}_${dateStr}.json`);
+    msg.textContent=`✓ Exporté : env + ${joueurFiches.length} fiche(s) joueur`;
+    msg.className='save-info saved';
+  }catch(e){
+    msg.textContent='Erreur export : '+e.message;
+    console.error(e);
+  }
+  setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },4000);
+}
+
+// ────────────────────────────────────────────
+// EXPORT 2 — Fiches joueurs séparées
+// (un fichier JSON par fiche)
+// ────────────────────────────────────────────
+async function exportFichesSeparees(){
+  const msg=document.getElementById('save-msg');
+  msg.textContent='Export fiches en cours…'; msg.className='save-info';
+  try{
+    const fp=state.fichePersonnages||[];
+    const joueurIds=fp.map(p=>typeof p==='string'?p:p.id).filter(Boolean);
+    if(!joueurIds.length){ msg.textContent='Aucune fiche joueur liée.'; return; }
+
+    const dateStr=new Date().toISOString().slice(0,10);
+    let count=0;
+    for(const jid of joueurIds){
+      const jData=await _fetchFicheComplete(jid);
+      if(!jData) continue;
+      const sauvegarde={
+        type:'fiche_joueur',
+        version:1,
+        date:new Date().toISOString(),
+        fiche:jData,
+      };
+      _downloadJSON(sauvegarde, `sifhr_fiche_${jid}_${dateStr}.json`);
+      count++;
+      await new Promise(r=>setTimeout(r,300)); // éviter trop rapide
+    }
+    msg.textContent=`✓ ${count} fiche(s) exportée(s)`;
+    msg.className='save-info saved';
+  }catch(e){
+    msg.textContent='Erreur export fiches : '+e.message;
+    console.error(e);
+  }
+  setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },4000);
+}
+
+// ────────────────────────────────────────────
+// IMPORT — Réinjecter une sauvegarde
+// ────────────────────────────────────────────
+async function importerSauvegarde(input){
+  const file=input.files[0]; if(!file) return;
+  const msg=document.getElementById('save-msg');
+  try{
+    const text=await file.text();
+    const data=JSON.parse(text);
+    if(!data.type||!data.version){
+      alert('Fichier non reconnu : format invalide.'); return;
+    }
+    if(data.type==='environnement_complet'){
+      await _importEnvComplet(data, msg);
+    } else if(data.type==='fiche_joueur'){
+      await _importFicheJoueur(data.fiche, msg);
+    } else {
+      alert('Type de sauvegarde inconnu : '+data.type);
+    }
+  }catch(e){
+    msg.textContent='Erreur import : '+e.message;
+    console.error(e);
+  }
+  // Réinitialiser l'input pour pouvoir reimporter le même fichier
+  input.value='';
+}
+
+async function _importEnvComplet(data, msg){
+  const nb=(data.fiches_joueurs||[]).length;
+  const envId=data.env_id||data.environnement?.id||'?';
+  if(!confirm(
+    `Importer l'environnement "${envId}" (${new Date(data.date).toLocaleString('fr-FR')}) ?\n\n`+
+    `• 1 fiche environnement\n`+
+    `• ${nb} fiche(s) joueur\n\n`+
+    `⚠ Cela ÉCRASERA les données actuelles de ces fiches dans Supabase.\n`+
+    `Cette action est irréversible.`
+  )) return;
+
+  msg.textContent='Import en cours…'; msg.className='save-info';
+  let ok=0, err=0;
+
+  // Importer la fiche env
+  if(data.environnement){
+    const r=await _upsertFiche(data.environnement);
+    r ? ok++ : err++;
+  }
+  // Importer les fiches joueurs
+  for(const fiche of (data.fiches_joueurs||[])){
+    const r=await _upsertFiche(fiche);
+    r ? ok++ : err++;
+  }
+
+  msg.textContent=`✓ Import terminé : ${ok} fiche(s)${err?' · '+err+' erreur(s)':''}`;
+  msg.className='save-info saved';
+  // Recharger l'état de l'env
+  setTimeout(()=>location.reload(), 2000);
+}
+
+async function _importFicheJoueur(fiche, msg){
+  if(!fiche?.id){ alert('Fiche invalide (id manquant).'); return; }
+  if(!confirm(
+    `Importer la fiche "${fiche.id}" ?\n\n`+
+    `⚠ Cela ÉCRASERA toutes les données actuelles de cette fiche.\n`+
+    `Cette action est irréversible.`
+  )) return;
+
+  msg.textContent='Import de la fiche…'; msg.className='save-info';
+  const ok=await _upsertFiche(fiche);
+  msg.textContent=ok?`✓ Fiche "${fiche.id}" importée`:`Erreur lors de l'import.`;
+  msg.className=ok?'save-info saved':'save-info';
+  setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },3000);
+}
+
+// ── Écrire une fiche dans Supabase (upsert) ──
+async function _upsertFiche(fiche){
+  try{
+    // Construire le payload avec toutes les colonnes présentes
+    const payload={id:fiche.id};
+    if(fiche.nom!==undefined)         payload.nom=fiche.nom;
+    if(fiche.etat!==undefined)        payload.etat=fiche.etat;
+    if(fiche.etat_origine!==undefined) payload.etat_origine=fiche.etat_origine;
+    if(fiche.etat_env!==undefined)    payload.etat_env=fiche.etat_env;
+    if(fiche.carte!==undefined)       payload.carte=fiche.carte;
+
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json',
+        'Prefer':'resolution=merge-duplicates,return=minimal'
+      },
+      body:JSON.stringify(payload)
+    });
+    return r.ok;
+  }catch(e){ console.error('_upsertFiche',fiche?.id,e); return false; }
+}
 
 // ── Synchroniser la fiche env sur toutes les fiches joueurs liées ──
 async function gmSyncEnvFiche(){

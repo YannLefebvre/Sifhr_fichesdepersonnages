@@ -1332,6 +1332,103 @@ const CartePanel = {
 </script>
 <script>
 /* ── Boutons MJ ── */
+
+// ══════════════════════════════════════════════
+//   EXPORT / IMPORT FICHE JOUEUR (octogone.html)
+// ══════════════════════════════════════════════
+
+function _octDownloadJSON(data, filename){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+async function exportFicheOct(){
+  const msg=document.getElementById('save-msg');
+  msg.textContent='Export en cours…'; msg.className='save-info';
+  try{
+    const r=await fetch(
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=id,nom,etat,etat_origine,etat_env,carte`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    const d=await r.json();
+    const fiche=d[0];
+    if(!fiche){ msg.textContent='Erreur : fiche introuvable.'; return; }
+    const sauvegarde={
+      type:'fiche_joueur', version:1,
+      date:new Date().toISOString(),
+      fiche
+    };
+    const dateStr=new Date().toISOString().slice(0,10);
+    _octDownloadJSON(sauvegarde, `sifhr_fiche_${FICHE_ID}_${dateStr}.json`);
+    msg.textContent=`✓ Fiche "${FICHE_ID}" exportée`;
+    msg.className='save-info saved';
+  }catch(e){
+    msg.textContent='Erreur export : '+e.message;
+  }
+  setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },3000);
+}
+
+async function importerFicheOct(input){
+  const file=input.files[0]; if(!file) return;
+  const msg=document.getElementById('save-msg');
+  try{
+    const text=await file.text();
+    const data=JSON.parse(text);
+    const fiche=data.type==='fiche_joueur'?data.fiche
+               :data.type==='environnement_complet'?null
+               :null;
+    if(!fiche){
+      alert('Ce fichier ne contient pas de fiche joueur individuelle.\n'
+           +'Pour importer un environnement complet, utilisez environnement.html.');
+      input.value=''; return;
+    }
+    if(fiche.id!==FICHE_ID){
+      if(!confirm(
+        `Ce fichier correspond à la fiche "${fiche.id}", `
+       +`mais vous consultez "${FICHE_ID}".\n\n`
+       +`Importer quand même et écraser les données de "${fiche.id}" ?`
+      )){ input.value=''; return; }
+    } else {
+      if(!confirm(
+        `Importer la sauvegarde de "${fiche.id}" (${new Date(data.date).toLocaleString('fr-FR')}) ?\n\n`
+       +`⚠ Cela ÉCRASERA toutes les données actuelles de cette fiche.\n`
+       +`Cette action est irréversible.`
+      )){ input.value=''; return; }
+    }
+
+    msg.textContent='Import en cours…'; msg.className='save-info';
+    const payload={id:fiche.id};
+    if(fiche.nom!==undefined)          payload.nom=fiche.nom;
+    if(fiche.etat!==undefined)         payload.etat=fiche.etat;
+    if(fiche.etat_origine!==undefined) payload.etat_origine=fiche.etat_origine;
+    if(fiche.etat_env!==undefined)     payload.etat_env=fiche.etat_env;
+    if(fiche.carte!==undefined)        payload.carte=fiche.carte;
+
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json',
+        'Prefer':'resolution=merge-duplicates,return=minimal'
+      },
+      body:JSON.stringify(payload)
+    });
+    if(r.ok){
+      msg.textContent=`✓ Fiche "${fiche.id}" importée — rechargement…`;
+      msg.className='save-info saved';
+      setTimeout(()=>location.reload(), 1500);
+    } else {
+      msg.textContent='Erreur lors de l\'import.';
+    }
+  }catch(e){
+    msg.textContent='Erreur import : '+e.message;
+    console.error(e);
+  }
+  input.value='';
+}
+
 async function gmSaveOrigin(){
   if(!confirm("Sauvegarder l'état actuel comme état d'origine ? Cela écrasera l'état d'origine précédent.")) return;
   const msg=document.getElementById('save-msg');
@@ -2243,6 +2340,12 @@ async function xferClearRequest(){
   <span class="gm-bar-label">MJ</span>
   <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
   <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser à l'état d'origine</button>
+  <span class="gm-bar-label" style="margin-left:.5rem;">Export</span>
+  <button class="gm-btn safe" onclick="exportFicheOct()">⬇ Exporter fiche</button>
+  <label class="gm-btn" style="cursor:pointer;background:var(--input-bg);">
+    ⬆ Importer
+    <input type="file" accept=".json" style="display:none" onchange="importerFicheOct(this)">
+  </label>
   <span class="gm-bar-label" style="margin-left:.6rem;">Environnement lié</span>
   <input id="env-fiche-input" type="text" placeholder="nom de la fiche environnement"
     style="width:140px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
