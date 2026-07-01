@@ -1280,6 +1280,25 @@ function toggleEnvPanel(){
     alert('Aucune fiche environnement configurée pour ce personnage.\nLe meneur doit synchroniser la fiche env depuis environnement.html.');
     return;
   }
+  // Si pas de mdp env, tenter de le récupérer depuis Supabase
+  if(!octIsGM && !state.envFichePw){
+    (async()=>{
+      try{
+        const er=await fetch(
+          `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=mot_de_passe`,
+          {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+        );
+        const ed=await er.json();
+        if(ed[0]?.mot_de_passe) state.envFichePw=ed[0].mot_de_passe;
+      }catch(e){}
+      _doOpenEnvPanel(envId);
+    })();
+    return;
+  }
+  _doOpenEnvPanel(envId);
+}
+function _doOpenEnvPanel(envId){
+  const ol=document.getElementById('env-overlay');
   const iframe=document.getElementById('env-iframe');
   const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
   const url=base+'environnement.html?fiche='+encodeURIComponent(envId)+buildAutoLoginParams()+(octIsGM?'':'&player=1');
@@ -2326,7 +2345,25 @@ async function doLogin(tryGM){
         authenticated = true;
         octIsGM = tryGM;
         isGM = tryGM; // sync pour buildAutoLoginParams
-        if(!tryGM) window._playerPw = pw;
+        if(!tryGM){
+          window._playerPw = pw;
+          // Si envFichePw absent, le lire depuis la fiche env pour auto-login
+          if(!state.envFichePw && state.envFiche){
+            (async()=>{
+              try{
+                const er=await fetch(
+                  `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(state.envFiche)}&select=mot_de_passe`,
+                  {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+                );
+                const ed=await er.json();
+                if(ed[0]?.mot_de_passe){
+                  state.envFichePw=ed[0].mot_de_passe;
+                  saveState();
+                }
+              }catch(e){}
+            })();
+          }
+        }
         document.getElementById('modal-overlay').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         console.log('[Sifhr] #app affiché, height=', document.getElementById('app').offsetHeight);
@@ -2359,7 +2396,23 @@ async function doLogin(tryGM){
           document.getElementById('perso-fab').style.display='flex';
           document.getElementById('evt-side-tab').style.display='block';
         }
-        if (row.etat && Object.keys(row.etat).length > 0) applyRemoteState(row.etat);        startRealtime();
+        if (row.etat && Object.keys(row.etat).length > 0){
+          applyRemoteState(row.etat);
+          // Si joueur avec fiche env configurée mais sans mdp env : le récupérer auto
+          if(!tryGM && state.envFiche && !state.envFichePw){
+            (async()=>{
+              try{
+                const er=await fetch(
+                  `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(state.envFiche)}&select=mot_de_passe`,
+                  {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+                );
+                const ed=await er.json();
+                if(ed[0]?.mot_de_passe) state.envFichePw=ed[0].mot_de_passe;
+              }catch(e){}
+            })();
+          }
+        }
+        startRealtime();
         // Démarrer le système de notifications après le login
         setTimeout(()=>NotifSystem.start(), 3000);
         // Charger la bibliothèque d'octogones idéaux et calculer
