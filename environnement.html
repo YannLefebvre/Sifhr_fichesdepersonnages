@@ -1172,6 +1172,7 @@ async function gmReset(){
   <div class="gm-bar" id="gm-bar" style="display:none;">
   <span class="gm-bar-label">MJ</span>
   <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
+  <button class="gm-btn safe" onclick="gmSyncEnvFiche()" title="Écrit l'id de cette fiche env dans la fiche de chaque joueur lié">🔗 Sync fiche env → joueurs</button>
   <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser à l'état d'origine</button>
   <button class="gm-btn danger" onclick="gmResetFull()">🗑 Réinitialisation complète</button>
 
@@ -2159,8 +2160,13 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
         document.getElementById('chrono-section').style.display='block';
         setTimeout(chronoInit, 400);
         // Routines joueur si identifié
-        if(!tryGM && resolvedPid){
-          setTimeout(()=>chronoRenderRoutinesJoueur(resolvedPid), 600);
+        if(!tryGM){
+          // Afficher la frise et les routines pour tous les joueurs
+          document.getElementById('chrono-section').style.display='block';
+          setTimeout(chronoInit, 400);
+          if(resolvedPid){
+            setTimeout(()=>chronoRenderRoutinesJoueur(resolvedPid), 700);
+          }
         }
       }
     }
@@ -3334,6 +3340,38 @@ function toggleBibIdeaux(){
     bibIdeauxInit();
     setTimeout(()=>sec.scrollIntoView({behavior:'smooth',block:'start'}),100);
   }
+}
+
+
+// ── Synchroniser la fiche env sur toutes les fiches joueurs liées ──
+async function gmSyncEnvFiche(){
+  const fp=state.fichePersonnages||[];
+  if(!fp.length){ alert('Aucune fiche joueur liée.'); return; }
+  const ids=fp.map(p=>typeof p==='string'?p:p.id);
+  if(!confirm('Écrire fiche env "'+FICHE_ID+'" dans les fiches de : '+ids.join(', ')+'\nLes joueurs verront cet environnement depuis leur fiche.')) return;
+  let ok=0, err=0;
+  for(const ficheId of ids){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const d=await r.json();
+      const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
+      etat.envFiche=FICHE_ID;
+      // Aussi stocker le mdp env joueur pour l'auto-login
+      const pObj=fp.find(p=>(typeof p==='string'?p:p.id)===ficheId);
+      if(pObj&&typeof pObj==='object'&&pObj.pwJoueur){
+        etat.envFichePw=pObj.pwJoueur;
+      }
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}`,{
+        method:'PATCH',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+          'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({etat})
+      });
+      ok++;
+    }catch(e){ err++; }
+  }
+  alert(`Synchronisation terminée : ${ok} fiche(s) mise(s) à jour${err?' · '+err+' erreur(s)':''}.`);
 }
 
 function bibIdeauxInit(){

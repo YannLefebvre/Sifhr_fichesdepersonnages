@@ -1243,7 +1243,9 @@ function getBaseUrl(){
 // ── Fiche d'environnement liée ──
 // Utilise state.envFiche si défini, sinon retombe sur FICHE_ID (comportement historique)
 function getEnvFicheId(){
-  return (state.envFiche && state.envFiche.trim()) ? state.envFiche.trim() : FICHE_ID;
+  if(state.envFiche && state.envFiche.trim()) return state.envFiche.trim();
+  // Pas de fiche env configurée — avertir le joueur
+  return null;
 }
 function saveEnvFiche(){
   const val=document.getElementById('env-fiche-input').value.trim();
@@ -1273,9 +1275,14 @@ function buildAutoLoginParams(){
 function toggleEnvPanel(){
   const ol=document.getElementById('env-overlay');
   if(ol.classList.contains('open')){ closeEnvPanel(); return; }
+  const envId=getEnvFicheId();
+  if(!envId){
+    alert('Aucune fiche environnement configurée pour ce personnage.\nLe meneur doit synchroniser la fiche env depuis environnement.html.');
+    return;
+  }
   const iframe=document.getElementById('env-iframe');
   const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
-  const url=base+'environnement.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams()+(octIsGM?'':'&player=1');
+  const url=base+'environnement.html?fiche='+encodeURIComponent(envId)+buildAutoLoginParams()+(octIsGM?'':'&player=1');
   iframe.src=url;
   ol.classList.add('open');
   document.getElementById('env-fab').classList.add('open');
