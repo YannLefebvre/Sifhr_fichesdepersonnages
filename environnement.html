@@ -765,6 +765,137 @@ async function gmReset(){
   }
   #bib-ideaux-fab:hover { background:#0f3319; }
   #bib-ideaux-fab.active { background:#0f3319; }
+
+  /* ══════════════════════════════════════════
+     FRISE CHRONOLOGIQUE ISLAMIQUE
+     ══════════════════════════════════════════ */
+  #chrono-section { margin-top:1.5rem; }
+  .chrono-header { font-family:'Cinzel',serif; font-size:.9rem; color:#c8860a;
+    letter-spacing:.1em; border-bottom:2px solid #c8860a; padding-bottom:.4rem;
+    margin-bottom:.8rem; display:flex; align-items:center; gap:.6rem; }
+  .chrono-header-icon { font-size:1.2rem; }
+
+  /* Panneau de configuration MJ */
+  #chrono-config { background:#fdf8ee; border:1px solid #c8860a;
+    border-radius:8px; padding:.8rem 1rem; margin-bottom:1rem; }
+  .chrono-config-row { display:flex; align-items:center; gap:.5rem;
+    margin-bottom:.5rem; flex-wrap:wrap; }
+  .chrono-config-label { font-family:'Cinzel',serif; font-size:.68rem;
+    color:#8a6a20; min-width:90px; }
+  .chrono-inp { font-family:'Crimson Text',serif; font-size:.85rem;
+    padding:3px 8px; border:1px solid #c8860a; border-radius:4px;
+    background:#fff8e8; color:#3a2a10; width:60px; }
+  .chrono-inp-wide { width:140px; }
+  .chrono-mois-sel { font-family:'Crimson Text',serif; font-size:.85rem;
+    padding:3px 8px; border:1px solid #c8860a; border-radius:4px;
+    background:#fff8e8; color:#3a2a10; }
+  .chrono-btn { font-family:'Cinzel',serif; font-size:.68rem; padding:4px 12px;
+    border:1px solid #c8860a; border-radius:4px; background:#c8860a;
+    color:#fff8e8; cursor:pointer; white-space:nowrap; }
+  .chrono-btn:hover { background:#a06818; }
+  .chrono-btn.secondary { background:#fff8e8; color:#c8860a; }
+  .chrono-btn.secondary:hover { background:#fde8c0; }
+  .chrono-btn.danger { background:#8b2020; border-color:#8b2020; }
+
+  /* Date courante */
+  #chrono-date-courante { font-family:'Cinzel',serif; font-size:.78rem;
+    color:#c8860a; text-align:center; margin-bottom:.6rem; letter-spacing:.06em; }
+
+  /* La frise elle-même */
+  #chrono-frise-wrap {
+    position:relative; overflow-x:auto; padding-bottom:1.2rem;
+    background:linear-gradient(135deg,#fdf6e3 25%,#faf0d0 50%,#fdf6e3 75%);
+    border:1px solid #c8860a; border-radius:10px;
+    box-shadow:inset 0 2px 8px rgba(200,134,10,.12);
+  }
+  /* Motif géométrique islamique en arrière-plan */
+  #chrono-frise-wrap::before {
+    content:''; position:absolute; inset:0;
+    background-image:
+      repeating-linear-gradient(45deg,rgba(200,134,10,.04) 0,rgba(200,134,10,.04) 1px,transparent 0,transparent 50%),
+      repeating-linear-gradient(-45deg,rgba(200,134,10,.04) 0,rgba(200,134,10,.04) 1px,transparent 0,transparent 50%);
+    background-size:20px 20px;
+    border-radius:10px; pointer-events:none;
+  }
+  #chrono-frise { display:flex; align-items:flex-start;
+    min-height:160px; padding:1.2rem 1rem .4rem; position:relative; }
+
+  /* Ligne de temps */
+  .chrono-line { position:absolute; left:1rem; right:1rem; top:2.4rem;
+    height:3px;
+    background:linear-gradient(90deg,#c8860a,#e8b84a,#c8860a);
+    border-radius:2px; box-shadow:0 1px 4px rgba(200,134,10,.4); }
+
+  /* Mois */
+  .chrono-mois { position:relative; display:flex; flex-direction:column;
+    align-items:center; flex-shrink:0; }
+  .chrono-mois-label { font-family:'Cinzel',serif; font-size:.6rem;
+    color:#8a6a20; letter-spacing:.05em; white-space:nowrap;
+    transform:rotate(-20deg); margin-bottom:.4rem;
+    text-shadow:0 1px 0 rgba(255,255,255,.8); }
+  .chrono-mois-tick { width:2px; height:14px; background:#c8860a;
+    margin:0 auto; }
+
+  /* Jours */
+  .chrono-jour { position:relative; display:flex; flex-direction:column;
+    align-items:center; flex-shrink:0; cursor:pointer; }
+  .chrono-jour-tick { width:1px; height:8px;
+    background:rgba(200,134,10,.5); margin:0 auto; }
+  .chrono-jour-tick.semaine { height:11px; background:#c8860a; width:2px; }
+  .chrono-jour-num { font-family:'Cinzel',serif; font-size:.52rem;
+    color:#a07830; margin-top:2px; line-height:1; }
+
+  /* Marqueur date courante */
+  .chrono-cursor { position:absolute; top:1.5rem; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; z-index:10; }
+  .chrono-cursor-moon { font-size:1.2rem; animation:moonpulse 2s ease-in-out infinite;
+    filter:drop-shadow(0 0 4px rgba(200,134,10,.8)); }
+  @keyframes moonpulse {
+    0%,100%{transform:scale(1);} 50%{transform:scale(1.15);}
+  }
+  .chrono-cursor-line { width:2px; height:28px;
+    background:linear-gradient(#c8860a,transparent); }
+
+  /* Événements */
+  .chrono-evt { position:absolute; top:3.2rem;
+    transform:translateX(-50%); display:flex; flex-direction:column;
+    align-items:center; z-index:8; cursor:pointer; }
+  .chrono-evt-stem { width:1px; background:#c8860a; }
+  .chrono-evt-dot { width:10px; height:10px; border-radius:50%;
+    border:2px solid #c8860a; background:#fff8e8;
+    box-shadow:0 0 4px rgba(200,134,10,.5); flex-shrink:0; }
+  .chrono-evt-dot.revele { background:#c8860a; }
+  .chrono-evt-label { font-family:'Cinzel',serif; font-size:.52rem;
+    color:#8a6a20; white-space:nowrap; max-width:80px;
+    overflow:hidden; text-overflow:ellipsis; text-align:center;
+    margin-top:2px; }
+  .chrono-evt:hover .chrono-evt-label { color:#c8860a; }
+
+  /* Overlay événement */
+  #chrono-evt-overlay { display:none; position:fixed; inset:0;
+    background:rgba(10,7,3,.75); align-items:center;
+    justify-content:center; z-index:500; }
+  #chrono-evt-overlay.open { display:flex; }
+  #chrono-evt-box { background:#fdf8ee; border:1px solid #c8860a;
+    border-radius:10px; padding:1.1rem 1.3rem; width:min(440px,92vw);
+    max-height:82vh; overflow-y:auto;
+    box-shadow:0 8px 32px rgba(200,134,10,.3); }
+  .chrono-evt-box-title { font-family:'Cinzel',serif; color:#c8860a;
+    font-size:.9rem; letter-spacing:.07em; margin-bottom:.5rem; }
+  .chrono-evt-box-date { font-family:'Cinzel',serif; font-size:.68rem;
+    color:#8a6a20; margin-bottom:.5rem; }
+  .chrono-evt-box-text { font-family:'Crimson Text',serif; font-size:.92rem;
+    color:#3a2a10; line-height:1.6; }
+
+  /* Panneau repos/santé */
+  #chrono-sante { background:#fdf8ee; border:1px solid #1a4a2a;
+    border-radius:8px; padding:.8rem 1rem; margin-top:.8rem; }
+  .chrono-sante-title { font-family:'Cinzel',serif; font-size:.75rem;
+    color:#1a4a2a; letter-spacing:.07em; margin-bottom:.6rem; }
+  .chrono-sante-row { display:flex; align-items:center; gap:.5rem;
+    flex-wrap:wrap; margin-bottom:.4rem; }
+  .chrono-perso-check { display:flex; align-items:center; gap:.3rem;
+    font-family:'Crimson Text',serif; font-size:.85rem; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -985,6 +1116,111 @@ async function gmReset(){
 
 </div>
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
+
+<!-- ══════════════════════════════════════════
+     FRISE CHRONOLOGIQUE ISLAMIQUE
+     ══════════════════════════════════════════ -->
+<div id="chrono-section" style="display:none;">
+  <div class="chrono-header">
+    <span class="chrono-header-icon">☽</span>
+    <span>Chronologie du scénario</span>
+  </div>
+
+  <!-- Configuration MJ -->
+  <div id="chrono-config" class="gm-only-section">
+    <div class="chrono-config-row">
+      <span class="chrono-config-label">Date début :</span>
+      <input class="chrono-inp" type="number" id="ch-debut-an" placeholder="An" min="1" max="999">
+      <select class="chrono-mois-sel" id="ch-debut-mois"></select>
+      <input class="chrono-inp" type="number" id="ch-debut-jour" placeholder="Jour" min="1" max="30">
+    </div>
+    <div class="chrono-config-row">
+      <span class="chrono-config-label">Date fin :</span>
+      <input class="chrono-inp" type="number" id="ch-fin-an" placeholder="An" min="1" max="999">
+      <select class="chrono-mois-sel" id="ch-fin-mois"></select>
+      <input class="chrono-inp" type="number" id="ch-fin-jour" placeholder="Jour" min="1" max="30">
+    </div>
+    <div class="chrono-config-row">
+      <span class="chrono-config-label">Date actuelle :</span>
+      <input class="chrono-inp" type="number" id="ch-cur-an" placeholder="An">
+      <select class="chrono-mois-sel" id="ch-cur-mois"></select>
+      <input class="chrono-inp" type="number" id="ch-cur-jour" placeholder="Jour">
+      <span style="font-family:'Cinzel',serif;font-size:.68rem;color:#8a6a20;">à</span>
+      <input class="chrono-inp" type="number" id="ch-cur-heure" placeholder="H" min="0" max="23" style="width:45px;">
+      <span style="font-family:'Cinzel',serif;font-size:.68rem;color:#8a6a20;">h</span>
+    </div>
+    <div class="chrono-config-row" style="gap:.4rem;margin-top:.3rem;">
+      <button class="chrono-btn" onclick="chronoSaveConfig()">💾 Enregistrer</button>
+      <button class="chrono-btn secondary" onclick="chronoAvancerJour(1)">+1 Jour →</button>
+      <button class="chrono-btn secondary" onclick="chronoAvancerJour(7)">+7 Jours →</button>
+      <button class="chrono-btn secondary" onclick="chronoAvancerHeure(1)">+1 Heure</button>
+    </div>
+    <div class="chrono-config-row" style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(200,134,10,.2);">
+      <button class="chrono-btn secondary" onclick="chronoAddEvt()">＋ Ajouter un événement</button>
+    </div>
+  </div>
+
+  <!-- Date courante affichée -->
+  <div id="chrono-date-courante">☽ Chargement…</div>
+
+  <!-- La frise -->
+  <div id="chrono-frise-wrap">
+    <div id="chrono-frise"></div>
+  </div>
+
+  <!-- Panneau repos / santé -->
+  <div id="chrono-sante" class="gm-only-section">
+    <div class="chrono-sante-title">🌙 Repos et récupération</div>
+    <div class="chrono-sante-row">
+      <span style="font-family:'Cinzel',serif;font-size:.68rem;color:#1a4a2a;min-width:130px;">Personnages :</span>
+      <div id="chrono-perso-checks" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
+    </div>
+    <div class="chrono-sante-row" style="margin-top:.3rem;">
+      <button class="chrono-btn" style="background:#1a4a2a;border-color:#1a4a2a;"
+        onclick="chronoNuitSommeil()">🌙 Nuit de sommeil (restaurer Éther)</button>
+      <button class="chrono-btn" style="background:#1a4a6e;border-color:#1a4a6e;margin-left:.4rem;"
+        onclick="chronoRepos()">⛺ Repos (−1 dé dévoyé)</button>
+    </div>
+    <div id="chrono-sante-log" style="font-family:'Crimson Text',serif;font-size:.8rem;
+      color:#1a4a2a;margin-top:.4rem;min-height:1rem;"></div>
+  </div>
+</div>
+
+<!-- Overlay détail événement -->
+<div id="chrono-evt-overlay">
+  <div id="chrono-evt-box">
+    <div style="display:flex;align-items:center;margin-bottom:.6rem;">
+      <div class="chrono-evt-box-title" id="chrono-evt-box-title" style="flex:1;"></div>
+      <button onclick="chronoCloseEvtOverlay()"
+        style="background:none;border:none;font-size:1rem;cursor:pointer;color:#8a6a20;">✕</button>
+    </div>
+    <div class="chrono-evt-box-date" id="chrono-evt-box-date"></div>
+    <div class="chrono-evt-box-text" id="chrono-evt-box-text"></div>
+    <!-- Éditeur MJ (caché pour les joueurs) -->
+    <div id="chrono-evt-editor" style="display:none;margin-top:.8rem;border-top:1px solid rgba(200,134,10,.2);padding-top:.7rem;">
+      <input id="chrono-evt-ed-titre" type="text" placeholder="Titre…"
+        style="width:100%;font-family:Cinzel,serif;font-size:.8rem;padding:4px 8px;border:1px solid #c8860a;border-radius:4px;background:#fff8e8;margin-bottom:.4rem;">
+      <div style="display:flex;gap:.4rem;margin-bottom:.4rem;flex-wrap:wrap;">
+        <input class="chrono-inp" type="number" id="chrono-evt-ed-an" placeholder="An">
+        <select class="chrono-mois-sel" id="chrono-evt-ed-mois"></select>
+        <input class="chrono-inp" type="number" id="chrono-evt-ed-jour" placeholder="J" min="1" max="30">
+        <input class="chrono-inp" type="number" id="chrono-evt-ed-heure" placeholder="H" min="0" max="23" style="width:45px;">
+        <span style="font-size:.7rem;color:#8a6a20;align-self:center;">h (optionnel)</span>
+      </div>
+      <textarea id="chrono-evt-ed-texte" placeholder="Description…"
+        style="width:100%;min-height:80px;font-family:'Crimson Text',serif;font-size:.88rem;
+        padding:5px 8px;border:1px solid #c8860a;border-radius:4px;background:#fff8e8;
+        resize:vertical;margin-bottom:.4rem;"></textarea>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+        <label style="font-family:Cinzel,serif;font-size:.65rem;color:#8a6a20;display:flex;align-items:center;gap:.3rem;">
+          <input type="checkbox" id="chrono-evt-ed-revele"> Révélé aux joueurs
+        </label>
+        <button class="chrono-btn" onclick="chronoSaveEvt()">💾 Sauvegarder</button>
+        <button class="chrono-btn danger" onclick="chronoDeleteEvt()">🗑 Supprimer</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ── Bibliothèque Octogones Idéaux (MJ) ── -->
 <div id="bib-ideaux-section" class="gm-only-section" style="display:none;margin-top:1.5rem;">
@@ -1724,6 +1960,10 @@ function applyRemoteState(saved){
     if(saved.occultation!==undefined){state.occultation=saved.occultation;document.getElementById('occultation-val').value=saved.occultation;}
     if(saved.dynamiqueLog!==undefined){ state.dynamiqueLog=saved.dynamiqueLog; renderDynamiqueLog(); }
     if(saved.bibliotheque_ideaux!==undefined){ state.bibliotheque_ideaux=saved.bibliotheque_ideaux; }
+    if(saved.chronologie!==undefined){
+      state.chronologie=saved.chronologie;
+      if(typeof chronoRender==='function') chronoRender();
+    }
     if(saved.fichePersonnages!==undefined){ state.fichePersonnages=saved.fichePersonnages; if(isGM) renderFichesPersoList(); }
     if(saved.nineCount!==undefined){ state.nineCount=saved.nineCount; }
     if(saved.nineThreshold!==undefined){ state.nineThreshold=saved.nineThreshold; }
@@ -1783,6 +2023,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
         if(tryGM){
           document.getElementById('gm-bar').style.display='flex';
           document.getElementById('bib-ideaux-fab').style.display='block';
+          document.getElementById('chrono-fab').style.display='block';
           document.getElementById('btn-occultation-gm').style.display='flex';
           document.querySelectorAll('.gm-only-zone').forEach(el=>el.classList.add('gm-visible'));
           document.getElementById('nine-panel').style.display='block';
@@ -1801,6 +2042,9 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
         startRealtime();
         setTimeout(startMjDiceObservation, 500); // observer les lancers des joueurs
         setTimeout(bibIdeauxInit, 600); // bibliothèque octogones idéaux
+        // Chronologie
+        document.getElementById('chrono-section').style.display='block';
+        setTimeout(chronoInit, 400);
       }
     }
   }catch(e){err.textContent='Erreur réseau.';}
@@ -2634,6 +2878,12 @@ function closeDuel(){
 
 <!-- FAB Bibliothèque idéaux -->
 <button id="bib-ideaux-fab" onclick="toggleBibIdeaux()">📚 Octogones idéaux</button>
+<!-- FAB Chronologie -->
+<button id="chrono-fab" onclick="chronoToggle()"
+  style="position:fixed;bottom:3.5rem;left:1rem;background:#c8860a;color:#fff8e8;
+  border:none;border-radius:8px;padding:.5rem .9rem;font-family:Cinzel,serif;
+  font-size:.72rem;letter-spacing:.06em;cursor:pointer;z-index:300;display:none;
+  box-shadow:0 3px 12px rgba(0,0,0,0.3);">☽ Chronologie</button>
 
 <!-- Panneau MJ observateur de lancers -->
 <div id="mj-obs-overlay"></div>
@@ -2942,6 +3192,14 @@ const BIB_GROUP_LABELS = {
 
 let _bibCurrentElement = null; // nom de l'élément en cours d'édition
 
+function chronoToggle(){
+  const sec=document.getElementById('chrono-section');
+  if(!sec) return;
+  const isOpen=sec.style.display!=='none'&&sec.style.display!=='';
+  sec.style.display=isOpen?'none':'block';
+  if(!isOpen) setTimeout(()=>sec.scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
+
 function toggleBibIdeaux(){
   const sec=document.getElementById('bib-ideaux-section');
   const btn=document.getElementById('bib-ideaux-toggle-btn');
@@ -3183,6 +3441,442 @@ function bibOctUpdateSVG(){
     const tx=mk('text',{x:'22',y:String(266+i*12),'font-size':'7','font-family':'Arial',fill:'#3d342a'});
     tx.textContent=t;
   });
+}
+
+</script>
+<script>
+
+// ══════════════════════════════════════════════
+//   CALENDRIER HÉGIRIEN & FRISE CHRONOLOGIQUE
+// ══════════════════════════════════════════════
+
+const MOIS_HEGI = [
+  'Muharram','Safar','Rabi al-Awwal','Rabi al-Thani',
+  'Jumada al-Ula','Jumada al-Thaniyya','Rajab','Sha-ban',
+  'Ramadan','Shawwal','Dhu al-Qida','Dhu al-Hijja'
+];
+const MOIS_SHORT = [
+  'Muh.','Saf.','Rab.I','Rab.II','Jum.I','Jum.II',
+  'Raj.','Sha.','Ram.','Shaw.','Dhu.Q','Dhu.H'
+];
+const PERIODES = [
+  {debut:0,  fin:4,  nom:'Layl',    ar:'ليل'},
+  {debut:4,  fin:6,  nom:'Fajr',    ar:'فجر'},
+  {debut:6,  fin:12, nom:'Duha',    ar:'ضحى'},
+  {debut:12, fin:15, nom:'Dhuhr',   ar:'ظهر'},
+  {debut:15, fin:17, nom:'Asr',     ar:'عصر'},
+  {debut:17, fin:19, nom:'Maghrib', ar:'مغرب'},
+  {debut:19, fin:24, nom:'Isha',    ar:'عشاء'},
+];
+
+function getPeriode(heure){
+  return PERIODES.find(p=>heure>=p.debut&&heure<p.fin)||PERIODES[0];
+}
+
+// Nb de jours dans un mois hégirien (alternance 30/29, Dhû al-Hijja=30 en année bissextile)
+function joursInMois(mois1, annee){
+  return (mois1%2===1)?30:29; // simplifié
+}
+
+// Convertir une date hégirienne en numéro de jour absolu (depuis une origine fixe)
+function dateToJourAbs(d){
+  if(!d) return 0;
+  let j=0;
+  for(let a=1;a<d.annee;a++) j+=(a%30===2||a%30===5||a%30===7||a%30===10||a%30===13||a%30===15||a%30===18||a%30===21||a%30===24||a%30===26||a%30===29)?355:354;
+  for(let m=1;m<d.mois;m++) j+=joursInMois(m,d.annee);
+  return j+(d.jour||1)-1;
+}
+
+// Différence en jours entre deux dates
+function diffJours(d1,d2){
+  return dateToJourAbs(d2)-dateToJourAbs(d1);
+}
+
+// Avancer une date de N jours
+function avancerDate(d, nJours){
+  let {annee,mois,jour,heure}={...d};
+  jour+=nJours;
+  while(jour>joursInMois(mois,annee)){
+    jour-=joursInMois(mois,annee); mois++;
+    if(mois>12){ mois=1; annee++; }
+  }
+  while(jour<1){ mois--; if(mois<1){mois=12;annee--;} jour+=joursInMois(mois,annee); }
+  return {annee,mois,jour,heure:heure||0};
+}
+function avancerHeure(d, nH){
+  let h=(d.heure||0)+nH;
+  let jours=Math.floor(h/24); h=h%24;
+  return {...avancerDate(d,jours),heure:h};
+}
+
+function formatDate(d, avecHeure=false){
+  if(!d||!d.annee) return '—';
+  let s=`${d.jour||1} ${MOIS_HEGI[(d.mois||1)-1]} ${d.annee}H`;
+  if(avecHeure&&d.heure!=null){
+    const p=getPeriode(d.heure||0);
+    s+=` · ${p.nom} (${d.heure||0}h)`;
+  }
+  return s;
+}
+
+// ── Initialiser les selects de mois ──
+function chronoInitMoisSelects(){
+  document.querySelectorAll('.chrono-mois-sel').forEach(sel=>{
+    if(sel.options.length) return;
+    MOIS_HEGI.forEach((m,i)=>{
+      const o=document.createElement('option'); o.value=i+1; o.textContent=m; sel.appendChild(o);
+    });
+  });
+}
+
+// ── Lire la config depuis le DOM ──
+function chronoReadInputDate(prefix){
+  const an=parseInt(document.getElementById(prefix+'-an')?.value)||0;
+  const mois=parseInt(document.getElementById(prefix+'-mois')?.value)||1;
+  const jour=parseInt(document.getElementById(prefix+'-jour')?.value)||1;
+  const heureEl=document.getElementById(prefix+'-heure');
+  const heure=heureEl?parseInt(heureEl.value)||0:null;
+  if(!an) return null;
+  return {annee:an,mois,jour,heure};
+}
+function chronoSetInputDate(prefix,d){
+  if(!d) return;
+  const setVal=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v||''; };
+  setVal(prefix+'-an', d.annee);
+  setVal(prefix+'-mois', d.mois||1);
+  setVal(prefix+'-jour', d.jour||1);
+  if(d.heure!=null) setVal(prefix+'-heure', d.heure);
+}
+
+// ── Sauvegarder la configuration ──
+async function chronoSaveConfig(){
+  const debut=chronoReadInputDate('ch-debut');
+  const fin=chronoReadInputDate('ch-fin');
+  const cur=chronoReadInputDate('ch-cur');
+  if(!debut||!fin){ alert('Merci de définir les dates de début et de fin.'); return; }
+  if(!state.chronologie) state.chronologie={evenements:[]};
+  state.chronologie.dateDebut=debut;
+  state.chronologie.dateFin=fin;
+  state.chronologie.dateCourante=cur||debut;
+  await saveState();
+  chronoRender();
+}
+
+async function chronoAvancerJour(n){
+  if(!state.chronologie?.dateCourante) return;
+  state.chronologie.dateCourante=avancerDate(state.chronologie.dateCourante,n);
+  chronoSetInputDate('ch-cur',state.chronologie.dateCourante);
+  await saveState(); chronoRender();
+}
+async function chronoAvancerHeure(n){
+  if(!state.chronologie?.dateCourante) return;
+  state.chronologie.dateCourante=avancerHeure(state.chronologie.dateCourante,n);
+  chronoSetInputDate('ch-cur',state.chronologie.dateCourante);
+  await saveState(); chronoRender();
+}
+
+// ── État de l'événement en cours d'édition ──
+let _chronoEditEvtId=null;
+
+function chronoAddEvt(){
+  _chronoEditEvtId='evt_'+Date.now();
+  const cur=state.chronologie?.dateCourante||state.chronologie?.dateDebut||{};
+  document.getElementById('chrono-evt-ed-titre').value='';
+  chronoSetInputDate('chrono-evt-ed',cur);
+  document.getElementById('chrono-evt-ed-texte').value='';
+  document.getElementById('chrono-evt-ed-revele').checked=false;
+  document.getElementById('chrono-evt-box-title').textContent='Nouvel événement';
+  document.getElementById('chrono-evt-box-date').textContent='';
+  document.getElementById('chrono-evt-box-text').textContent='';
+  document.getElementById('chrono-evt-editor').style.display='block';
+  document.getElementById('chrono-evt-overlay').classList.add('open');
+}
+
+async function chronoSaveEvt(){
+  if(!state.chronologie) state.chronologie={evenements:[]};
+  if(!state.chronologie.evenements) state.chronologie.evenements=[];
+  const titre=document.getElementById('chrono-evt-ed-titre').value.trim();
+  const date={
+    annee:parseInt(document.getElementById('chrono-evt-ed-an')?.value)||null,
+    mois:parseInt(document.getElementById('chrono-evt-ed-mois')?.value)||1,
+    jour:parseInt(document.getElementById('chrono-evt-ed-jour')?.value)||null,
+    heure:document.getElementById('chrono-evt-ed-heure')?.value!==''
+      ?parseInt(document.getElementById('chrono-evt-ed-heure').value):null,
+  };
+  const texte=document.getElementById('chrono-evt-ed-texte').value;
+  const revele=document.getElementById('chrono-evt-ed-revele').checked;
+  const existing=state.chronologie.evenements.findIndex(e=>e.id===_chronoEditEvtId);
+  const evt={id:_chronoEditEvtId,titre,texte,date,revele,source:'mj'};
+  if(existing>=0) state.chronologie.evenements[existing]=evt;
+  else state.chronologie.evenements.push(evt);
+  await saveState();
+  chronoCloseEvtOverlay();
+  chronoRender();
+}
+
+async function chronoDeleteEvt(){
+  if(!_chronoEditEvtId) return;
+  if(!confirm('Supprimer cet événement ?')) return;
+  state.chronologie.evenements=(state.chronologie.evenements||[]).filter(e=>e.id!==_chronoEditEvtId);
+  await saveState();
+  chronoCloseEvtOverlay();
+  chronoRender();
+}
+
+function chronoOpenEvt(evt){
+  _chronoEditEvtId=evt.id;
+  document.getElementById('chrono-evt-box-title').textContent=evt.titre||'Événement';
+  document.getElementById('chrono-evt-box-date').textContent=formatDate(evt.date,true);
+  document.getElementById('chrono-evt-box-text').textContent=evt.texte||'';
+  if(isGM){
+    document.getElementById('chrono-evt-ed-titre').value=evt.titre||'';
+    if(evt.date) chronoSetInputDate('chrono-evt-ed',evt.date);
+    document.getElementById('chrono-evt-ed-texte').value=evt.texte||'';
+    document.getElementById('chrono-evt-ed-revele').checked=!!evt.revele;
+    document.getElementById('chrono-evt-editor').style.display='block';
+  } else {
+    document.getElementById('chrono-evt-editor').style.display='none';
+  }
+  document.getElementById('chrono-evt-overlay').classList.add('open');
+}
+function chronoCloseEvtOverlay(){
+  document.getElementById('chrono-evt-overlay').classList.remove('open');
+  _chronoEditEvtId=null;
+}
+
+// ══════════════════════════════════════════════
+// RENDU DE LA FRISE
+// ══════════════════════════════════════════════
+function chronoRender(){
+  const ch=state.chronologie;
+  if(!ch||!ch.dateDebut||!ch.dateFin){
+    document.getElementById('chrono-date-courante').textContent='☽ Dates non configurées';
+    document.getElementById('chrono-frise').innerHTML=
+      '<div style="font-family:Cinzel,serif;font-size:.75rem;color:#8a6a20;padding:1rem;">Configurez les dates de début et de fin pour afficher la frise.</div>';
+    return;
+  }
+
+  // Date courante
+  const cur=ch.dateCourante||ch.dateDebut;
+  const p=getPeriode(cur.heure||0);
+  document.getElementById('chrono-date-courante').textContent=
+    `☽  ${p.ar}  ${p.nom} (${cur.heure||0}h)  ·  ${formatDate(cur)}`;
+
+  const debut=ch.dateDebut, fin=ch.dateFin;
+  const totalJours=Math.max(1,diffJours(debut,fin));
+
+  // Granularité adaptative
+  const PX_PAR_JOUR = totalJours<=14 ? 48 : totalJours<=60 ? 24 : 10;
+  const largeurTotale=totalJours*PX_PAR_JOUR+120;
+
+  const frise=document.getElementById('chrono-frise');
+  frise.innerHTML='';
+  frise.style.width=largeurTotale+'px';
+  frise.style.minWidth='100%';
+
+  // Ligne de temps
+  const line=document.createElement('div'); line.className='chrono-line';
+  line.style.cssText=`position:absolute;left:60px;right:60px;top:2.4rem;height:3px;
+    background:linear-gradient(90deg,#c8860a,#e8b84a,#c8860a);border-radius:2px;
+    box-shadow:0 1px 4px rgba(200,134,10,.4);`;
+  frise.appendChild(line);
+
+  // Itérer jour par jour
+  let moisCourant=null;
+  for(let j=0;j<=totalJours;j++){
+    const dateJ=avancerDate(debut,j);
+    const x=60+j*PX_PAR_JOUR;
+    const estDebMois=(dateJ.jour===1);
+    const estSemaine=(j%7===0);
+
+    // Label mois
+    if(estDebMois&&dateJ.mois!==moisCourant){
+      moisCourant=dateJ.mois;
+      const mlbl=document.createElement('div');
+      mlbl.style.cssText=`position:absolute;left:${x}px;top:.2rem;
+        font-family:Cinzel,serif;font-size:.62rem;color:#c8860a;
+        letter-spacing:.04em;white-space:nowrap;
+        transform:translateX(-50%);
+        border-bottom:1px solid rgba(200,134,10,.3);padding-bottom:2px;`;
+      mlbl.textContent=MOIS_SHORT[dateJ.mois-1]+' '+dateJ.annee+'H';
+      frise.appendChild(mlbl);
+    }
+
+    // Tick jour
+    const tick=document.createElement('div');
+    tick.style.cssText=`position:absolute;left:${x}px;top:2.2rem;
+      transform:translateX(-50%);
+      width:${estDebMois?'2':'1'}px;
+      height:${estDebMois?'14':estSemaine?'10':'6'}px;
+      background:rgba(200,134,10,${estDebMois?'1':estSemaine?'.7':'.4'});`;
+    frise.appendChild(tick);
+
+    // Numéro jour (tous les N jours selon granularité)
+    const showNum = PX_PAR_JOUR>=24?true:(j%7===0);
+    if(showNum){
+      const num=document.createElement('div');
+      num.style.cssText=`position:absolute;left:${x}px;top:3.0rem;
+        transform:translateX(-50%);
+        font-family:Cinzel,serif;font-size:.48rem;color:#a07830;line-height:1;`;
+      num.textContent=dateJ.jour;
+      frise.appendChild(num);
+    }
+  }
+
+  // Marqueur date courante
+  const joursCur=diffJours(debut,cur);
+  if(joursCur>=0&&joursCur<=totalJours){
+    const cx=60+joursCur*PX_PAR_JOUR;
+    const cursor=document.createElement('div');
+    cursor.style.cssText=`position:absolute;left:${cx}px;top:0.8rem;
+      transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:10;`;
+    cursor.innerHTML=`<div style="font-size:1.3rem;animation:moonpulse 2s ease-in-out infinite;
+      filter:drop-shadow(0 0 5px rgba(200,134,10,.9));">☽</div>
+      <div style="width:2px;height:20px;background:linear-gradient(#c8860a,transparent);"></div>`;
+    frise.appendChild(cursor);
+  }
+
+  // Événements
+  const evts=(ch.evenements||[]).filter(e=>{
+    if(!e.date?.annee) return false;
+    if(!isGM&&!e.revele) return false;
+    // Ne pas afficher si la date est dans le futur (au-delà de la date courante) SAUF si MJ
+    if(!isGM){
+      const jourEvt=diffJours(debut,e.date);
+      const jourCur=diffJours(debut,cur);
+      if(jourEvt>jourCur) return false;
+    }
+    return true;
+  });
+
+  // Gérer les collisions verticales (décaler les stems)
+  const colMap={};
+  evts.forEach(e=>{
+    const je=Math.max(0,Math.min(totalJours,diffJours(debut,e.date)));
+    colMap[je]=(colMap[je]||0);
+  });
+
+  evts.forEach(e=>{
+    const je=diffJours(debut,e.date);
+    if(je<-1||je>totalJours+1) return;
+    const ex=60+Math.max(0,Math.min(totalJours,je))*PX_PAR_JOUR;
+    const nivel=colMap[Math.max(0,Math.min(totalJours,je))];
+    colMap[Math.max(0,Math.min(totalJours,je))]++;
+    const stemH=22+nivel*18;
+
+    const evtEl=document.createElement('div');
+    evtEl.style.cssText=`position:absolute;left:${ex}px;top:2.8rem;
+      transform:translateX(-50%);display:flex;flex-direction:column;
+      align-items:center;z-index:8;cursor:pointer;`;
+    const dot=document.createElement('div');
+    dot.style.cssText=`width:10px;height:10px;border-radius:50%;flex-shrink:0;
+      border:2px solid #c8860a;
+      background:${e.revele?'#c8860a':'rgba(200,134,10,.2)'};
+      box-shadow:${e.revele?'0 0 6px rgba(200,134,10,.7)':'none'};`;
+    const stem=document.createElement('div');
+    stem.style.cssText=`width:1px;height:${stemH}px;background:rgba(200,134,10,.5);`;
+    const lbl=document.createElement('div');
+    lbl.style.cssText=`font-family:Cinzel,serif;font-size:.5rem;color:#8a6a20;
+      white-space:nowrap;max-width:72px;overflow:hidden;text-overflow:ellipsis;
+      text-align:center;margin-top:2px;
+      opacity:${e.revele?'1':'.5'};`;
+    lbl.textContent=e.titre||(isGM?'(sans titre)':'');
+    evtEl.appendChild(dot); evtEl.appendChild(stem); evtEl.appendChild(lbl);
+    evtEl.addEventListener('click',()=>chronoOpenEvt(e));
+    frise.appendChild(evtEl);
+  });
+
+  // Hauteur min de la frise selon events
+  const maxNivel=Math.max(0,...Object.values(colMap));
+  frise.style.minHeight=(180+maxNivel*18)+'px';
+}
+
+// ══════════════════════════════════════════════
+// REPOS & RÉCUPÉRATION
+// ══════════════════════════════════════════════
+function chronoRenderPersonneChecks(){
+  const cont=document.getElementById('chrono-perso-checks');
+  if(!cont) return;
+  cont.innerHTML='';
+  const fps=state.fichePersonnages||[];
+  fps.forEach(p=>{
+    const id=typeof p==='string'?p:(p.id||p);
+    const label=document.createElement('label'); label.className='chrono-perso-check';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.value=id;
+    cb.checked=true; cb.dataset.ficheId=id;
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' '+id));
+    cont.appendChild(label);
+  });
+}
+
+function chronoGetSelectedPersonnes(){
+  return Array.from(document.querySelectorAll('#chrono-perso-checks input:checked'))
+    .map(cb=>cb.dataset.ficheId);
+}
+
+async function chronoNuitSommeil(){
+  const selected=chronoGetSelectedPersonnes();
+  if(!selected.length){ alert('Sélectionnez au moins un personnage.'); return; }
+  const log=[]; const errors=[];
+  for(const ficheId of selected){
+    try{
+      // Lire etat_origine pour le max d'éther
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}&select=etat,etat_origine`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const d=await r.json();
+      const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
+      const maxEther=parseInt(d[0]?.etat_origine?.ether||d[0]?.etat?.ether||3);
+      etat.ether=String(maxEther);
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}`,{
+        method:'PATCH',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+          'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({etat})
+      });
+      log.push(`${ficheId} : Éther restauré à ${maxEther}`);
+    }catch(e){ errors.push(ficheId+' : erreur'); }
+  }
+  document.getElementById('chrono-sante-log').textContent=[...log,...errors].join(' · ');
+  setTimeout(()=>{ document.getElementById('chrono-sante-log').textContent=''; },4000);
+}
+
+async function chronoRepos(){
+  const selected=chronoGetSelectedPersonnes();
+  if(!selected.length){ alert('Sélectionnez au moins un personnage.'); return; }
+  const log=[], errors=[];
+  for(const ficheId of selected){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const d=await r.json();
+      const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
+      const des=Math.max(0,parseInt(etat.des||0)-1);
+      etat.des=String(des);
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}`,{
+        method:'PATCH',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+          'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({etat})
+      });
+      log.push(`${ficheId} : dés dévoyés → ${des}`);
+    }catch(e){ errors.push(ficheId+' : erreur'); }
+  }
+  document.getElementById('chrono-sante-log').textContent=[...log,...errors].join(' · ');
+  setTimeout(()=>{ document.getElementById('chrono-sante-log').textContent=''; },4000);
+}
+
+// ── Init ──
+function chronoInit(){
+  chronoInitMoisSelects();
+  const ch=state.chronologie;
+  if(ch){
+    if(ch.dateDebut) chronoSetInputDate('ch-debut',ch.dateDebut);
+    if(ch.dateFin)   chronoSetInputDate('ch-fin',ch.dateFin);
+    if(ch.dateCourante) chronoSetInputDate('ch-cur',ch.dateCourante);
+  }
+  chronoRender();
+  chronoRenderPersonneChecks();
 }
 
 </script>
