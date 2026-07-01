@@ -957,6 +957,48 @@ async function gmReset(){
   .routine-unlock-row { display:flex; align-items:center; gap:.4rem;
     font-family:'Crimson Text',serif; font-size:.82rem; margin-bottom:.2rem; }
   .routine-unlock-cb { accent-color:#1a4a6e; }
+
+  /* ── Panneau navigation fiches MJ ── */
+  #mj-fiches-nav { position:fixed; top:50%; right:0;
+    transform:translateY(-50%); z-index:280; }
+  #mj-fiches-nav-toggle { writing-mode:vertical-rl;
+    font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.08em;
+    padding:.6rem .35rem; background:var(--accent); color:#f5f0e8;
+    border:none; border-radius:6px 0 0 6px; cursor:pointer;
+    box-shadow:-2px 2px 8px rgba(0,0,0,.25); }
+  #mj-fiches-nav-panel { display:none; position:absolute; right:0; top:50%;
+    transform:translateY(-50%);
+    background:var(--bg); border:1px solid var(--accent);
+    border-radius:8px 0 0 8px; padding:.7rem .8rem;
+    box-shadow:-4px 4px 18px rgba(0,0,0,.25); min-width:180px; }
+  #mj-fiches-nav-panel.open { display:block; }
+  .mj-nav-title { font-family:'Cinzel',serif; font-size:.72rem;
+    color:var(--accent); letter-spacing:.06em; margin-bottom:.5rem;
+    border-bottom:1px solid var(--border2); padding-bottom:.3rem; }
+  .mj-nav-btn { display:block; width:100%; text-align:left;
+    font-family:'Cinzel',serif; font-size:.72rem; padding:.35rem .5rem;
+    margin-bottom:.25rem; border:1px solid var(--border2); border-radius:4px;
+    background:var(--input-bg); color:var(--ink2); cursor:pointer;
+    transition:all .15s; }
+  .mj-nav-btn:hover { background:var(--accent); color:#f5f0e8;
+    border-color:var(--accent); }
+  .mj-nav-btn.active { background:var(--accent); color:#f5f0e8;
+    border-color:var(--accent); }
+  /* Overlay fiche amélioré avec navigation */
+  #env-fiche-header { display:flex; align-items:center; gap:.6rem;
+    padding:.5rem .7rem; background:var(--section-bg);
+    border-bottom:1px solid var(--border2); }
+  #env-fiche-prev, #env-fiche-next { font-family:'Cinzel',serif;
+    font-size:.72rem; padding:3px 10px; border:1px solid var(--border);
+    border-radius:4px; background:var(--input-bg); color:var(--ink2);
+    cursor:pointer; }
+  #env-fiche-prev:hover, #env-fiche-next:hover { background:var(--accent);
+    color:#f5f0e8; border-color:var(--accent); }
+  #env-fiche-title { flex:1; font-family:'Cinzel',serif; font-size:.8rem;
+    color:var(--accent); text-align:center; }
+  #env-fiche-toggle-view { font-family:'Cinzel',serif; font-size:.68rem;
+    padding:3px 8px; border:1px solid #185FA5; border-radius:4px;
+    background:none; color:#185FA5; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -2136,8 +2178,11 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
         // xfer-fab et carte-env-fab retirés (accès depuis octogone.html uniquement)
         if(tryGM){
           document.getElementById('gm-bar').style.display='flex';
+          window._mjPw = pw; // stocker pour navigation fiches
           document.getElementById('bib-ideaux-fab').style.display='block';
           document.getElementById('chrono-fab').style.display='block';
+          document.getElementById('mj-fiches-nav').style.display='block';
+          mjRenderNavList();
           document.getElementById('btn-occultation-gm').style.display='flex';
           document.querySelectorAll('.gm-only-zone').forEach(el=>el.classList.add('gm-visible'));
           document.getElementById('nine-panel').style.display='block';
@@ -3254,12 +3299,28 @@ function startMjDiceObservation(){
 
 <!-- Overlay fiche personnage (vue MJ depuis env) -->
 <div id="env-fiche-overlay" style="display:none;position:fixed;inset:0;background:rgba(26,21,16,0.88);align-items:center;justify-content:center;z-index:500;">
-  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:8px;width:min(720px,98vw);height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
-    <div style="padding:.5rem .9rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;background:var(--section-bg);flex-shrink:0;">
-      <span id="env-fiche-title" style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--accent);letter-spacing:.08em;flex:1;"></span>
-      <button onclick="closeEnvFiche()" style="font-family:'Cinzel',serif;font-size:.72rem;padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">✕ Fermer</button>
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:8px;width:min(820px,98vw);height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+    <div id="env-fiche-header" style="padding:.4rem .7rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:.4rem;background:var(--section-bg);flex-shrink:0;">
+      <button id="env-fiche-prev" onclick="mjNavFiche(-1)" title="Personnage précédent"
+        style="font-family:Cinzel,serif;font-size:.7rem;padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--ink2);cursor:pointer;">◀</button>
+      <span id="env-fiche-title" style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--accent);letter-spacing:.08em;flex:1;text-align:center;"></span>
+      <button id="env-fiche-toggle-view" onclick="mjToggleFicheView()"
+        style="font-family:Cinzel,serif;font-size:.65rem;padding:3px 8px;border:1px solid #185FA5;border-radius:4px;background:none;color:#185FA5;cursor:pointer;">👤 Vue joueur</button>
+      <button id="env-fiche-next" onclick="mjNavFiche(1)" title="Personnage suivant"
+        style="font-family:Cinzel,serif;font-size:.7rem;padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--ink2);cursor:pointer;">▶</button>
+      <button onclick="closeEnvFiche()"
+        style="font-family:'Cinzel',serif;font-size:.72rem;padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;margin-left:.3rem;">✕</button>
     </div>
     <iframe id="env-fiche-iframe" src="about:blank" style="flex:1;border:none;width:100%;"></iframe>
+  </div>
+</div>
+
+<!-- Panneau navigation latéral rapide (MJ) -->
+<div id="mj-fiches-nav" style="display:none;">
+  <button id="mj-fiches-nav-toggle" onclick="mjToggleFichesNav()">📋 Fiches</button>
+  <div id="mj-fiches-nav-panel">
+    <div class="mj-nav-title">Personnages liés</div>
+    <div id="mj-nav-list"></div>
   </div>
 </div>
 <script>
@@ -3342,6 +3403,115 @@ function toggleBibIdeaux(){
   }
 }
 
+
+
+// ══════════════════════════════════════════════
+//   NAVIGATION MJ ENTRE LES FICHES JOUEURS
+// ══════════════════════════════════════════════
+
+let _mjNavIndex = 0;       // index courant dans fichePersonnages
+let _mjNavViewGM = true;   // true = vue MJ, false = vue joueur
+
+// ── Récupérer la liste ordonnée des fiches ──
+function _mjGetFiches(){
+  return (state.fichePersonnages||[]).map(p=>
+    typeof p==='string' ? {id:p,pwMJ:'',pwJoueur:''} : p
+  );
+}
+
+// ── Ouvrir une fiche par index ──
+function mjOpenFicheByIndex(idx, gm=true){
+  const fiches=_mjGetFiches();
+  if(!fiches.length) return;
+  _mjNavIndex=((idx%fiches.length)+fiches.length)%fiches.length;
+  _mjNavViewGM=gm;
+  const p=fiches[_mjNavIndex];
+  const id=p.id||p;
+  const pw=gm?(p.pwMJ||window._mjPw||''):(p.pwJoueur||'');
+  const base=window.location.href.replace(/[^/]*$/,'');
+  const overlay=document.getElementById('env-fiche-overlay');
+  const iframe=document.getElementById('env-fiche-iframe');
+  const title=document.getElementById('env-fiche-title');
+  const toggleBtn=document.getElementById('env-fiche-toggle-view');
+  if(!overlay||!iframe) return;
+  let url=base+'octogone.html?fiche='+encodeURIComponent(id);
+  if(pw) url+='&pw='+encodeURIComponent(pw);
+  if(gm) url+='&gm=1';
+  iframe.src=url;
+  title.textContent=(gm?'👁 ':'👤 ')+id+(gm?' (MJ)':' (joueur)');
+  if(toggleBtn) toggleBtn.textContent=gm?'👤 Vue joueur':'👁 Vue MJ';
+  overlay.style.display='flex';
+  // Mettre à jour le bouton actif dans le panneau nav
+  document.querySelectorAll('.mj-nav-btn').forEach((b,i)=>{
+    b.classList.toggle('active', i===_mjNavIndex);
+  });
+}
+
+// ── Navigation ◀/▶ ──
+function mjNavFiche(delta){
+  mjOpenFicheByIndex(_mjNavIndex+delta, _mjNavViewGM);
+}
+
+// ── Basculer vue MJ/joueur ──
+function mjToggleFicheView(){
+  mjOpenFicheByIndex(_mjNavIndex, !_mjNavViewGM);
+}
+
+// ── Panneau nav latéral ──
+function mjToggleFichesNav(){
+  const panel=document.getElementById('mj-fiches-nav-panel');
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')) mjRenderNavList();
+}
+
+function mjRenderNavList(){
+  const list=document.getElementById('mj-nav-list');
+  if(!list) return;
+  list.innerHTML='';
+  const fiches=_mjGetFiches();
+  if(!fiches.length){
+    list.innerHTML='<span style="font-size:.75rem;color:var(--ink3);font-style:italic;">Aucune fiche liée.</span>';
+    return;
+  }
+  fiches.forEach((p,i)=>{
+    const id=p.id||p;
+    const btn=document.createElement('button');
+    btn.className='mj-nav-btn'+(i===_mjNavIndex?' active':'');
+    btn.textContent=id;
+    btn.addEventListener('click',()=>{
+      mjOpenFicheByIndex(i, true);
+      document.getElementById('mj-fiches-nav-panel').classList.remove('open');
+    });
+    list.appendChild(btn);
+  });
+}
+
+// ── Remplacer openEnvFiche pour utiliser le nouveau système ──
+function openEnvFiche(ficheId, pw){
+  const fiches=_mjGetFiches();
+  const idx=fiches.findIndex(p=>(p.id||p)===ficheId);
+  if(idx>=0){
+    mjOpenFicheByIndex(idx, true);
+  } else {
+    // Fiche non dans la liste — ouverture directe
+    const base=window.location.href.replace(/[^/]*$/,'');
+    const overlay=document.getElementById('env-fiche-overlay');
+    const iframe=document.getElementById('env-fiche-iframe');
+    const title=document.getElementById('env-fiche-title');
+    if(!overlay||!iframe) return;
+    iframe.src=base+'octogone.html?fiche='+encodeURIComponent(ficheId)
+      +(pw?'&pw='+encodeURIComponent(pw):'')+'&gm=1';
+    title.textContent='👁 '+ficheId+' (MJ)';
+    overlay.style.display='flex';
+  }
+}
+function closeEnvFiche(){
+  document.getElementById('env-fiche-overlay').style.display='none';
+  document.getElementById('env-fiche-iframe').src='about:blank';
+}
+
+// ── Stocker le mot de passe MJ au login pour auto-remplir les fiches ──
+let _mjPw = '';
 
 // ── Synchroniser la fiche env sur toutes les fiches joueurs liées ──
 async function gmSyncEnvFiche(){
