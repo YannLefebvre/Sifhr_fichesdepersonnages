@@ -3871,11 +3871,6 @@ function renderHistoiresCroisees(){
   hcWrap.appendChild(addBtn);
 }
 renderHistoiresCroisees();
-// Attacher hcWrap au panneau Personnages (DOM réel, pas de clonage)
-(function(){
-  const target=document.getElementById('perso-hc-body');
-  if(target) target.appendChild(hcWrap);
-})();
 
 // ── Overlay de détail pour une histoire croisée ──
 function openHcDetail(idx){
@@ -3944,11 +3939,6 @@ function renderDettes(){
   }
 }
 renderDettes();
-// Attacher detteWrap au panneau Personnages (DOM réel, pas de clonage)
-(function(){
-  const target=document.getElementById('perso-dettes-body');
-  if(target) target.appendChild(detteWrap);
-})();
 
 // ── Overlay de détail pour une dette/créance ──
 function openDetteDetail(idx){
@@ -7239,8 +7229,12 @@ const PersonnePanel = {
       panel.classList.remove('open'); return;
     }
     panel.classList.add('open');
+    // Attacher hcWrap/detteWrap dans leurs conteneurs (DOM disponible maintenant)
+    const hcTarget=document.getElementById('perso-hc-body');
+    if(hcTarget && !hcTarget.contains(hcWrap)) hcTarget.appendChild(hcWrap);
+    const detteTarget=document.getElementById('perso-dettes-body');
+    if(detteTarget && !detteTarget.contains(detteWrap)) detteTarget.appendChild(detteWrap);
     this.loadPersonnes();
-    // Attacher les handlers de clic des sections (HC, Dettes, etc.) sans en ouvrir une
     this._bindSectionHandlers();
   },
 
