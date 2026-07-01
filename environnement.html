@@ -1017,15 +1017,7 @@ async function gmReset(){
 </div>
 
 <!-- Panneau axe flottant -->
-<!-- Panneau Dynamique (visible à tous, filtré par niveau) -->
-<div id="dynamique-panel">
-  <div class="dyn-panel-title">
-    <span>Dynamique de l'environnement</span>
-  </div>
-  <div class="dyn-log-list" id="dyn-log-list">
-    <div class="dyn-empty">Aucune modification enregistrée.</div>
-  </div>
-</div>
+
 
 <!-- Fiches personnages liées (MJ only) -->
 <div id="fiches-liees-row">
@@ -1127,6 +1119,17 @@ async function gmReset(){
       <g id="labels-static"></g>
     </svg>
   </div>
+
+  <!-- Dynamique de l'environnement -->
+  <!-- Panneau Dynamique (visible à tous, filtré par niveau) -->
+<div id="dynamique-panel">
+  <div class="dyn-panel-title">
+    <span>Dynamique de l'environnement</span>
+  </div>
+  <div class="dyn-log-list" id="dyn-log-list">
+    <div class="dyn-empty">Aucune modification enregistrée.</div>
+  </div>
+</div>
 
   <!-- Pneumatographie -->
   <div class="pneumato-panel">
@@ -2179,8 +2182,8 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
         if(tryGM){
           document.getElementById('gm-bar').style.display='flex';
           window._mjPw = pw; // stocker pour navigation fiches
-          document.getElementById('bib-ideaux-fab').style.display='block';
-          document.getElementById('chrono-fab').style.display='block';
+          document.getElementById('chrono-tab-wrap').style.display='block';
+          document.getElementById('bib-tab-wrap').style.display='block';
           document.getElementById('mj-fiches-nav').style.display='block';
           mjRenderNavList();
           document.getElementById('btn-occultation-gm').style.display='flex';
@@ -3044,19 +3047,24 @@ function closeDuel(){
 
 </script>
 
-<!-- FABs groupés en bas à droite -->
-<div id="env-fabs" style="position:fixed;bottom:1.2rem;right:1rem;display:flex;
-  flex-direction:column;gap:.4rem;align-items:flex-end;z-index:300;">
-  <button id="chrono-fab" onclick="chronoToggle()" style="display:none;
-    background:#c8860a;color:#fff8e8;border:none;border-radius:8px;
-    padding:.45rem .9rem;font-family:Cinzel,serif;font-size:.72rem;
-    letter-spacing:.06em;cursor:pointer;
-    box-shadow:0 3px 12px rgba(0,0,0,0.3);">☽ Chronologie</button>
-  <button id="bib-ideaux-fab" onclick="toggleBibIdeaux()" style="display:none;
-    background:#1a4a2a;color:#f5f0e8;border:none;border-radius:8px;
-    padding:.45rem .9rem;font-family:Cinzel,serif;font-size:.72rem;
-    letter-spacing:.06em;cursor:pointer;
-    box-shadow:0 3px 12px rgba(0,0,0,0.3);">📚 Octogones idéaux</button>
+<!-- Onglet vertical Chronologie (gauche, au-dessus de Fiches) -->
+<div id="chrono-tab-wrap" style="position:fixed;right:0;top:calc(50% + 5rem);
+  transform:translateY(-50%);z-index:280;display:none;">
+  <button id="chrono-fab" onclick="chronoToggle()"
+    style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
+    letter-spacing:.08em;padding:.6rem .35rem;background:#c8860a;color:#fff8e8;
+    border:none;border-radius:6px 0 0 6px;cursor:pointer;
+    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">☽ Chronologie</button>
+</div>
+
+<!-- Onglet vertical Octogones idéaux -->
+<div id="bib-tab-wrap" style="position:fixed;right:0;top:calc(50% + 9rem);
+  transform:translateY(-50%);z-index:280;display:none;">
+  <button id="bib-ideaux-fab" onclick="toggleBibIdeaux()"
+    style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
+    letter-spacing:.08em;padding:.6rem .35rem;background:#1a4a2a;color:#f5f0e8;
+    border:none;border-radius:6px 0 0 6px;cursor:pointer;
+    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">📚 Octogones idéaux</button>
 </div>
 
 <!-- Panneau MJ observateur de lancers -->
@@ -4390,6 +4398,32 @@ function chronoRenderRoutinesMJ(){
   sel.addEventListener('change',()=>chronoRenderMJRoutineList(sel.value, routineList));
 }
 
+async function chronoSaveRoutinesForJoueur(joueurId, routineList){
+  // Récupérer toutes les checkboxes cochées
+  const checked=Array.from(routineList.querySelectorAll('input[type=checkbox]:checked'))
+    .map(cb=>cb.dataset.nom);
+  await _chronoWriteRoutines(joueurId, checked);
+  const feedback=routineList.querySelector('.routine-save-feedback');
+  if(feedback){ feedback.textContent='✓ Sauvegardé'; feedback.style.color='#1a4a2a';
+    setTimeout(()=>feedback.textContent='', 2000); }
+}
+
+async function _chronoWriteRoutines(joueurId, liste){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(joueurId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    etat.routinesDebloquees=liste;
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(joueurId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+  }catch(e){}
+}
+
 async function chronoRenderMJRoutineList(joueurId, container){
   if(!joueurId){ container.innerHTML=''; return; }
   container.innerHTML='<span style="font-size:.75rem;color:var(--ink3);">Chargement…</span>';
@@ -4404,9 +4438,7 @@ async function chronoRenderMJRoutineList(joueurId, container){
       const row=document.createElement('div'); row.className='routine-unlock-row';
       const cb=document.createElement('input'); cb.type='checkbox'; cb.className='routine-unlock-cb';
       cb.checked=routinesOk.includes(rt.nom);
-      cb.addEventListener('change',async()=>{
-        await chronoToggleRoutineDeblocage(joueurId, rt.nom, cb.checked);
-      });
+      cb.dataset.nom=rt.nom; // pour la sauvegarde groupée
       const lbl=document.createElement('label');
       lbl.style.cssText='display:flex;align-items:center;gap:.4rem;cursor:pointer;flex:1;';
       lbl.appendChild(cb);
@@ -4416,6 +4448,18 @@ async function chronoRenderMJRoutineList(joueurId, container){
       row.appendChild(lbl);
       container.appendChild(row);
     });
+    // Bouton Sauvegarder + feedback
+    const saveRow=document.createElement('div');
+    saveRow.style.cssText='margin-top:.5rem;display:flex;align-items:center;gap:.6rem;';
+    const saveBtn=document.createElement('button');
+    saveBtn.style.cssText='font-family:Cinzel,serif;font-size:.68rem;padding:4px 12px;border:1px solid #1a4a6e;border-radius:4px;background:#1a4a6e;color:#fff;cursor:pointer;';
+    saveBtn.textContent='💾 Sauvegarder';
+    const feedback=document.createElement('span');
+    feedback.className='routine-save-feedback';
+    feedback.style.cssText='font-family:Cinzel,serif;font-size:.65rem;';
+    saveBtn.addEventListener('click',()=>chronoSaveRoutinesForJoueur(joueurId, container));
+    saveRow.appendChild(saveBtn); saveRow.appendChild(feedback);
+    container.appendChild(saveRow);
   }catch(e){ container.innerHTML='<span style="color:red;font-size:.75rem;">Erreur de chargement.</span>'; }
 }
 
