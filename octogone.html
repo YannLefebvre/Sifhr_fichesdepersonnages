@@ -3844,31 +3844,106 @@ function buildPersoSelect(currentVal, onChange){
 
 function renderHistoiresCroisees(){
   hcWrap.innerHTML='';
-  const list=document.createElement('div'); list.className='perso-compact-list';
+
+  // Index des HC par personnage
+  const hcByPerso={};
   (state.histoiresCroisees||[]).forEach((hc,idx)=>{
-    const item=document.createElement('div'); item.className='perso-compact-item';
-    const name=document.createElement('span'); name.className='perso-compact-name';
-    name.textContent=hc.perso||'(personnage non défini)';
-    const delBtn=document.createElement('button'); delBtn.className='perso-compact-del'; delBtn.textContent='✕';
-    delBtn.title='Supprimer cette histoire croisée';
-    delBtn.addEventListener('click',(e)=>{
-      e.stopPropagation();
-      state.histoiresCroisees.splice(idx,1); saveState(); renderHistoiresCroisees();
-    });
-    item.appendChild(name); item.appendChild(delBtn);
-    item.addEventListener('click',()=>openHcDetail(idx));
-    list.appendChild(item);
+    if(hc.perso) hcByPerso[hc.perso]=idx;
   });
-  hcWrap.appendChild(list);
-  const addBtn=document.createElement('button'); addBtn.className='perso-compact-add';
-  addBtn.textContent='+ Ajouter une histoire croisée';
-  addBtn.addEventListener('click',()=>{
+
+  // ── Boutons des personnages liés à l'env ──
+  const persoTitle=document.createElement('div');
+  persoTitle.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;margin-bottom:.3rem;';
+  persoTitle.textContent='Personnages liés';
+  hcWrap.appendChild(persoTitle);
+
+  const persoGrid=document.createElement('div');
+  persoGrid.id='hc-perso-grid';
+  persoGrid.style.cssText='display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.6rem;min-height:1.8rem;';
+  persoGrid.innerHTML='<span style="font-size:.72rem;color:var(--ink3);font-style:italic;">Chargement…</span>';
+  hcWrap.appendChild(persoGrid);
+
+  // Charger les personnages de l'env en async
+  getAllKnownPersonnes().then(personnes=>{
+    persoGrid.innerHTML='';
+    const visible=personnes.filter(p=>octIsGM||((state.visibilites||{})[p.id]??p.niveauReveal??2)>0);
+    if(!visible.length){
+      persoGrid.innerHTML='<span style="font-size:.72rem;color:var(--ink3);font-style:italic;">Aucun personnage lié.</span>';
+      return;
+    }
+    visible.forEach(p=>{
+      const hasHC = hcByPerso.hasOwnProperty(p.id);
+      const btn=document.createElement('button');
+      btn.className='perso-btn';
+      btn.style.cssText='font-size:.75rem;padding:3px 10px;'
+        +(hasHC?'border:2px solid #1a4a2a;':'border:1px solid var(--border);');
+      btn.textContent=p.id;
+      btn.title=hasHC?'Voir l\u2019histoire crois\u00e9e avec '+p.id:'Cr\u00e9er une histoire crois\u00e9e avec '+p.id;
+      btn.addEventListener('click',()=>{
+        if(hasHC){
+          openHcDetail(hcByPerso[p.id]);
+        } else {
+          if(!state.histoiresCroisees) state.histoiresCroisees=[];
+          state.histoiresCroisees.push({id:'hc_'+Date.now(), perso:p.id, text:''});
+          saveState(); renderHistoiresCroisees();
+          openHcDetail(state.histoiresCroisees.length-1);
+        }
+      });
+      persoGrid.appendChild(btn);
+    });
+  });
+
+  // ── Champ de saisie libre pour personnage non lié ──
+  const freeTitle=document.createElement('div');
+  freeTitle.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;margin-bottom:.3rem;';
+  freeTitle.textContent='Personnage non lié';
+  hcWrap.appendChild(freeTitle);
+
+  const freeRow=document.createElement('div');
+  freeRow.style.cssText='display:flex;gap:.4rem;margin-bottom:.6rem;';
+  const freeInp=document.createElement('input');
+  freeInp.type='text'; freeInp.placeholder='Nom du personnage…';
+  freeInp.style.cssText='flex:1;padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--ink);font-family:Crimson Text,serif;font-size:.85rem;';
+  const freeBtn=document.createElement('button');
+  freeBtn.className='perso-btn';
+  freeBtn.style.cssText='flex-shrink:0;font-size:.72rem;padding:3px 8px;';
+  freeBtn.textContent='+ Ajouter';
+  freeBtn.addEventListener('click',()=>{
+    const nom=freeInp.value.trim();
+    if(!nom) return;
     if(!state.histoiresCroisees) state.histoiresCroisees=[];
-    state.histoiresCroisees.push({id:'hc_'+Date.now(), perso:'', text:''});
+    // Si existe déjà, ouvrir le détail
+    const existing=state.histoiresCroisees.findIndex(h=>h.perso===nom);
+    if(existing>=0){ openHcDetail(existing); return; }
+    state.histoiresCroisees.push({id:'hc_'+Date.now(), perso:nom, text:''});
     saveState(); renderHistoiresCroisees();
     openHcDetail(state.histoiresCroisees.length-1);
+    freeInp.value='';
   });
-  hcWrap.appendChild(addBtn);
+  freeInp.addEventListener('keydown',e=>{ if(e.key==='Enter') freeBtn.click(); });
+  freeRow.appendChild(freeInp); freeRow.appendChild(freeBtn);
+  hcWrap.appendChild(freeRow);
+
+  // ── Liste des HC existantes ──
+  if((state.histoiresCroisees||[]).length){
+    const listTitle=document.createElement('div');
+    listTitle.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;margin-bottom:.3rem;';
+    listTitle.textContent='Histoires existantes';
+    hcWrap.appendChild(listTitle);
+    const list=document.createElement('div'); list.className='perso-compact-list';
+    (state.histoiresCroisees||[]).forEach((hc,idx)=>{
+      const item=document.createElement('div'); item.className='perso-compact-item';
+      item.style.borderColor=hc.perso?'rgba(26,74,42,.35)':'var(--border2)';
+      const name=document.createElement('span'); name.className='perso-compact-name';
+      name.textContent=hc.perso||'(non défini)';
+      const delBtn=document.createElement('button'); delBtn.className='perso-compact-del'; delBtn.textContent='✕';
+      delBtn.addEventListener('click',(e)=>{ e.stopPropagation(); state.histoiresCroisees.splice(idx,1); saveState(); renderHistoiresCroisees(); });
+      item.appendChild(name); item.appendChild(delBtn);
+      item.addEventListener('click',()=>openHcDetail(idx));
+      list.appendChild(item);
+    });
+    hcWrap.appendChild(list);
+  }
 }
 renderHistoiresCroisees();
 
@@ -3901,41 +3976,120 @@ function closeHcDetail(){ document.getElementById('hc-detail-overlay').classList
 const detteWrap=document.createElement('div');
 function renderDettes(){
   detteWrap.innerHTML='';
-  const list=document.createElement('div'); list.className='perso-compact-list';
+
+  // Index des dettes par personnage
+  const detteByPerso={};
   (state.dettes||[]).forEach((d,idx)=>{
-    const item=document.createElement('div'); item.className='perso-compact-item';
-    const name=document.createElement('span'); name.className='perso-compact-name';
-    name.textContent=d.perso||'(personnage non défini)';
-    const bm=d.bm||0;
-    const badge=document.createElement('span');
-    badge.className='perso-compact-badge '+(bm>0?'pos':bm<0?'neg':'zero');
-    badge.textContent=bm>0?'+'+bm:(bm===0?'0':bm);
-    // Badge visible : MJ toujours, joueur seulement si bm != 0
-    badge.style.display=(octIsGM||bm!==0)?'':'none';
-    item.appendChild(name); item.appendChild(badge);
-    if(octIsGM){
-      const delBtn=document.createElement('button'); delBtn.className='perso-compact-del'; delBtn.textContent='✕';
-      delBtn.title='Supprimer cette dette/créance';
-      delBtn.addEventListener('click',(e)=>{
-        e.stopPropagation();
-        state.dettes.splice(idx,1); saveState(); renderDettes();
-      });
-      item.appendChild(delBtn);
-    }
-    item.addEventListener('click',()=>openDetteDetail(idx));
-    list.appendChild(item);
+    if(d.perso) detteByPerso[d.perso]=idx;
   });
-  detteWrap.appendChild(list);
-  if(octIsGM){
-    const addBtn=document.createElement('button'); addBtn.className='perso-compact-add';
-    addBtn.textContent='+ Ajouter une dette / créance';
-    addBtn.addEventListener('click',()=>{
-      if(!state.dettes) state.dettes=[];
-      state.dettes.push({id:'d_'+Date.now(), perso:'', bm:0, text:''});
-      saveState(); renderDettes();
-      openDetteDetail(state.dettes.length-1);
+
+  // ── Boutons des personnages liés à l'env ──
+  const persoTitle=document.createElement('div');
+  persoTitle.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;margin-bottom:.3rem;';
+  persoTitle.textContent='Personnages liés';
+  detteWrap.appendChild(persoTitle);
+
+  const persoGrid=document.createElement('div');
+  persoGrid.id='dette-perso-grid';
+  persoGrid.style.cssText='display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.6rem;min-height:1.8rem;';
+  persoGrid.innerHTML='<span style="font-size:.72rem;color:var(--ink3);font-style:italic;">Chargement…</span>';
+  detteWrap.appendChild(persoGrid);
+
+  getAllKnownPersonnes().then(personnes=>{
+    persoGrid.innerHTML='';
+    const visible=personnes.filter(p=>octIsGM||((state.visibilites||{})[p.id]??p.niveauReveal??2)>0);
+    if(!visible.length){
+      persoGrid.innerHTML='<span style="font-size:.72rem;color:var(--ink3);font-style:italic;">Aucun personnage lié.</span>';
+      return;
+    }
+    visible.forEach(p=>{
+      const hasDette = detteByPerso.hasOwnProperty(p.id);
+      const bm = hasDette ? (state.dettes[detteByPerso[p.id]].bm||0) : 0;
+      const wrap=document.createElement('div');
+      wrap.style.cssText='display:flex;align-items:center;gap:2px;';
+      const btn=document.createElement('button');
+      btn.className='perso-btn';
+      btn.style.cssText='font-size:.75rem;padding:3px 10px;';
+      btn.textContent=p.id;
+      btn.title=hasDette?'Voir la dette/créance avec '+p.id:'Créer une dette/créance avec '+p.id;
+      btn.addEventListener('click',()=>{
+        if(hasDette){
+          openDetteDetail(detteByPerso[p.id]);
+        } else {
+          if(!state.dettes) state.dettes=[];
+          state.dettes.push({id:'d_'+Date.now(), perso:p.id, bm:0, text:''});
+          saveState(); renderDettes();
+          openDetteDetail(state.dettes.length-1);
+        }
+      });
+      wrap.appendChild(btn);
+      if(hasDette && (octIsGM||bm!==0)){
+        const badge=document.createElement('span');
+        badge.className='perso-compact-badge '+(bm>0?'pos':bm<0?'neg':'zero');
+        badge.style.fontSize='.6rem';
+        badge.textContent=bm>0?'+'+bm:(bm===0?'0':bm);
+        wrap.appendChild(badge);
+      }
+      persoGrid.appendChild(wrap);
     });
-    detteWrap.appendChild(addBtn);
+  });
+
+  // ── Champ de saisie libre ──
+  const freeTitle=document.createElement('div');
+  freeTitle.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;margin-bottom:.3rem;';
+  freeTitle.textContent='Personnage non lié';
+  detteWrap.appendChild(freeTitle);
+
+  const freeRow=document.createElement('div');
+  freeRow.style.cssText='display:flex;gap:.4rem;margin-bottom:.6rem;';
+  const freeInp=document.createElement('input');
+  freeInp.type='text'; freeInp.placeholder='Nom du personnage…';
+  freeInp.style.cssText='flex:1;padding:3px 7px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--ink);font-family:Crimson Text,serif;font-size:.85rem;';
+  const freeBtn=document.createElement('button');
+  freeBtn.className='perso-btn';
+  freeBtn.style.cssText='flex-shrink:0;font-size:.72rem;padding:3px 8px;';
+  freeBtn.textContent='+ Ajouter';
+  freeBtn.addEventListener('click',()=>{
+    const nom=freeInp.value.trim();
+    if(!nom) return;
+    if(!state.dettes) state.dettes=[];
+    const existing=state.dettes.findIndex(d=>d.perso===nom);
+    if(existing>=0){ openDetteDetail(existing); return; }
+    state.dettes.push({id:'d_'+Date.now(), perso:nom, bm:0, text:''});
+    saveState(); renderDettes();
+    openDetteDetail(state.dettes.length-1);
+    freeInp.value='';
+  });
+  freeInp.addEventListener('keydown',e=>{ if(e.key==='Enter') freeBtn.click(); });
+  freeRow.appendChild(freeInp); freeRow.appendChild(freeBtn);
+  detteWrap.appendChild(freeRow);
+
+  // ── Liste des dettes existantes ──
+  if((state.dettes||[]).length){
+    const listTitle=document.createElement('div');
+    listTitle.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;margin-bottom:.3rem;';
+    listTitle.textContent='Dettes existantes';
+    detteWrap.appendChild(listTitle);
+    const list=document.createElement('div'); list.className='perso-compact-list';
+    (state.dettes||[]).forEach((d,idx)=>{
+      const bm=d.bm||0;
+      const item=document.createElement('div'); item.className='perso-compact-item';
+      const name=document.createElement('span'); name.className='perso-compact-name';
+      name.textContent=d.perso||'(non défini)';
+      const badge=document.createElement('span');
+      badge.className='perso-compact-badge '+(bm>0?'pos':bm<0?'neg':'zero');
+      badge.textContent=bm>0?'+'+bm:(bm===0?'0':bm);
+      badge.style.display=(octIsGM||bm!==0)?'':'none';
+      item.appendChild(name); item.appendChild(badge);
+      if(octIsGM){
+        const delBtn=document.createElement('button'); delBtn.className='perso-compact-del'; delBtn.textContent='✕';
+        delBtn.addEventListener('click',(e)=>{ e.stopPropagation(); state.dettes.splice(idx,1); saveState(); renderDettes(); });
+        item.appendChild(delBtn);
+      }
+      item.addEventListener('click',()=>openDetteDetail(idx));
+      list.appendChild(item);
+    });
+    detteWrap.appendChild(list);
   }
 }
 renderDettes();
