@@ -959,7 +959,7 @@ async function gmReset(){
   .routine-unlock-cb { accent-color:#1a4a6e; }
 
   /* ── Panneau navigation fiches MJ ── */
-  #mj-fiches-nav { position:fixed; top:calc(50vh - 9rem); right:0;
+  #mj-fiches-nav { position:fixed; top:calc(50vh - 8.5rem); right:0;
     z-index:280; }
   #mj-fiches-nav-toggle { writing-mode:vertical-rl;
     font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.08em;
@@ -999,6 +999,26 @@ async function gmReset(){
   #env-fiche-toggle-view { font-family:'Cinzel',serif; font-size:.68rem;
     padding:3px 8px; border:1px solid #185FA5; border-radius:4px;
     background:none; color:#185FA5; cursor:pointer; }
+
+  /* ── Panneau personnages liés (onglet vertical) ── */
+  #perso-lies-tab-wrap { position:fixed; right:0; top:calc(50vh + 8.5rem);
+    z-index:280; display:none; }
+  #perso-lies-tab-btn { writing-mode:vertical-rl; font-family:'Cinzel',serif;
+    font-size:.68rem; letter-spacing:.08em; padding:.6rem .35rem;
+    background:#5a3a8a; color:#f5f0e8; border:none;
+    border-radius:6px 0 0 6px; cursor:pointer;
+    box-shadow:-2px 2px 8px rgba(0,0,0,.25); }
+  #perso-lies-panel { display:none; position:fixed; right:0;
+    top:calc(50vh - 10rem); width:300px; max-height:80vh; overflow-y:auto;
+    background:var(--bg); border:1px solid #5a3a8a;
+    border-radius:8px 0 0 8px; padding:.7rem .8rem;
+    box-shadow:-4px 4px 18px rgba(0,0,0,.25); z-index:279; }
+  #perso-lies-panel.open { display:block; }
+  #perso-lies-panel .panel-title-bar { display:flex; align-items:center;
+    margin-bottom:.5rem; border-bottom:1px solid rgba(90,58,138,.2);
+    padding-bottom:.3rem; }
+  #perso-lies-panel .panel-title-bar span { font-family:'Cinzel',serif;
+    font-size:.78rem; color:#5a3a8a; flex:1; letter-spacing:.06em; }
 </style>
 </head>
 <body>
@@ -1019,17 +1039,7 @@ async function gmReset(){
 <!-- Panneau axe flottant -->
 
 
-<!-- Fiches personnages liées (MJ only) -->
-<div id="fiches-liees-row">
-  <div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.4rem;">Personnages liés à cet environnement</div>
-  <div class="fiches-perso-list" id="fiches-perso-list"></div>
-  <div class="fiche-add-row">
-    <input id="fiche-add-input" class="fiche-add-input" type="text" placeholder="identifiant…" style="flex:1.5;">
-    <input id="fiche-add-pw" class="fiche-add-input" type="password" placeholder="mdp MJ" style="flex:1;">
-    <input id="fiche-add-pwj" class="fiche-add-input" type="password" placeholder="mdp joueur" style="flex:1;">
-    <button class="fiche-add-btn" onclick="addFichePersonnage()">+ Ajouter</button>
-  </div>
-</div>
+
 
 <!-- Panneau 9 agrégés (MJ only) -->
 <div id="nine-panel">
@@ -2195,6 +2205,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           document.getElementById('chrono-tab-wrap').style.display='block';
           document.getElementById('bib-tab-wrap').style.display='block';
           document.getElementById('mj-fiches-nav').style.display='block';
+          document.getElementById('perso-lies-tab-wrap').style.display='block';
           mjRenderNavList();
           document.getElementById('btn-occultation-gm').style.display='flex';
           document.querySelectorAll('.gm-only-zone').forEach(el=>el.classList.add('gm-visible'));
@@ -3058,7 +3069,7 @@ function closeDuel(){
 </script>
 
 <!-- Onglet vertical Chronologie (gauche, au-dessus de Fiches) -->
-<div id="chrono-tab-wrap" style="position:fixed;right:0;top:calc(50vh - 3rem);z-index:280;display:none;">
+<div id="chrono-tab-wrap" style="position:fixed;right:0;top:calc(50vh - 2.8rem);z-index:280;display:none;">
   <button id="chrono-fab" onclick="chronoToggle()"
     style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
     letter-spacing:.08em;padding:.6rem .35rem;background:#c8860a;color:#fff8e8;
@@ -3067,7 +3078,7 @@ function closeDuel(){
 </div>
 
 <!-- Onglet vertical Octogones idéaux -->
-<div id="bib-tab-wrap" style="position:fixed;right:0;top:calc(50vh + 3rem);z-index:280;display:none;">
+<div id="bib-tab-wrap" style="position:fixed;right:0;top:calc(50vh + 2.9rem);z-index:280;display:none;">
   <button id="bib-ideaux-fab" onclick="toggleBibIdeaux()"
     style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
     letter-spacing:.08em;padding:.6rem .35rem;background:#1a4a2a;color:#f5f0e8;
@@ -3329,6 +3340,30 @@ function startMjDiceObservation(){
     </div>
     <iframe id="env-fiche-iframe" src="about:blank" style="flex:1;border:none;width:100%;"></iframe>
   </div>
+</div>
+
+<!-- Onglet vertical Personnages liés -->
+<div id="perso-lies-tab-wrap">
+  <button id="perso-lies-tab-btn" onclick="togglePersoLiesPanel()">🧑 Personnages liés</button>
+</div>
+
+<!-- Panneau personnages liés (glissant) -->
+<div id="perso-lies-panel">
+  <div class="panel-title-bar">
+    <span>Personnages liés</span>
+    <button onclick="togglePersoLiesPanel()"
+      style="background:none;border:none;cursor:pointer;color:#5a3a8a;font-size:1rem;">✕</button>
+  </div>
+  <div id="perso-lies-inner">
+  <div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.4rem;">Personnages liés à cet environnement</div>
+  <div class="fiches-perso-list" id="fiches-perso-list"></div>
+  <div class="fiche-add-row">
+    <input id="fiche-add-input" class="fiche-add-input" type="text" placeholder="identifiant…" style="flex:1.5;">
+    <input id="fiche-add-pw" class="fiche-add-input" type="password" placeholder="mdp MJ" style="flex:1;">
+    <input id="fiche-add-pwj" class="fiche-add-input" type="password" placeholder="mdp joueur" style="flex:1;">
+    <button class="fiche-add-btn" onclick="addFichePersonnage()">+ Ajouter</button>
+  </div>
+</div>
 </div>
 
 <!-- Panneau navigation latéral rapide (MJ) -->
@@ -3727,6 +3762,11 @@ async function _upsertFiche(fiche){
   }catch(e){ console.error('_upsertFiche',fiche?.id,e); return false; }
 }
 
+function togglePersoLiesPanel(){
+  const panel=document.getElementById('perso-lies-panel');
+  panel.classList.toggle('open');
+}
+
 // ── Synchroniser la fiche env sur toutes les fiches joueurs liées ──
 async function gmSyncEnvFiche(){
   const fp=state.fichePersonnages||[];
@@ -4112,12 +4152,17 @@ async function chronoAvancerJour(n){
   state.chronologie.dateCourante=avancerDate(state.chronologie.dateCourante,n);
   chronoSetInputDate('ch-cur',state.chronologie.dateCourante);
   await saveState(); chronoRender();
+  // Rafraîchir les routines joueur si identifié (cooldown peut avoir expiré)
+  if(!isGM && typeof playerId!=='undefined' && playerId && playerId!=='joueur')
+    chronoRenderRoutinesJoueur(playerId);
 }
 async function chronoAvancerHeure(n){
   if(!state.chronologie?.dateCourante) return;
   state.chronologie.dateCourante=avancerHeure(state.chronologie.dateCourante,n);
   chronoSetInputDate('ch-cur',state.chronologie.dateCourante);
   await saveState(); chronoRender();
+  if(!isGM && typeof playerId!=='undefined' && playerId && playerId!=='joueur')
+    chronoRenderRoutinesJoueur(playerId);
 }
 
 // ── État de l'événement en cours d'édition ──
@@ -4207,7 +4252,7 @@ function chronoRender(){
   if(!ch||!ch.dateDebut||!ch.dateFin){
     if(dateLbl) dateLbl.textContent='☽ Dates non configurées';
     const bande=document.getElementById('chrono-bande');
-    if(bande) bande.innerHTML='<div style="font-family:Cinzel,serif;font-size:.75rem;color:#8a6a20;padding:1rem 60px;">Configurez les dates de début et de fin.</div>';
+    if(bande) bande.innerHTML='<div style="font-family:Cinzel,serif;font-size:.75rem;color:#2a1a08;padding:1rem 60px;">Configurez les dates de début et de fin.</div>';
     return;
   }
   const cur=ch.dateCourante||ch.dateDebut;
@@ -4243,7 +4288,7 @@ function chronoRender(){
       const ml=document.createElement('div');
       ml.style.cssText=`position:absolute;left:${x}px;top:4px;
         transform:translateX(-50%);
-        font-family:Cinzel,serif;font-size:.58rem;color:#8a6a20;
+        font-family:Cinzel,serif;font-size:.58rem;color:#2a1a08;
         white-space:nowrap;letter-spacing:.03em;`;
       ml.textContent=MOIS_SHORT[dateJ.mois-1]+' '+dateJ.annee+'H';
       bande.appendChild(ml);
@@ -4255,7 +4300,7 @@ function chronoRender(){
       const nl=document.createElement('div');
       nl.style.cssText=`position:absolute;left:${x}px;top:18px;
         transform:translateX(-50%);
-        font-family:Cinzel,serif;font-size:.54rem;color:#a07030;`;
+        font-family:Cinzel,serif;font-size:.54rem;color:#2a1a08;`;
       nl.textContent=dateJ.jour;
       bande.appendChild(nl);
     }
@@ -4282,9 +4327,11 @@ function chronoRender(){
         // Label prière (si assez de place)
         if(PX_PAR_JOUR>=48){
           const pl=document.createElement('div');
-          pl.style.cssText=`position:absolute;left:${xP+2}px;bottom:4px;
-            font-family:Cinzel,serif;font-size:.44rem;color:#a07030;
-            white-space:nowrap;letter-spacing:.02em;`;
+          pl.style.cssText=`position:absolute;left:${xP+1}px;bottom:2px;
+            font-family:Cinzel,serif;font-size:.42rem;color:#2a1a08;
+            writing-mode:vertical-rl;text-orientation:mixed;
+            letter-spacing:.03em;white-space:nowrap;line-height:1;
+            max-height:38px;overflow:hidden;`;
           pl.textContent=pr.nom;
           bande.appendChild(pl);
         }
@@ -4489,6 +4536,8 @@ function chronoSliderCommit(val){
   document.getElementById('ch-cur-jour').value=d.jour;
   document.getElementById('ch-cur-heure').value=h;
   saveState(); chronoRender();
+  if(!isGM && typeof playerId!=='undefined' && playerId && playerId!=='joueur')
+    chronoRenderRoutinesJoueur(playerId);
 }
 
 // ── Import d'un événement depuis carte.html ──
@@ -4650,16 +4699,17 @@ const ROUTINES_DATA = [
 
 // Clé unique pour identifier la période/journée en cours
 function chronoPeriodeKey(){
+  // Toujours recalculer depuis la date courante (peut avoir avancé)
   const ch=state.chronologie;
   const cur=ch?.dateCourante||ch?.dateDebut;
-  if(!cur) return 'unknown';
+  if(!cur) return 'unknown_period';
   const p=getPeriode(cur.heure||0);
   return `${p.nom}_${cur.jour}_${cur.mois}_${cur.annee}`;
 }
 function chronoJourKey(){
   const ch=state.chronologie;
   const cur=ch?.dateCourante||ch?.dateDebut;
-  if(!cur) return 'unknown';
+  if(!cur) return 'unknown_day';
   return `${cur.jour}_${cur.mois}_${cur.annee}`;
 }
 
