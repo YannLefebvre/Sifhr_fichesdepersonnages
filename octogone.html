@@ -2523,6 +2523,8 @@ async function doLogin(tryGM){
           await loadBibIdeaux();
           await recomputeAllDeviations();
         }, 1500);
+        // Calculer les états de saturation initiaux
+        setTimeout(applyEtatsSaturation, 2000);
         // Appliquer mode lecture seule si demandé
         if(window._readOnlyMode){
           document.getElementById('gm-bar').style.display='none';
@@ -3216,6 +3218,8 @@ function addToken(sectorId, color){
   scheduleDeviationRecompute();
 
   renderSegmentColors();
+
+  scheduleEtatRecompute();
 }
 
 function cycleToken(sectorId,idx){
@@ -3246,6 +3250,8 @@ function cycleToken(sectorId,idx){
   scheduleDeviationRecompute();
 
   renderSegmentColors();
+
+  scheduleEtatRecompute();
 }
 function renderToken(sectorId,idx){
   const g=document.getElementById(`tok-${sectorId}-${idx}`);
@@ -4605,6 +4611,7 @@ function applyRemoteState(saved){
   // Recalculer les déviations si les tokens ont changé
   if(typeof scheduleDeviationRecompute==='function') scheduleDeviationRecompute();
   if(typeof renderSegmentColors==='function') renderSegmentColors();
+  if(typeof scheduleEtatRecompute==='function') scheduleEtatRecompute();
 }
 
 /* ── Realtime Supabase ────────────────────────── */
@@ -8744,6 +8751,279 @@ async function loadEvtPanel(){
   }catch(e){body.innerHTML='<div class="evt-empty">Erreur de chargement.</div>';console.error('loadEvtPanel',e);}
 }
 
+
+
+// ══════════════════════════════════════════════
+//   SYSTÈME D'ÉTATS DE SATURATION
+// ══════════════════════════════════════════════
+
+// Groupes d'axes et leurs états associés
+const ETAT_GROUPES = {
+  feu_bilej: {
+    axes: ['feu','bile_j'],
+    n1_neg: {nom:"Montée de colère",   desc:"Vous vous empourprez, la goutte d'eau déborde du vase.", effet:'relance'},
+    n1_pos: {nom:"Montée d'adrénaline",desc:"Une énergie soudaine qui parcourt votre corps.",          effet:'avantage'},
+    n2_neg: [
+      {nom:"Cet être est votre ennemi",  desc:"Déterminez un personnage avec lequel vous entrez en conflit.",effet:'hc'},
+      {nom:"Déchainement de haine",      desc:"Vous ne pouvez plus réprimer votre colère : vous êtes en roue libre.", effet:'des_bloques_axe12'},
+    ],
+    n2_pos: {nom:"Surcroît d'énergie",  desc:"Vous vous sentez en pleine forme, prêt à en découdre.",  effet:'expertise'},
+  },
+  terre_bilen: {
+    axes: ['terre','bile_n'],
+    n1_neg: {nom:"Confusion mentale",       desc:"Après un choc, il est difficile d'avoir les idées claires.", effet:'relance'},
+    n1_pos: {nom:"Une idée claire émerge",  desc:"Votre esprit trouve la faille. Euréka !",                   effet:'avantage'},
+    n2_neg: [
+      {nom:"Détachement préoccupant",       desc:"Vous ne parvenez plus à vous motiver en dépit de vos idéaux.", effet:'des_non_modifiables'},
+      {nom:"Les obstacles sont les plus forts", desc:"Quelle que soit votre entreprise, vous le pensez vouée à l'échec.", effet:'opposition'},
+    ],
+    n2_pos: {nom:"Focalisation",            desc:"Votre esprit est focalisé sur ce qu'il doit comprendre.", effet:'expertise'},
+  },
+  eau_flegme: {
+    axes: ['eau','flegme'],
+    n1_neg: {nom:"Perte de sang-froid",     desc:"Une fissure dans l'édifice de votre sérénité.",        effet:'relance'},
+    n1_pos: {nom:"Se recentrer",            desc:"Vous reprenez vos esprits et vous focalisez.",          effet:'avantage'},
+    n2_neg: [
+      {nom:"Début de panique",              desc:"Votre peur s'ajoute à la hargne des obstacles.", effet:'opposition'},
+      {nom:"Se protéger d'autrui",          desc:"Vous dressez une barrière contre toute influence extérieure.", effet:'pas_de_jetons_externes'},
+    ],
+    n2_pos: {nom:"Impassible",              desc:"Les événements autour de vous n'ont plus de prise.", effet:'expertise'},
+  },
+  air_sang: {
+    axes: ['air','sang'],
+    n1_neg: {nom:"Doute existentiel",             desc:"Une brève coupure de connexion avec la pneuma divine.", effet:'relance'},
+    n1_pos: {nom:"Un vent subtil qui vous traverse", desc:"La connexion avec la pneuma n'en est que plus forte.", effet:'avantage'},
+    n2_neg: [
+      {nom:"Mauvaise inspiration",          desc:"Votre esprit s'égare et ne raisonne plus correctement.", effet:'negation_prochain'},
+      {nom:"Le doute s'est emparé de vous", desc:"Des pensées parasites obscurcissent votre lien avec le divin.", effet:'opposition'},
+    ],
+    n2_pos: {nom:"Connexion avec le divin", desc:"Vous sentez les flux de pneuma, tout semble limpide.", effet:'expertise'},
+  },
+};
+
+// Labels d'effet pour le lanceur
+const ETAT_EFFET_LABEL = {
+  relance:             '▼ Relance',
+  avantage:            '▲ Avantage',
+  opposition:          '▼ Opposition',
+  expertise:           '▲ Expertise',
+  negation_prochain:   '▼ Négation (prochain lancer)',
+  des_bloques_axe12:   '▼ Dés bloqués axe 1/2',
+  des_non_modifiables: '▼ Dés non modifiables',
+  hc:                  '⚠ Histoires croisées',
+  pas_de_jetons_externes: '⚠ Pas de jetons externes',
+};
+const ETAT_EFFET_COLOR = {
+  relance:'#8b2020', avantage:'#1a4a2a', opposition:'#8b2020',
+  expertise:'#1a4a6e', negation_prochain:'#5a1010', des_bloques_axe12:'#8b2020',
+  des_non_modifiables:'#8b2020', hc:'#c8860a', pas_de_jetons_externes:'#c8860a',
+};
+
+// ── Analyser les jetons d'un groupe d'axes ──
+function analyserGroupeAxes(grp){
+  const toks = [];
+  grp.axes.forEach(axe=>{
+    (state.tokens[axe]||[]).forEach(t=>{
+      if(t==='white') toks.push('white');
+      else if(t==='black'||t==='black_token') toks.push('black');
+    });
+  });
+  const w=toks.filter(t=>t==='white').length;
+  const b=toks.filter(t=>t==='black').length;
+  const total=w+b;
+  return {w, b, total};
+}
+
+// ── Déterminer l'état actif pour un groupe ──
+function getEtatGroupe(grpKey, grp, joueDateDebut){
+  const {w, b, total} = analyserGroupeAxes(grp);
+  if(total<3) return null;
+
+  const positif = w>b;
+  const n2 = (w===3)||(b===3);
+  let etatBase;
+
+  if(n2){
+    if(positif) etatBase = {...grp.n2_pos, niveau:'N2', polarite:'positif'};
+    else {
+      // Tirage aléatoire parmi les N2 négatifs
+      const choix = grp.n2_neg[Math.floor(Math.random()*grp.n2_neg.length)];
+      etatBase = {...choix, niveau:'N2', polarite:'negatif'};
+    }
+  } else {
+    if(positif) etatBase = {...grp.n1_pos, niveau:'N1', polarite:'positif'};
+    else        etatBase = {...grp.n1_neg, niveau:'N1', polarite:'negatif'};
+  }
+  etatBase.grpKey = grpKey;
+  return etatBase;
+}
+
+// ── Calculer tous les états actifs ──
+function computeEtatsSaturation(){
+  const etats=[];
+  Object.entries(ETAT_GROUPES).forEach(([grpKey, grp])=>{
+    const e=getEtatGroupe(grpKey, grp);
+    if(e) etats.push(e);
+  });
+  return etats;
+}
+
+// ── Comparer avec les états précédents (dans state) ──
+// Detecter les changements pour notifier et gérer la progression N1→N2
+function applyEtatsSaturation(){
+  const nouveaux = computeEtatsSaturation();
+  const anciens = state.etatsSaturation||[];
+
+  // Identifier les changements
+  nouveaux.forEach(e=>{
+    const ancien = anciens.find(a=>a.grpKey===e.grpKey);
+    if(!ancien){
+      // Nouvel état apparu
+      e.dateDebut = state.chronologie?.dateCourante
+        ? {...state.chronologie.dateCourante}
+        : null;
+      notifierEtat(e, 'apparition');
+      appliquerEffetEtat(e);
+    } else {
+      // État persistant — conserver la dateDebut
+      e.dateDebut = ancien.dateDebut;
+      // Vérifier mutation N1→N2 (2 journées écoulées)
+      if(e.niveau==='N1' && e.dateDebut && state.chronologie?.dateCourante){
+        const jours=diffJours(e.dateDebut, state.chronologie.dateCourante);
+        if(jours>=2){
+          // Promouvoir en N2
+          const grp=ETAT_GROUPES[e.grpKey];
+          const positif=e.polarite==='positif';
+          let n2;
+          if(positif) n2={...grp.n2_pos, niveau:'N2', polarite:'positif'};
+          else { const c=grp.n2_neg[Math.floor(Math.random()*grp.n2_neg.length)]; n2={...c,niveau:'N2',polarite:'negatif'}; }
+          n2.grpKey=e.grpKey; n2.dateDebut=e.dateDebut;
+          Object.assign(e, n2);
+          notifierEtat(e, 'mutation');
+        }
+      }
+      appliquerEffetEtat(e);
+    }
+  });
+
+  // États disparus
+  anciens.forEach(a=>{
+    if(!nouveaux.find(n=>n.grpKey===a.grpKey)){
+      notifierEtat(a, 'disparition');
+      retirerEffetEtat(a);
+    }
+  });
+
+  state.etatsSaturation = nouveaux;
+  saveState();
+  renderEtatsSaturation();
+}
+
+// ── Notifier ──
+function notifierEtat(e, type){
+  let msg='';
+  const emoji=e.polarite==='positif'?'✦':'⚡';
+  if(type==='apparition')
+    msg=`${emoji} Nouvel état : "${e.nom}" (${e.niveau} ${e.polarite}) — ${e.desc}`;
+  else if(type==='mutation')
+    msg=`${emoji} L'état "${e.nom}" s'installe durablement (${e.niveau})`;
+  else
+    msg=`○ L'état "${e.nom}" se dissipe.`;
+  if(typeof NotifSystem!=='undefined') NotifSystem.show(msg,'États');
+}
+
+// ── Appliquer l'effet dans l'interface ──
+function appliquerEffetEtat(e){
+  if(e.effet==='hc'){
+    // Ouvrir le panneau Personnages si pas déjà ouvert
+    const pp=document.getElementById('perso-panel');
+    if(pp&&!pp.classList.contains('open')) PersonnePanel.toggle();
+  }
+  // Les autres effets sont gérés dans renderEtatsSaturation et le lanceur
+}
+function retirerEffetEtat(e){ /* nettoyage géré dans renderEtatsSaturation */ }
+
+// ── Affichage des états actifs ──
+function renderEtatsSaturation(){
+  const etats = state.etatsSaturation||[];
+  let container = document.getElementById('etats-saturation-display');
+  if(!container){
+    // Créer la zone d'affichage sous les panneaux principaux
+    container = document.createElement('div');
+    container.id='etats-saturation-display';
+    container.style.cssText='margin:.6rem 0;';
+    const lower = document.querySelector('.lower');
+    if(lower) lower.insertBefore(container, lower.firstChild);
+  }
+  if(!etats.length){ container.innerHTML=''; return; }
+
+  container.innerHTML=etats.map(e=>{
+    const col=ETAT_EFFET_COLOR[e.effet]||'#888';
+    const lbl=ETAT_EFFET_LABEL[e.effet]||e.effet;
+    const bg=e.polarite==='positif'?'rgba(26,74,42,.08)':'rgba(138,32,32,.08)';
+    const border=e.polarite==='positif'?'#1a4a2a':'#8b2020';
+    return `<div style="display:flex;align-items:center;gap:.5rem;
+      padding:.35rem .6rem;margin-bottom:.3rem;border-radius:5px;
+      background:${bg};border:1px solid ${border};">
+      <span style="font-family:Cinzel,serif;font-size:.72rem;color:${border};flex:1;">
+        ${e.nom}
+        <span style="font-size:.62rem;opacity:.7;"> (${e.niveau} ${e.polarite})</span>
+      </span>
+      <span style="font-family:Cinzel,serif;font-size:.65rem;padding:2px 7px;
+        border-radius:8px;background:${col};color:#fff;">${lbl}</span>
+      <span style="font-size:.72rem;cursor:help;color:${border};"
+        title="${e.desc}">ℹ</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Intégration dans le lanceur ──
+// Retourne l'effet de saturation à appliquer au lancer courant
+function getEtatLanceurEffect(){
+  const etats=state.etatsSaturation||[];
+  if(!etats.length) return null;
+  // Prioriser : négation > opposition > relance / expertise > avantage
+  const prio=['negation_prochain','opposition','relance','expertise','avantage',
+    'des_bloques_axe12','des_non_modifiables'];
+  for(const p of prio){
+    const e=etats.find(et=>et.effet===p);
+    if(e) return e;
+  }
+  return etats[0];
+}
+
+// ── Bloquer la modification des dés selon l'état ──
+function applyEtatToDiceGrid(){
+  const etats=state.etatsSaturation||[];
+  const s=dS();
+  if(!s||!s.dice) return;
+
+  const hasBloqueAxe12 = etats.some(e=>e.effet==='des_bloques_axe12');
+  const hasNonModif    = etats.some(e=>e.effet==='des_non_modifiables');
+  const hasNegation    = etats.some(e=>e.effet==='negation_prochain');
+
+  if(hasBloqueAxe12){
+    // Bloquer tous les dés rouges à la valeur 1 ou 2 (aléatoire)
+    s.dice.forEach(d=>{
+      if(d.color==='red'||d.color==='black_token'){
+        d.value=Math.random()<.5?1:2;
+        d.locked=true;
+      }
+    });
+    dRenderDice(false);
+  }
+  if(hasNonModif){
+    // Griser les inputs de modification de valeur
+    document.querySelectorAll('#dice-grid .die-val-input:not([data-locked])')
+      .forEach(inp=>{ inp.disabled=true; inp.title='État : Dés non modifiables'; });
+  }
+}
+
+// ── Déclencher un recalcul après chaque changement de token ──
+function scheduleEtatRecompute(){
+  clearTimeout(window._etatTimer);
+  window._etatTimer=setTimeout(applyEtatsSaturation, 600);
+}
 
 // ══════════════════════════════════════════════
 //   MOTEUR DE COMPARAISON OCTOGONE IDÉAL
