@@ -1194,6 +1194,27 @@
   .perso-detail-box-header { display:flex; align-items:center; margin-bottom:.6rem; }
   .perso-detail-box-title { font-family:'Cinzel',serif; font-size:.9rem; color:var(--accent); flex:1; }
   .perso-detail-close { background:none; border:none; font-size:1rem; cursor:pointer; color:var(--ink3); }
+
+  /* ── États de saturation dans le panneau Traits ── */
+  .etat-card { display:flex; align-items:center; gap:.5rem;
+    padding:.35rem .6rem; margin-bottom:.3rem; border-radius:5px;
+    font-family:'Crimson Text',serif; }
+  .etat-card.positif { background:rgba(26,74,42,.08); border:1px solid #1a4a2a; }
+  .etat-card.negatif { background:rgba(138,32,32,.08); border:1px solid #8b2020; }
+  .etat-card-nom { font-family:'Cinzel',serif; font-size:.72rem; flex:1; }
+  .etat-card.positif .etat-card-nom { color:#1a4a2a; }
+  .etat-card.negatif .etat-card-nom { color:#8b2020; }
+  .etat-card-niv { font-family:'Cinzel',serif; font-size:.58rem;
+    padding:1px 6px; border-radius:8px; color:#fff; }
+  .etat-card.positif .etat-card-niv { background:#1a4a2a; }
+  .etat-card.negatif .etat-card-niv { background:#8b2020; }
+  .etat-card-effet { font-family:'Cinzel',serif; font-size:.62rem;
+    padding:2px 7px; border-radius:8px; color:#fff; }
+  .etat-card-desc { font-family:'Crimson Text',serif; font-size:.78rem;
+    color:var(--ink3); font-style:italic; flex:0 0 100%; margin-top:.2rem; }
+  #etats-saturation-titre { font-family:'Cinzel',serif; font-size:.68rem;
+    color:var(--ink3); letter-spacing:.06em; padding:.3rem .6rem .2rem;
+    border-bottom:1px solid var(--border2); margin-bottom:.4rem; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -2290,7 +2311,10 @@ async function xferClearRequest(){
   </div>
   <div class="panel">
     <div class="panel-title" data-target="traits-panel">Traits</div>
-    <div class="panel-body" id="traits-panel"><div class="panel-body-inner" id="traits-inner"></div></div>
+    <div class="panel-body" id="traits-panel">
+      <div id="etats-saturation-traits" style="display:none;"></div>
+      <div class="panel-body-inner" id="traits-inner"></div>
+    </div>
   </div>
 </div>
 <div class="lower-wide">
@@ -3202,27 +3226,28 @@ document.getElementById('btn-ccw').addEventListener('click',()=>applyRotation(wh
 function addToken(sectorId, color){
   const tokens=state.tokens[sectorId];
   const emptyIdx=tokens.indexOf('empty');
+  let changed=false;
   if(emptyIdx!==-1){
-    // Slot libre
     tokens[emptyIdx]=color;
     renderToken(sectorId,emptyIdx);
     updateSectorLane(sectorId);
-    return true;
+    changed=true;
+  } else {
+    // Axe plein : chercher un jeton de couleur différente à remplacer
+    const opposite=color==='white'?'black':'white';
+    const replaceIdx=tokens.indexOf(opposite);
+    if(replaceIdx===-1) return false;
+    tokens[replaceIdx]=color;
+    renderToken(sectorId,replaceIdx);
+    updateSectorLane(sectorId);
+    changed=true;
   }
-  // Axe plein : chercher un jeton de couleur différente à remplacer
-  const opposite=color==='white'?'black':'white';
-  const replaceIdx=tokens.indexOf(opposite);
-  if(replaceIdx===-1) return false; // tous de la même couleur, bloqué
-  tokens[replaceIdx]=color;
-  renderToken(sectorId,replaceIdx);
-  updateSectorLane(sectorId);
-  return true;
-
-  scheduleDeviationRecompute();
-
-  renderSegmentColors();
-
-  scheduleEtatRecompute();
+  if(changed){
+    scheduleDeviationRecompute();
+    renderSegmentColors();
+    scheduleEtatRecompute();
+  }
+  return changed;
 }
 
 function cycleToken(sectorId,idx){
@@ -8979,35 +9004,41 @@ function retirerEffetEtat(e){ /* nettoyage géré dans renderEtatsSaturation */ 
 // ── Affichage des états actifs ──
 function renderEtatsSaturation(){
   const etats = state.etatsSaturation||[];
-  let container = document.getElementById('etats-saturation-display');
-  if(!container){
-    container = document.createElement('div');
-    container.id='etats-saturation-display';
-    container.style.cssText='margin:.6rem 0;padding:0 .5rem;';
-    // Insérer dans le div dédié dans le HTML, ou en fallback dans .lower
-    const target=document.getElementById('etats-saturation-zone')||document.querySelector('.lower');
-    if(target) target.insertBefore(container, target.firstChild);
-  }
-  if(!etats.length){ container.innerHTML=''; return; }
 
-  container.innerHTML=etats.map(e=>{
-    const col=ETAT_EFFET_COLOR[e.effet]||'#888';
-    const lbl=ETAT_EFFET_LABEL[e.effet]||e.effet;
-    const bg=e.polarite==='positif'?'rgba(26,74,42,.08)':'rgba(138,32,32,.08)';
-    const border=e.polarite==='positif'?'#1a4a2a':'#8b2020';
-    return `<div style="display:flex;align-items:center;gap:.5rem;
-      padding:.35rem .6rem;margin-bottom:.3rem;border-radius:5px;
-      background:${bg};border:1px solid ${border};">
-      <span style="font-family:Cinzel,serif;font-size:.72rem;color:${border};flex:1;">
-        ${e.nom}
-        <span style="font-size:.62rem;opacity:.7;"> (${e.niveau} ${e.polarite})</span>
-      </span>
-      <span style="font-family:Cinzel,serif;font-size:.65rem;padding:2px 7px;
-        border-radius:8px;background:${col};color:#fff;">${lbl}</span>
-      <span style="font-size:.72rem;cursor:help;color:${border};"
-        title="${e.desc}">ℹ</span>
-    </div>`;
-  }).join('');
+  // ── Affichage dans le panneau Traits ──
+  const traitsZone = document.getElementById('etats-saturation-traits');
+  if(traitsZone){
+    if(!etats.length){
+      traitsZone.style.display='none';
+      traitsZone.innerHTML='';
+    } else {
+      traitsZone.style.display='block';
+      traitsZone.innerHTML='<div id="etats-saturation-titre">⚡ États actifs</div>'
+        + etats.map(e=>{
+          const col=ETAT_EFFET_COLOR[e.effet]||'#888';
+          const lbl=ETAT_EFFET_LABEL[e.effet]||e.effet;
+          return `<div class="etat-card ${e.polarite}">
+            <span class="etat-card-nom">${e.nom}</span>
+            <span class="etat-card-niv">${e.niveau}</span>
+            <span class="etat-card-effet" style="background:${col};">${lbl}</span>
+            <span style="font-size:.72rem;cursor:help;color:var(--ink3);"
+              title="${e.desc}">ℹ</span>
+            <div class="etat-card-desc">${e.desc}</div>
+          </div>`;
+        }).join('');
+      // Ouvrir le panneau Traits s'il est fermé
+      const traitsPanel=document.getElementById('traits-panel');
+      if(traitsPanel&&!traitsPanel.classList.contains('open')){
+        traitsPanel.classList.add('open');
+        const title=traitsPanel.previousElementSibling;
+        if(title) title.classList.add('open');
+      }
+    }
+  }
+
+  // ── Zone secondaire (etats-saturation-zone) ──
+  const zone=document.getElementById('etats-saturation-zone');
+  if(zone) zone.innerHTML=''; // nettoyage (affichage désormais dans Traits)
 }
 
 // ── Intégration dans le lanceur ──
