@@ -4641,7 +4641,8 @@ function applyRemoteState(saved){
   if(typeof renderSegmentColors==='function') renderSegmentColors();
   if(typeof scheduleEtatRecompute==='function') scheduleEtatRecompute();
   // Afficher immédiatement les états sauvegardés
-  if(saved.etatsSaturation!==undefined){
+  // Ne pas écraser les états juste calculés localement
+  if(saved.etatsSaturation!==undefined && (Date.now()-_lastLocalWriteTs)>2000){
     state.etatsSaturation=saved.etatsSaturation;
     if(typeof renderEtatsSaturation==='function') renderEtatsSaturation();
   }
@@ -8965,8 +8966,9 @@ function applyEtatsSaturation(){
   });
 
   state.etatsSaturation = nouveaux;
+  // Rendre immédiatement AVANT saveState (qui peut déclencher un Realtime qui efface tout)
+  renderEtatsSaturation(nouveaux);
   if(!applyingRemote) saveState();
-  renderEtatsSaturation();
 }
 
 // ── Notifier ──
@@ -8994,10 +8996,11 @@ function appliquerEffetEtat(e){
 function retirerEffetEtat(e){ /* nettoyage géré dans renderEtatsSaturation */ }
 
 // ── Affichage des états actifs ──
-function renderEtatsSaturation(){
-  const etats = state.etatsSaturation||[];
+function renderEtatsSaturation(etatsParam){
+  const etats = etatsParam || state.etatsSaturation || [];
+  console.log('[Render] etats count:', etats.length, etats.map(e=>e.nom));
   const zone = document.getElementById('etats-saturation-traits');
-  if(!zone) return;
+  if(!zone){ console.log('[Render] zone NOT FOUND'); return; }
 
   if(!etats.length){
     zone.innerHTML='';
