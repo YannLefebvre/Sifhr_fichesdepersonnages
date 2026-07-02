@@ -8753,6 +8753,20 @@ async function loadEvtPanel(){
 
 
 
+
+// ── Helpers calendrier hégirien (pour états de saturation) ──
+function _joursInMoisOct(mois){ return (mois%2===1)?30:29; }
+function _dateToJourAbsOct(d){
+  if(!d) return 0;
+  let j=0;
+  for(let a=1;a<d.annee;a++) j+=354;
+  for(let m=1;m<d.mois;m++) j+=_joursInMoisOct(m);
+  return j+(d.jour||1)-1;
+}
+function _diffJoursOct(d1,d2){
+  return _dateToJourAbsOct(d2)-_dateToJourAbsOct(d1);
+}
+
 // ══════════════════════════════════════════════
 //   SYSTÈME D'ÉTATS DE SATURATION
 // ══════════════════════════════════════════════
@@ -8870,7 +8884,18 @@ function computeEtatsSaturation(){
 
 // ── Comparer avec les états précédents (dans state) ──
 // Detecter les changements pour notifier et gérer la progression N1→N2
-function applyEtatsSaturation(){
+async function applyEtatsSaturation(){
+  // Si pas de chronologie locale, tenter de la lire depuis la fiche env
+  if(!state.chronologie && state.envFiche && state.envFiche!==FICHE_ID){
+    try{
+      const r=await fetch(
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(state.envFiche)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+      );
+      const d=await r.json();
+      if(d[0]?.etat?.chronologie) state.chronologie=d[0].etat.chronologie;
+    }catch(e){}
+  }
   const nouveaux = computeEtatsSaturation();
   const anciens = state.etatsSaturation||[];
 
@@ -8889,7 +8914,7 @@ function applyEtatsSaturation(){
       e.dateDebut = ancien.dateDebut;
       // Vérifier mutation N1→N2 (2 journées écoulées)
       if(e.niveau==='N1' && e.dateDebut && state.chronologie?.dateCourante){
-        const jours=diffJours(e.dateDebut, state.chronologie.dateCourante);
+        const jours=_diffJoursOct(e.dateDebut, state.chronologie.dateCourante);
         if(jours>=2){
           // Promouvoir en N2
           const grp=ETAT_GROUPES[e.grpKey];
@@ -9022,7 +9047,7 @@ function applyEtatToDiceGrid(){
 // ── Déclencher un recalcul après chaque changement de token ──
 function scheduleEtatRecompute(){
   clearTimeout(window._etatTimer);
-  window._etatTimer=setTimeout(applyEtatsSaturation, 600);
+  window._etatTimer=setTimeout(()=>applyEtatsSaturation(), 600);
 }
 
 // ══════════════════════════════════════════════
