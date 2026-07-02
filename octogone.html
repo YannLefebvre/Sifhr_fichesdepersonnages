@@ -2280,6 +2280,9 @@ async function xferClearRequest(){
 </svg>
 </div>
 
+<!-- Zone d'affichage des états de saturation -->
+<div id="etats-saturation-zone" style="max-width:700px;margin:0 auto;"></div>
+
 <div class="lower">
   <div class="panel">
     <div class="panel-title" data-target="aptitudes-panel">Aptitudes</div>
@@ -4612,6 +4615,11 @@ function applyRemoteState(saved){
   if(typeof scheduleDeviationRecompute==='function') scheduleDeviationRecompute();
   if(typeof renderSegmentColors==='function') renderSegmentColors();
   if(typeof scheduleEtatRecompute==='function') scheduleEtatRecompute();
+  // Afficher immédiatement les états sauvegardés
+  if(saved.etatsSaturation!==undefined){
+    state.etatsSaturation=saved.etatsSaturation;
+    if(typeof renderEtatsSaturation==='function') renderEtatsSaturation();
+  }
 }
 
 /* ── Realtime Supabase ────────────────────────── */
@@ -8940,7 +8948,7 @@ async function applyEtatsSaturation(){
   });
 
   state.etatsSaturation = nouveaux;
-  saveState();
+  if(!applyingRemote) saveState();
   renderEtatsSaturation();
 }
 
@@ -8973,12 +8981,12 @@ function renderEtatsSaturation(){
   const etats = state.etatsSaturation||[];
   let container = document.getElementById('etats-saturation-display');
   if(!container){
-    // Créer la zone d'affichage sous les panneaux principaux
     container = document.createElement('div');
     container.id='etats-saturation-display';
-    container.style.cssText='margin:.6rem 0;';
-    const lower = document.querySelector('.lower');
-    if(lower) lower.insertBefore(container, lower.firstChild);
+    container.style.cssText='margin:.6rem 0;padding:0 .5rem;';
+    // Insérer dans le div dédié dans le HTML, ou en fallback dans .lower
+    const target=document.getElementById('etats-saturation-zone')||document.querySelector('.lower');
+    if(target) target.insertBefore(container, target.firstChild);
   }
   if(!etats.length){ container.innerHTML=''; return; }
 
