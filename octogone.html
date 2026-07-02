@@ -2312,7 +2312,7 @@ async function xferClearRequest(){
   <div class="panel">
     <div class="panel-title" data-target="traits-panel">Traits</div>
     <div class="panel-body" id="traits-panel">
-      <div id="etats-saturation-traits" style="display:none;"></div>
+      <div id="etats-saturation-traits"></div>
       <div class="panel-body-inner" id="traits-inner"></div>
     </div>
   </div>
@@ -8996,41 +8996,42 @@ function retirerEffetEtat(e){ /* nettoyage géré dans renderEtatsSaturation */ 
 // ── Affichage des états actifs ──
 function renderEtatsSaturation(){
   const etats = state.etatsSaturation||[];
+  const zone = document.getElementById('etats-saturation-traits');
+  if(!zone) return;
 
-  // ── Affichage dans le panneau Traits ──
-  const traitsZone = document.getElementById('etats-saturation-traits');
-  if(traitsZone){
-    if(!etats.length){
-      traitsZone.style.display='none';
-      traitsZone.innerHTML='';
-    } else {
-      traitsZone.style.display='block';
-      traitsZone.innerHTML='<div id="etats-saturation-titre">⚡ États actifs</div>'
-        + etats.map(e=>{
-          const col=ETAT_EFFET_COLOR[e.effet]||'#888';
-          const lbl=ETAT_EFFET_LABEL[e.effet]||e.effet;
-          return `<div class="etat-card ${e.polarite}">
-            <span class="etat-card-nom">${e.nom}</span>
-            <span class="etat-card-niv">${e.niveau}</span>
-            <span class="etat-card-effet" style="background:${col};">${lbl}</span>
-            <span style="font-size:.72rem;cursor:help;color:var(--ink3);"
-              title="${e.desc}">ℹ</span>
-            <div class="etat-card-desc">${e.desc}</div>
-          </div>`;
-        }).join('');
-      // Ouvrir le panneau Traits s'il est fermé
-      const traitsPanel=document.getElementById('traits-panel');
-      if(traitsPanel&&!traitsPanel.classList.contains('open')){
-        traitsPanel.classList.add('open');
-        const title=traitsPanel.previousElementSibling;
-        if(title) title.classList.add('open');
-      }
-    }
+  if(!etats.length){
+    zone.innerHTML='';
+    return;
   }
 
-  // ── Zone secondaire (etats-saturation-zone) ──
-  const zone=document.getElementById('etats-saturation-zone');
-  if(zone) zone.innerHTML=''; // nettoyage (affichage désormais dans Traits)
+  zone.innerHTML = '<div style="font-family:Cinzel,serif;font-size:.68rem;'
+    +'color:var(--ink3);letter-spacing:.06em;padding:.3rem .6rem .2rem;'
+    +'border-bottom:1px solid var(--border2);margin-bottom:.4rem;">⚡ États actifs</div>'
+    + etats.map(e=>{
+        const col = ETAT_EFFET_COLOR[e.effet]||'#888';
+        const lbl = ETAT_EFFET_LABEL[e.effet]||e.effet;
+        const border = e.polarite==='positif'?'#1a4a2a':'#8b2020';
+        const bg = e.polarite==='positif'?'rgba(26,74,42,.08)':'rgba(138,32,32,.08)';
+        return '<div style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:.4rem;'
+          +'padding:.35rem .6rem;margin-bottom:.3rem;border-radius:5px;'
+          +'background:'+bg+';border:1px solid '+border+';">'
+          +'<span style="font-family:Cinzel,serif;font-size:.72rem;color:'+border+';flex:1;">'
+          +e.nom+'</span>'
+          +'<span style="font-family:Cinzel,serif;font-size:.58rem;padding:1px 6px;'
+          +'border-radius:8px;background:'+border+';color:#fff;">'+e.niveau+'</span>'
+          +'<span style="font-family:Cinzel,serif;font-size:.62rem;padding:2px 7px;'
+          +'border-radius:8px;background:'+col+';color:#fff;">'+lbl+'</span>'
+          +'<div style="flex:0 0 100%;font-family:Crimson Text,serif;font-size:.78rem;'
+          +'color:var(--ink3);font-style:italic;padding-top:.1rem;">'+e.desc+'</div>'
+          +'</div>';
+      }).join('');
+
+  // Décollaper le panneau Traits si nécessaire
+  const traitsPanel=document.getElementById('traits-panel');
+  if(traitsPanel&&traitsPanel.classList.contains('collapsed')){
+    const titleEl=traitsPanel.previousElementSibling;
+    if(titleEl) toggleAccordion(titleEl);
+  }
 }
 
 // ── Intégration dans le lanceur ──
