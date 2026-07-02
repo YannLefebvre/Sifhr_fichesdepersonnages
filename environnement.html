@@ -959,15 +959,15 @@ async function gmReset(){
   .routine-unlock-cb { accent-color:#1a4a6e; }
 
   /* ── Panneau navigation fiches MJ ── */
-  #mj-fiches-nav { position:fixed; top:calc(50vh - 8.5rem); right:0;
+  #mj-fiches-nav { position:fixed; top:20vh; right:0;
     z-index:280; }
   #mj-fiches-nav-toggle { writing-mode:vertical-rl;
     font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.08em;
     padding:.6rem .35rem; background:var(--accent); color:#f5f0e8;
     border:none; border-radius:6px 0 0 6px; cursor:pointer;
     box-shadow:-2px 2px 8px rgba(0,0,0,.25); }
-  #mj-fiches-nav-panel { display:none; position:absolute; right:0; top:50%;
-    transform:translateY(-50%);
+  #mj-fiches-nav-panel { display:none; position:fixed;
+    right:2.2rem; top:calc(50vh - 12rem);
     background:var(--bg); border:1px solid var(--accent);
     border-radius:8px 0 0 8px; padding:.7rem .8rem;
     box-shadow:-4px 4px 18px rgba(0,0,0,.25); min-width:180px; }
@@ -1001,7 +1001,7 @@ async function gmReset(){
     background:none; color:#185FA5; cursor:pointer; }
 
   /* ── Panneau personnages liés (onglet vertical) ── */
-  #perso-lies-tab-wrap { position:fixed; right:0; top:calc(50vh + 8.5rem);
+  #perso-lies-tab-wrap { position:fixed; right:0; top:52vh;
     z-index:280; display:none; }
   #perso-lies-tab-btn { writing-mode:vertical-rl; font-family:'Cinzel',serif;
     font-size:.68rem; letter-spacing:.08em; padding:.6rem .35rem;
@@ -1009,7 +1009,7 @@ async function gmReset(){
     border-radius:6px 0 0 6px; cursor:pointer;
     box-shadow:-2px 2px 8px rgba(0,0,0,.25); }
   #perso-lies-panel { display:none; position:fixed; right:0;
-    top:calc(50vh - 10rem); width:300px; max-height:80vh; overflow-y:auto;
+    top:20vh; width:300px; max-height:80vh; overflow-y:auto;
     background:var(--bg); border:1px solid #5a3a8a;
     border-radius:8px 0 0 8px; padding:.7rem .8rem;
     box-shadow:-4px 4px 18px rgba(0,0,0,.25); z-index:279; }
@@ -3069,7 +3069,7 @@ function closeDuel(){
 </script>
 
 <!-- Onglet vertical Chronologie (gauche, au-dessus de Fiches) -->
-<div id="chrono-tab-wrap" style="position:fixed;right:0;top:calc(50vh - 2.8rem);z-index:280;display:none;">
+<div id="chrono-tab-wrap" style="position:fixed;right:0;top:28vh;z-index:280;display:none;">
   <button id="chrono-fab" onclick="chronoToggle()"
     style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
     letter-spacing:.08em;padding:.6rem .35rem;background:#c8860a;color:#fff8e8;
@@ -3078,7 +3078,7 @@ function closeDuel(){
 </div>
 
 <!-- Onglet vertical Octogones idéaux -->
-<div id="bib-tab-wrap" style="position:fixed;right:0;top:calc(50vh + 2.9rem);z-index:280;display:none;">
+<div id="bib-tab-wrap" style="position:fixed;right:0;top:38vh;z-index:280;display:none;">
   <button id="bib-ideaux-fab" onclick="toggleBibIdeaux()"
     style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
     letter-spacing:.08em;padding:.6rem .35rem;background:#1a4a2a;color:#f5f0e8;
@@ -3370,7 +3370,11 @@ function startMjDiceObservation(){
 <div id="mj-fiches-nav" style="display:none;">
   <button id="mj-fiches-nav-toggle" onclick="mjToggleFichesNav()">📋 Fiches</button>
   <div id="mj-fiches-nav-panel">
-    <div class="mj-nav-title">Personnages liés</div>
+    <div style="display:flex;align-items:center;margin-bottom:.4rem;">
+      <span class="mj-nav-title" style="flex:1;margin:0;">Fiches joueurs</span>
+      <button onclick="document.getElementById('mj-fiches-nav-panel').classList.remove('open')"
+        style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:1rem;line-height:1;">✕</button>
+    </div>
     <div id="mj-nav-list"></div>
   </div>
 </div>
