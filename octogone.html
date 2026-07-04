@@ -3991,6 +3991,8 @@ histPersoText.placeholder='Histoire du personnage écrite par le meneur…'; his
 histPersoText.addEventListener('input',()=>{ state.historique.text=histPersoText.value; histPersoText.style.height='auto'; histPersoText.style.height=histPersoText.scrollHeight+'px'; saveState(); });
 histPersoWrap.appendChild(histPersoTitle); histPersoWrap.appendChild(histPersoText);
 buildHistSection('Histoire du personnage', histPersoWrap);
+buildHistSection('Histoires Croisées', hcWrap);
+buildHistSection('Dettes et Créances', detteWrap);
 
 // ── 2. Histoires Croisées ──
 const hcWrap=document.createElement('div');
@@ -7527,18 +7529,6 @@ const ProdigeSystem = {
     </div>
   </div>
 
-  <!-- Histoires Croisées (toujours visible, liste compacte) -->
-  <div class="perso-fixed-section" id="perso-sec-hc">
-    <div class="perso-fixed-title">Histoires Croisées</div>
-    <div id="perso-hc-body"></div>
-  </div>
-
-  <!-- Dettes et Créances (toujours visible, liste compacte) -->
-  <div class="perso-fixed-section" id="perso-sec-dettes">
-    <div class="perso-fixed-title">Dettes et Créances</div>
-    <div id="perso-dettes-body"></div>
-  </div>
-
   <div id="perso-detail">
     <!-- Section Octogone -->
     <div class="perso-section" id="perso-sec-oct">
@@ -7614,11 +7604,6 @@ const PersonnePanel = {
       panel.classList.remove('open'); return;
     }
     panel.classList.add('open');
-    // Attacher hcWrap/detteWrap dans leurs conteneurs (DOM disponible maintenant)
-    const hcTarget=document.getElementById('perso-hc-body');
-    if(hcTarget && !hcTarget.contains(hcWrap)) hcTarget.appendChild(hcWrap);
-    const detteTarget=document.getElementById('perso-dettes-body');
-    if(detteTarget && !detteTarget.contains(detteWrap)) detteTarget.appendChild(detteWrap);
     this.loadPersonnes();
     this._bindSectionHandlers();
   },
