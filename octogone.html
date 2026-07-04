@@ -8882,17 +8882,20 @@ const ETAT_EFFET_COLOR = {
 
 // ── Analyser les jetons d'un groupe d'axes ──
 function analyserGroupeAxes(grp){
-  const toks = [];
+  // Un état se déclenche uniquement si UN axe individuel atteint 3 jetons
+  // (pas la somme des deux axes du groupe)
+  let bestW=0, bestB=0, bestTotal=0;
   grp.axes.forEach(axe=>{
-    (state.tokens[axe]||[]).forEach(t=>{
-      if(t==='white') toks.push('white');
-      else if(t==='black'||t==='black_token') toks.push('black');
-    });
+    const arr=state.tokens[axe]||[];
+    const w=arr.filter(t=>t==='white').length;
+    const b=arr.filter(t=>t==='black'||t==='black_token').length;
+    const total=w+b;
+    // Garder l'axe le plus saturé
+    if(total>bestTotal||(total===bestTotal&&Math.max(w,b)>Math.max(bestW,bestB))){
+      bestW=w; bestB=b; bestTotal=total;
+    }
   });
-  const w=toks.filter(t=>t==='white').length;
-  const b=toks.filter(t=>t==='black').length;
-  const total=w+b;
-  return {w, b, total};
+  return {w:bestW, b:bestB, total:bestTotal};
 }
 
 // ── Déterminer l'état actif pour un groupe ──
