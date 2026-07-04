@@ -3991,8 +3991,6 @@ histPersoText.placeholder='Histoire du personnage écrite par le meneur…'; his
 histPersoText.addEventListener('input',()=>{ state.historique.text=histPersoText.value; histPersoText.style.height='auto'; histPersoText.style.height=histPersoText.scrollHeight+'px'; saveState(); });
 histPersoWrap.appendChild(histPersoTitle); histPersoWrap.appendChild(histPersoText);
 buildHistSection('Histoire du personnage', histPersoWrap);
-buildHistSection('Histoires Croisées', hcWrap);
-buildHistSection('Dettes et Créances', detteWrap);
 
 // ── 2. Histoires Croisées ──
 const hcWrap=document.createElement('div');
@@ -4313,6 +4311,9 @@ function renderDettes(){
   }
 }
 renderDettes();
+// Attacher HC et Dettes dans le panneau Historique
+buildHistSection('Histoires Croisées', hcWrap);
+buildHistSection('Dettes et Créances', detteWrap);
 
 // ── Overlay de détail pour une dette/créance ──
 function openDetteDetail(idx){
