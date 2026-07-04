@@ -8916,7 +8916,7 @@ function computeEtatsSaturation(){
     const e=getEtatGroupe(grpKey, grp);
     if(e) etats.push(e);
   });
-  console.log('[États] Calculés:', etats.map(e=>e.nom));
+
   return etats;
 }
 
@@ -8969,13 +8969,7 @@ function applyEtatsSaturation(){
   });
 
   state.etatsSaturation = nouveaux;
-  console.log('[Apply] avant render, nouveaux.length=', nouveaux.length);
-  try{
-    renderEtatsSaturation(nouveaux);
-    console.log('[Apply] render OK');
-  }catch(err){
-    console.error('[Apply] render ERREUR:', err);
-  }
+  renderEtatsSaturation(nouveaux);
   if(!applyingRemote) saveState();
 }
 
@@ -8989,7 +8983,21 @@ function notifierEtat(e, type){
     msg=`${emoji} L'état "${e.nom}" s'installe durablement (${e.niveau})`;
   else
     msg=`○ L'état "${e.nom}" se dissipe.`;
-  if(typeof NotifSystem!=='undefined') NotifSystem.show(msg,'États');
+  // Pousser dans la file NotifSystem si disponible
+  if(typeof NotifSystem!=='undefined' && Array.isArray(NotifSystem._queue)){
+    NotifSystem._queue.push({text:msg, src:'etat', label:'État'});
+  }
+  // Affichage immédiat via save-msg
+  const saveMsg=document.getElementById('save-msg');
+  if(saveMsg){
+    saveMsg.textContent=msg;
+    saveMsg.className='save-info saved';
+    clearTimeout(window._etatMsgTimer);
+    window._etatMsgTimer=setTimeout(()=>{
+      saveMsg.textContent='Synchronisation active';
+      saveMsg.className='save-info';
+    }, 5000);
+  }
 }
 
 // ── Appliquer l'effet dans l'interface ──
