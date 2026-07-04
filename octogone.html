@@ -8969,8 +8969,13 @@ function applyEtatsSaturation(){
   });
 
   state.etatsSaturation = nouveaux;
-  // Rendre immédiatement AVANT saveState (qui peut déclencher un Realtime qui efface tout)
-  renderEtatsSaturation(nouveaux);
+  console.log('[Apply] avant render, nouveaux.length=', nouveaux.length);
+  try{
+    renderEtatsSaturation(nouveaux);
+    console.log('[Apply] render OK');
+  }catch(err){
+    console.error('[Apply] render ERREUR:', err);
+  }
   if(!applyingRemote) saveState();
 }
 
