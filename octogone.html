@@ -1665,9 +1665,14 @@ function buildVVPanelList(){
   VV_PAIRS.forEach((pair,i)=>{
     const vScore = vvScoreFor(pair.vAxis, 0);
     const viScore = vvScoreFor(pair.viAxis, 1);
+
+    const row = document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:.3rem;margin-bottom:.3rem;';
+
     const btn = document.createElement('button');
     btn.className='vv-pair-btn';
     btn.dataset.idx=i;
+    btn.style.flex='1';
     const icon = document.createElement('div');
     icon.className='vv-pair-icon';
     icon.innerHTML = `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#8b2020" stroke-width="1.3" xmlns="http://www.w3.org/2000/svg"><polygon points="8.5,2 15.5,2 22,8.5 22,15.5 15.5,22 8.5,22 2,15.5 2,8.5"/><line x1="12" y1="2" x2="12" y2="22" stroke-dasharray="2,2"/></svg>`;
@@ -1678,7 +1683,18 @@ function buildVVPanelList(){
     scores.textContent = `${vScore} / ${viScore}`;
     btn.appendChild(icon); btn.appendChild(span); btn.appendChild(scores);
     btn.addEventListener('click',()=>vvSelectPair(i));
-    list.appendChild(btn);
+
+    // Bouton Psychomachie
+    const psychoBtn = document.createElement('button');
+    psychoBtn.textContent='⚖ Psychomachie';
+    psychoBtn.style.cssText='font-family:Cinzel,serif;font-size:.6rem;padding:3px 7px;'
+      +'border:1px solid var(--accent);border-radius:4px;background:none;'
+      +'color:var(--accent);cursor:pointer;white-space:nowrap;flex-shrink:0;';
+    psychoBtn.addEventListener('click',(e)=>{ e.stopPropagation(); lancerPsychomachie(i); });
+
+    row.appendChild(btn);
+    row.appendChild(psychoBtn);
+    list.appendChild(row);
   });
 }
 
@@ -2145,6 +2161,8 @@ async function xferClearRequest(){
           </div>
         </div>
         <div id="dpneuma-extracted-list" style="display:none;margin:.4rem 0;"></div>
+        <div id="detats-mobilisables" style="display:none;margin:.4rem 0;padding:.4rem .5rem;
+          background:var(--section-bg);border-radius:5px;border:1px solid var(--border2);"></div>
         <!-- Texte ambiance prouesse/prodige -->
         <div id="dice-prouesse-ambiance" style="display:none;font-family:'Crimson Text',serif;font-style:italic;font-size:.82rem;color:#c8860a;padding:.25rem .4rem;border-left:2px solid #c8860a;margin-top:.3rem;"></div>
 
@@ -4733,7 +4751,10 @@ function selectDiceRole(role){
   dCurrentRole=role;
   document.getElementById('dice-role-screen').style.display='none';
   document.getElementById('dice-app').style.display='block';
-  if(role==='launcher') dActivateShare();
+  if(role==='launcher'){
+    dActivateShare();
+    setTimeout(renderEtatsMobilisables, 200);
+  }
   const badge=document.getElementById('drole-badge');
   badge.textContent=role==='launcher'?'🎯 Lanceur':'👁️ Spectateur';
   badge.style.background=role==='launcher'?'#e6f1fb':'#e1f5ee';
@@ -5596,7 +5617,7 @@ function dComputeSuccesses(){
     const isChosen = (val===_chosenSuccessVal);
     const row=document.createElement('div');
     row.className='dsuccess-result-row'+(isPreviewed?' previewed':'')+(isChosen?' chosen':'');
-    row.innerHTML=`<span class="dsuccess-result-label">Réussites sur ${val}</span><span class="dsuccess-result-count">${count}</span>`;
+    row.innerHTML=`<span class="dsuccess-result-label">Réussites sur ${val}</span><span class="dsuccess-result-count">${count}</span>${getEtatBadgeForVal(val)}`;
     // Bouton explicite de sélection finale — verrouille le lanceur
     const selectBtn=document.createElement('button');
     selectBtn.className='dsuccess-select-btn';
@@ -6271,6 +6292,9 @@ function dTransferToOctogone(dieIdx){
   <h3>Tensions morales</h3>
   <div id="vv-pair-list"></div>
   <div id="vv-pair-result"></div>
+  <div id="vv-psycho-result" style="display:none;margin-top:.8rem;padding:.6rem;
+    background:rgba(139,32,32,.06);border:1px solid var(--accent);border-radius:6px;
+    font-family:'Crimson Text',serif;font-size:.85rem;"></div>
 </div>
 
 <button id="et-side-tab" onclick="toggleETPanel()">Tensions élémentaires</button>
@@ -8973,6 +8997,14 @@ function applyEtatsSaturation(){
   if(!applyingRemote) saveState();
 }
 
+// ── Suppression manuelle d'un état ──
+function etatSupprimerManuel(grpKey){
+  if(!state.etatsSaturation) return;
+  state.etatsSaturation=state.etatsSaturation.filter(e=>e.grpKey!==grpKey);
+  renderEtatsSaturation(state.etatsSaturation);
+  if(!applyingRemote) saveState();
+}
+
 // ── Notifier ──
 function notifierEtat(e, type){
   let msg='';
@@ -9040,6 +9072,9 @@ function renderEtatsSaturation(etatsParam){
           +'border-radius:8px;background:'+border+';color:#fff;">'+e.niveau+'</span>'
           +'<span style="font-family:Cinzel,serif;font-size:.62rem;padding:2px 7px;'
           +'border-radius:8px;background:'+col+';color:#fff;">'+lbl+'</span>'
+          +'<button onclick="etatSupprimerManuel(\''+e.grpKey+'\')" '
+          +'style="background:none;border:none;cursor:pointer;color:var(--ink3);'
+          +'font-size:.85rem;line-height:1;padding:0 2px;" title="Supprimer cet état">✕</button>'
           +'<div style="flex:0 0 100%;font-family:Crimson Text,serif;font-size:.78rem;'
           +'color:var(--ink3);font-style:italic;padding-top:.1rem;">'+e.desc+'</div>'
           +'</div>';
@@ -9993,6 +10028,189 @@ function dShowFinalSummarySolo(val, count, allValues, isCollab, isDuel){
 
   content.innerHTML = html;
   overlay.style.display='flex';
+}
+
+
+// ── Mapping états → valeurs de dés concernées ──
+const ETAT_AXE_VALS = {
+  feu_bilej:   [1,2],
+  terre_bilen: [3,4],
+  eau_flegme:  [5,6],
+  air_sang:    [7,8],
+};
+
+// ── Section états mobilisables dans le lanceur ──
+// Appelée depuis dRenderAptGrid ou après calcul des réussites
+function renderEtatsMobilisables(){
+  const container=document.getElementById('detats-mobilisables');
+  if(!container) return;
+  const etats=state.etatsSaturation||[];
+  if(!etats.length){ container.style.display='none'; return; }
+  container.style.display='block';
+  container.innerHTML='<div style="font-family:Cinzel,serif;font-size:.65rem;'
+    +'color:var(--ink3);letter-spacing:.05em;margin-bottom:.3rem;">⚡ États mobilisables</div>';
+  etats.forEach(e=>{
+    const vals=ETAT_AXE_VALS[e.grpKey]||[];
+    const col=ETAT_EFFET_COLOR[e.effet]||'#888';
+    const lbl=ETAT_EFFET_LABEL[e.effet]||e.effet;
+    const border=e.polarite==='positif'?'#1a4a2a':'#8b2020';
+    const valsStr=vals.map(v=>v).join(' ou ');
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:.4rem;padding:.2rem .4rem;'
+      +'margin-bottom:.2rem;border-radius:4px;background:rgba(0,0,0,.03);';
+    const cbId='etat-mob-'+e.grpKey;
+    row.innerHTML=`<input type="checkbox" id="${cbId}" style="accent-color:${border};">
+      <label for="${cbId}" style="font-family:Cinzel,serif;font-size:.68rem;color:${border};flex:1;cursor:pointer;">
+        ${e.nom}
+      </label>
+      <span style="font-family:Cinzel,serif;font-size:.58rem;padding:1px 5px;
+        border-radius:8px;background:${col};color:#fff;">${lbl}</span>
+      <span style="font-family:Cinzel,serif;font-size:.58rem;color:var(--ink3);">
+        val. ${valsStr}
+      </span>`;
+    container.appendChild(row);
+  });
+}
+
+// ── Badge état sur une ligne de réussite ──
+// Retourne le badge HTML si un état actif concerne cette valeur
+function getEtatBadgeForVal(val){
+  const etats=state.etatsSaturation||[];
+  const actifs=etats.filter(e=>{
+    const cb=document.getElementById('etat-mob-'+e.grpKey);
+    if(!cb||!cb.checked) return false;
+    const vals=ETAT_AXE_VALS[e.grpKey]||[];
+    return vals.includes(val);
+  });
+  if(!actifs.length) return '';
+  return actifs.map(e=>{
+    const col=ETAT_EFFET_COLOR[e.effet]||'#888';
+    const lbl=ETAT_EFFET_LABEL[e.effet]||e.effet;
+    return `<span style="font-family:Cinzel,serif;font-size:.58rem;padding:1px 6px;`
+      +`border-radius:8px;background:${col};color:#fff;margin-left:3px;">${lbl}</span>`;
+  }).join('');
+}
+
+
+// ══════════════════════════════════════════════
+//   PSYCHOMACHIE
+// ══════════════════════════════════════════════
+
+function lancerPsychomachie(idx){
+  const pair = VV_PAIRS[idx];
+  if(!pair) return;
+
+  // ── Calcul des scores ──
+  // Vertu : score de la vertu + jetons blancs de son axe
+  const vSec = SECTORS.find(s=>s.num===pair.vAxis);
+  const viSec = SECTORS.find(s=>s.num===pair.viAxis);
+  const vBaseScore = parseInt(state.scores[`${vSec.id}_0`])||0;
+  const viBaseScore = parseInt(state.scores[`${viSec.id}_1`])||0;
+  const vJetonsB = (state.tokens[vSec.id]||[]).filter(t=>t==='white').length;
+  const viJetonsN = (state.tokens[viSec.id]||[]).filter(t=>t==='black'||t==='black_token').length;
+
+  const vTotal = vBaseScore + vJetonsB;
+  const viTotal = viBaseScore + viJetonsN;
+  const diff = vTotal - viTotal;
+
+  // ── Résultat ──
+  let resultat, couleur;
+  if(diff > 0){
+    resultat = 'vertu';
+    couleur = '#1a4a2a';
+  } else if(diff < 0){
+    resultat = 'vice';
+    couleur = '#8b2020';
+  } else {
+    resultat = 'equilibre';
+    couleur = '#c8860a';
+  }
+
+  // ── Message de calcul ──
+  const lines = [
+    `<strong style="font-family:Cinzel,serif;font-size:.78rem;color:${couleur};">⚖ Psychomachie — ${pair.vLabel} / ${pair.viLabel}</strong>`,
+    ``,
+    `<strong>${pair.vLabel}</strong> (vertu) : score ${vBaseScore} + ${vJetonsB} jeton${vJetonsB>1?'s':''} blanc${vJetonsB>1?'s':''} = <strong>${vTotal}</strong>`,
+    `<strong>${pair.viLabel}</strong> (vice) : score ${viBaseScore} + ${viJetonsN} jeton${viJetonsN>1?'s':''} noir${viJetonsN>1?'s':''} = <strong>${viTotal}</strong>`,
+    ``,
+  ];
+
+  if(resultat==='vertu'){
+    lines.push(`<span style="color:#1a4a2a;">✦ La vertu l'emporte (+${diff}).</span>`);
+    lines.push(`Votre <strong>${pair.vLabel}</strong> guide vos actes. Suivre cet élan est naturel.`);
+  } else if(resultat==='vice'){
+    lines.push(`<span style="color:#8b2020;">⚡ Le vice domine (${diff}).</span>`);
+    lines.push(`Votre <strong>${pair.viLabel}</strong> pèse sur vos décisions. Succomber est la pente naturelle.`);
+  } else {
+    lines.push(`<span style="color:#c8860a;">◈ Équilibre parfait.</span>`);
+    lines.push(`Vertu et vice se neutralisent. Votre choix sera déterminant.`);
+  }
+
+  lines.push(``);
+  lines.push(`<em style="color:var(--ink3);">Que souhaitez-vous faire ?</em>`);
+
+  // ── Boutons de choix ──
+  const zone = document.getElementById('vv-psycho-result');
+  zone.style.display='block';
+  zone.innerHTML = lines.join('<br>');
+
+  const btnWrap = document.createElement('div');
+  btnWrap.style.cssText='display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap;';
+
+  // Bouton "Suivre" (aller dans le sens du résultat)
+  const btnSuivre = document.createElement('button');
+  btnSuivre.style.cssText='font-family:Cinzel,serif;font-size:.68rem;padding:4px 12px;'
+    +'border:1px solid '+couleur+';border-radius:4px;background:none;color:'+couleur+';cursor:pointer;';
+  btnSuivre.textContent = resultat==='vertu' ? '✦ Suivre la vertu' :
+                          resultat==='vice'  ? '⚡ Céder au vice' : '◈ Accepter l’équilibre';
+  btnSuivre.addEventListener('click',()=>{
+    zone.innerHTML='<em style="color:var(--ink3);">Vous avez choisi de suivre vos penchants.</em>';
+  });
+
+  // Bouton "Résister" (uniquement si vice domine)
+  if(resultat==='vice' && diff<0){
+    const btnResister = document.createElement('button');
+    btnResister.style.cssText='font-family:Cinzel,serif;font-size:.68rem;padding:4px 12px;'
+      +'border:1px solid #1a4a2a;border-radius:4px;background:#1a4a2a;color:#f5f0e8;cursor:pointer;';
+    btnResister.textContent = '✦ Résister au vice';
+    btnResister.addEventListener('click',()=>psychomachieResister(pair, Math.abs(diff), zone));
+    btnWrap.appendChild(btnResister);
+  }
+
+  // Bouton "Résister" (uniquement si vertu domine — résister à la vertu est rare mais possible)
+  if(resultat==='vertu' && diff>0){
+    const btnResister = document.createElement('button');
+    btnResister.style.cssText='font-family:Cinzel,serif;font-size:.68rem;padding:4px 12px;'
+      +'border:1px solid #8b2020;border-radius:4px;background:#8b2020;color:#f5f0e8;cursor:pointer;';
+    btnResister.textContent = '⚡ Résister à la vertu';
+    btnResister.addEventListener('click',()=>psychomachieResister(pair, diff, zone, true));
+    btnWrap.appendChild(btnResister);
+  }
+
+  btnWrap.appendChild(btnSuivre);
+  zone.appendChild(btnWrap);
+}
+
+// ── Résister : récupérer des dés dévoyés ──
+async function psychomachieResister(pair, diff, zone, resistVertu=false){
+  const desActuels = parseInt(state.des)||0;
+  const desGagnes = diff;
+  const desNouveaux = desActuels + desGagnes;
+
+  state.des = String(desNouveaux);
+  const desInput = document.getElementById('des-devoyes');
+  if(desInput) desInput.value = desNouveaux;
+
+  await saveState();
+
+  const msg = resistVertu
+    ? `Vous résistez à votre <strong>${pair.vLabel}</strong> contre nature. `
+    : `Vous résistez à votre <strong>${pair.viLabel}</strong> par un effort de volonté. `;
+
+  zone.innerHTML = msg
+    + `Cet effort vous coûte : vous gagnez <strong>${desGagnes} dé${desGagnes>1?'s':''} dévoyé${desGagnes>1?'s':''}</strong>`
+    + ` (total : ${desNouveaux}).`
+    + `<br><em style="color:var(--ink3);">Un état lié à cette résistance sera déterminé ultérieurement.</em>`;
 }
 
 // ── Réception des messages depuis aventure.html ──
