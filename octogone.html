@@ -1292,28 +1292,35 @@ function buildAutoLoginParams(){
   return p;
 }
 
+// ── Récupérer le mot de passe env depuis Supabase et ouvrir le panneau ──
+async function _fetchEnvPwAndOpen(envId){
+  try{
+    const r=await fetch(
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=mot_de_passe`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    const d=await r.json();
+    if(d[0]?.mot_de_passe){
+      state.envFichePw=d[0].mot_de_passe;
+    }
+  }catch(e){}
+  _doOpenEnvPanel(envId);
+}
+
 // ── Environnement ──
 function toggleEnvPanel(){
   const ol=document.getElementById('env-overlay');
   if(ol.classList.contains('open')){ closeEnvPanel(); return; }
-  const envId=getEnvFicheId();
+  let envId=getEnvFicheId();
   if(!envId){
-    alert('Aucune fiche environnement configurée pour ce personnage.\nLe meneur doit synchroniser la fiche env depuis environnement.html.');
-    return;
+    const saisi=prompt('Identifiant de la fiche environnement :','env-test');
+    if(!saisi) return;
+    envId=saisi.trim();
+    state.envFiche=envId;
+    saveState();
   }
-  // Si pas de mdp env, tenter de le récupérer depuis Supabase
   if(!octIsGM && !state.envFichePw){
-    (async()=>{
-      try{
-        const er=await fetch(
-          `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=mot_de_passe`,
-          {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
-        );
-        const ed=await er.json();
-        if(ed[0]?.mot_de_passe) state.envFichePw=ed[0].mot_de_passe;
-      }catch(e){}
-      _doOpenEnvPanel(envId);
-    })();
+    _fetchEnvPwAndOpen(envId);
     return;
   }
   _doOpenEnvPanel(envId);
@@ -3256,8 +3263,6 @@ function cycleToken(sectorId,idx){
   renderToken(sectorId,idx);
   updateSectorLane(sectorId);
   if(typeof dRenderLockExplanations==='function') dRenderLockExplanations();
-  // Si le panneau dés est ouvert côté lanceur et qu'aucun lancer n'a encore eu lieu,
-  // refléter immédiatement les dés rouges obligatoires imposés par la saturation
   if(typeof dCurrentRole!=='undefined' && dCurrentRole==='launcher'){
     const s=dS();
     if(s && !s.rolled){
@@ -3272,14 +3277,12 @@ function cycleToken(sectorId,idx){
       dRenderDice(false);
     }
   }
-  saveState();
   NotifSystem._checkSaturationImmediate(sectorId);
-
   scheduleDeviationRecompute();
-
   renderSegmentColors();
-
-  scheduleEtatRecompute();
+  // Calculer les états AVANT saveState pour éviter la course avec le Realtime
+  applyEtatsSaturation();
+  saveState();
 }
 function renderToken(sectorId,idx){
   const g=document.getElementById(`tok-${sectorId}-${idx}`);
