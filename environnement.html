@@ -1019,6 +1019,37 @@ async function gmReset(){
     padding-bottom:.3rem; }
   #perso-lies-panel .panel-title-bar span { font-family:'Cinzel',serif;
     font-size:.78rem; color:#5a3a8a; flex:1; letter-spacing:.06em; }
+
+  /* ── Sélecteur de lieux ── */
+  #lieu-selector { background:var(--section-bg); border:1px solid var(--accent);
+    border-radius:8px; padding:.6rem .8rem; margin-bottom:1rem; }
+  .lieu-selector-header { display:flex; align-items:center; gap:.5rem;
+    margin-bottom:.5rem; }
+  .lieu-selector-title { font-family:'Cinzel',serif; font-size:.8rem;
+    color:var(--accent); letter-spacing:.07em; flex:1; }
+  .lieu-tabs { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.4rem; }
+  .lieu-tab { font-family:'Cinzel',serif; font-size:.7rem; padding:4px 12px;
+    border:1px solid var(--border); border-radius:4px; background:var(--input-bg);
+    color:var(--ink2); cursor:pointer; transition:all .15s; }
+  .lieu-tab:hover { border-color:var(--accent); color:var(--accent); }
+  .lieu-tab.active { background:var(--accent); color:#1a1208; border-color:var(--accent); }
+  .lieu-tab-edit { font-size:.65rem; opacity:.6; margin-left:.2rem; cursor:pointer; }
+  .lieu-tab-edit:hover { opacity:1; }
+  .lieu-add-btn { font-family:'Cinzel',serif; font-size:.68rem; padding:3px 10px;
+    border:1px dashed var(--border); border-radius:4px; background:none;
+    color:var(--ink3); cursor:pointer; }
+  .lieu-add-btn:hover { border-color:var(--accent); color:var(--accent); }
+  /* Historique des lieux pour joueurs */
+  #lieu-historique { margin-top:.5rem; border-top:1px solid var(--border2);
+    padding-top:.4rem; }
+  .lieu-hist-title { font-family:'Cinzel',serif; font-size:.65rem;
+    color:var(--ink3); letter-spacing:.06em; margin-bottom:.3rem; }
+  .lieu-hist-item { display:flex; align-items:center; gap:.4rem; padding:.2rem 0; }
+  .lieu-hist-nom { font-family:'Cinzel',serif; font-size:.7rem; color:var(--ink2); flex:1; }
+  .lieu-hist-btn { font-family:'Cinzel',serif; font-size:.6rem; padding:1px 7px;
+    border:1px solid var(--border); border-radius:3px; background:none;
+    color:var(--ink3); cursor:pointer; }
+  .lieu-hist-btn:hover { border-color:var(--accent); color:var(--accent); }
 </style>
 </head>
 <body>
@@ -1122,6 +1153,19 @@ async function gmReset(){
     <button class="rot-btn" id="btn-cw">+45° &#8594;</button>
     <span class="rot-val" id="rot-display">0°</span>
   </div>
+
+<!-- ── Sélecteur de lieux ── -->
+<div id="lieu-selector">
+  <div class="lieu-selector-header">
+    <span class="lieu-selector-title">🏛 Lieux du scénario</span>
+    <button class="lieu-add-btn gm-only-zone" onclick="lieuAjouter()" style="display:none;">+ Nouveau lieu</button>
+  </div>
+  <div class="lieu-tabs" id="lieu-tabs"></div>
+  <div id="lieu-historique" style="display:none;">
+    <div class="lieu-hist-title">Historique des lieux visités</div>
+    <div id="lieu-hist-list"></div>
+  </div>
+</div>
 
   <div class="oct-wrap">
     <svg id="oct" viewBox="-130 -130 560 560" xmlns="http://www.w3.org/2000/svg">
@@ -1555,19 +1599,72 @@ function laneColorKey(tokens){
   return 'none';
 }
 
+// ── Lieu par défaut (champs migrés dans state.lieux) ──
+const _LIEU_DEFAULT_KEY = 'lieu_001';
+const _LIEU_DEFAULT_PNEUMATO = {valeurs:0,polarite:0,
+  direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
+  dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
+  zonesRevealed:{valeurs:false,polarite:false,direction:false,dynamique:false}};
+
 let state={
-  tokens:{},scores:{},
-  axisNotes:{}, // {sectorId: {gm:{text,locked,revealed}, players:{text,locked}}}
-  pneumato:{valeurs:0,polarite:0,direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},zonesRevealed:{valeurs:false,polarite:false,direction:false,dynamique:false}},ether:'',occultation:'',
-  wheelRot:0
+  // Champs globaux (partagés entre tous les lieux)
+  axisNotes:{},
+  fichePersonnages:[],
+  dynamiqueLog:[],
+  nineCount:0,
+  nineThreshold:3,
+  wheelRot:0,
+  // Lieux
+  lieux:{},       // {lieu_key: {nom, tokens, scores, pneumato, dynamiqueLog, nineCount, nineThreshold}}
+  lieuActif: _LIEU_DEFAULT_KEY,
+  lieuHistorique: [], // [{key, nom, ts}] — historique pour les joueurs
+  // Rétrocompat : tokens/scores/pneumato à la racine = alias vers le lieu actif
+  // (géré par lieuState())
 };
+
+// ── Couche d'abstraction : accéder au lieu actif ──
+function lieuState(){
+  const key = state.lieuActif || _LIEU_DEFAULT_KEY;
+  if(!state.lieux[key]) lieuInit(key, 'Lieu '+Object.keys(state.lieux).length);
+  return state.lieux[key];
+}
+function lieuInit(key, nom){
+  const SECTORS_ENV=['feu','bile_j','terre','bile_n','eau','flegme','air','sang'];
+  const tokens={}, scores={};
+  SECTORS_ENV.forEach(s=>{
+    tokens[s]=['empty','empty','empty'];
+    scores[s+'_0']=0; scores[s+'_1']=0;
+  });
+  state.lieux[key]={
+    nom: nom||'Nouveau lieu',
+    tokens, scores,
+    pneumato: JSON.parse(JSON.stringify(_LIEU_DEFAULT_PNEUMATO)),
+    dynamiqueLog: [],
+    nineCount: 0,
+    nineThreshold: Math.floor(Math.random()*4)+3,
+  };
+  return state.lieux[key];
+}
+
+// Getters de rétrocompat (les fonctions existantes utilisent state.tokens etc.)
+Object.defineProperty(state, 'tokens', {get(){ return lieuState().tokens; }, set(v){ lieuState().tokens=v; }, configurable:true, enumerable:false});
+Object.defineProperty(state, 'scores', {get(){ return lieuState().scores; }, set(v){ lieuState().scores=v; }, configurable:true, enumerable:false});
+Object.defineProperty(state, 'pneumato', {get(){ return lieuState().pneumato; }, set(v){ lieuState().pneumato=v; }, configurable:true, enumerable:false});
+Object.defineProperty(state, 'nineCount', {get(){ return lieuState().nineCount; }, set(v){ lieuState().nineCount=v; }, configurable:true, enumerable:false});
+Object.defineProperty(state, 'nineThreshold', {get(){ return lieuState().nineThreshold; }, set(v){ lieuState().nineThreshold=v; }, configurable:true, enumerable:false});
+
+// Assurer un lieu par défaut
+if(!state.lieux||Object.keys(state.lieux).length===0) lieuInit(_LIEU_DEFAULT_KEY,'Lieu principal');
+if(!state.lieuActif) state.lieuActif=_LIEU_DEFAULT_KEY;
+
 SECTORS.forEach(s=>{
-  state.tokens[s.id]=['empty','empty','empty'];
-  state.axisNotes[s.id]={gm:{text:'',locked:false,revealed:false},players:{text:'',locked:false}};
+  if(!lieuState().tokens[s.id]) lieuState().tokens[s.id]=['empty','empty','empty'];
+  if(!state.axisNotes[s.id]) state.axisNotes[s.id]={gm:{text:'',locked:false,revealed:false},players:{text:'',locked:false}};
 });
 
-// Extensions de state (après que state soit défini)
+// Extensions de state globales
 if(!state.dynamiqueLog) state.dynamiqueLog=[];
+if(!state.lieuHistorique) state.lieuHistorique=[];
 if(!state.fichePersonnages) state.fichePersonnages=[];
 if(state.nineCount===undefined) state.nineCount=0;
 if(!state.nineThreshold) state.nineThreshold=Math.floor(Math.random()*4)+3;
@@ -2107,8 +2204,26 @@ function applyRemoteState(saved){
   applyingRemote=true;
   try{
     // 1. Mettre à jour les données d'état SANS toucher au rendu encore
-    if(saved.tokens) Object.entries(saved.tokens).forEach(([sid,arr])=>{ state.tokens[sid]=arr; });
-    if(saved.scores) state.scores=saved.scores;
+    // Migration ancien format → lieux
+    if(saved.tokens && !saved.lieux){
+      Object.entries(saved.tokens).forEach(([sid,arr])=>{ lieuState().tokens[sid]=arr; });
+    }
+    if(saved.scores && !saved.lieux) lieuState().scores=saved.scores;
+    // Nouveau format : lieux
+    if(saved.lieux) state.lieux={...state.lieux,...saved.lieux};
+    if(saved.lieuActif!==undefined){
+      const prev=state.lieuActif;
+      state.lieuActif=saved.lieuActif;
+      if(prev&&prev!==saved.lieuActif&&state.lieux[prev]){
+        if(!state.lieuHistorique) state.lieuHistorique=[];
+        if(!state.lieuHistorique.find(h=>h.key===prev)){
+          state.lieuHistorique.unshift({key:prev,nom:state.lieux[prev].nom,ts:Date.now()});
+          state.lieuHistorique=state.lieuHistorique.slice(0,10);
+        }
+      }
+    }
+    if(saved.lieuHistorique) state.lieuHistorique=saved.lieuHistorique;
+    if(saved.scores && !saved.lieux) lieuState().scores=saved.scores; // déjà géré mais sécurité
     if(saved.pneumato!==undefined&&saved.pneumato!==null){
       if(typeof saved.pneumato==='object'&&!Array.isArray(saved.pneumato)){
         state.pneumato=saved.pneumato;
@@ -2206,6 +2321,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           window._mjPw = pw; // stocker pour navigation fiches
           document.getElementById('chrono-tab-wrap').style.display='block';
           document.getElementById('bib-tab-wrap').style.display='block';
+          lieuRenderTabs();
           document.getElementById('mj-fiches-nav').style.display='block';
           document.getElementById('perso-lies-tab-wrap').style.display='block';
           mjRenderNavList();
@@ -3799,6 +3915,133 @@ async function _syncChronologieVersJoueurs(){
   }
 }
 
+
+// ══════════════════════════════════════════════
+//   GESTION DES LIEUX
+// ══════════════════════════════════════════════
+
+function lieuRenderTabs(){
+  const tabs=document.getElementById('lieu-tabs');
+  if(!tabs) return;
+  tabs.innerHTML='';
+  const lieux=state.lieux||{};
+  const keys=Object.keys(lieux);
+
+  keys.forEach(key=>{
+    const l=lieux[key];
+    const tab=document.createElement('div');
+    tab.className='lieu-tab'+(key===state.lieuActif?' active':'');
+    tab.title=l.nom;
+
+    const nameSpan=document.createElement('span');
+    nameSpan.textContent=l.nom;
+    tab.appendChild(nameSpan);
+
+    if(isGM){
+      const editSpan=document.createElement('span');
+      editSpan.className='lieu-tab-edit';
+      editSpan.textContent='✏';
+      editSpan.title='Renommer';
+      editSpan.addEventListener('click',(e)=>{
+        e.stopPropagation();
+        lieuRenommer(key);
+      });
+      tab.appendChild(editSpan);
+    }
+
+    tab.addEventListener('click',()=>{
+      if(key!==state.lieuActif) lieuBasculer(key);
+    });
+    tabs.appendChild(tab);
+  });
+
+  // Bouton + nouveau lieu (MJ)
+  const addBtn=document.querySelector('.lieu-add-btn');
+  if(addBtn) addBtn.style.display=isGM?'':'none';
+
+  // Historique pour les joueurs
+  lieuRenderHistorique();
+}
+
+async function lieuBasculer(key){
+  if(!state.lieux[key]) return;
+  state.lieuActif=key;
+  // Mettre à jour l'historique
+  if(!state.lieuHistorique) state.lieuHistorique=[];
+  await saveState();
+  lieuRenderTabs();
+  // Redessiner l'octogone avec les données du nouveau lieu
+  renderAll();
+}
+
+function lieuAjouter(){
+  const nom=prompt('Nom du nouveau lieu :','Nouveau lieu');
+  if(!nom) return;
+  const key='lieu_'+Date.now();
+  lieuInit(key, nom.trim());
+  state.lieuActif=key;
+  saveState();
+  lieuRenderTabs();
+  renderAll();
+}
+
+function lieuRenommer(key){
+  const ancien=state.lieux[key]?.nom||key;
+  const nouveau=prompt('Renommer ce lieu :', ancien);
+  if(!nouveau||nouveau===ancien) return;
+  state.lieux[key].nom=nouveau.trim();
+  saveState();
+  lieuRenderTabs();
+}
+
+function lieuRenderHistorique(){
+  const wrap=document.getElementById('lieu-historique');
+  const list=document.getElementById('lieu-hist-list');
+  if(!wrap||!list) return;
+  const hist=state.lieuHistorique||[];
+  if(!hist.length||isGM){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  list.innerHTML='';
+  hist.forEach(h=>{
+    const item=document.createElement('div'); item.className='lieu-hist-item';
+    const nom=document.createElement('span'); nom.className='lieu-hist-nom';
+    nom.textContent=h.nom||h.key;
+    const btn=document.createElement('button'); btn.className='lieu-hist-btn';
+    btn.textContent='Consulter';
+    btn.addEventListener('click',()=>lieuConsulterHistorique(h.key));
+    item.appendChild(nom); item.appendChild(btn);
+    list.appendChild(item);
+  });
+}
+
+// Joueur : consulter un lieu précédent en lecture seule
+function lieuConsulterHistorique(key){
+  if(!state.lieux[key]){ alert('Ce lieu n\'est plus disponible.'); return; }
+  const old=state.lieuActif;
+  state.lieuActif=key;
+  renderAll();
+  // Afficher un bandeau "lecture seule"
+  const banner=document.getElementById('lieu-readonly-banner');
+  if(banner){
+    banner.style.display='block';
+    banner.querySelector('span').textContent='Vue historique : '+state.lieux[key].nom;
+    banner.querySelector('button').onclick=()=>{
+      state.lieuActif=old; renderAll();
+      banner.style.display='none';
+    };
+  }
+}
+
+function renderAll(){
+  // Redessiner tout l'octogone avec les données du lieu actif
+  renderWheel();
+  renderAllTokens();
+  renderAllScores();
+  if(typeof renderPneumato==='function') renderPneumato();
+  if(typeof renderDynamiqueLog==='function') renderDynamiqueLog();
+  lieuRenderTabs();
+}
+
 // ── Synchroniser la fiche env sur toutes les fiches joueurs liées ──
 async function gmSyncEnvFiche(){
   const fp=state.fichePersonnages||[];
@@ -4953,5 +5196,15 @@ function chronoInit(){
 }
 
 </script>
+<!-- Bandeau lieu historique (lecture seule) -->
+<div id="lieu-readonly-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;
+  background:#1a4a6e;color:#f5f0e8;font-family:'Cinzel',serif;font-size:.75rem;
+  padding:.4rem 1rem;display:flex;align-items:center;gap:.8rem;z-index:200;">
+  <span style="flex:1;"></span>
+  <button style="font-family:'Cinzel',serif;font-size:.7rem;padding:2px 10px;
+    border:1px solid #f5f0e8;border-radius:4px;background:none;color:#f5f0e8;cursor:pointer;">
+    ← Retour au lieu actuel
+  </button>
+</div>
 </body>
 </html>
