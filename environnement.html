@@ -2467,21 +2467,24 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
         // xfer-fab et carte-env-fab retirés (accès depuis octogone.html uniquement)
         if(tryGM){
           document.getElementById('gm-bar').style.display='flex';
-          window._mjPw = pw; // stocker pour navigation fiches
-          // chrono section dans la page directement
-          document.getElementById('bib-tab-wrap').style.display='block';
-          lieuRenderTabs();
-          document.getElementById('mj-fiches-nav').style.display='block';
-          document.getElementById('galerie-tab-wrap').style.display='block';
-          document.getElementById('perso-lies-tab-wrap').style.display='block';
-          mjRenderNavList();
+          window._mjPw = pw;
           document.getElementById('btn-occultation-gm').style.display='flex';
           document.querySelectorAll('.gm-only-zone').forEach(el=>el.classList.add('gm-visible'));
           document.getElementById('nine-panel').style.display='block';
           document.getElementById('fiches-liees-row').style.display='block';
-          // Restaurer fiches liées dans l'input
           renderFichesPersoList();
           pollNines();
+          // Onglets latéraux MJ
+          document.getElementById('bib-tab-wrap').style.display='block';
+          document.getElementById('mj-fiches-nav').style.display='block';
+          document.getElementById('galerie-tab-wrap').style.display='block';
+          document.getElementById('perso-lies-tab-wrap').style.display='block';
+          mjRenderNavList();
+          lieuRenderTabs();
+          // Chronologie directement dans la page
+          document.getElementById('chrono-section').style.display='block';
+          setTimeout(chronoInit, 400);
+          setTimeout(bibIdeauxInit, 600);
         }
         // Charger d'abord l'état Supabase, PUIS initialiser l'UI
         if(row.etat&&Object.keys(row.etat).length>0){
@@ -2491,11 +2494,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           pneuRenderButtons();
         }
         startRealtime();
-        setTimeout(startMjDiceObservation, 500); // observer les lancers des joueurs
-        setTimeout(bibIdeauxInit, 600); // bibliothèque octogones idéaux
-        // Chronologie
-        document.getElementById('chrono-section').style.display='block';
-        setTimeout(chronoInit, 400);
+        setTimeout(startMjDiceObservation, 500);
         // Routines joueur si identifié
         if(!tryGM){
           // Afficher la frise et les routines pour tous les joueurs
@@ -3344,8 +3343,7 @@ function closeDuel(){
     style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
     letter-spacing:.08em;padding:.6rem .35rem;background:#1a4a2a;color:#f5f0e8;
     border:none;border-radius:6px 0 0 6px;cursor:pointer;
-    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">📚 Oct.
-Idéaux</button>
+    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">✦ Sync.</button>
 </div>
 
 <!-- Panneau MJ observateur de lancers -->
@@ -3615,7 +3613,11 @@ function startMjDiceObservation(){
 
 <!-- Onglet vertical Personnages liés -->
 <div id="perso-lies-tab-wrap">
-  <button id="perso-lies-tab-btn" onclick="togglePersoLiesPanel()">🧑 Personnages liés</button>
+  <button id="perso-lies-tab-btn" onclick="togglePersoLiesPanel()"
+    style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
+    letter-spacing:.08em;padding:.6rem .35rem;background:#5a3a8a;color:#f5f0e8;
+    border:none;border-radius:6px 0 0 6px;cursor:pointer;
+    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">🧑 PJ/PNJ</button>
 </div>
 
 <!-- Panneau personnages liés (glissant) -->
