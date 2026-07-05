@@ -4034,11 +4034,34 @@ function lieuConsulterHistorique(key){
 
 function renderAll(){
   // Redessiner tout l'octogone avec les données du lieu actif
-  renderWheel();
-  renderAllTokens();
-  renderAllScores();
-  if(typeof renderPneumato==='function') renderPneumato();
+  const lieu=lieuState();
+  // 1. Tokens et lanes
+  SECTORS.forEach(s=>{
+    const toks=lieu.tokens[s.id]||['empty','empty','empty'];
+    toks.forEach((_,i)=>renderToken(s.id,i));
+    updateSectorLane(s.id);
+  });
+  // 2. Scores
+  if(lieu.scores){
+    Object.entries(lieu.scores).forEach(([key,val])=>{
+      const parts=key.split('_');
+      const sid=parts.slice(0,-1).join('_');
+      const qi=parts[parts.length-1];
+      const t=document.querySelector(`#sq-${sid}-${qi} text`);
+      if(t) t.textContent=val;
+    });
+  }
+  // 3. Rebuild labels (vertus/vices + ghost tokens)
+  if(typeof rebuildLabels==='function') rebuildLabels();
+  // 4. Pneumato
+  if(typeof pneuInit==='function') pneuInit();
+  if(typeof pneuRenderButtons==='function') pneuRenderButtons();
+  if(typeof pneuRenderPlayerView==='function') pneuRenderPlayerView();
+  // 5. Dynamique log
   if(typeof renderDynamiqueLog==='function') renderDynamiqueLog();
+  // 6. Segment colors
+  if(typeof renderSegmentColors==='function') renderSegmentColors();
+  // 7. Tabs
   lieuRenderTabs();
 }
 
