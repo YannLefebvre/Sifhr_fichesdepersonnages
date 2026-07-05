@@ -1457,6 +1457,35 @@ async function importerFicheOct(input){
   input.value='';
 }
 
+
+// ── Sync env → fiche joueur depuis octogone ──
+async function syncEnvFicheVersJoueur(){
+  const envId=state.envFiche||'';
+  if(!envId){ alert('Aucune fiche env configurée. Renseignez d\u2019abord l\u2019identifiant env.'); return; }
+  const msg=document.getElementById('save-msg');
+  msg.textContent='Synchronisation env…'; msg.className='save-info';
+  try{
+    // Lire le mdp env depuis Supabase
+    const r=await fetch(
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=mot_de_passe,etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    const d=await r.json();
+    if(!d[0]){ msg.textContent='Fiche env introuvable.'; return; }
+    state.envFichePw = d[0].mot_de_passe||'';
+    // Copier aussi les fichePersonnages pour que getPersonnesEnv fonctionne localement
+    if(d[0].etat?.fichePersonnages){
+      state.envFichePersonnages = d[0].etat.fichePersonnages;
+    }
+    _cachedPersonnes = null; // invalider le cache
+    await saveState();
+    msg.textContent='✓ Env synchronisé'; msg.className='save-info saved';
+    setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },3000);
+  }catch(e){
+    msg.textContent='Erreur sync env: '+e.message; msg.className='save-info error';
+  }
+}
+
 async function gmSaveOrigin(){
   if(!confirm("Sauvegarder l'état actuel comme état d'origine ? Cela écrasera l'état d'origine précédent.")) return;
   const msg=document.getElementById('save-msg');
@@ -1719,7 +1748,9 @@ function vvSelectPair(idx){
 // ══════════════════════════════════════════════
 
 function toggleETPanel(){
-  document.getElementById('et-panel').classList.toggle('open');
+  const p=document.getElementById('et-panel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open')) renderRoutinesOct();
 }
 
 // Classifie l'état d'un axe en 'N' (dominante noire), '0' (neutre/faible), 'P' (dominante blanche)
@@ -2406,6 +2437,7 @@ async function xferClearRequest(){
   <input id="env-fiche-pw-gm" type="password" placeholder="mdp meneur" autocomplete="off"
     style="width:90px;background:var(--input-bg,#2a1e0e);border:1px solid var(--border,#4a3218);border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink,#f5e8c8);padding:3px 6px;outline:none;">
   <button class="gm-btn" onclick="saveEnvFiche()">Lier</button>
+  <button class="gm-btn safe" onclick="syncEnvFicheVersJoueur()" title="Lire les personnages depuis la fiche env et mettre à jour cette fiche">🔄 Sync env</button>
 </div>
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
 
@@ -4008,7 +4040,7 @@ async function getPersonnesEnv(){
       {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
     );
     const d=await r.json();
-    const fp=d[0]?.etat?.fichePersonnages||[];
+    const fp=d[0]?.etat?.fichePersonnages||state.envFichePersonnages||[];
     _cachedPersonnes=fp.map(p=>{
       if(typeof p==='string') return {id:p,niveauReveal:2};
       return {id:p.id||p, niveauReveal:p.niveauReveal||2};
@@ -4721,6 +4753,7 @@ function dS(){ return state.dice; }
 function openDice(){
   document.getElementById('dice-fab').classList.add('open');
   document.getElementById('dice-overlay').classList.add('open');
+  _cachedPersonnes = null; // invalider le cache à chaque ouverture
   document.getElementById('dice-fiche-label').textContent=FICHE_ID;
   // Affiche rôle ou app selon si rôle déjà choisi
   if(dCurrentRole){
@@ -6306,6 +6339,14 @@ function dTransferToOctogone(dieIdx){
   <h3>Tensions élémentaires</h3>
   <div id="et-pair-list"></div>
   <div id="et-pair-result"></div>
+
+  <!-- Routines humorales et élémentaires -->
+  <div id="et-routines-section" style="margin-top:.8rem;border-top:1px solid var(--border2);padding-top:.7rem;display:none;">
+    <div style="font-family:'Cinzel',serif;font-size:.75rem;color:#1a4a6e;letter-spacing:.07em;margin-bottom:.5rem;">⚗ Routines</div>
+    <div id="et-routines-content">
+      <span style="font-size:.75rem;color:var(--ink3);font-style:italic;">Chargement…</span>
+    </div>
+  </div>
 </div>
 
 <!-- Overlay Environnement -->
@@ -8188,7 +8229,8 @@ async function dLoadSharePersonnes(){
   const personnes = await getPersonnesEnv();
   list.innerHTML = '';
   if(!personnes.length){
-    list.innerHTML = '<span style="font-style:italic;font-size:.75rem;color:var(--ink3);">Aucun personnage lié à cet environnement.</span>';
+    list.innerHTML = '<div style="font-style:italic;font-size:.75rem;color:var(--ink3);margin-bottom:.4rem;">Aucun personnage lié à cet environnement.</div>'
+      + '<div style="font-size:.72rem;color:var(--ink3);">Vérifiez que la fiche env est configurée dans les paramètres (⚙ MJ → Environnement lié) et que le MJ a synchronisé les fiches (🔗 Sync).</div>';
     return;
   }
   personnes.forEach(p=>{
@@ -10200,6 +10242,91 @@ async function psychomachieResister(pair, diff, zone, resistVertu=false){
     + `Cet effort vous coûte : vous gagnez <strong>${desGagnes} dé${desGagnes>1?'s':''} dévoyé${desGagnes>1?'s':''}</strong>`
     + ` (total : ${desNouveaux}).`
     + `<br><em style="color:var(--ink3);">Un état lié à cette résistance sera déterminé ultérieurement.</em>`;
+}
+
+
+// ══════════════════════════════════════════════
+//   ROUTINES — affichage dans panneau Tensions élémentaires
+// ══════════════════════════════════════════════
+const ROUTINES_OCT = [
+  {nom:"Aspiration élémentaire", niveau:"N1",
+   desc:"Prie dans l'environnement et puise un jeton de l'élément de votre choix."},
+  {nom:"Fabrication d'humeur", niveau:"N1",
+   desc:"Transfère un jeton élémentaire dans l'humeur correspondante."},
+  {nom:"Inspiration morale", niveau:"N1",
+   desc:"S'appuie sur les valeurs morales pour récupérer des jetons de la polarité correspondante."},
+  {nom:"Hygiène de l'octogone", niveau:"N1",
+   desc:"Connaît les aliments ou pratiques influençant la santé. Gagne ou perd le jeton correspondant."},
+  {nom:"Influence du groupe", niveau:"N2",
+   desc:"Un résultat important à une épreuve humorale permet aux initiés proches de gagner un jeton de même valeur."},
+  {nom:"Méditation pneumatique", niveau:"N2",
+   desc:"Recentre l'énergie mystique. Sur une épreuve Dévoiler/Occulter (7 ou 8), récupère des points d'éther."},
+];
+
+function chronoPeriodeKeyOct(){
+  const ch=state.chronologie;
+  const cur=ch?.dateCourante||ch?.dateDebut;
+  if(!cur) return 'unknown_period';
+  const PERIODES=[
+    {debut:0,fin:4,nom:'Layl'},{debut:4,fin:6,nom:'Fajr'},{debut:6,fin:12,nom:'Duha'},
+    {debut:12,fin:15,nom:'Dhuhr'},{debut:15,fin:17,nom:'Asr'},
+    {debut:17,fin:19,nom:'Maghrib'},{debut:19,fin:24,nom:'Isha'},
+  ];
+  const p=PERIODES.find(pr=>(cur.heure||0)>=pr.debut&&(cur.heure||0)<pr.fin)||PERIODES[0];
+  return `${p.nom}_${cur.jour}_${cur.mois}_${cur.annee}`;
+}
+function chronoJourKeyOct(){
+  const ch=state.chronologie;
+  const cur=ch?.dateCourante||ch?.dateDebut;
+  if(!cur) return 'unknown_day';
+  return `${cur.jour}_${cur.mois}_${cur.annee}`;
+}
+
+function renderRoutinesOct(){
+  const section=document.getElementById('et-routines-section');
+  const cont=document.getElementById('et-routines-content');
+  if(!section||!cont) return;
+  const debloquees=state.routinesDebloquees||[];
+  if(!debloquees.length){ section.style.display='none'; return; }
+  section.style.display='block';
+  const usees=state.routinesUsees||{};
+  const periodeKey=chronoPeriodeKeyOct();
+  const jourKey=chronoJourKeyOct();
+  cont.innerHTML='';
+  debloquees.forEach(nomRoutine=>{
+    const rt=ROUTINES_OCT.find(r=>r.nom===nomRoutine);
+    if(!rt) return;
+    const isN1=rt.niveau==='N1';
+    const cooldownKey=isN1?periodeKey:jourKey;
+    const isUsed=usees[nomRoutine]===cooldownKey;
+    const card=document.createElement('div');
+    card.style.cssText='background:#f0f4ff;border:1px solid #c0cce8;border-radius:7px;'
+      +'padding:.5rem .7rem;margin-bottom:.4rem;'+(isUsed?'opacity:.45;':'');
+    card.innerHTML=`<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.2rem;">
+      <span style="font-family:Cinzel,serif;font-size:.72rem;color:#1a4a6e;flex:1;">${rt.nom}</span>
+      <span style="font-family:Cinzel,serif;font-size:.58rem;padding:1px 6px;border-radius:8px;background:#1a4a6e;color:#fff;">${rt.niveau}</span>
+    </div>
+    <div style="font-family:'Crimson Text',serif;font-size:.8rem;color:#3a3a5a;margin-bottom:.3rem;">${rt.desc}</div>`;
+    if(isUsed){
+      const cd=document.createElement('div');
+      cd.style.cssText='font-family:Cinzel,serif;font-size:.62rem;color:#8a8aaa;font-style:italic;';
+      cd.textContent=isN1?'Déjà utilisée cette période':'Déjà utilisée aujourd’hui';
+      card.appendChild(cd);
+    } else {
+      const btn=document.createElement('button');
+      btn.style.cssText='font-family:Cinzel,serif;font-size:.65rem;padding:3px 10px;'
+        +'border:1px solid #1a4a6e;border-radius:4px;background:#1a4a6e;color:#fff;cursor:pointer;';
+      btn.textContent='Utiliser';
+      btn.addEventListener('click',async()=>{
+        if(!state.routinesUsees) state.routinesUsees={};
+        state.routinesUsees[nomRoutine]=cooldownKey;
+        await saveState();
+        renderRoutinesOct();
+      });
+      card.appendChild(btn);
+    }
+    cont.appendChild(card);
+  });
 }
 
 // ── Réception des messages depuis aventure.html ──
