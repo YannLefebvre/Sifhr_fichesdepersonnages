@@ -2471,18 +2471,18 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           document.getElementById('btn-occultation-gm').style.display='flex';
           document.querySelectorAll('.gm-only-zone').forEach(el=>el.classList.add('gm-visible'));
           document.getElementById('nine-panel').style.display='block';
-          document.getElementById('fiches-liees-row').style.display='block';
           renderFichesPersoList();
           pollNines();
           // Onglets latéraux MJ
-          document.getElementById('bib-tab-wrap').style.display='block';
-          document.getElementById('mj-fiches-nav').style.display='block';
-          document.getElementById('galerie-tab-wrap').style.display='block';
-          document.getElementById('perso-lies-tab-wrap').style.display='block';
+          ['bib-tab-wrap','mj-fiches-nav','galerie-tab-wrap','perso-lies-tab-wrap'].forEach(id=>{
+            const el=document.getElementById(id);
+            if(el) el.style.display='block';
+          });
           mjRenderNavList();
           lieuRenderTabs();
           // Chronologie directement dans la page
-          document.getElementById('chrono-section').style.display='block';
+          const chronoSec=document.getElementById('chrono-section');
+          if(chronoSec) chronoSec.style.display='block';
           setTimeout(chronoInit, 400);
           setTimeout(bibIdeauxInit, 600);
         }
