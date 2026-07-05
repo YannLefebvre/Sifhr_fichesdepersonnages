@@ -1215,6 +1215,78 @@
   #etats-saturation-titre { font-family:'Cinzel',serif; font-size:.68rem;
     color:var(--ink3); letter-spacing:.06em; padding:.3rem .6rem .2rem;
     border-bottom:1px solid var(--border2); margin-bottom:.4rem; }
+
+  /* ── Lancer de groupe ── */
+  #dice-group-btn { font-family:'Cinzel',serif; font-size:.68rem;
+    padding:4px 12px; border:1px solid var(--accent); border-radius:4px;
+    background:none; color:var(--accent); cursor:pointer; margin-top:.4rem; }
+  #dice-group-btn:hover { background:var(--accent); color:#1a1208; }
+  #dice-group-overlay { display:none; position:fixed; inset:0;
+    background:rgba(10,7,3,.85); align-items:center; justify-content:center; z-index:420; }
+  #dice-group-overlay.open { display:flex; }
+  #dice-group-box { background:var(--bg); border:1px solid var(--accent);
+    border-radius:10px; padding:1rem 1.2rem; width:min(520px,94vw);
+    max-height:88vh; overflow-y:auto;
+    box-shadow:0 8px 32px rgba(0,0,0,.5); }
+  .dg-title { font-family:'Cinzel',serif; font-size:.9rem; color:var(--accent);
+    letter-spacing:.07em; margin-bottom:.7rem; }
+  .dg-mode-row { display:flex; gap:.5rem; margin-bottom:.8rem; }
+  .dg-mode-btn { flex:1; font-family:'Cinzel',serif; font-size:.7rem;
+    padding:6px; border:1px solid var(--border); border-radius:5px;
+    background:var(--input-bg); color:var(--ink2); cursor:pointer; }
+  .dg-mode-btn.active { border-color:var(--accent); background:var(--accent); color:#1a1208; }
+  .dg-equipes { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin-bottom:.7rem; }
+  .dg-equipe { border:1px solid var(--border2); border-radius:6px; padding:.5rem; min-height:80px; }
+  .dg-equipe-title { font-family:'Cinzel',serif; font-size:.7rem;
+    color:var(--accent); margin-bottom:.4rem; letter-spacing:.05em; }
+  .dg-equipe-1 { border-color:#1a4a2a; }
+  .dg-equipe-1 .dg-equipe-title { color:#1a4a2a; }
+  .dg-equipe-2 { border-color:#8b2020; }
+  .dg-equipe-2 .dg-equipe-title { color:#8b2020; }
+  .dg-perso-chip { display:inline-flex; align-items:center; gap:.3rem;
+    font-family:'Cinzel',serif; font-size:.65rem; padding:2px 8px;
+    border-radius:12px; margin:2px; cursor:pointer; }
+  .dg-perso-chip.eq1 { background:#1a4a2a; color:#a0d0a0; }
+  .dg-perso-chip.eq2 { background:#8b2020; color:#f0c0c0; }
+  .dg-perso-chip.unset { background:var(--border2); color:var(--ink3); }
+  .dg-perso-chip .dg-chip-x { opacity:.7; font-size:.7rem; }
+  .dg-perso-pool { margin-bottom:.6rem; }
+  .dg-perso-pool-title { font-family:'Cinzel',serif; font-size:.68rem;
+    color:var(--ink3); margin-bottom:.3rem; }
+  .dg-launch-btn { width:100%; font-family:'Cinzel',serif; font-size:.78rem;
+    padding:8px; border:1px solid var(--accent); border-radius:6px;
+    background:var(--accent); color:#1a1208; cursor:pointer; margin-top:.4rem; }
+  .dg-launch-btn:hover { background:#a06818; color:#f5f0e8; }
+  /* Résultat lancer de groupe */
+  #dice-group-result-overlay { display:none; position:fixed; inset:0;
+    background:rgba(10,7,3,.85); align-items:center; justify-content:center; z-index:430; }
+  #dice-group-result-overlay.open { display:flex; }
+  #dice-group-result-box { background:var(--bg); border:1px solid var(--accent);
+    border-radius:10px; padding:1rem 1.2rem; width:min(500px,94vw);
+    max-height:88vh; overflow-y:auto; }
+  .dgr-equipe { margin-bottom:.7rem; padding:.5rem .7rem;
+    border-radius:6px; border:1px solid var(--border2); }
+  .dgr-equipe.eq1 { border-color:#1a4a2a; background:rgba(26,74,42,.06); }
+  .dgr-equipe.eq2 { border-color:#8b2020; background:rgba(139,32,32,.06); }
+  .dgr-equipe-title { font-family:'Cinzel',serif; font-size:.78rem;
+    letter-spacing:.06em; margin-bottom:.4rem; }
+  .dgr-equipe.eq1 .dgr-equipe-title { color:#1a4a2a; }
+  .dgr-equipe.eq2 .dgr-equipe-title { color:#8b2020; }
+  .dgr-perso-line { font-family:'Crimson Text',serif; font-size:.88rem;
+    color:var(--ink2); margin-bottom:.2rem; }
+  .dgr-total { font-family:'Cinzel',serif; font-size:.82rem; margin-top:.4rem;
+    padding-top:.3rem; border-top:1px solid var(--border2); }
+  .dgr-verdict { font-family:'Cinzel',serif; font-size:1rem;
+    text-align:center; padding:.8rem; margin-top:.6rem; border-radius:6px;
+    letter-spacing:.08em; }
+  .dgr-verdict.eq1 { background:#1a4a2a; color:#a0d0a0; }
+  .dgr-verdict.eq2 { background:#8b2020; color:#f0c0c0; }
+  .dgr-verdict.egal { background:#2a2a2a; color:var(--ink2); }
+  /* Bandeau d'attente groupe dans le lanceur */
+  #dice-group-waiting { display:none; background:rgba(26,74,42,.1);
+    border:1px solid #1a4a2a; border-radius:6px; padding:.5rem .7rem;
+    margin-top:.4rem; font-family:'Cinzel',serif; font-size:.72rem; color:#1a4a2a; }
+  #dice-group-waiting.open { display:block; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -2169,6 +2241,12 @@ async function xferClearRequest(){
           <input type="checkbox" id="dprouesse-toggle" onchange="dToggleProuesse()">
           <label class="dprouesse-label" for="dprouesse-toggle">Tenter une prouesse ?</label>
           <span class="dprouesse-info" data-tip="Conditions : 1) Au moins un dé rouge doit obtenir la valeur de réussite finale. 2) Aucun dé ne doit obtenir la valeur opposée. Réussite : les dés rouges sont transférés dans votre octogone.">?</span>
+        </div>
+        <!-- Lancer de groupe -->
+        <button id="dice-group-btn" onclick="dgOpenSetup()">⚔ Lancer de groupe</button>
+        <div id="dice-group-waiting">
+          ⏳ <span id="dice-group-waiting-label">En attente des participants…</span>
+          <button onclick="dgForceCompute()" style="margin-left:.5rem;font-family:Cinzel,serif;font-size:.6rem;padding:1px 6px;border:1px solid #1a4a2a;border-radius:3px;background:none;color:#1a4a2a;cursor:pointer;">Calculer maintenant</button>
         </div>
         <div id="dprodige-row">
           <input type="checkbox" id="dprodige-toggle" onchange="dToggleProdige()">
@@ -4690,6 +4768,10 @@ function applyRemoteState(saved){
     if(saved.collabInvite&&typeof checkIncomingCollabInvite==='function'){
       checkIncomingCollabInvite(saved);
     }
+    // Détecter une invitation de lancer de groupe
+    if(saved.groupLancer&&typeof checkIncomingGroupLancer==='function'){
+      checkIncomingGroupLancer(saved);
+    }
   } catch(e){ console.error('applyRemoteState error',e); }
   applyingRemote = false;
   // Recalculer les déviations si les tokens ont changé
@@ -5692,6 +5774,8 @@ function dComputeSuccesses(){
       dSaveDuelResult(_chosenSuccessVal, count, values);
       // Pousser le résultat dans la collaboration en cours, le cas échéant
       if(typeof dPushCollabResult==='function') dPushCollabResult(_chosenSuccessVal, count);
+      // Pousser le résultat dans le lancer de groupe en cours, le cas échéant
+      if(typeof dPushGroupResult==='function' && _dgSessionId) dPushGroupResult(_chosenSuccessVal, count);
       // Afficher le résumé final adapté au contexte (solo / duel / collaboration)
       setTimeout(()=>dShowFinalResultSummary(val, count, values), 150);
     });
@@ -10343,6 +10427,339 @@ function renderRoutinesOct(){
   });
 }
 
+
+// ══════════════════════════════════════════════
+//   LANCER DE GROUPE
+// ══════════════════════════════════════════════
+
+let _dgMode = 'collab';     // 'collab' | 'opposition'
+let _dgEquipe1 = [];        // ids des persos équipe 1
+let _dgEquipe2 = [];        // ids des persos équipe 2
+let _dgSessionId = null;    // id de la session courante
+let _dgIsInitiator = false;
+let _dgInitiatorId = null;  // fiche de l'initiateur à surveiller
+let _dgRtTimer = null;
+let _dgTimeoutTimer = null;
+let _dgMyEquipe = null;     // '1' ou '2' pour les participants
+
+// ── Ouvrir le panneau de configuration ──
+async function dgOpenSetup(){
+  _dgEquipe1 = [FICHE_ID]; // l'initiateur est dans l'équipe 1 par défaut
+  _dgEquipe2 = [];
+  dgSetMode('collab');
+  await dgRenderPool();
+  document.getElementById('dice-group-overlay').classList.add('open');
+}
+function dgCloseSetup(){
+  document.getElementById('dice-group-overlay').classList.remove('open');
+}
+function dgCloseResult(){
+  document.getElementById('dice-group-result-overlay').classList.remove('open');
+  _dgSessionId=null; _dgIsInitiator=false; _dgInitiatorId=null;
+  clearTimeout(_dgTimeoutTimer); clearInterval(_dgRtTimer);
+  document.getElementById('dice-group-waiting').classList.remove('open');
+}
+
+function dgSetMode(mode){
+  _dgMode=mode;
+  document.getElementById('dg-mode-collab').classList.toggle('active',mode==='collab');
+  document.getElementById('dg-mode-oppos').classList.toggle('active',mode==='opposition');
+  document.getElementById('dg-eq2-wrap').style.display=mode==='opposition'?'block':'none';
+  document.getElementById('dg-eq1-title').textContent=mode==='collab'?'Participants':'Équipe 1';
+}
+
+async function dgRenderPool(){
+  const pool=document.getElementById('dg-perso-pool-list');
+  const eq1=document.getElementById('dg-eq1-list');
+  const eq2=document.getElementById('dg-eq2-list');
+  pool.innerHTML=eq1.innerHTML=eq2.innerHTML='';
+
+  const personnes=await getPersonnesEnv();
+  const all=[{id:FICHE_ID,niveauReveal:2},...personnes.filter(p=>p.id!==FICHE_ID)];
+
+  all.forEach(p=>{
+    const id=p.id;
+    const inEq1=_dgEquipe1.includes(id);
+    const inEq2=_dgEquipe2.includes(id);
+
+    if(inEq1){
+      const chip=dgMakeChip(id,'eq1',()=>{ _dgEquipe1=_dgEquipe1.filter(x=>x!==id); dgRenderPool(); });
+      eq1.appendChild(chip);
+    } else if(inEq2){
+      const chip=dgMakeChip(id,'eq2',()=>{ _dgEquipe2=_dgEquipe2.filter(x=>x!==id); dgRenderPool(); });
+      eq2.appendChild(chip);
+    } else {
+      const chip=dgMakeChip(id,'unset',()=>{
+        if(_dgMode==='collab'||!_dgEquipe1.length){ _dgEquipe1.push(id); }
+        else if(!_dgEquipe2.length||_dgEquipe2.length<=_dgEquipe1.length){ _dgEquipe2.push(id); }
+        else { _dgEquipe1.push(id); }
+        dgRenderPool();
+      });
+      pool.appendChild(chip);
+    }
+  });
+}
+
+function dgMakeChip(id, cls, onClick){
+  const chip=document.createElement('span');
+  chip.className='dg-perso-chip '+cls;
+  chip.innerHTML=id+'<span class="dg-chip-x">✕</span>';
+  chip.addEventListener('click',onClick);
+  return chip;
+}
+
+// ── Lancer le groupe ──
+async function dgLaunch(){
+  const allParticipants=[..._dgEquipe1,..._dgEquipe2];
+  if(!allParticipants.length){ alert('Ajoutez des participants.'); return; }
+  if(_dgMode==='opposition'&&(!_dgEquipe1.length||!_dgEquipe2.length)){
+    alert('En mode opposition, les deux équipes doivent avoir au moins un participant.'); return;
+  }
+  dgCloseSetup();
+
+  _dgSessionId='dg_'+Date.now();
+  _dgIsInitiator=true;
+  _dgInitiatorId=FICHE_ID;
+
+  state.groupLancer={
+    id:_dgSessionId,
+    mode:_dgMode,
+    equipe1:_dgEquipe1,
+    equipe2:_dgEquipe2,
+    initiator:FICHE_ID,
+    resultats:{},
+    startedAt:Date.now(),
+    status:'waiting'
+  };
+  await saveState();
+
+  // Bandeau d'attente dans le lanceur
+  const waiting=document.getElementById('dice-group-waiting');
+  const label=document.getElementById('dice-group-waiting-label');
+  waiting.classList.add('open');
+  label.textContent='En attente de : '+allParticipants.filter(p=>p!==FICHE_ID).join(', ')+'…';
+
+  // Timeout 60 secondes
+  _dgTimeoutTimer=setTimeout(()=>dgForceCompute(), 60000);
+
+  // Surveiller les résultats entrants (polling toutes les 3s)
+  _dgRtTimer=setInterval(()=>dgCheckGroupResults(), 3000);
+
+  // L'initiateur est déjà dans sa session — il lance ses dés normalement
+  // son résultat sera poussé via dPushGroupResult() quand il sélectionne une valeur
+}
+
+// ── L'initiateur reçoit son résultat via le hook du lanceur ──
+// Appelé depuis dLockLauncherFinal (après sélection de la valeur finale)
+function dPushGroupResult(val, successCount){
+  if(!_dgSessionId) return;
+  if(!_dgIsInitiator && !_dgMyEquipe) return;
+
+  const s=dS();
+  const echecCritique=!!document.querySelector('.dsuccess-opposition.echec-critique');
+  const prouesse=!!document.querySelector('.dsuccess-opposition.prouesse');
+
+  const myResult={
+    reussites: successCount||0,
+    prouesse,
+    echecCritique,
+    valeur: val,
+    ts: Date.now()
+  };
+
+  if(_dgIsInitiator){
+    // Mettre à jour directement notre propre state
+    state.groupLancer.resultats[FICHE_ID]=myResult;
+    saveState();
+    dgCheckGroupResults();
+  } else {
+    // Écrire dans la fiche de l'initiateur
+    dgPushResultToInitiator(myResult);
+  }
+}
+
+async function dgPushResultToInitiator(myResult){
+  if(!_dgInitiatorId) return;
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(_dgInitiatorId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    if(!etat.groupLancer||etat.groupLancer.id!==_dgSessionId) return;
+    if(!etat.groupLancer.resultats) etat.groupLancer.resultats={};
+    etat.groupLancer.resultats[FICHE_ID]=myResult;
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(_dgInitiatorId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+  }catch(e){}
+}
+
+// ── Vérifier si tous ont lancé ──
+async function dgCheckGroupResults(){
+  // Relire la session depuis Supabase (pour l'initiateur)
+  if(_dgIsInitiator){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const d=await r.json();
+      const gl=d[0]?.etat?.groupLancer;
+      if(gl&&gl.id===_dgSessionId){
+        state.groupLancer=gl;
+      }
+    }catch(e){}
+    const gl=state.groupLancer;
+    if(!gl) return;
+    const all=[...gl.equipe1,...gl.equipe2];
+    const done=all.filter(id=>gl.resultats[id]);
+    const label=document.getElementById('dice-group-waiting-label');
+    const pending=all.filter(id=>!gl.resultats[id]);
+    if(label) label.textContent=done.length+'/'+all.length+' prêts'+(pending.length?' — En attente : '+pending.join(', '):'');
+    if(done.length===all.length) dgComputeResult(gl);
+  }
+}
+
+function dgForceCompute(){
+  if(!state.groupLancer) return;
+  clearTimeout(_dgTimeoutTimer); clearInterval(_dgRtTimer);
+  dgComputeResult(state.groupLancer);
+}
+
+// ══════════════════════════════════════════════
+//   CALCUL DU RÉSULTAT DE GROUPE
+// ══════════════════════════════════════════════
+function dgComputeEquipe(ids, resultats){
+  let reussitesBrutes=0, echecs=0, echecsCritiques=0, prouesses=0;
+  const details=[];
+
+  ids.forEach(id=>{
+    const r=resultats[id];
+    if(!r){ details.push({id,absent:true}); return; }
+    details.push({id, ...r});
+    reussitesBrutes+=r.reussites||0;
+    if(r.echecCritique) echecsCritiques++;
+    else if(r.prouesse) prouesses++;
+    else if((r.reussites||0)===0) echecs++;
+  });
+
+  // 1. Traiter les échecs critiques
+  let prouessesRestantes=prouesses;
+  let echecsCritNonCompenses=0;
+  let reussite=reussitesBrutes;
+
+  for(let i=0;i<echecsCritiques;i++){
+    if(prouessesRestantes>0){
+      prouessesRestantes--; // prouesse annule EC
+    } else {
+      echecsCritNonCompenses++;
+      reussite=Math.ceil(reussite/2); // diviser par 2 arrondi supérieur
+    }
+  }
+  // 2. Soustraire les échecs simples
+  reussite=Math.max(0, reussite-echecs);
+  // 3. Ajouter les prouesses restantes
+  // (les prouesses non utilisées contre EC ajoutent leurs réussites)
+  // La règle de base : prouesse = réussite supérieure, on garde les réussites déjà comptées
+
+  return {
+    details,
+    reussitesBrutes,
+    reussitesFinales: Math.max(0, reussite),
+    echecs, echecsCritiques, echecsCritNonCompenses,
+    prouesses, prouessesRestantes
+  };
+}
+
+function dgComputeResult(gl){
+  clearTimeout(_dgTimeoutTimer); clearInterval(_dgRtTimer);
+  document.getElementById('dice-group-waiting').classList.remove('open');
+
+  const eq1=dgComputeEquipe(gl.equipe1||[], gl.resultats||{});
+  const eq2=gl.mode==='opposition'?dgComputeEquipe(gl.equipe2||[], gl.resultats||{}):null;
+
+  // Déterminer le verdict
+  let verdict='';
+  if(gl.mode==='collaboration'){
+    verdict=eq1.reussitesFinales>0
+      ?`✦ Succès collectif — ${eq1.reussitesFinales} réussite${eq1.reussitesFinales>1?'s':''}`
+      :'⚡ Échec collectif';
+  } else {
+    // Opposition : les prouesses gagnent d'abord
+    if(eq1.prouessesRestantes>eq2.prouessesRestantes) verdict='eq1';
+    else if(eq2.prouessesRestantes>eq1.prouessesRestantes) verdict='eq2';
+    else if(eq1.reussitesFinales>eq2.reussitesFinales) verdict='eq1';
+    else if(eq2.reussitesFinales>eq1.reussitesFinales) verdict='eq2';
+    else verdict='egal';
+  }
+
+  dgShowResult(gl, eq1, eq2, verdict);
+
+  // Nettoyer la session
+  if(_dgIsInitiator){
+    state.groupLancer=null;
+    saveState();
+  }
+  _dgSessionId=null; _dgIsInitiator=false; _dgMyEquipe=null;
+}
+
+function dgShowResult(gl, eq1, eq2, verdict){
+  const content=document.getElementById('dice-group-result-content');
+  const overlay=document.getElementById('dice-group-result-overlay');
+  let html='';
+
+  function renderEquipe(eq, label, cls){
+    let h=`<div class="dgr-equipe ${cls}"><div class="dgr-equipe-title">${label}</div>`;
+    eq.details.forEach(d=>{
+      if(d.absent) h+=`<div class="dgr-perso-line">${d.id} — <em>n'a pas lancé</em></div>`;
+      else if(d.echecCritique) h+=`<div class="dgr-perso-line"><strong>${d.id}</strong> — ⚡ Échec critique</div>`;
+      else if(d.prouesse) h+=`<div class="dgr-perso-line"><strong>${d.id}</strong> — ✦ Prouesse (${d.reussites} réussite${d.reussites>1?'s':''})</div>`;
+      else h+=`<div class="dgr-perso-line"><strong>${d.id}</strong> — ${d.reussites||0} réussite${(d.reussites||0)>1?'s':''}</div>`;
+    });
+    h+=`<div class="dgr-total">Total : <strong>${eq.reussitesFinales} réussite${eq.reussitesFinales>1?'s':''}</strong>`;
+    if(eq.echecsCritNonCompenses>0) h+=` | ${eq.echecsCritNonCompenses} EC non compensé${eq.echecsCritNonCompenses>1?'s':''}`;
+    if(eq.prouessesRestantes>0) h+=` | ${eq.prouessesRestantes} prouesse${eq.prouessesRestantes>1?'s':''} active${eq.prouessesRestantes>1?'s':''}`;
+    h+='</div></div>';
+    return h;
+  }
+
+  if(gl.mode==='collaboration'){
+    html+=renderEquipe(eq1,'Groupe','eq1');
+    html+=`<div class="dgr-verdict ${eq1.reussitesFinales>0?'eq1':'eq2'}">${verdict}</div>`;
+  } else {
+    html+=renderEquipe(eq1,'Équipe 1','eq1');
+    html+=renderEquipe(eq2,'Équipe 2','eq2');
+    const vText=verdict==='eq1'?'✦ Équipe 1 l\'emporte':
+                verdict==='eq2'?'✦ Équipe 2 l\'emporte':
+                '◈ Égalité — match nul';
+    html+=`<div class="dgr-verdict ${verdict}">${vText}</div>`;
+  }
+
+  content.innerHTML=html;
+  overlay.classList.add('open');
+}
+
+// ── Détecter une invitation de lancer de groupe (applyRemoteState) ──
+function checkIncomingGroupLancer(saved){
+  const gl=saved.groupLancer;
+  if(!gl||!gl.id) return;
+  if(gl.id===_dgSessionId) return; // c'est notre propre session
+  const allParticipants=[...(gl.equipe1||[]),...(gl.equipe2||[])];
+  if(!allParticipants.includes(FICHE_ID)) return;
+  // Je suis invité !
+  _dgSessionId=gl.id;
+  _dgIsInitiator=false;
+  _dgInitiatorId=gl.initiator;
+  _dgMyEquipe=(gl.equipe1||[]).includes(FICHE_ID)?'1':'2';
+  // Afficher notification
+  const waiting=document.getElementById('dice-group-waiting');
+  const label=document.getElementById('dice-group-waiting-label');
+  waiting.classList.add('open');
+  const equipeLabel=gl.mode==='opposition'?` (Équipe ${_dgMyEquipe})`:' (Collaboration)';
+  label.textContent=`${gl.initiator} vous invite à un lancer de groupe${equipeLabel} — Lancez vos dés !`;
+}
+
 // ── Réception des messages depuis aventure.html ──
 window.addEventListener('message',(e)=>{
   if(!e.data||e.data.type!=='sifhr-focus') return;
@@ -10435,5 +10852,49 @@ window.addEventListener('message',(e)=>{
     <div id="dette-detail-box-content"></div>
   </div>
 </div>
+
+<!-- Overlay configuration lancer de groupe -->
+<div id="dice-group-overlay">
+  <div id="dice-group-box">
+    <div style="display:flex;align-items:center;margin-bottom:.6rem;">
+      <div class="dg-title" style="flex:1;">⚔ Lancer de groupe</div>
+      <button onclick="dgCloseSetup()" style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:1rem;">✕</button>
+    </div>
+    <!-- Mode -->
+    <div class="dg-mode-row">
+      <button class="dg-mode-btn active" id="dg-mode-collab" onclick="dgSetMode('collab')">🤝 Collaboration</button>
+      <button class="dg-mode-btn" id="dg-mode-oppos" onclick="dgSetMode('opposition')">⚔ Opposition</button>
+    </div>
+    <!-- Pool de personnages -->
+    <div class="dg-perso-pool">
+      <div class="dg-perso-pool-title">Personnages disponibles (cliquer pour assigner) :</div>
+      <div id="dg-perso-pool-list"></div>
+    </div>
+    <!-- Équipes -->
+    <div class="dg-equipes" id="dg-equipes-wrap">
+      <div class="dg-equipe dg-equipe-1">
+        <div class="dg-equipe-title" id="dg-eq1-title">Équipe / Groupe</div>
+        <div id="dg-eq1-list"></div>
+      </div>
+      <div class="dg-equipe dg-equipe-2" id="dg-eq2-wrap">
+        <div class="dg-equipe-title">Équipe 2</div>
+        <div id="dg-eq2-list"></div>
+      </div>
+    </div>
+    <button class="dg-launch-btn" onclick="dgLaunch()">🎲 Lancer le groupe</button>
+  </div>
+</div>
+
+<!-- Overlay résultat lancer de groupe -->
+<div id="dice-group-result-overlay">
+  <div id="dice-group-result-box">
+    <div style="display:flex;align-items:center;margin-bottom:.7rem;">
+      <div class="dg-title" style="flex:1;">⚔ Résultat du lancer de groupe</div>
+      <button onclick="dgCloseResult()" style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:1rem;">✕</button>
+    </div>
+    <div id="dice-group-result-content"></div>
+  </div>
+</div>
+
 </body>
 </html>
