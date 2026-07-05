@@ -1218,8 +1218,6 @@ async function gmReset(){
 
 
 <!-- Panneau 9 agrégés (MJ only) -->
-<div id="nine-panel">
-  <div class="nine-panel-title">⚡ Total des 9 recueillis</div>
   <div class="nine-count-row">
     <span class="nine-count-val" id="nine-count-val">0</span>
     <span class="nine-threshold" id="nine-threshold-label">/ seuil : ?</span>
@@ -1319,16 +1317,13 @@ async function gmReset(){
     </svg>
   </div>
 
-  <!-- Dynamique de l'environnement -->
-  <!-- Panneau Dynamique (visible à tous, filtré par niveau) -->
-<div id="dynamique-panel">
-  <div class="dyn-panel-title">
-    <span>Dynamique de l'environnement</span>
-  </div>
-  <div class="dyn-log-list" id="dyn-log-list">
+    <div class="dyn-log-list" id="dyn-log-list">
     <div class="dyn-empty">Aucune modification enregistrée.</div>
   </div>
 </div>
+
+  <div id="nine-panel">
+  <div class="nine-panel-title">⚡ Total des 9 recueillis</div>
 
   <!-- Pneumatographie -->
   <div class="pneumato-panel">
@@ -1396,6 +1391,12 @@ async function gmReset(){
       </div>
     </div>
   </div>
+
+<div id="dynamique-panel">
+  <div class="dyn-panel-title">
+    <span>Dynamique de l'environnement</span>
+  </div>
+
 
   <!-- Barre éther/occultation -->
   <div class="des-row">
@@ -1698,6 +1699,7 @@ let authenticated=false;
 let isGM=false;
 let playerId='joueur';
 let applyingRemote=false;
+let _stateLoaded=false; // bloque saveState avant chargement Supabase
 
 const AXE_LABELS = {
   feu:'Feu', bile_j:'Bile Jaune', terre:'Terre', bile_n:'Bile Noire',
@@ -2331,7 +2333,7 @@ function markdownToHtml(text){ if(typeof marked==='undefined') return text.repla
 // ── Sauvegarde ──
 let saveTimer=null;
 function saveState(){
-  if(applyingRemote||!authenticated) return;
+  if(applyingRemote||!authenticated||!_stateLoaded) return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     const msg=document.getElementById('save-msg');
@@ -2509,6 +2511,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           pneuInit();
           pneuRenderButtons();
         }
+        _stateLoaded=true; // autoriser saveState maintenant
         startRealtime();
         setTimeout(startMjDiceObservation, 500);
         // Routines joueur si identifié
@@ -4178,15 +4181,7 @@ function lieuConsulterHistorique(key){
   state.lieuActif=key;
   renderAll();
   // Afficher un bandeau "lecture seule"
-  const banner=document.getElementById('lieu-readonly-banner');
-  if(banner){
-    banner.style.display='block';
-    banner.querySelector('span').textContent='Vue historique : '+state.lieux[key].nom;
-    banner.querySelector('button').onclick=()=>{
-      state.lieuActif=old; renderAll();
-      banner.style.display='none';
-    };
-  }
+
 }
 
 function renderAll(){
@@ -5638,15 +5633,5 @@ function chronoInit(){
 }
 
 </script>
-<!-- Bandeau lieu historique (lecture seule) -->
-<div id="lieu-readonly-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;
-  background:#1a4a6e;color:#f5f0e8;font-family:'Cinzel',serif;font-size:.75rem;
-  padding:.4rem 1rem;display:flex;align-items:center;gap:.8rem;z-index:200;">
-  <span style="flex:1;"></span>
-  <button style="font-family:'Cinzel',serif;font-size:.7rem;padding:2px 10px;
-    border:1px solid #f5f0e8;border-radius:4px;background:none;color:#f5f0e8;cursor:pointer;">
-    ← Retour au lieu actuel
-  </button>
-</div>
 </body>
 </html>
