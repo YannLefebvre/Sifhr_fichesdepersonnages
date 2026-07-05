@@ -4702,6 +4702,20 @@ function applyRemoteState(saved){
     state.etatsSaturation=saved.etatsSaturation;
     if(typeof renderEtatsSaturation==='function') renderEtatsSaturation();
   }
+  // Routines débloquées — mises à jour par le MJ depuis environnement.html
+  if(saved.routinesDebloquees!==undefined){
+    state.routinesDebloquees=saved.routinesDebloquees;
+    // Rafraîchir l'affichage si le panneau ET est ouvert
+    const etPanel=document.getElementById('et-panel');
+    if(etPanel&&etPanel.classList.contains('open')&&typeof renderRoutinesOct==='function')
+      renderRoutinesOct();
+  }
+  if(saved.routinesUsees!==undefined){
+    state.routinesUsees=saved.routinesUsees;
+  }
+  if(saved.chronologie!==undefined){
+    state.chronologie=saved.chronologie;
+  }
 }
 
 /* ── Realtime Supabase ────────────────────────── */
