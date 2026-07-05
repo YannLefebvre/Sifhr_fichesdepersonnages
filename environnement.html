@@ -1324,6 +1324,11 @@ async function gmReset(){
 
   <div id="nine-panel">
   <div class="nine-panel-title">⚡ Total des 9 recueillis</div>
+  <div class="nine-count-display">
+    <span id="nine-count-text">0 / seuil : ?</span>
+  </div>
+  <div class="nine-fiches-detail" id="nine-fiches-detail"></div>
+</div>
 
   <!-- Pneumatographie -->
   <div class="pneumato-panel">
@@ -1414,21 +1419,7 @@ async function gmReset(){
       <div id="pneumato-panel-body"></div>
     </div>
   </div>
-  <div class="gm-bar" id="gm-bar" style="display:none;">
-  <span class="gm-bar-label">MJ</span>
-  <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
-  <button class="gm-btn safe" onclick="gmSyncEnvFiche()" title="Écrit l'id de cette fiche env dans la fiche de chaque joueur lié">🔗 Sync fiche env → joueurs</button>
-  <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser à l'état d'origine</button>
-  <button class="gm-btn danger" onclick="gmResetFull()">🗑 Réinitialisation complète</button>
-  <span class="gm-bar-label" style="margin-left:.6rem;">Sauvegardes</span>
-  <button class="gm-btn safe" onclick="exportEnvComplet()">⬇ Exporter environnement</button>
-  <button class="gm-btn safe" onclick="exportFichesSeparees()">⬇ Exporter fiches</button>
-  <label class="gm-btn" style="cursor:pointer;background:var(--input-bg);">
-    ⬆ Importer
-    <input type="file" accept=".json" style="display:none" onchange="importerSauvegarde(this)">
-  </label>
-</div>
-<p class="save-info" id="save-msg">Synchronisation en cours…</p>
+  
 
 <!-- ══════════════════════════════════════════
      FRISE CHRONOLOGIQUE ISLAMIQUE
@@ -2497,7 +2488,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           const bibSec=document.getElementById('bib-ideaux-section');
           if(bibSec){ bibSec.style.display='block'; setTimeout(bibIdeauxInit, 600); }
           mjRenderNavList();
-          lieuRenderTabs();
+          // lieuRenderTabs appelé après applyRemoteState
           // Chronologie directement dans la page
           const chronoSec=document.getElementById('chrono-section');
           if(chronoSec) chronoSec.style.display='block';
@@ -2512,6 +2503,8 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           pneuRenderButtons();
         }
         _stateLoaded=true; // autoriser saveState maintenant
+        // Maintenant que l'état est chargé, afficher les lieux et les fiches
+        if(isGM){ lieuRenderTabs(); renderFichesPersoList(); }
         startRealtime();
         setTimeout(startMjDiceObservation, 500);
         // Routines joueur si identifié
@@ -5633,5 +5626,22 @@ function chronoInit(){
 }
 
 </script>
+
+<!-- Barre MJ (bas de page) -->
+<div class="gm-bar" id="gm-bar" style="display:none;">
+  <span class="gm-bar-label">MJ</span>
+  <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
+  <button class="gm-btn safe" onclick="gmSyncEnvFiche()" title="Écrit l'id de cette fiche env dans la fiche de chaque joueur lié">🔗 Sync fiche env → joueurs</button>
+  <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser à l'état d'origine</button>
+  <button class="gm-btn danger" onclick="gmResetFull()">🗑 Réinitialisation complète</button>
+  <span class="gm-bar-label" style="margin-left:.6rem;">Sauvegardes</span>
+  <button class="gm-btn safe" onclick="exportEnvComplet()">⬇ Exporter environnement</button>
+  <button class="gm-btn safe" onclick="exportFichesSeparees()">⬇ Exporter fiches</button>
+  <label class="gm-btn" style="cursor:pointer;background:var(--input-bg);">
+    ⬆ Importer
+    <input type="file" accept=".json" style="display:none" onchange="importerSauvegarde(this)">
+  </label>
+</div>
+<p class="save-info" id="save-msg">Synchronisation en cours…</p>
 </body>
 </html>
