@@ -185,3 +185,115 @@ function buildXferNarrative({sectorId, color, score, fromName, toName}){
 
   return { modalite, signification };
 }
+
+// ════════════════════════════════════════════════════════════
+// Extension de xfer-narratif.js
+// Analyse narrative d'un lieu via le Pneumatographe
+// Dépend de LIEU_DATA (elements-humeurs-data.js)
+// ════════════════════════════════════════════════════════════
+
+// Mapping id secteur → clé LIEU_DATA
+const LIEU_ELEMENT_KEY = {
+  feu: 'feu',
+  bile_j: 'bile_jaune',
+  terre: 'terre',
+  bile_n: 'bile_noire',
+  eau: 'eau',
+  flegme: 'flegme',
+  air: 'air',
+  sang: 'sang'
+};
+
+// ────────────────────────────────────────────────────────────
+// buildLieuNarrative — génère l'analyse Pneumatographe d'un axe
+//
+// params:
+//   sectorId  : id du secteur ('feu', 'bile_j', ...)
+//   score     : 0, 1 ou 2 (intensité de la présence)
+//   polluted  : boolean — true si le score est dévoyé
+//   dynamic   : null | 'conflit' | 'degradation' | 'occultation' | 'saturation'
+//   echelle   : null | 'locale' | 'regionale' | 'meridien'
+//
+// retourne : { axe, label, domaine, analyse, dynamique, signe }
+// ────────────────────────────────────────────────────────────
+function buildLieuNarrative({ sectorId, score, polluted, dynamic, echelle }) {
+  if (typeof LIEU_DATA === 'undefined') return null;
+  const key = LIEU_ELEMENT_KEY[sectorId];
+  if (!key || !LIEU_DATA[key]) return null;
+
+  const axeData = LIEU_DATA[key];
+  const s = Math.max(0, Math.min(2, score || 0));
+  const polarite = polluted ? 'devoye' : 'pur';
+  const analyse = axeData[polarite][s] || '';
+
+  let dynamiqueTexte = null;
+  let signe = '';
+  if (dynamic && DYNAMIQUES_DATA[dynamic]) {
+    const d = DYNAMIQUES_DATA[dynamic];
+    dynamiqueTexte = d.description;
+    signe = d.signe;
+  }
+
+  // Occultation : le texte d'analyse est remplacé
+  if (dynamic === 'occultation') {
+    return {
+      axe: key,
+      label: axeData.label,
+      domaine: axeData.domaine,
+      analyse: "Le Pneumatographe résiste. Quelque chose occulte ce secteur — une présence, une intention, une action concertée bloque la lecture des données. Une enquête est nécessaire.",
+      dynamique: dynamiqueTexte,
+      signe: DYNAMIQUES_DATA.occultation.signe,
+      occultation: true
+    };
+  }
+
+  return {
+    axe: key,
+    label: axeData.label,
+    domaine: axeData.domaine,
+    analyse,
+    polarite,
+    score: s,
+    dynamique: dynamiqueTexte,
+    signe
+  };
+}
+
+// ────────────────────────────────────────────────────────────
+// buildLieuReport — rapport complet d'un lieu
+// Génère une analyse pour chaque axe ayant un score > 0
+// ou dévoyé, selon les tokens de l'octogone env.
+//
+// params:
+//   tokens : { feu: ['white','empty','empty'], ... }
+//   echelle : 'locale' | 'regionale' | 'meridien'
+//
+// retourne : tableau d'analyses par axe (seulement les actifs)
+// ────────────────────────────────────────────────────────────
+function buildLieuReport(tokens, echelle) {
+  if (!tokens) return [];
+  const sectors = ['feu','bile_j','terre','bile_n','eau','flegme','air','sang'];
+  const results = [];
+
+  sectors.forEach(sid => {
+    const toks = tokens[sid] || [];
+    const whites = toks.filter(t => t === 'white').length;
+    const blacks = toks.filter(t => t === 'black' || t === 'black_token').length;
+    const total = whites + blacks;
+    if (total === 0) return; // axe neutre — pas d'analyse
+
+    const polluted = blacks > whites;
+    const score = Math.min(2, total - 1); // 1 jeton = score 0, 2 = score 1, 3 = score 2
+
+    // Détecter la dynamique automatiquement
+    let dynamic = null;
+    if (total >= 3) dynamic = 'saturation';
+    else if (polluted && total >= 2) dynamic = 'degradation';
+
+    const narrative = buildLieuNarrative({ sectorId: sid, score, polluted, dynamic, echelle });
+    if (narrative) results.push({ sectorId: sid, ...narrative });
+  });
+
+  return results;
+}
+

@@ -98,3 +98,184 @@ const EH_DATA = {
   }
 
 };
+
+// ════════════════════════════════════════════════════════════
+// LIEU_DATA — Descriptions narratives pour l'octogone d'un lieu
+// Source : "De l'usage du Pneumatographe" (Sifhr)
+// ════════════════════════════════════════════════════════════
+// Structure : LIEU_DATA[axe][score_polarite]
+//   axe         : 'feu'|'bile_jaune'|'terre'|'bile_noire'|'eau'|'flegme'|'air'|'sang'
+//   score       : 0, 1, 2
+//   polarite    : 'pur'|'devoye'
+// ════════════════════════════════════════════════════════════
+
+const LIEU_DATA = {
+
+  feu: {
+    label: 'Feu',
+    domaine: 'Températures, aridité, volcanisme, incendies',
+    pur: {
+      0: "Climat ou saison tempéré, sans excès notable. Le feu de ce lieu est en équilibre.",
+      1: "Climat ou saison aride, ou lieu sous l'influence d'un volcan tranquille. La chaleur est présente mais maîtrisée.",
+      2: "Désert sans eau ou de sel, activité volcanique intense. Le feu règne en maître sur ce lieu."
+    },
+    devoye: {
+      0: "Aucune influence néfaste du feu à noter. L'équilibre thermique est sain.",
+      1: "Incendie maîtrisé, activité climatique anormale — sécheresse préoccupante. Le feu commence à dévorer ce qui ne lui appartient pas.",
+      2: "Incendie en cours, causant destructions et victimes. Le feu dévoyé consume le lieu sans retenue."
+    }
+  },
+
+  bile_jaune: {
+    label: 'Bile Jaune',
+    domaine: 'Agressivité, conflits, armées, révoltes',
+    pur: {
+      0: "Lieu paisible, loin des rumeurs de conflits. La bile jaune de ce lieu est dormante et saine.",
+      1: "Zone militaire, champ de bataille historique, forteresse ou quartier réputé pour sa population belliqueuse. Une tension latente, canalisée.",
+      2: "Centre militaire majeur ou champ de bataille légendaire. La bile jaune imprègne chaque pierre, chaque regard."
+    },
+    devoye: {
+      0: "Aucune influence néfaste à noter. La paix règne sans effort apparent.",
+      1: "Siège en cours, ruines d'un champ de bataille, zone de combats ou situation insurrectionnelle. La bile jaune s'est dévoyée en violence ouverte.",
+      2: "Zone de massacre généralisé, cité en ruines, champ de bataille réputé maudit, révolution en cours. La bile jaune dévoyée a tout consumé."
+    }
+  },
+
+  terre: {
+    label: 'Terre',
+    domaine: 'Forêts, zones sauvages, agriculture, séismes',
+    pur: {
+      0: "Zone naturelle ou présence banale d'activité humaine. La terre est en équilibre, sans excès ni défaut.",
+      1: "Zone naturelle notable — forêt, marais — ou activité humaine intense : potagers, vergers, champs, moulins. La terre est généreuse.",
+      2: "Zone naturelle majeure ou magnifique, au centre des croyances ou de la fierté d'un peuple. La terre est sacrée ici, ou quasi."
+    },
+    devoye: {
+      0: "Aucune influence néfaste à noter. La terre est saine et stable.",
+      1: "Période de tremblements de terre ou activité sismique rendant délicate la pérennité des installations. Marais putride ou lieu réputé maudit.",
+      2: "Région en ruines, visiblement ou durablement souillée. La terre dévoyée refuse toute culture, tout enracinement."
+    }
+  },
+
+  bile_noire: {
+    label: 'Bile Noire',
+    domaine: 'Industrie, économie, apathie, épidémies, catastrophes humaines',
+    pur: {
+      0: "Lieu sans envergure notable d'un point de vue économique ou artisanal. Un lieu de passage vite oublié.",
+      1: "Zone de grande activité, de passage important, avec une population active et industrieuse.",
+      2: "Centre majeur et vital selon l'échelle, avec des individus notables et compétents. La bile noire ici cristallise l'excellence humaine."
+    },
+    devoye: {
+      0: "Aucune influence néfaste à noter. L'équilibre humain est préservé.",
+      1: "Perte de dynamisme économique, région en berne. La population qui le peut a tendance à partir.",
+      2: "Ancien centre en ruines — la civilisation locale ne s'en remettra pas. Activité occulte majeure influençant durablement population, foi et culture."
+    }
+  },
+
+  eau: {
+    label: 'Eau',
+    domaine: "Étendues d'eau, pluies, neige, irrigation",
+    pur: {
+      0: "Lieu ne présentant pas de point d'intérêt particulier : l'eau est en suffisance pour la faune et la flore.",
+      1: "La région est articulée autour de points notables liés à l'eau — fleuve nourricier, côte propice aux échanges, lac important.",
+      2: "L'eau est abondante et pure, elle sillonne les canaux d'irrigation. Ce lieu vit par et pour l'eau."
+    },
+    devoye: {
+      0: "Aucune influence néfaste à noter. L'eau coule saine et régulière.",
+      1: "L'eau peut présenter des stagnations, multiplication des ouadis, sécheresses ponctuelles. Le déséquilibre s'installe lentement.",
+      2: "Les étendues d'eau sont corrompues — marécages, bras morts, nappes souterraines viciées, contaminations, orages fortuits."
+    }
+  },
+
+  flegme: {
+    label: 'Flegme',
+    domaine: "Logistique de l'eau, artisanat, cohésion des populations",
+    pur: {
+      0: "Idem pour la présence humaine — rien de notable dans les liens entre la population et l'eau.",
+      1: "L'élément liquide est au centre d'une logistique notable : aqueducs, canaux, port d'importance, irrigation vitale, pêche. La population est connue pour son activité artisanale ou artistique.",
+      2: "L'eau est au centre de l'occupation humaine locale, absolument vitale et fait l'objet de rites et de croyances. La région a une réputation immense dans un secteur d'activité."
+    },
+    devoye: {
+      0: "Aucune influence néfaste à noter. La cohésion sociale est préservée.",
+      1: "Un élément vital est souillé, en cours de destruction, ou subit une attaque occulte. Les liens entre la population et son territoire se fragilisent.",
+      2: "L'ensemble des installations humaines est en péril : lac qui s'assèche, fleuve détourné, catastrophe climatique majeure. Une intention politique ou occulte est en train d'anéantir ces installations."
+    }
+  },
+
+  air: {
+    label: 'Air',
+    domaine: 'Vents, tempêtes, beauté spirituelle, hauteurs',
+    pur: {
+      0: "Lieu tout à fait banal, au climat insignifiant. L'air n'y est ni remarquable ni pesant.",
+      1: "Climat notable, connu pour ses particularités — tempêtes régulières, vent typique comme le Khamsin en Égypte. Lieu connu pour sa grande beauté.",
+      2: "Lieu marqué par la main de Dieu, d'une beauté saisissante, forçant l'humilité des gens de passage. L'air y est chargé d'une présence que l'on ne peut ignorer."
+    },
+    devoye: {
+      0: "Aucune influence néfaste à noter. L'air est sain, les souffles équilibrés.",
+      1: "Climat désordonné, influence occulte néfaste, ou phénomène astrologique visible et néfaste — comète, éclipse inquiétante.",
+      2: "Catastrophe pneumatique majeure. Champs pneumatiques durablement souillés. Endroit déserté par les serviteurs de Dieu, ou appartenant au Mal."
+    }
+  },
+
+  sang: {
+    label: 'Sang',
+    domaine: 'Vie spirituelle, foi, savants, lieux de culte',
+    pur: {
+      0: "Aucun édifice ne vient souligner la grandeur de la population qui y vit. La vie spirituelle est discrète, ordinaire.",
+      1: "Lieu aux installations spirituelles ou intellectuelles de qualité, attirant voyageurs, savants et pèlerins.",
+      2: "Centre spirituel ou intellectuel majeur pour une civilisation donnée, centre de pèlerinage primordial pour la foi. Un sanctuaire unique."
+    },
+    devoye: {
+      0: "Aucune influence néfaste à noter. La vie spirituelle est préservée dans son équilibre.",
+      1: "Conflit religieux endémique ou excité par des antagonistes occultes et politiques. Arrestation et brimades de savants, religieux, mystiques. Destruction de lieux de culte.",
+      2: "Guerre paradigmatique ou religieuse majeure. Massacre de populations en raison de leur foi. Sanctuaires détruits ou re-consacrés. Volonté occulte d'altérer le paradigme."
+    }
+  }
+};
+
+// ════════════════════════════════════════════════════════════
+// DYNAMIQUES_DATA — Les quatre dynamiques du Pneumatographe
+// ════════════════════════════════════════════════════════════
+const DYNAMIQUES_DATA = {
+  conflit: {
+    label: 'Conflit',
+    description: "Les scores paradigmatiques évoluent en ±1 : une activité occulte ou politique perturbe l'équilibre et souille un élément notable. Inversement, une activité corrige un défaut ancien ou momentané.",
+    signe: '⚡'
+  },
+  degradation: {
+    label: 'Dégradation',
+    description: "Un ou plusieurs éléments voient apparaître des scores dévoyés : un mouvement lent, pas nécessairement concerté ou issu d'une manipulation directe. C'est l'annonce de l'orage.",
+    signe: '↘'
+  },
+  occultation: {
+    label: 'Occultation',
+    description: "Un ou plusieurs scores paradigmatiques résistent à toute analyse. Une occultation est à l'œuvre — signe des activités d'un Antagoniste. Seule une enquête lèvera le mystère.",
+    signe: '◉'
+  },
+  saturation: {
+    label: 'Saturation',
+    description: "Un score est saturé quand il atteint son niveau maximum. S'il est dévoyé, l'analyse permet de donner une idée de ce qui se trame, tant les forces engagées sont puissantes.",
+    signe: '▲'
+  }
+};
+
+// ════════════════════════════════════════════════════════════
+// ECHELLES_DATA — Les trois échelles d'analyse
+// ════════════════════════════════════════════════════════════
+const ECHELLES_DATA = {
+  locale: {
+    label: 'Locale',
+    description: "Un quartier, un village, une petite zone agricole, forestière, le versant d'une montagne, une source, un complexe architectural majeur.",
+    pneumatographes: ['petit', 'modeste']
+  },
+  regionale: {
+    label: 'Régionale',
+    description: "Une région entière, ou toute une cité. Les Petits Pneumatographes n'y sont pas pertinents.",
+    pneumatographes: ['modeste', 'grand']
+  },
+  meridien: {
+    label: 'Méridien',
+    description: "Un très grand ensemble — la péninsule arabique, l'Égypte, le Levant, l'Anatolie, la Transoxiane. Seuls les Grands Pneumatographes parviennent à capter ces données.",
+    pneumatographes: ['grand']
+  }
+};
+
