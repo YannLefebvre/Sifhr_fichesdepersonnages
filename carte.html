@@ -1565,7 +1565,7 @@ async function evtListDelete(key){
   if(state.couleurs) delete state.couleurs[key];
   await saveState();
   renderEvtList();
-  redrawAll();
+  buildMap();
 }
 
 async function importEvtsFromXlsx(input){
@@ -1580,7 +1580,7 @@ async function importEvtsFromXlsx(input){
     const hdrs=rows[1].map(h=>String(h).toLowerCase());
     const col=n=>hdrs.findIndex(h=>h.includes(n));
     const iK=col('cl'),iT=col('titre'),iTx=col('texte'),iN=col('niveau');
-    const iPo=col('poids'),iR=col('r'),iSt=col('statut'),iD=col('date'),iH=col('heure');
+    const iPo=col('poids'),iR=col('revele'),iSt=col('statut'),iD=col('date'),iH=col('heure');
     const iPx=col('position x'),iPy=col('position y');
     let n=0;
     for(let r=2;r<rows.length;r++){
@@ -1609,7 +1609,7 @@ async function importEvtsFromXlsx(input){
       if(iSt>=0&&String(row[iSt]).trim()==='brouillon') s.revele_a='aucun';
       n++;
     }
-    await saveState(); renderEvtList(); redrawAll();
+    await saveState(); renderEvtList(); buildMap();
     alert(n+' evenement(s) importe(s).');
   }catch(e){ alert('Erreur : '+e.message); }
   input.value='';
