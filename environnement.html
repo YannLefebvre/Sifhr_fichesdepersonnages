@@ -2337,6 +2337,19 @@ function saveState(){
     const msg=document.getElementById('save-msg');
     try{
       const stateCopy=JSON.parse(JSON.stringify(state));
+      // Protéger les champs critiques absents : merger avec Supabase avant upsert
+      const CHAMPS_CRITIQUES=['bibliotheque_ideaux','chronologie','fichePersonnages',
+        'lieux','lieuHistorique','galerie','slots','hypotheses','couleurs','positions'];
+      const manquants=CHAMPS_CRITIQUES.filter(k=>!stateCopy[k]||
+        (typeof stateCopy[k]==='object'&&!Array.isArray(stateCopy[k])&&Object.keys(stateCopy[k]).length===0));
+      if(manquants.length>0){
+        try{
+          const current=await SB.get(FICHE_ID);
+          if(current?.etat){
+            manquants.forEach(k=>{ if(current.etat[k]!==undefined) stateCopy[k]=current.etat[k]; });
+          }
+        }catch(e){}
+      }
       const ok=await SB.upsert(FICHE_ID,stateCopy);
       if(ok){msg.textContent='Sauvegardé ✓';msg.className='save-info saved';setTimeout(()=>{msg.textContent='Synchronisation active';msg.className='save-info';},2000);}
       else{msg.textContent='Erreur de sauvegarde';msg.className='save-info error';}
