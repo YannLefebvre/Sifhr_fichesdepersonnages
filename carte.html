@@ -208,11 +208,91 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);
     border:1px solid var(--border);border-radius:3px;background:var(--input-bg);
     color:var(--ink3);cursor:pointer;}
   .share-vis-btn.on{border-color:var(--accent);color:var(--accent);}
+
+  /* ── Panneau latéral liste événements ── */
+  #evt-list-tab { position:fixed; left:0; top:50%; transform:translateY(-50%);
+    writing-mode:vertical-rl; font-family:'Cinzel',serif; font-size:.68rem;
+    letter-spacing:.08em; padding:.6rem .35rem; background:var(--accent);
+    color:#f5f0e8; border:none; border-radius:0 6px 6px 0; cursor:pointer;
+    z-index:100; box-shadow:2px 2px 8px rgba(0,0,0,.35); display:none; }
+  #evt-list-panel { position:fixed; left:0; top:0; bottom:0; width:300px;
+    background:var(--panel-bg); border-right:1px solid var(--border);
+    box-shadow:4px 0 18px rgba(0,0,0,.4); z-index:99;
+    display:none; flex-direction:column; overflow:hidden; }
+  #evt-list-panel.open { display:flex; }
+  #evt-list-header { display:flex; align-items:center; gap:.4rem;
+    padding:.5rem .7rem; background:rgba(26,18,8,.9);
+    border-bottom:1px solid var(--border); flex-shrink:0; }
+  #evt-list-header h3 { font-family:'Cinzel',serif; font-size:.8rem;
+    color:var(--accent); flex:1; letter-spacing:.07em; margin:0; }
+  #evt-list-search { width:calc(100% - 1.4rem); margin:.4rem .7rem;
+    padding:.3rem .5rem; background:var(--input-bg); border:1px solid var(--border);
+    border-radius:3px; font-family:'Crimson Text',serif; font-size:.85rem;
+    color:var(--ink); outline:none; flex-shrink:0; box-sizing:border-box; }
+  #evt-list-search:focus { border-color:var(--accent); }
+  #evt-list-actions { display:flex; gap:.4rem; padding:.3rem .7rem;
+    border-bottom:1px solid var(--border2); flex-shrink:0; }
+  .evtla-btn { font-family:'Cinzel',serif; font-size:.65rem; padding:3px 9px;
+    border:1px solid var(--border); border-radius:3px; background:var(--input-bg);
+    color:var(--ink2); cursor:pointer; flex:1; text-align:center; }
+  .evtla-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .evtla-btn.primary { background:var(--accent); color:#1a1208; border-color:var(--accent); }
+  #evt-list-scroll { flex:1; overflow-y:auto; padding:.4rem .5rem; }
+  .evtl-item { border:1px solid var(--border2); border-radius:5px; margin-bottom:.4rem; }
+  .evtl-head { display:flex; align-items:center; gap:.4rem; padding:.4rem .6rem;
+    cursor:pointer; background:rgba(26,18,8,.4); border-radius:5px 5px 0 0; }
+  .evtl-head:hover { background:rgba(200,134,10,.1); }
+  .evtl-toggle { font-size:.7rem; color:var(--ink3); width:12px; flex-shrink:0; }
+  .evtl-titre { font-family:'Cinzel',serif; font-size:.72rem; color:var(--ink2);
+    flex:1; letter-spacing:.03em; }
+  .evtl-niv { font-family:'Cinzel',serif; font-size:.55rem; padding:1px 5px;
+    border-radius:8px; flex-shrink:0; }
+  .evtl-niv.n1 { background:#3a2a10; color:#9a7a5a; }
+  .evtl-niv.n2 { background:#4a2010; color:var(--accent); }
+  .evtl-niv.n3 { background:#1a2a4a; color:#c8e0f0; }
+  .evtl-rev { font-family:'Cinzel',serif; font-size:.55rem; padding:1px 5px;
+    border-radius:8px; flex-shrink:0; }
+  .evtl-rev.tous { background:#1a4a2a; color:#a0d0a0; }
+  .evtl-rev.aucun { background:#3a2020; color:#c08080; }
+  .evtl-rev.partiel { background:#3a3a10; color:#c0c060; }
+  .evtl-body { display:none; padding:.5rem .6rem; border-top:1px solid var(--border2); }
+  .evtl-body.open { display:block; }
+  .evtl-desc { font-family:'Crimson Text',serif; font-size:.85rem;
+    color:var(--ink2); line-height:1.5; margin-bottom:.4rem; }
+  .evtl-meta { font-size:.7rem; color:var(--ink3); margin-bottom:.4rem; }
+  .evtl-acts { display:flex; gap:.3rem; flex-wrap:wrap; }
+  .evtl-act { font-family:'Cinzel',serif; font-size:.62rem; padding:2px 8px;
+    border:1px solid var(--border); border-radius:3px; background:none;
+    color:var(--ink3); cursor:pointer; }
+  .evtl-act:hover { border-color:var(--accent); color:var(--accent); }
+  .evtl-act.danger { color:#c06050; border-color:#7a3a2a; }
+  .evtl-act.danger:hover { background:#3a1a1a; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
 <!-- Auth -->
+<!-- Onglet panneau événements -->
+<button id="evt-list-tab" onclick="toggleEvtListPanel()">📋 Événements</button>
+
+<!-- Panneau latéral liste événements -->
+<div id="evt-list-panel">
+  <div id="evt-list-header">
+    <h3>📋 Événements</h3>
+    <button onclick="toggleEvtListPanel()" style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:1rem;">✕</button>
+  </div>
+  <input id="evt-list-search" type="text" placeholder="Rechercher un événement…" oninput="renderEvtList()">
+  <div id="evt-list-actions">
+    <button class="evtla-btn primary" onclick="evtListNew()">＋ Nouvel événement</button>
+    <label class="evtla-btn" style="cursor:pointer;" id="evt-import-label">
+      ⬆ Importer xlsx
+      <input type="file" accept=".xlsx" style="display:none" onchange="importEvtsFromXlsx(this)">
+    </label>
+  </div>
+  <div id="evt-list-scroll"></div>
+</div>
+
 <div id="modal-overlay">
   <div id="modal-box">
     <h2>Carte — Octogone</h2>
@@ -345,6 +425,7 @@ async function doLoginWithPw(pw,tryGM,pidOverride){
       if(row[pwField]!==pw){err.textContent=tryGM?'Mot de passe meneur incorrect.':'Mot de passe incorrect.';}
       else{
         authenticated=true;isGM=tryGM;
+document.getElementById('evt-list-tab').style.display='block';
         playerId=tryGM?'__mj__':(pid||'joueur');
         document.getElementById('modal-overlay').style.display='none';
         document.getElementById('app').style.display='block';
@@ -1376,6 +1457,162 @@ const EvtGen = {
 function openGenerator(){
   document.getElementById('gen-overlay').style.display='flex';
   EvtGen.open();
+}
+
+
+// ════════════════════════════════════════════
+//   PANNEAU LISTE EVENEMENTS
+// ════════════════════════════════════════════
+
+function toggleEvtListPanel(){
+  const panel=document.getElementById('evt-list-panel');
+  const isOpen=panel.classList.contains('open');
+  panel.classList.toggle('open',!isOpen);
+  if(!isOpen) renderEvtList();
+}
+
+function renderEvtList(){
+  const scroll=document.getElementById('evt-list-scroll');
+  if(!scroll) return;
+  const q=(document.getElementById('evt-list-search')?.value||'').toLowerCase();
+  const slots=state.slots||{};
+  const keys=Object.keys(slots).filter(k=>{
+    const s=slots[k];
+    if(!isGM){
+      const r=s.revele_a||'aucun';
+      if(r==='aucun') return false;
+      if(r!=='tous'&&!r.split(',').map(x=>x.trim()).includes(playerId)) return false;
+    }
+    if(q&&!((s.titre||'').toLowerCase().includes(q)||(s.texte||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  if(!keys.length){
+    scroll.innerHTML='<div style="font-size:.78rem;color:var(--ink3);font-style:italic;padding:.5rem;">Aucun événement visible.</div>';
+    return;
+  }
+  scroll.innerHTML='';
+  keys.sort((a,b)=>(slots[a].titre||a).localeCompare(slots[b].titre||b,'fr'));
+  keys.forEach(key=>{
+    const s=slots[key];
+    const niv=s.niveau||1;
+    const rev=s.revele_a||'aucun';
+    const revClass=rev==='tous'?'tous':rev==='aucun'?'aucun':'partiel';
+    const revLabel=rev==='tous'?'Tous':rev==='aucun'?'Caché':'Partiel';
+    const item=document.createElement('div'); item.className='evtl-item';
+    const head=document.createElement('div'); head.className='evtl-head';
+    head.innerHTML='<span class="evtl-toggle">&#9654;</span>'
+      +'<span class="evtl-titre">'+(s.titre||'(sans titre)')+'</span>'
+      +'<span class="evtl-niv n'+niv+'">N'+niv+'</span>'
+      +'<span class="evtl-rev '+revClass+'">'+revLabel+'</span>';
+    const body=document.createElement('div'); body.className='evtl-body';
+    const axes=(s.axes||[]).filter(Boolean);
+    body.innerHTML=(s.texte?'<div class="evtl-desc">'+(s.texte.length>180?s.texte.slice(0,180)+'...':s.texte)+'</div>':'')
+      +(axes.length?'<div class="evtl-meta">Axes : '+axes.join(', ')+'</div>':'')
+      +(s.date?'<div class="evtl-meta">Date : '+s.date+(s.heure?' · '+s.heure:'')+'</div>':'');
+    const acts=document.createElement('div'); acts.className='evtl-acts';
+    const btnEdit=document.createElement('button'); btnEdit.className='evtl-act';
+    btnEdit.textContent='&#9998; Editer';
+    btnEdit.onclick=()=>{ toggleEvtListPanel(); openSlot(key); };
+    acts.appendChild(btnEdit);
+    const btnLoc=document.createElement('button'); btnLoc.className='evtl-act';
+    btnLoc.textContent='&#128506; Localiser';
+    btnLoc.onclick=()=>evtListLocate(key);
+    acts.appendChild(btnLoc);
+    if(isGM){
+      const btnDel=document.createElement('button'); btnDel.className='evtl-act danger';
+      btnDel.textContent='&#128465; Supprimer';
+      btnDel.onclick=()=>evtListDelete(key);
+      acts.appendChild(btnDel);
+    }
+    body.appendChild(acts);
+    item.appendChild(head); item.appendChild(body);
+    head.onclick=()=>{
+      const open=body.classList.contains('open');
+      document.querySelectorAll('.evtl-body.open').forEach(b=>{
+        b.classList.remove('open');
+        b.previousElementSibling.querySelector('.evtl-toggle').innerHTML='&#9654;';
+      });
+      if(!open){ body.classList.add('open'); head.querySelector('.evtl-toggle').innerHTML='&#9660;'; }
+    };
+    scroll.appendChild(item);
+  });
+}
+
+function evtListNew(){
+  const key='evt_'+Date.now();
+  ensureSlot(key);
+  state.slots[key].titre='Nouvel evenement';
+  saveState(); renderEvtList();
+  toggleEvtListPanel();
+  openSlot(key);
+}
+
+function evtListLocate(key){
+  const pos=state.positions?.[key];
+  if(!pos){ alert('Pas de position definie pour cet evenement.'); return; }
+  panX=-pos.x+window.innerWidth/2;
+  panY=-pos.y+window.innerHeight/2;
+  applyPan();
+  toggleEvtListPanel();
+}
+
+async function evtListDelete(key){
+  const titre=state.slots[key]?.titre||key;
+  if(!confirm('Supprimer "'+titre+'" ?')) return;
+  delete state.slots[key];
+  if(state.positions) delete state.positions[key];
+  if(state.hypotheses) delete state.hypotheses[key];
+  if(state.couleurs) delete state.couleurs[key];
+  await saveState();
+  renderEvtList();
+  redrawAll();
+}
+
+async function importEvtsFromXlsx(input){
+  const file=input.files[0]; if(!file) return;
+  if(!window.XLSX){ alert('Librairie XLSX non chargee. Rechargez la page.'); input.value=''; return; }
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    if(rows.length<3){ alert('Fichier vide.'); return; }
+    const hdrs=rows[1].map(h=>String(h).toLowerCase());
+    const col=n=>hdrs.findIndex(h=>h.includes(n));
+    const iK=col('cl'),iT=col('titre'),iTx=col('texte'),iN=col('niveau');
+    const iPo=col('poids'),iR=col('r'),iSt=col('statut'),iD=col('date'),iH=col('heure');
+    const iPx=col('position x'),iPy=col('position y');
+    let n=0;
+    for(let r=2;r<rows.length;r++){
+      const row=rows[r];
+      if(!row.some(c=>c!=='')) continue;
+      const titre=String(row[iT]||'').trim(); if(!titre) continue;
+      let key=iK>=0?String(row[iK]||'').trim():'';
+      if(!key) key='evt_'+Date.now()+'_'+r;
+      key=key.replace(/[^\w\-]/g,'_');
+      ensureSlot(key);
+      const s=state.slots[key];
+      s.titre=titre;
+      if(iTx>=0&&row[iTx]) s.texte=String(row[iTx]);
+      if(iN>=0&&row[iN]) s.niveau=parseInt(row[iN])||1;
+      if(iPo>=0&&row[iPo]) s.poids=parseInt(row[iPo])||1;
+      if(iR>=0&&row[iR]) s.revele_a=String(row[iR]).trim();
+      if(iD>=0&&row[iD]) s.date=String(row[iD]);
+      if(iH>=0&&row[iH]) s.heure=String(row[iH]);
+      const axes=[];
+      for(let a=0;a<8;a++){ const v=String(row[8+a]||'').trim().toLowerCase(); if(v) axes.push(v); }
+      if(axes.length) s.axes=axes;
+      if(iPx>=0&&iPy>=0&&row[iPx]&&row[iPy]){
+        if(!state.positions) state.positions={};
+        state.positions[key]={x:parseFloat(row[iPx]),y:parseFloat(row[iPy])};
+      }
+      if(iSt>=0&&String(row[iSt]).trim()==='brouillon') s.revele_a='aucun';
+      n++;
+    }
+    await saveState(); renderEvtList(); redrawAll();
+    alert(n+' evenement(s) importe(s).');
+  }catch(e){ alert('Erreur : '+e.message); }
+  input.value='';
 }
 
 </script>
