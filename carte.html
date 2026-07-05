@@ -1300,15 +1300,24 @@ const EvtGen = {
     try{
       const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,{headers:SB.hdrs});
       const d=await r.json();
-      this.envEtat=d[0]?.etat||null;
-    }catch(e){ this.envEtat=null; }
+      const etat=d[0]?.etat||null;
+      this.envEtat=etat;
+      // Résoudre les tokens : nouveau format multi-lieux ou ancien format
+      if(etat?.lieux && etat?.lieuActif && etat.lieux[etat.lieuActif]){
+        this.envTokens=etat.lieux[etat.lieuActif].tokens||{};
+        this.envScores=etat.lieux[etat.lieuActif].scores||{};
+      } else {
+        // Ancien format : tokens à la racine
+        this.envTokens=etat?.tokens||{};
+        this.envScores=etat?.scores||{};
+      }
+    }catch(e){ this.envEtat=null; this.envTokens={}; this.envScores={}; }
   },
 
-  // Compte les jetons blancs/noirs pour un axe donné à partir de etat.tokens
-  // Structure réelle : etat.tokens[axeId] = ['empty'|'white'|'black', ...] (tableau de 3 jetons)
+  // Compte les jetons blancs/noirs pour un axe donné
+  // Lit depuis this.envTokens (résolu au chargement selon le format)
   countTokens(axeId){
-    if(!this.envEtat||!this.envEtat.tokens) return {white:0, black:0, total:0};
-    const arr=this.envEtat.tokens[axeId];
+    const arr=this.envTokens?.[axeId];
     if(!Array.isArray(arr)) return {white:0, black:0, total:0};
     let white=0, black=0;
     arr.forEach(tk=>{
