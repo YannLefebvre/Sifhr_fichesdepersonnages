@@ -4,6 +4,65 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Octogone — Environnement</title>
+<!-- Panneau galerie (MJ) -->
+<div id="galerie-panel">
+  <div id="galerie-header">
+    <h3>🖼 Galerie</h3>
+    <button onclick="galerieToggle()" style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:1rem;">✕</button>
+  </div>
+  <input id="galerie-search" type="text" placeholder="Rechercher…" oninput="galerieRender()">
+  <div style="padding:.3rem .7rem;border-bottom:1px solid var(--border2);flex-shrink:0;display:flex;gap:.4rem;">
+    <button class="galerie-add-btn" onclick="galerieToggleForm()">+ Ajouter une image</button>
+    <label class="galerie-add-btn secondary" style="cursor:pointer;">
+      📁 Upload
+      <input type="file" accept="image/*" multiple style="display:none" onchange="galerieUpload(this)">
+    </label>
+  </div>
+  <!-- Formulaire d'ajout par URL -->
+  <div id="galerie-add-form">
+    <div class="galerie-add-row">
+      <input class="galerie-add-inp" type="text" id="galerie-inp-url" placeholder="URL de l'image…">
+    </div>
+    <div class="galerie-add-row">
+      <input class="galerie-add-inp" type="text" id="galerie-inp-titre" placeholder="Titre…">
+      <select class="galerie-add-inp" id="galerie-inp-rev" style="flex:0 0 auto;width:auto;">
+        <option value="aucun">Caché</option>
+        <option value="tous">Tous</option>
+      </select>
+    </div>
+    <div class="galerie-add-row">
+      <button class="galerie-add-btn" onclick="galerieAdd()">💾 Ajouter</button>
+      <button class="galerie-add-btn secondary" onclick="galerieToggleForm()">Annuler</button>
+    </div>
+  </div>
+  <div id="galerie-scroll"></div>
+</div>
+
+<!-- Lightbox -->
+<div id="galerie-lightbox" onclick="galerieLightboxClose()">
+  <img id="galerie-lightbox-img" src="" alt="">
+  <div id="galerie-lightbox-titre"></div>
+</div>
+
+<!-- Panneau images reçues (joueurs) -->
+<div id="galerie-recues">
+  <div id="galerie-recues-box">
+    <div style="display:flex;align-items:center;margin-bottom:.5rem;">
+      <span style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--accent);flex:1;">🖼 Images reçues</span>
+      <button onclick="document.getElementById('galerie-recues').classList.remove('open')"
+        style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:1.1rem;">✕</button>
+    </div>
+    <div id="galerie-recues-grid"></div>
+  </div>
+</div>
+
+<!-- Notification image poussée -->
+<div id="galerie-notif" onclick="galerieNotifClick()">
+  <img id="galerie-notif-thumb" src="" alt="">
+  <div id="galerie-notif-titre"></div>
+  <div id="galerie-notif-msg">Cliquez pour voir l'image</div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
 /* ══════════════════════════════════════════════
@@ -1050,6 +1109,92 @@ async function gmReset(){
     border:1px solid var(--border); border-radius:3px; background:none;
     color:var(--ink3); cursor:pointer; }
   .lieu-hist-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* ── Galerie d'images ── */
+  #galerie-panel { position:fixed; right:0; top:0; bottom:0; width:360px;
+    background:var(--bg); border-left:1px solid var(--accent);
+    box-shadow:-4px 0 18px rgba(0,0,0,.3); z-index:279;
+    display:none; flex-direction:column; overflow:hidden; }
+  #galerie-panel.open { display:flex; }
+  #galerie-header { display:flex; align-items:center; gap:.4rem;
+    padding:.5rem .7rem; background:rgba(26,18,8,.9);
+    border-bottom:1px solid var(--border); flex-shrink:0; }
+  #galerie-header h3 { font-family:'Cinzel',serif; font-size:.8rem;
+    color:var(--accent); flex:1; letter-spacing:.07em; margin:0; }
+  #galerie-search { width:calc(100% - 1.4rem); margin:.4rem .7rem;
+    padding:.3rem .5rem; background:var(--input-bg); border:1px solid var(--border);
+    border-radius:3px; font-family:'Crimson Text',serif; font-size:.85rem;
+    color:var(--ink); outline:none; flex-shrink:0; box-sizing:border-box; }
+  #galerie-search:focus { border-color:var(--accent); }
+  #galerie-add-form { padding:.4rem .7rem; border-bottom:1px solid var(--border2);
+    flex-shrink:0; display:none; }
+  #galerie-add-form.open { display:block; }
+  .galerie-add-row { display:flex; gap:.3rem; margin-bottom:.3rem; align-items:center; }
+  .galerie-add-inp { flex:1; padding:.3rem .5rem; background:var(--input-bg);
+    border:1px solid var(--border); border-radius:3px;
+    font-family:'Crimson Text',serif; font-size:.82rem; color:var(--ink); }
+  .galerie-add-inp:focus { border-color:var(--accent); outline:none; }
+  .galerie-add-btn { font-family:'Cinzel',serif; font-size:.65rem; padding:3px 9px;
+    border:1px solid var(--accent); border-radius:3px; background:var(--accent);
+    color:#1a1208; cursor:pointer; white-space:nowrap; }
+  .galerie-add-btn.secondary { background:none; color:var(--accent); }
+  #galerie-scroll { flex:1; overflow-y:auto; padding:.4rem .5rem; }
+  .galerie-card { border:1px solid var(--border2); border-radius:6px;
+    margin-bottom:.5rem; overflow:hidden; }
+  .galerie-thumb { width:100%; height:120px; object-fit:cover;
+    display:block; cursor:pointer; background:var(--input-bg); }
+  .galerie-thumb-placeholder { width:100%; height:80px; display:flex;
+    align-items:center; justify-content:center;
+    background:var(--input-bg); color:var(--ink3);
+    font-size:2rem; cursor:pointer; }
+  .galerie-card-body { padding:.4rem .5rem; }
+  .galerie-card-titre { font-family:'Cinzel',serif; font-size:.72rem;
+    color:var(--ink2); margin-bottom:.3rem; }
+  .galerie-card-rev { font-family:'Cinzel',serif; font-size:.58rem;
+    padding:1px 6px; border-radius:8px; display:inline-block; margin-bottom:.3rem; }
+  .galerie-card-rev.tous { background:#1a4a2a; color:#a0d0a0; }
+  .galerie-card-rev.aucun { background:#3a2020; color:#c08080; }
+  .galerie-card-rev.partiel { background:#3a3a10; color:#c0c060; }
+  .galerie-card-actions { display:flex; gap:.3rem; flex-wrap:wrap; }
+  .galerie-act { font-family:'Cinzel',serif; font-size:.6rem; padding:2px 7px;
+    border:1px solid var(--border); border-radius:3px; background:none;
+    color:var(--ink3); cursor:pointer; }
+  .galerie-act:hover { border-color:var(--accent); color:var(--accent); }
+  .galerie-act.primary { background:var(--accent); color:#1a1208; border-color:var(--accent); }
+  .galerie-act.danger { color:#c06050; border-color:#7a3a2a; }
+  /* Lightbox */
+  #galerie-lightbox { display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,.92); align-items:center; justify-content:center;
+    z-index:600; cursor:zoom-out; }
+  #galerie-lightbox.open { display:flex; }
+  #galerie-lightbox img { max-width:92vw; max-height:90vh;
+    border-radius:4px; box-shadow:0 4px 40px rgba(0,0,0,.8); }
+  #galerie-lightbox-titre { position:fixed; bottom:1.5rem; left:50%;
+    transform:translateX(-50%); font-family:'Cinzel',serif; font-size:.85rem;
+    color:#f5f0e8; text-shadow:0 2px 8px rgba(0,0,0,.9);
+    letter-spacing:.06em; pointer-events:none; }
+  /* Panneau images reçues (joueurs) */
+  #galerie-recues { display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,.92); align-items:flex-start; justify-content:center;
+    z-index:550; padding-top:3rem; }
+  #galerie-recues.open { display:flex; }
+  #galerie-recues-box { background:var(--bg); border-radius:8px;
+    padding:1rem 1.2rem; width:min(700px,94vw); max-height:85vh;
+    overflow-y:auto; }
+  #galerie-recues-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+    gap:.6rem; margin-top:.6rem; }
+  .galerie-recue-thumb { width:100%; aspect-ratio:4/3; object-fit:cover;
+    border-radius:4px; cursor:pointer; border:1px solid var(--border2); }
+  /* Notification image poussée */
+  #galerie-notif { display:none; position:fixed; bottom:1rem; right:1rem;
+    background:var(--section-bg); border:1px solid var(--accent); border-radius:8px;
+    padding:.6rem .9rem; z-index:580; max-width:260px;
+    box-shadow:0 4px 18px rgba(0,0,0,.4); cursor:pointer; }
+  #galerie-notif.open { display:block; }
+  #galerie-notif-thumb { width:60px; height:45px; object-fit:cover;
+    border-radius:3px; float:left; margin-right:.5rem; }
+  #galerie-notif-titre { font-family:'Cinzel',serif; font-size:.72rem; color:var(--accent); }
+  #galerie-notif-msg { font-family:'Crimson Text',serif; font-size:.8rem; color:var(--ink3); }
 </style>
 </head>
 <body>
@@ -2268,6 +2413,10 @@ function applyRemoteState(saved){
   if(typeof renderSegmentColors==='function') renderSegmentColors();
   // Mettre à jour le panneau routines MJ quand fichePersonnages est chargé
   if(isGM && typeof chronoRenderRoutinesMJ==='function') chronoRenderRoutinesMJ();
+  // Détecter image poussée
+  if(saved._galeriePush&&typeof checkIncomingGaleriePush==='function') checkIncomingGaleriePush(saved);
+  if(saved.galerie!==undefined) state.galerie=saved.galerie;
+  if(saved.galerieRecues!==undefined) state.galerieRecues={...state.galerieRecues,...saved.galerieRecues};
 }
 
 // ── Realtime ──
@@ -2323,6 +2472,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           document.getElementById('bib-tab-wrap').style.display='block';
           lieuRenderTabs();
           document.getElementById('mj-fiches-nav').style.display='block';
+          document.getElementById('galerie-tab-wrap').style.display='block';
           document.getElementById('perso-lies-tab-wrap').style.display='block';
           mjRenderNavList();
           document.getElementById('btn-occultation-gm').style.display='flex';
@@ -3461,6 +3611,15 @@ function startMjDiceObservation(){
   </div>
 </div>
 
+<!-- Onglet vertical Galerie -->
+<div id="galerie-tab-wrap" style="position:fixed;right:0;top:64vh;z-index:280;display:none;">
+  <button id="galerie-tab-btn" onclick="galerieToggle()"
+    style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
+    letter-spacing:.08em;padding:.6rem .35rem;background:#4a2a6a;color:#f5f0e8;
+    border:none;border-radius:6px 0 0 6px;cursor:pointer;
+    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">🖼 Galerie</button>
+</div>
+
 <!-- Onglet vertical Personnages liés -->
 <div id="perso-lies-tab-wrap">
   <button id="perso-lies-tab-btn" onclick="togglePersoLiesPanel()">🧑 Personnages liés</button>
@@ -4063,6 +4222,268 @@ function renderAll(){
   if(typeof renderSegmentColors==='function') renderSegmentColors();
   // 7. Tabs
   lieuRenderTabs();
+}
+
+
+// ══════════════════════════════════════════════
+//   GALERIE D'IMAGES
+// ══════════════════════════════════════════════
+
+function galerieToggle(){
+  document.getElementById('galerie-panel').classList.toggle('open');
+  if(document.getElementById('galerie-panel').classList.contains('open')) galerieRender();
+}
+
+function galerieToggleForm(){
+  document.getElementById('galerie-add-form').classList.toggle('open');
+}
+
+// ── Ajouter une image par URL ──
+async function galerieAdd(){
+  const url=document.getElementById('galerie-inp-url').value.trim();
+  const titre=document.getElementById('galerie-inp-titre').value.trim();
+  const revele=document.getElementById('galerie-inp-rev').value;
+  if(!url){ alert('Renseignez une URL.'); return; }
+  const key='img_'+Date.now();
+  if(!state.galerie) state.galerie={};
+  state.galerie[key]={ titre:titre||'Image', url, tags:[], revele_a:revele, ts:Date.now() };
+  document.getElementById('galerie-inp-url').value='';
+  document.getElementById('galerie-inp-titre').value='';
+  await saveState();
+  galerieRender();
+  galerieToggleForm();
+}
+
+// ── Upload fichier local (base64) ──
+async function galerieUpload(input){
+  const files=Array.from(input.files);
+  if(!files.length) return;
+  if(!state.galerie) state.galerie={};
+  for(const file of files){
+    const b64=await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result);
+      r.onerror=rej;
+      r.readAsDataURL(file);
+    });
+    // Avertir si trop grande (>500KB)
+    if(file.size>512000){
+      if(!confirm(`${file.name} est > 500 KB (${Math.round(file.size/1024)} KB). Cela peut alourdir la sauvegarde. Continuer ?`)) continue;
+    }
+    const key='img_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+    state.galerie[key]={ titre:file.name.replace(/\.[^.]+$/,''), url:b64, tags:[], revele_a:'aucun', ts:Date.now() };
+  }
+  await saveState();
+  galerieRender();
+  input.value='';
+}
+
+// ── Rendre la galerie ──
+function galerieRender(){
+  const scroll=document.getElementById('galerie-scroll');
+  if(!scroll) return;
+  const q=(document.getElementById('galerie-search')?.value||'').toLowerCase();
+  const galerie=state.galerie||{};
+  const keys=Object.keys(galerie)
+    .filter(k=>!q||(galerie[k].titre||'').toLowerCase().includes(q))
+    .sort((a,b)=>(galerie[b].ts||0)-(galerie[a].ts||0));
+  if(!keys.length){
+    scroll.innerHTML='<div style="font-size:.78rem;color:var(--ink3);font-style:italic;padding:.5rem;">Aucune image.</div>';
+    return;
+  }
+  scroll.innerHTML='';
+  keys.forEach(key=>{
+    const img=galerie[key];
+    const rev=img.revele_a||'aucun';
+    const revClass=rev==='tous'?'tous':rev==='aucun'?'aucun':'partiel';
+    const revLabel=rev==='tous'?'Tous':rev==='aucun'?'Caché':'Partiel';
+    const card=document.createElement('div'); card.className='galerie-card';
+
+    // Thumbnail
+    const thumbWrap=document.createElement('div');
+    if(img.url){
+      const th=document.createElement('img');
+      th.className='galerie-thumb'; th.src=img.url; th.alt=img.titre||'';
+      th.loading='lazy';
+      th.addEventListener('click',()=>galerieLightbox(img.url, img.titre));
+      th.onerror=()=>{ th.style.display='none'; placeholder.style.display='flex'; };
+      const placeholder=document.createElement('div');
+      placeholder.className='galerie-thumb-placeholder'; placeholder.textContent='🖼';
+      placeholder.style.display='none';
+      placeholder.addEventListener('click',()=>galerieLightbox(img.url, img.titre));
+      thumbWrap.appendChild(th); thumbWrap.appendChild(placeholder);
+    } else {
+      const ph=document.createElement('div');
+      ph.className='galerie-thumb-placeholder'; ph.textContent='🖼';
+      thumbWrap.appendChild(ph);
+    }
+    card.appendChild(thumbWrap);
+
+    // Corps
+    const body=document.createElement('div'); body.className='galerie-card-body';
+    body.innerHTML=`<div class="galerie-card-titre">${img.titre||'(sans titre)'}</div>
+      <span class="galerie-card-rev ${revClass}">${revLabel}</span>`;
+
+    // Actions
+    const acts=document.createElement('div'); acts.className='galerie-card-actions';
+    acts.style.marginTop='.3rem';
+
+    // Pousser vers joueurs
+    const btnPush=document.createElement('button'); btnPush.className='galerie-act primary';
+    btnPush.textContent='▶ Pousser'; btnPush.title='Envoyer cette image aux joueurs';
+    btnPush.addEventListener('click',()=>galeriePushSelector(key));
+    acts.appendChild(btnPush);
+
+    // Modifier visibilité
+    const btnRev=document.createElement('button'); btnRev.className='galerie-act';
+    btnRev.textContent='👁 Visibilité';
+    btnRev.addEventListener('click',()=>galerieEditVisibilite(key, card));
+    acts.appendChild(btnRev);
+
+    // Supprimer
+    const btnDel=document.createElement('button'); btnDel.className='galerie-act danger';
+    btnDel.textContent='🗑';
+    btnDel.addEventListener('click',async()=>{
+      if(!confirm('Supprimer cette image ?')) return;
+      delete state.galerie[key];
+      await saveState(); galerieRender();
+    });
+    acts.appendChild(btnDel);
+
+    body.appendChild(acts);
+    card.appendChild(body);
+    scroll.appendChild(card);
+  });
+}
+
+// ── Modifier la visibilité d'une image ──
+async function galerieEditVisibilite(key, card){
+  const img=state.galerie[key]; if(!img) return;
+  const fp=state.fichePersonnages||[];
+  const ids=fp.map(p=>typeof p==='string'?p:p.id);
+  const options=['aucun','tous',...ids];
+  const current=img.revele_a||'aucun';
+  const choix=prompt(
+    `Visibilité pour "${img.titre||key}" :\n` +
+    `Options : aucun | tous | id1,id2,...\n` +
+    `Joueurs disponibles : ${ids.join(', ')}\n\nValeur actuelle : ${current}`,
+    current
+  );
+  if(choix===null) return;
+  state.galerie[key].revele_a=choix.trim();
+  await saveState(); galerieRender();
+}
+
+// ── Pousser une image vers les joueurs ──
+async function galeriePushSelector(key){
+  const img=state.galerie[key]; if(!img) return;
+  const fp=state.fichePersonnages||[];
+  const ids=fp.map(p=>typeof p==='string'?p:p.id);
+  const cibles=prompt(
+    `Pousser "${img.titre||key}" vers :\n` +
+    `Joueurs disponibles : ${ids.join(', ')}\n` +
+    `Entrez : tous | aucun | id1,id2,...`,
+    img.revele_a||'tous'
+  );
+  if(cibles===null) return;
+  const ciblesStr=cibles.trim();
+  const ciblesIds=ciblesStr==='tous'?ids:
+    ciblesStr==='aucun'?[]:
+    ciblesStr.split(',').map(s=>s.trim()).filter(Boolean);
+  if(!ciblesIds.length){ alert('Aucun joueur sélectionné.'); return; }
+  await galeriePush(key, ciblesIds);
+}
+
+async function galeriePush(key, ciblesIds){
+  const img=state.galerie[key]; if(!img) return;
+  let ok=0;
+  for(const ficheId of ciblesIds){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const d=await r.json();
+      const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
+      if(!etat.galerieRecues) etat.galerieRecues={};
+      etat.galerieRecues[key]={...img, pushedAt:Date.now()};
+      // Notification push
+      etat._galeriePush={key, titre:img.titre, url:img.url, ts:Date.now()};
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}`,{
+        method:'PATCH',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+          'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({etat})
+      });
+      ok++;
+    }catch(e){}
+  }
+  const msg=document.getElementById('save-msg');
+  msg.textContent=`✓ Image poussée vers ${ok} joueur(s)`;
+  msg.className='save-info saved';
+  setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },3000);
+}
+
+// ── Lightbox ──
+function galerieLightbox(url, titre){
+  document.getElementById('galerie-lightbox-img').src=url;
+  document.getElementById('galerie-lightbox-titre').textContent=titre||'';
+  document.getElementById('galerie-lightbox').classList.add('open');
+}
+function galerieLightboxClose(){
+  document.getElementById('galerie-lightbox').classList.remove('open');
+}
+
+// ── Notification d'image reçue (côté joueur) ──
+let _galerieNotifTimer=null;
+function galerieShowNotif(key, titre, url){
+  const notif=document.getElementById('galerie-notif'); if(!notif) return;
+  document.getElementById('galerie-notif-thumb').src=url||'';
+  document.getElementById('galerie-notif-titre').textContent=titre||'Nouvelle image';
+  notif.dataset.key=key;
+  notif.classList.add('open');
+  clearTimeout(_galerieNotifTimer);
+  _galerieNotifTimer=setTimeout(()=>notif.classList.remove('open'),8000);
+}
+function galerieNotifClick(){
+  const notif=document.getElementById('galerie-notif');
+  notif.classList.remove('open');
+  galerieOpenRecues();
+}
+
+// ── Panneau images reçues (joueurs) ──
+function galerieOpenRecues(){
+  const grid=document.getElementById('galerie-recues-grid');
+  if(!grid) return;
+  const recues=state.galerieRecues||{};
+  const keys=Object.keys(recues).sort((a,b)=>(recues[b].pushedAt||0)-(recues[a].pushedAt||0));
+  grid.innerHTML='';
+  if(!keys.length){
+    grid.innerHTML='<div style="font-size:.8rem;color:var(--ink3);font-style:italic;">Aucune image reçue.</div>';
+  } else {
+    keys.forEach(k=>{
+      const img=recues[k];
+      const th=document.createElement('img');
+      th.className='galerie-recue-thumb'; th.src=img.url||''; th.alt=img.titre||'';
+      th.loading='lazy'; th.title=img.titre||'';
+      th.addEventListener('click',()=>{
+        galerieLightbox(img.url, img.titre);
+      });
+      grid.appendChild(th);
+    });
+  }
+  document.getElementById('galerie-recues').classList.add('open');
+}
+
+// ── Détecter une image poussée dans applyRemoteState ──
+function checkIncomingGaleriePush(saved){
+  const push=saved._galeriePush;
+  if(!push||!push.ts) return;
+  // Éviter les doublons
+  if(window._lastGaleriePushTs===push.ts) return;
+  window._lastGaleriePushTs=push.ts;
+  // Copier dans galerieRecues
+  if(!state.galerieRecues) state.galerieRecues={};
+  state.galerieRecues[push.key]={...state.galerieRecues[push.key],...push, pushedAt:push.ts};
+  galerieShowNotif(push.key, push.titre, push.url);
 }
 
 // ── Synchroniser la fiche env sur toutes les fiches joueurs liées ──

@@ -1287,6 +1287,34 @@
     border:1px solid #1a4a2a; border-radius:6px; padding:.5rem .7rem;
     margin-top:.4rem; font-family:'Cinzel',serif; font-size:.72rem; color:#1a4a2a; }
   #dice-group-waiting.open { display:block; }
+
+  /* ── Galerie reçue (joueur) ── */
+  #galerie-notif { display:none; position:fixed; bottom:1rem; right:1rem;
+    background:var(--section-bg); border:1px solid var(--accent); border-radius:8px;
+    padding:.6rem .9rem; z-index:580; max-width:260px;
+    box-shadow:0 4px 18px rgba(0,0,0,.4); cursor:pointer; }
+  #galerie-notif.open { display:block; }
+  #galerie-notif-thumb { width:60px; height:45px; object-fit:cover;
+    border-radius:3px; float:left; margin-right:.5rem; }
+  #galerie-notif-titre { font-family:'Cinzel',serif; font-size:.72rem; color:var(--accent); }
+  #galerie-notif-msg { font-family:'Crimson Text',serif; font-size:.8rem; color:var(--ink3); clear:both; }
+  #galerie-lightbox { display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,.92); align-items:center; justify-content:center;
+    z-index:600; cursor:zoom-out; }
+  #galerie-lightbox.open { display:flex; flex-direction:column; align-items:center; }
+  #galerie-lightbox img { max-width:92vw; max-height:85vh; border-radius:4px; }
+  #galerie-lightbox-titre { font-family:'Cinzel',serif; font-size:.85rem;
+    color:#f5f0e8; margin-top:.5rem; letter-spacing:.06em; }
+  #galerie-recues { display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,.92); align-items:flex-start; justify-content:center;
+    z-index:550; padding-top:3rem; }
+  #galerie-recues.open { display:flex; }
+  #galerie-recues-box { background:var(--bg); border-radius:8px;
+    padding:1rem 1.2rem; width:min(700px,94vw); max-height:85vh; overflow-y:auto; }
+  #galerie-recues-grid { display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:.6rem; margin-top:.6rem; }
+  .galerie-recue-thumb { width:100%; aspect-ratio:4/3; object-fit:cover;
+    border-radius:4px; cursor:pointer; border:1px solid var(--border2); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
@@ -4772,6 +4800,8 @@ function applyRemoteState(saved){
     if(saved.groupLancer&&typeof checkIncomingGroupLancer==='function'){
       checkIncomingGroupLancer(saved);
     }
+    if(saved._galeriePush&&typeof checkIncomingGaleriePush==='function') checkIncomingGaleriePush(saved);
+    if(saved.galerieRecues!==undefined) state.galerieRecues={...state.galerieRecues,...saved.galerieRecues};
   } catch(e){ console.error('applyRemoteState error',e); }
   applyingRemote = false;
   // Recalculer les déviations si les tokens ont changé
@@ -10790,6 +10820,57 @@ window.addEventListener('message',(e)=>{
     setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'start'}),200);
   }
 });
+
+// ── Galerie : recevoir les images poussées ──
+let _galerieNotifTimer=null;
+function galerieShowNotif(key,titre,url){
+  const n=document.getElementById('galerie-notif'); if(!n) return;
+  document.getElementById('galerie-notif-thumb').src=url||'';
+  document.getElementById('galerie-notif-titre').textContent=titre||'Nouvelle image';
+  n.dataset.key=key; n.classList.add('open');
+  clearTimeout(_galerieNotifTimer);
+  _galerieNotifTimer=setTimeout(()=>n.classList.remove('open'),8000);
+}
+function galerieNotifClick(){
+  document.getElementById('galerie-notif').classList.remove('open');
+  galerieOpenRecues();
+}
+function galerieLightbox(url,titre){
+  document.getElementById('galerie-lightbox-img').src=url;
+  document.getElementById('galerie-lightbox-titre').textContent=titre||'';
+  document.getElementById('galerie-lightbox').classList.add('open');
+}
+function galerieLightboxClose(){
+  document.getElementById('galerie-lightbox').classList.remove('open');
+}
+function galerieOpenRecues(){
+  const grid=document.getElementById('galerie-recues-grid'); if(!grid) return;
+  const recues=state.galerieRecues||{};
+  const keys=Object.keys(recues).sort((a,b)=>(recues[b].pushedAt||0)-(recues[a].pushedAt||0));
+  grid.innerHTML='';
+  if(!keys.length){
+    grid.innerHTML='<div style="font-size:.8rem;color:var(--ink3);">Aucune image reçue.</div>';
+  } else {
+    keys.forEach(k=>{
+      const img=recues[k];
+      const th=document.createElement('img');
+      th.className='galerie-recue-thumb'; th.src=img.url||'';
+      th.alt=img.titre||''; th.title=img.titre||''; th.loading='lazy';
+      th.addEventListener('click',()=>galerieLightbox(img.url,img.titre));
+      grid.appendChild(th);
+    });
+  }
+  document.getElementById('galerie-recues').classList.add('open');
+}
+function checkIncomingGaleriePush(saved){
+  const push=saved._galeriePush; if(!push||!push.ts) return;
+  if(window._lastGaleriePushTs===push.ts) return;
+  window._lastGaleriePushTs=push.ts;
+  if(!state.galerieRecues) state.galerieRecues={};
+  state.galerieRecues[push.key]={...push, pushedAt:push.ts};
+  galerieShowNotif(push.key, push.titre, push.url);
+}
+
 </script>
 
 <!-- Overlay fiche personnage (N3) -->
@@ -10896,5 +10977,30 @@ window.addEventListener('message',(e)=>{
   </div>
 </div>
 
+
+<!-- Galerie : notification image reçue -->
+<div id="galerie-notif" onclick="galerieNotifClick()">
+  <img id="galerie-notif-thumb" src="" alt="">
+  <div id="galerie-notif-titre"></div>
+  <div id="galerie-notif-msg">Cliquez pour voir l'image</div>
+</div>
+
+<!-- Lightbox -->
+<div id="galerie-lightbox" onclick="galerieLightboxClose()">
+  <img id="galerie-lightbox-img" src="" alt="">
+  <div id="galerie-lightbox-titre"></div>
+</div>
+
+<!-- Images reçues -->
+<div id="galerie-recues">
+  <div id="galerie-recues-box">
+    <div style="display:flex;align-items:center;margin-bottom:.5rem;">
+      <span style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--accent);flex:1;">🖼 Images reçues</span>
+      <button onclick="document.getElementById('galerie-recues').classList.remove('open')"
+        style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:1.1rem;">✕</button>
+    </div>
+    <div id="galerie-recues-grid"></div>
+  </div>
+</div>
 </body>
 </html>
