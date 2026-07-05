@@ -2151,6 +2151,8 @@ function applyRemoteState(saved){
   }catch(e){console.error('applyRemoteState',e);}
   applyingRemote=false;
   if(typeof renderSegmentColors==='function') renderSegmentColors();
+  // Mettre à jour le panneau routines MJ quand fichePersonnages est chargé
+  if(isGM && typeof chronoRenderRoutinesMJ==='function') chronoRenderRoutinesMJ();
 }
 
 // ── Realtime ──
