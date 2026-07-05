@@ -1060,7 +1060,7 @@ async function gmReset(){
     background:none; color:#185FA5; cursor:pointer; }
 
   /* ── Panneau personnages liés (onglet vertical) ── */
-  #perso-lies-tab-wrap { position:fixed; right:0; top:42vh;
+  #perso-lies-tab-wrap { position:fixed; right:0; top:30vh;
     z-index:280; display:none; }
   #perso-lies-tab-btn { writing-mode:vertical-rl; font-family:'Cinzel',serif;
     font-size:.68rem; letter-spacing:.08em; padding:.6rem .35rem;
@@ -2474,10 +2474,13 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           renderFichesPersoList();
           pollNines();
           // Onglets latéraux MJ
-          ['bib-tab-wrap','mj-fiches-nav','galerie-tab-wrap','perso-lies-tab-wrap'].forEach(id=>{
+          ['mj-fiches-nav','galerie-tab-wrap','perso-lies-tab-wrap'].forEach(id=>{
             const el=document.getElementById(id);
             if(el) el.style.display='block';
           });
+          // Octogones idéaux directement dans la page
+          const bibSec=document.getElementById('bib-ideaux-section');
+          if(bibSec){ bibSec.style.display='block'; setTimeout(bibIdeauxInit, 600); }
           mjRenderNavList();
           lieuRenderTabs();
           // Chronologie directement dans la page
@@ -3337,14 +3340,7 @@ function closeDuel(){
 
 
 
-<!-- Onglet vertical Octogones idéaux -->
-<div id="bib-tab-wrap" style="position:fixed;right:0;top:30vh;z-index:280;display:none;">
-  <button id="bib-ideaux-fab" onclick="toggleBibIdeaux()"
-    style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
-    letter-spacing:.08em;padding:.6rem .35rem;background:#1a4a2a;color:#f5f0e8;
-    border:none;border-radius:6px 0 0 6px;cursor:pointer;
-    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">✦ Sync.</button>
-</div>
+
 
 <!-- Panneau MJ observateur de lancers -->
 <div id="mj-obs-overlay"></div>
@@ -3603,7 +3599,7 @@ function startMjDiceObservation(){
 </div>
 
 <!-- Onglet vertical Galerie -->
-<div id="galerie-tab-wrap" style="position:fixed;right:0;top:54vh;z-index:280;display:none;">
+<div id="galerie-tab-wrap" style="position:fixed;right:0;top:42vh;z-index:280;display:none;">
   <button id="galerie-tab-btn" onclick="galerieToggle()"
     style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
     letter-spacing:.08em;padding:.6rem .35rem;background:#4a2a6a;color:#f5f0e8;
