@@ -148,7 +148,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   <div id="story-header">
     <div id="story-title">Sifhr — Introduction</div>
     <div id="story-subtitle">Aventure en solo · Yann Lefebvre</div>
-    <div id="session-info" style="display:none;margin-top:.4rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;display:flex;gap:.8rem;flex-wrap:wrap;">
+    <div id="session-info" style="display:none;margin-top:.4rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;gap:.8rem;flex-wrap:wrap;">
       <span id="sifhr-temps-display" style="color:var(--accent);font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.05em;"></span>
       💾 Votre code de sauvegarde : <span id="session-code" style="color:var(--accent);font-weight:600;cursor:pointer;" title="Cliquer pour copier" onclick="navigator.clipboard.writeText(this.textContent);this.textContent+=' ✓'"></span>
       <button onclick="restartAdventure()" style="margin-left:.8rem;font-family:'Cinzel',serif;font-size:.62rem;padding:2px 7px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">↺ Nouvelle partie</button>
@@ -367,7 +367,9 @@ async function doLogin(){
 
       // Afficher le code session
       document.getElementById('session-code').textContent=SESSION_FICHE_ID;
-      document.getElementById('session-info').style.display='block';
+      const si=document.getElementById('session-info');
+      si.style.display='flex';
+      if(typeof sifhrUpdateTempsDisplay==='function') sifhrUpdateTempsDisplay();
 
       document.getElementById('modal-overlay').style.display='none';
       document.getElementById('app').style.display='block';
