@@ -245,6 +245,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   <button onclick="openEquip()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Équipements">⚔ Équipements</button>
   <button onclick="openHist()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Historique">📜 Historique</button>
   <button onclick="openEvt()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Événements">📋 Événements</button>
+  <button onclick="openCarteDamas()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Carte de Damas">🗺 Carte</button>
 </div>
 
 <!-- Lightbox -->
@@ -859,7 +860,7 @@ function sifhrParseMarkers(html){
 function sifhrMarkerIcon(type){
   const icons = {dice:'🎲', psycho:'⚖', event:'📋', token:'⚪',
     dette:'💰', etat:'⚡', switch:'🔄', check:'🔍', env:'🌐', carte:'🗺',
-    temps:'⏳', pause:'◉'};
+    temps:'⏳', pause:'◉', voyage:'🗺'};
   return icons[type]||'✦';
 }
 function sifhrMarkerLabel(type, args){
@@ -875,6 +876,7 @@ function sifhrMarkerLabel(type, args){
   if(type==='carte') return 'Ouvrir la carte';
   if(type==='temps') return 'Le temps passe'+(args.delta?' ('+args.delta+(args.unite?' '+args.unite:'')+')'  :'');
   if(type==='pause') return 'Fenêtre narrative';
+  if(type==='voyage') return 'Choisir une destination'+(args.lieux?' ('+args.lieux.split(',').length+' lieux)':'');
   return type;
 }
 function sifhrMarkerHint(type, args){
@@ -903,6 +905,7 @@ async function sifhrHandleMarker(el){
     case 'check':   await sifhrCheck(args, el, markerId); break;
     case 'temps':   await sifhrApplyTemps(args, el, markerId); break;
     case 'pause':   await sifhrHandlePause(args, el, markerId); break;
+    case 'voyage':  await sifhrOpenVoyage(args, el, markerId); break;
     case 'env':     sifhrOpenOverlay('env', args); break;
     case 'carte':   sifhrOpenOverlay('carte', args); break;
   }
@@ -1963,6 +1966,130 @@ function sifhrFinChronoEvent() {
 }
 
 
+
+
+// ══════════════════════════════════════════════════════════
+//   CARTE DE DAMAS — Intégration dans aventure.html
+// ══════════════════════════════════════════════════════════
+
+// ── État voyage ──
+let _carteVoyageMode = false;   // true = mode sélection de destination
+let _carteVoyageLieux = [];     // lieux autorisés en mode voyage
+let _carteVoyageCallback = null; // résout quand le joueur choisit
+
+// ── CAS 3 : Ouvrir la carte librement ──
+function openCarteDamas(opts = {}) {
+  const base = window.location.href.replace(/[^/]*$/, '');
+  const envId = (typeof sifhrState !== 'undefined' && sifhrState.envId) || 'env-test';
+  const pw = opts.pw || 'mdpj';
+
+  // Paramètres transmis à carte.html
+  const params = new URLSearchParams({
+    fiche: envId,
+    pw,
+    player_fiche: FICHE_ID,
+    player_pw: _fichePw || '',
+  });
+  // Mode voyage : lieux autorisés
+  if (opts.voyage && opts.lieux && opts.lieux.length) {
+    params.set('mode', 'voyage');
+    params.set('lieux', opts.lieux.join(','));
+  }
+  // Mode révélation : centrer sur un lieu
+  if (opts.lieu_focus) {
+    params.set('lieu_focus', opts.lieu_focus);
+  }
+
+  document.getElementById('sifhr-carte-iframe').src = base + 'carte.html?' + params.toString();
+
+  // Hint dans l'en-tête
+  const hint = document.getElementById('carte-voyage-hint');
+  if (hint) {
+    if (opts.voyage) hint.textContent = 'Choisissez votre destination';
+    else if (opts.lieu_focus) hint.textContent = 'Lieu révélé';
+    else hint.textContent = '';
+  }
+
+  document.getElementById('sifhr-carte-overlay').classList.add('open');
+  _carteVoyageMode = !!opts.voyage;
+}
+
+// ── CAS 1 : Marqueur [[sifhr:voyage:...]] ──
+// Appelé depuis sifhrHandleMarker
+async function sifhrOpenVoyage(args, el, markerId) {
+  const lieuxStr = args.lieux || '';
+  const lieux = lieuxStr.split(',').map(x => x.trim()).filter(Boolean);
+  const template = args.onchoisir || 'seq_{lieu}'; // ex: seq_{lieu}
+
+  // Promettre de résoudre quand le joueur choisit
+  _carteVoyageLieux = lieux;
+  _carteVoyageCallback = (lieuId) => {
+    sifhrMarkDone(el, markerId);
+    const seqId = template.replace('{lieu}', lieuId);
+    sifhrForceGoTo(seqId);
+  };
+
+  openCarteDamas({
+    voyage: true,
+    lieux,
+    pw: args.pw || 'mdpj',
+  });
+}
+
+// ── CAS 2 : Marqueur [[sifhr:event:...:carte=true]] ──
+// Après affichage de l'événement, ouvrir la carte centrée sur le lieu
+function sifhrOpenCarteReveal(lieuId, slotKey) {
+  openCarteDamas({
+    lieu_focus: lieuId,
+  });
+}
+
+// ── Réception du choix de destination depuis carte.html ──
+window.addEventListener('message', (evt) => {
+  if (!evt.data || typeof evt.data !== 'object') return;
+
+  // Choix de destination (mode voyage)
+  if (evt.data.type === 'VOYAGE_CHOIX' && _carteVoyageMode) {
+    const lieuId = evt.data.lieuId;
+    _carteVoyageMode = false;
+    sifhrCloseOverlay('carte');
+    if (_carteVoyageCallback) {
+      _carteVoyageCallback(lieuId);
+      _carteVoyageCallback = null;
+    }
+  }
+
+  // Résultat dé (déjà géré plus haut dans sifhrState)
+  if (evt.data.type === 'DICE_RESULT' && typeof _sifhrDicePending !== 'undefined') {
+    // Géré par le listener existant
+  }
+});
+
+// ── Enrichir sifhrShowEvent pour gérer carte=true ──
+const _origSifhrShowEvent = sifhrShowEvent;
+async function sifhrShowEvent(args, el, markerId) {
+  await _origSifhrShowEvent(args, el, markerId);
+  // Si carte=true, ouvrir la carte après l'affichage
+  if (args.carte === 'true' || args.carte === true) {
+    const envId = (typeof sifhrState !== 'undefined' && sifhrState.envId) || 'env-test';
+    // Récupérer le lieu_key du slot
+    try {
+      const r = await fetch(
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+      );
+      const d = await r.json();
+      const slot = d[0]?.etat?.slots?.[args.id];
+      if (slot?.lieu_key) {
+        setTimeout(() => sifhrOpenCarteReveal(slot.lieu_key), 800);
+      }
+    } catch(e) {}
+  }
+}
+
+// ── Ajouter 'voyage' dans sifhrHandleMarker ──
+// (le cas 'voyage' est déjà ajouté via le switch plus bas)
+
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
 
@@ -1992,12 +2119,13 @@ function sifhrFinChronoEvent() {
 
 <!-- Overlay Carte -->
 <div id="sifhr-carte-overlay" class="sifhr-overlay">
-  <div class="sifhr-overlay-box">
-    <div class="sifhr-overlay-header">
-      <span class="sifhr-overlay-title">🗺 Carte</span>
+  <div style="width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg);border-radius:8px;overflow:hidden;">
+    <div class="sifhr-overlay-header" style="flex-shrink:0;">
+      <span class="sifhr-overlay-title">🗺 Carte de Damas</span>
+      <span id="carte-voyage-hint" style="font-family:'Crimson Text',serif;font-size:.78rem;color:var(--ink3);font-style:italic;flex:1;margin-left:.5rem;"></span>
       <button class="sifhr-overlay-close" onclick="sifhrCloseOverlay('carte')">✕ Retour</button>
     </div>
-    <iframe id="sifhr-carte-iframe" src="about:blank" style="flex:1;border:none;width:100%;height:80vh;"></iframe>
+    <iframe id="sifhr-carte-iframe" src="about:blank" style="flex:1;border:none;width:100%;"></iframe>
   </div>
 </div>
 

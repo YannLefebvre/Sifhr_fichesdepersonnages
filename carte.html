@@ -2359,6 +2359,103 @@ function geoMoveTooltip(e) {
 // ── Mettre à jour la vue géo quand les slots changent ──
 
 
+
+
+// ══════════════════════════════════════════════════════════
+//   MODE VOYAGE — carte.html reçoit les paramètres d'aventure.html
+// ══════════════════════════════════════════════════════════
+
+(function initVoyageMode() {
+  const params = new URLSearchParams(location.search);
+  const mode = params.get('mode');
+  const lieuxParam = params.get('lieux');
+  const lieuFocus = params.get('lieu_focus');
+
+  // ── Mode focus : centrer et pulser un lieu ──
+  if (lieuFocus) {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        // Activer la vue géo si elle n'est pas déjà active
+        if (typeof toggleGeoView === 'function' && !geoActive) toggleGeoView();
+        setTimeout(() => {
+          if (typeof geoSelectLieu === 'function') geoSelectLieu(lieuFocus);
+          // Pulser le marqueur 3 fois
+          const dot = document.getElementById('gld-' + lieuFocus);
+          if (dot) {
+            dot.style.animation = 'none';
+            dot.style.background = 'rgba(192,96,96,0.95)';
+            dot.style.boxShadow = '0 0 20px rgba(192,96,96,0.9)';
+            let n = 0;
+            const pulse = setInterval(() => {
+              dot.style.transform = n % 2 === 0 ? 'scale(1.4)' : 'scale(1)';
+              if (++n > 5) {
+                clearInterval(pulse);
+                dot.style.transform = '';
+              }
+            }, 350);
+          }
+        }, 300);
+      }, 600);
+    });
+    return;
+  }
+
+  // ── Mode voyage : lieux autorisés seulement ──
+  if (mode !== 'voyage' || !lieuxParam) return;
+
+  const lieuxAutorises = lieuxParam.split(',').map(x => x.trim());
+
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      // Activer la vue géo
+      if (typeof toggleGeoView === 'function' && !geoActive) toggleGeoView();
+
+      setTimeout(() => {
+        // Styler les marqueurs selon accessibilité
+        if (typeof GEO_LIEUX === 'undefined') return;
+        GEO_LIEUX.forEach(l => {
+          const el = document.getElementById('gl-' + l.id);
+          const dot = document.getElementById('gld-' + l.id);
+          if (!el || !dot) return;
+
+          if (lieuxAutorises.includes(l.id)) {
+            // Lieu accessible — mettre en évidence
+            dot.style.background = 'rgba(200,160,96,0.95)';
+            dot.style.boxShadow = '0 0 16px rgba(200,160,96,0.8)';
+            dot.style.border = '2px solid #fff';
+            el.style.cursor = 'pointer';
+            el.style.zIndex = '20';
+            // Remplacer le onclick pour envoyer postMessage
+            el.onclick = (e) => {
+              e.stopPropagation();
+              window.parent.postMessage({ type: 'VOYAGE_CHOIX', lieuId: l.id }, '*');
+            };
+          } else {
+            // Lieu non accessible — grisé, cadenas, non-cliquable
+            dot.style.background = 'rgba(80,70,60,0.6)';
+            dot.style.boxShadow = 'none';
+            dot.style.border = '1px solid rgba(120,100,80,0.4)';
+            dot.style.filter = 'grayscale(1)';
+            dot.textContent = '🔒';
+            el.style.cursor = 'not-allowed';
+            el.style.opacity = '0.5';
+            el.onclick = (e) => e.stopPropagation();
+          }
+        });
+
+        // Bannière en haut
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:36px;left:0;right:0;z-index:200;'
+          + 'background:rgba(200,160,96,0.12);border-bottom:1px solid rgba(200,160,96,0.3);'
+          + 'padding:.4rem 1rem;font-family:Cinzel,serif;font-size:.72rem;'
+          + 'color:var(--accent);text-align:center;letter-spacing:.06em;';
+        banner.textContent = 'Choisissez votre destination — cliquez sur un lieu accessible';
+        document.body.appendChild(banner);
+      }, 400);
+    }, 600);
+  });
+})();
+
 </script>
 
 <!-- Bulle prévisualisation étoile -->
