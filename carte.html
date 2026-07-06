@@ -644,6 +644,12 @@ document.getElementById('evt-list-tab').style.display='block';
         buildFondRosace();
         startRealtime();
         loadLieuxCache();
+        // Ouvrir le panneau événements par défaut pour le MJ
+        if(isGM){
+          const evtPanel=document.getElementById('evt-list-panel');
+          if(evtPanel) evtPanel.classList.add('open');
+          renderEvtList();
+        }
       }
     }
   }catch(e){err.textContent='Erreur réseau.';}
@@ -1793,7 +1799,7 @@ const EvtGen = {
     state.slots[newKey].titre=axe.label+' — événement généré';
     state.slots[newKey].texte=this.currentText;
     state.slots[newKey].niveau=this.currentEchelle||1;
-    state.slots[newKey].revele_a='aucun';
+    state.slots[newKey].revele_a=isGM?'tous':'aucun';
     state.slots[newKey].axes=[axe.id];
     state.slots[newKey].poids=(this.currentEchelle||1)*2-1;
     // Positionner sur la carte
@@ -1943,6 +1949,7 @@ function openSlot(key){ openEvtPanel(key); }
 function evtListNew(){
   const key='evt_'+Date.now();
   ensureSlot(key);
+  state.slots[key].revele_a=isGM?'tous':'aucun';
   state.slots[key].titre='Nouvel evenement';
   saveState(); renderEvtList();
   toggleEvtListPanel();
@@ -2291,6 +2298,7 @@ function geoNewEventAt(lieuId) {
   state.slots[key].lieu_key = lieuId;
   const l = GEO_LIEUX.find(x => x.id === lieuId);
   if (l) state.slots[key].titre = l.nom + ' — ';
+  state.slots[key].revele_a = isGM ? 'tous' : 'aucun';
   // Positionner sur la constellation aussi
   const view = document.getElementById('geo-view');
   const rect = view.getBoundingClientRect();
