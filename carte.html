@@ -455,6 +455,8 @@ document.getElementById('evt-list-tab').style.display='block';
           document.querySelectorAll('.gm-only').forEach(el=>el.style.display='inline-block');
           document.getElementById('btn-gen').style.display='inline-block';
         }
+        console.log('[carte] row.carte:', row.carte);
+        console.log('[carte] row.carte.slots:', row.carte?.slots);
         if(row.carte&&Object.keys(row.carte).length>0) applyRemoteState(row.carte);
         else buildMap();
         renderEvtList();
@@ -518,7 +520,7 @@ function highlightStar(key){
 function applyRemoteState(saved){
   applyingRemote=true;
   try{
-    if(saved.slots){ state.slots=saved.slots; if(typeof renderEvtList==='function') renderEvtList(); }
+    if(saved.slots){ console.log('[applyRemoteState] slots:', Object.keys(saved.slots).length); state.slots=saved.slots; if(typeof renderEvtList==='function') renderEvtList(); }
     if(saved.hypotheses) state.hypotheses=saved.hypotheses;
     if(saved.couleurs) state.couleurs=saved.couleurs;
     if(saved.carte) state.carte=Object.assign({positions:{},players:{}},saved.carte);
@@ -1639,6 +1641,7 @@ function toggleEvtListPanel(){
 }
 
 function renderEvtList(){
+  console.log('[renderEvtList] state.slots keys:', Object.keys(state.slots||{}).length);
   const scroll=document.getElementById('evt-list-scroll');
   if(!scroll) return;
   const q=(document.getElementById('evt-list-search')?.value||'').toLowerCase();

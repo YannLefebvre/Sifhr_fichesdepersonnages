@@ -10807,58 +10807,70 @@ function checkIncomingGroupLancer(saved){
 
 async function pousserHcVersEvenements(idx){
   const hc=state.histoiresCroisees[idx];
-  if(!hc) return;
-  const envId=state.envFiche||'';
-  if(!envId){ alert('Aucune fiche env configurée.'); return; }
+  if(!hc){ alert('HC introuvable.'); return; }
+
+  // Récupérer l'envFiche — essayer state.envFiche puis prompt
+  let envId=state.envFiche||'';
+  if(!envId){
+    envId=prompt('Identifiant de la fiche environnement (ex: env-test) :','env-test');
+    if(!envId) return;
+    envId=envId.trim();
+    state.envFiche=envId;
+    saveState();
+  }
 
   const fp=await _fetchEnvFichePersonnages();
-  const opts=['aucun','tous',...fp];
+  const joueurs=fp.length?fp.join(', '):'(aucun joueur trouvé)';
   const revele=prompt(
-    `Pousser l'histoire croisée avec "${hc.perso||'?'}" vers les événements.\n`+
-    `Révélé à : aucun | tous | id1,id2,...\nJoueurs : ${fp.join(', ')}`,
-    'aucun'
+    'Pousser vers les événements de carte.html\n'+'Révélé à : aucun | tous | id1,id2,...\n'+'Joueurs disponibles : '+joueurs,
+    'tous'
   );
   if(revele===null) return;
 
   const key='hc_'+FICHE_ID+'_'+Date.now();
-  const slot={
-    titre:`Histoire croisée — ${FICHE_ID} / ${hc.perso||'?'}`,
+  await _pushSlotToEnv(envId, key, {
+    titre:'HC : '+FICHE_ID+' / '+(hc.perso||'?'),
     texte:hc.text||'',
-    texte_rumeur:'', texte_indice:'', texte_fait:'',
-    revele_rumeur:'aucun', revele_indice:'aucun', revele_fait:'aucun',
+    texte_rumeur:'',texte_indice:'',texte_fait:'',
+    revele_rumeur:'aucun',revele_indice:'aucun',revele_fait:'aucun',
     revele_a:revele.trim(),
-    niveau:1, poids:1, axes:[], image:null, lieu_key:'',
-    source_type:'hc', source_joueur:FICHE_ID, source_perso:hc.perso||''
-  };
-  await _pushSlotToEnv(envId, key, slot);
+    niveau:1,poids:1,axes:[],image:null,lieu_key:'',
+    source_type:'hc',source_joueur:FICHE_ID,source_perso:hc.perso||''
+  });
 }
 
 async function pousserDetteVersEvenements(idx){
   const d=state.dettes[idx];
-  if(!d) return;
-  const envId=state.envFiche||'';
-  if(!envId){ alert('Aucune fiche env configurée.'); return; }
+  if(!d){ alert('Dette introuvable.'); return; }
+
+  let envId=state.envFiche||'';
+  if(!envId){
+    envId=prompt('Identifiant de la fiche environnement (ex: env-test) :','env-test');
+    if(!envId) return;
+    envId=envId.trim();
+    state.envFiche=envId;
+    saveState();
+  }
 
   const fp=await _fetchEnvFichePersonnages();
   const bm=d.bm||0;
+  const joueurs=fp.length?fp.join(', '):'(aucun joueur trouvé)';
   const revele=prompt(
-    `Pousser la dette avec "${d.perso||'?'}" (${bm>0?'+'+bm:bm}) vers les événements.\n`+
-    `Révélé à : aucun | tous | id1,id2,...\nJoueurs : ${fp.join(', ')}`,
-    'aucun'
+    'Pousser vers les événements de carte.html\n'+'Révélé à : aucun | tous | id1,id2,...\n'+'Joueurs disponibles : '+joueurs,
+    'tous'
   );
   if(revele===null) return;
 
   const key='dette_'+FICHE_ID+'_'+Date.now();
-  const slot={
-    titre:`Dette/Créance — ${FICHE_ID} → ${d.perso||'?'} (${bm>0?'+'+bm:bm})`,
+  await _pushSlotToEnv(envId, key, {
+    titre:'Dette : '+FICHE_ID+' → '+(d.perso||'?')+' ('+(bm>0?'+'+bm:bm)+')',
     texte:d.texte||'',
-    texte_rumeur:'', texte_indice:'', texte_fait:'',
-    revele_rumeur:'aucun', revele_indice:'aucun', revele_fait:'aucun',
+    texte_rumeur:'',texte_indice:'',texte_fait:'',
+    revele_rumeur:'aucun',revele_indice:'aucun',revele_fait:'aucun',
     revele_a:revele.trim(),
-    niveau:1, poids:1, axes:[], image:null, lieu_key:'',
-    source_type:'dette', source_joueur:FICHE_ID, source_perso:d.perso||''
-  };
-  await _pushSlotToEnv(envId, key, slot);
+    niveau:1,poids:1,axes:[],image:null,lieu_key:'',
+    source_type:'dette',source_joueur:FICHE_ID,source_perso:d.perso||''
+  });
 }
 
 // Récupérer la liste des joueurs depuis la fiche env
