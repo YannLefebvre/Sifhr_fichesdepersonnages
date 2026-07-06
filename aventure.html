@@ -107,8 +107,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--border);}
-
-  /* ── Marqueurs Sifhr ── */
+/* ── Marqueurs Sifhr ── */
   .sifhr-marker { display:block; margin:1rem 0; padding:.7rem 1rem;
     border-left:3px solid var(--accent); background:rgba(200,134,10,.08);
     border-radius:0 6px 6px 0; font-family:'Cinzel',serif; font-size:.75rem;
@@ -399,7 +398,6 @@ async function doLogin(){
             ?JSON.parse(sessionRow.aventure_state):sessionRow.aventure_state;
           if(saved&&saved.currentSeq){
             Object.assign(gameState,saved);
-            // Restaurer l'état Sifhr si présent
             if(saved._sifhrState) Object.assign(sifhrState, saved._sifhrState);
             renderSequence(gameState.currentSeq);
             renderStatusBar();
@@ -872,15 +870,6 @@ function renderSequence(seqId){
   setTimeout(()=>{wrap.classList.remove('fading');_doRenderSequence(seq);scheduleSave();},280);
 }
 
-function _doRenderSequence(seq){
-  // ── Parser les marqueurs [[sifhr:...]] dans le contenu ──
-  if(seq.content && seq.content.includes('[[sifhr:')){
-    seq = Object.assign({}, seq, {content: sifhrParseMarkers(seq.content)});
-  }
-  // Image
-  const imgWrap=document.getElementById('seq-img-wrap');
-
-
 // ══════════════════════════════════════════════════════════
 //   SYSTÈME SIFHR — Marqueurs [[sifhr:...]] dans Moiki
 // ══════════════════════════════════════════════════════════
@@ -906,9 +895,14 @@ const SB_AV = {
     const d=await r.json(); return d[0]||null;
   },
   async upsert(data){
-    return fetch(`${SUPABASE_URL}/rest/v1/aventures`,{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/aventures`,{
       method:'POST', headers:this.hdrs, body:JSON.stringify(data)
     });
+    if(!r.ok){
+      const err=await r.text();
+      console.error('[SB_AV] upsert error:', r.status, err);
+    }
+    return r.ok;
   }
 };
 
@@ -920,8 +914,17 @@ async function sifhrInitClones(ficheId, pw, aventureId){
   const saveId = `${ficheId}_${aventureId}`;
   const existing = await SB_AV.get(saveId);
   if(existing){
-    Object.assign(sifhrState, existing.sifhr_state||{});
-    console.log('[Sifhr] Session restaurée:', saveId);
+    try{
+      const gs = typeof existing.game_state==='string'
+        ? JSON.parse(existing.game_state) : (existing.game_state||{});
+      const ss = typeof existing.sifhr_state==='string'
+        ? JSON.parse(existing.sifhr_state) : (existing.sifhr_state||{});
+      Object.assign(gameState, gs);
+      Object.assign(sifhrState, ss);
+      console.log('[Sifhr] Session restaurée:', saveId, 
+        'seq:', gameState.currentSeq,
+        'marqueurs done:', Object.keys(sifhrState.markersDone||{}).length);
+    }catch(e){ console.error('[Sifhr] restore error:', e); }
     return;
   }
 
@@ -944,18 +947,26 @@ async function sifhrInitClones(ficheId, pw, aventureId){
   sifhrState.personnageActif = cloneId;
 
   console.log('[Sifhr] Clone créé:', cloneId);
+  // Sauvegarder immédiatement la nouvelle session
+  await sifhrSaveState();
 }
 
 async function sifhrSaveState(){
-  const saveId = `${FICHE_ID}_${sifhrState.aventureId}`;
-  await SB_AV.upsert({
-    id: saveId,
-    joueur_id: FICHE_ID,
-    aventure_id: sifhrState.aventureId,
-    game_state: JSON.stringify(gameState),
-    sifhr_state: JSON.stringify(sifhrState),
-    updated_at: new Date().toISOString()
-  });
+  if(!FICHE_ID || !sifhrState.aventureId) return; // pas encore initialisé
+  const saveId = FICHE_ID+'_'+sifhrState.aventureId;
+  try{
+    const ok = await SB_AV.upsert({
+      id: saveId,
+      joueur_id: FICHE_ID,
+      aventure_id: sifhrState.aventureId,
+      game_state: gameState,           // JSONB — objet direct
+      sifhr_state: sifhrState,         // JSONB — objet direct
+      updated_at: new Date().toISOString()
+    });
+    if(ok) console.log('[Sifhr] Sauvegardé dans aventures:', saveId);
+  }catch(e){
+    console.error('[Sifhr] sifhrSaveState error:', e);
+  }
 }
 
 // ── Parser de marqueurs [[sifhr:...]] ──
@@ -1396,14 +1407,13 @@ function sifhrShowNotif(msg){
   setTimeout(()=>n.classList.remove('show'), 2500);
 }
 
-// ══════════════════════════════════════════════
-//   HOOK dans _doRenderSequence
-//   Parser les marqueurs [[sifhr:...]] avant affichage
-// ══════════════════════════════════════════════
-const _origDoRender = _doRenderSequence;
-// On ne peut pas wrapper une function déclarée avec function
-// On patch via un hook dans renderSequence
-
+function _doRenderSequence(seq){
+  // ── Parser les marqueurs [[sifhr:...]] dans le contenu ──
+  if(seq.content && seq.content.includes('[[sifhr:')){
+    seq = Object.assign({}, seq, {content: sifhrParseMarkers(seq.content)});
+  }
+  // Image
+  const imgWrap=document.getElementById('seq-img-wrap');
   const imgEl=document.getElementById('seq-image');
   if(seq.image&&seq.image.id){
     imgEl.src='./images/content/'+seq.image.id+'.jpg';
@@ -1504,7 +1514,6 @@ function scheduleSave(){
         mot_de_passe:'aventure',
         aventure_state:JSON.stringify(gameState)
       });
-      // Sauvegarder aussi l'état Sifhr (clones, marqueurs accomplis)
       await sifhrSaveState();
       ind.textContent='Sauvegardé ✓';
       setTimeout(()=>ind.classList.remove('show'),1500);
@@ -1548,7 +1557,6 @@ function startRealtime(){
 })();
 
 </script>
-
 <!-- ══ OVERLAYS SIFHR ══ -->
 
 <!-- Overlay Dés (déjà existant, on garde) -->
