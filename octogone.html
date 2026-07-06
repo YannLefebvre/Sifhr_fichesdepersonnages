@@ -10879,21 +10879,22 @@ async function _fetchEnvFichePersonnages(){
 // Écrire un slot dans la fiche env (carte.html lit depuis la fiche env)
 async function _pushSlotToEnv(envId, key, slot){
   try{
+    // carte.html lit la colonne 'carte', pas 'etat'
     const r=await fetch(
-      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=carte`,
       {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
     );
     const d=await r.json();
-    const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
-    if(!etat.slots) etat.slots={};
-    etat.slots[key]=slot;
+    const carte=JSON.parse(JSON.stringify(d[0]?.carte||{slots:{},hypotheses:{},couleurs:{}}));
+    if(!carte.slots) carte.slots={};
+    carte.slots[key]=slot;
     await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}`,{
       method:'PATCH',
       headers:{
         'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
         'Content-Type':'application/json','Prefer':'return=minimal'
       },
-      body:JSON.stringify({etat})
+      body:JSON.stringify({carte})
     });
     const msg=document.getElementById('save-msg');
     if(msg){
@@ -10902,7 +10903,7 @@ async function _pushSlotToEnv(envId, key, slot){
       setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },3000);
     }
   }catch(e){
-    alert('Erreur lors de l\'envoi : '+e.message);
+    alert('Erreur : '+e.message);
   }
 }
 

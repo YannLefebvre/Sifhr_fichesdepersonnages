@@ -457,6 +457,7 @@ document.getElementById('evt-list-tab').style.display='block';
         }
         if(row.carte&&Object.keys(row.carte).length>0) applyRemoteState(row.carte);
         else buildMap();
+        renderEvtList();
         setTimeout(initPan,100);
         buildFondRosace();
         startRealtime();
