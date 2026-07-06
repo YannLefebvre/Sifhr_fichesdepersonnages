@@ -707,7 +707,12 @@ function applyRemoteState(saved){
   if(!saved||typeof saved!=='object'){ buildMap(); return; }
   applyingRemote=true;
   try{
-    if(saved.slots!==undefined){ state.slots=saved.slots||{}; if(typeof renderEvtList==='function') renderEvtList(); }
+    console.log('[applyRemoteState] keys:', Object.keys(saved));
+    console.log('[applyRemoteState] slots:', saved.slots ? Object.keys(saved.slots).length : 'undefined');
+    if(saved.slots!==undefined){
+      state.slots=saved.slots||{};
+      console.log('[applyRemoteState] state.slots set:', Object.keys(state.slots).length);
+    }
     if(saved.evtsMasques!==undefined) state.evtsMasques=saved.evtsMasques||{};
     if(saved.hypotheses!==undefined) state.hypotheses=saved.hypotheses||{};
     if(saved.couleurs!==undefined) state.couleurs=saved.couleurs||{};
@@ -1842,7 +1847,8 @@ function toggleEvtListPanel(){
 }
 
 function renderEvtList(){
-  console.log('[renderEvtList] state.slots keys:', Object.keys(state.slots||{}).length);
+  console.log('[renderEvtList] state.slots keys:', Object.keys(state.slots||{}).length,
+    '| isGM:', isGM, '| panel open:', document.getElementById('evt-list-panel')?.classList.contains('open'));
   const scroll=document.getElementById('evt-list-scroll');
   if(!scroll) return;
   const q=(document.getElementById('evt-list-search')?.value||'').toLowerCase();
