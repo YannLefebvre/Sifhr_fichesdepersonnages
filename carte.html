@@ -1396,49 +1396,18 @@ const EvtGen = {
     preview.classList.remove('empty');
 
     // Trouver un secteur vide pour le cercle correspondant à l'échelle
-    const target=this.findEmptySlot(this.currentEchelle);
-    this.targetKey=target;
+    this.targetKey='gen_'+Date.now();
     const targetEl=document.getElementById('evt-target');
-    if(target){
-      const [ci,si]=target.split('_');
-      targetEl.textContent=`📍 Sera inséré au cercle ${parseInt(ci)+1}, secteur ${parseInt(si)+1}`;
-      document.getElementById('evt-btn-accept').disabled=false;
-    } else {
-      targetEl.textContent=`⚠️ Aucun secteur vide disponible sur le cercle correspondant à cette échelle.`;
-      document.getElementById('evt-btn-accept').disabled=true;
-    }
+    targetEl.textContent='📍 Sera placé sur la carte (position aléatoire)';
+    document.getElementById('evt-btn-accept').disabled=false;
     document.getElementById('evt-btn-reject').disabled=false;
   },
 
-  // Cherche un secteur vide sur le cercle approprié selon l'échelle (réduite=centre, large=périphérie)
+  // Génère une position sur la carte selon l'échelle
+  // echelle 1=proche du centre, 2=moyen, 3=périphérie
   findEmptySlot(echelle){
-    const nC=state.config.cercles;
-    const nS=state.config.secteurs;
-    // Mapper échelle 1/2/3 -> indice de cercle visé (0=centre ... nC-1=périphérie)
-    let targetCercle;
-    if(nC<=1) targetCercle=0;
-    else targetCercle=Math.min(nC-1, Math.round((echelle-1)/2*(nC-1)));
-
-    // Chercher un secteur vide sur ce cercle, en élargissant aux cercles voisins si besoin
-    const tryCercle=(ci)=>{
-      const candidates=[];
-      for(let si=0;si<nS;si++){
-        const key=`${ci}_${si}`;
-        const slot=state.slots[key];
-        if(!slot||(!slot.titre&&!slot.texte)) candidates.push(key);
-      }
-      if(candidates.length) return candidates[Math.floor(Math.random()*candidates.length)];
-      return null;
-    };
-
-    let result=tryCercle(targetCercle);
-    if(result) return result;
-    // Élargir : chercher sur les cercles adjacents en alternance
-    for(let d=1;d<nC;d++){
-      if(targetCercle-d>=0){ result=tryCercle(targetCercle-d); if(result) return result; }
-      if(targetCercle+d<nC){ result=tryCercle(targetCercle+d); if(result) return result; }
-    }
-    return null;
+    // Retourne simplement une clé unique — la position est calculée dans accept()
+    return 'gen_'+Date.now();
   },
 
   accept(){
