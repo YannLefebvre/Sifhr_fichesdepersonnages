@@ -135,7 +135,10 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     <p>Identifiant de la fiche personnage</p>
     <input id="modal-fiche" class="modal-inp" type="text" placeholder="christophe" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
     <input id="modal-pw" class="modal-inp" type="password" placeholder="Mot de passe">
-    <input id="modal-session" class="modal-inp" type="text" placeholder="Code session (laisser vide pour nouvelle partie)" autocomplete="off" autocapitalize="none" style="font-size:.78rem;color:var(--ink3);">
+    <div style="margin:.3rem 0 .5rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);letter-spacing:.04em;">
+      Code de sauvegarde <em style="font-style:normal;color:var(--accent);">(ex : aventure-christophe-W5Y2)</em>
+    </div>
+    <input id="modal-session" class="modal-inp" type="text" placeholder="Laisser vide pour une nouvelle partie" autocomplete="off" autocapitalize="none" style="font-size:.82rem;letter-spacing:.04em;">
     <button class="modal-btn" onclick="doLogin()">Commencer</button>
     <div id="modal-err"></div>
   </div>
@@ -146,7 +149,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     <div id="story-title">Sifhr — Introduction</div>
     <div id="story-subtitle">Aventure en solo · Yann Lefebvre</div>
     <div id="session-info" style="display:none;margin-top:.4rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;">
-      Session : <span id="session-code" style="color:var(--accent);"></span>
+      💾 Votre code de sauvegarde : <span id="session-code" style="color:var(--accent);font-weight:600;cursor:pointer;" title="Cliquer pour copier" onclick="navigator.clipboard.writeText(this.textContent);this.textContent+=' ✓'"></span>
       <button onclick="restartAdventure()" style="margin-left:.8rem;font-family:'Cinzel',serif;font-size:.62rem;padding:2px 7px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">↺ Nouvelle partie</button>
     </div>
   </div>
@@ -199,6 +202,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:420px;width:94vw;max-height:90vh;overflow-y:auto;">
     <div style="display:flex;align-items:center;margin-bottom:.8rem;">
       <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;letter-spacing:.08em;flex:1;">Aptitudes</span>
+      <button onclick="openFicheComplete()" style="font-family:'Cinzel',serif;font-size:.65rem;padding:2px 10px;border:1px solid var(--accent);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">Fiche complète →</button>
       <button onclick="closeApt()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕</button>
     </div>
     <div id="fiche-apt-content"></div>
@@ -210,6 +214,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:420px;width:94vw;max-height:90vh;overflow-y:auto;">
     <div style="display:flex;align-items:center;margin-bottom:.8rem;">
       <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;letter-spacing:.08em;flex:1;">Équipements & Artefacts</span>
+      <button onclick="openFicheComplete()" style="font-family:'Cinzel',serif;font-size:.65rem;padding:2px 10px;border:1px solid var(--accent);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">Fiche complète →</button>
       <button onclick="closeEquip()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕</button>
     </div>
     <div id="fiche-equip-content"></div>
@@ -221,6 +226,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:420px;width:94vw;max-height:90vh;overflow-y:auto;">
     <div style="display:flex;align-items:center;margin-bottom:.8rem;">
       <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;letter-spacing:.08em;flex:1;">Historique</span>
+      <button onclick="openFicheComplete()" style="font-family:'Cinzel',serif;font-size:.65rem;padding:2px 10px;border:1px solid var(--accent);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">Fiche complète →</button>
       <button onclick="closeHist()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕</button>
     </div>
     <div id="fiche-hist-content"></div>
@@ -237,6 +243,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   <button onclick="openApt()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Aptitudes">◈ Aptitudes</button>
   <button onclick="openEquip()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Équipements">⚔ Équipements</button>
   <button onclick="openHist()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Historique">📜 Historique</button>
+  <button onclick="openEvt()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Événements">📋 Événements</button>
 </div>
 
 <!-- Lightbox -->
@@ -412,12 +419,12 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){
 // ── Lanceur de dés (iframe octogone en mode dés) ──
 let _fichePw='';
 function openDes(){
+  const cloneId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)||SESSION_FICHE_ID||FICHE_ID;
   const base=window.location.href.replace(/[^/]*$/,'');
-  const url=base+'octogone.html?fiche='+encodeURIComponent(FICHE_ID)
+  const url=base+'octogone.html?fiche='+encodeURIComponent(cloneId)
     +'&pw='+encodeURIComponent(_fichePw)
-    +'&view=des';
-  const iframe=document.getElementById('des-iframe');
-  iframe.src=url;
+    +'&view=des&minimal=1';
+  document.getElementById('des-iframe').src=url;
   document.getElementById('des-overlay').style.display='flex';
 }
 function closeDes(){
@@ -443,7 +450,8 @@ function closeApt(){document.getElementById('apt-overlay').style.display='none';
 // ── Équipements & Artefacts ──
 async function openEquip(){
   document.getElementById('equip-overlay').style.display='flex';
-  const row=await SB.get(FICHE_ID);
+  const _activeId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)||SESSION_FICHE_ID||FICHE_ID;
+  const row=await SB.get(_activeId);
   if(!row||!row.etat)return;
   const cont=document.getElementById('fiche-equip-content');
   cont.innerHTML='';
@@ -474,7 +482,8 @@ function closeEquip(){document.getElementById('equip-overlay').style.display='no
 // ── Historique ──
 async function openHist(){
   document.getElementById('hist-overlay').style.display='flex';
-  const row=await SB.get(FICHE_ID);
+  const _activeId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)||SESSION_FICHE_ID||FICHE_ID;
+  const row=await SB.get(_activeId);
   if(!row||!row.etat)return;
   const cont=document.getElementById('fiche-hist-content');
   cont.innerHTML='';
@@ -1410,7 +1419,8 @@ function startRealtime(){
 
 async function openApt(){
   document.getElementById('apt-overlay').style.display='flex';
-  const row=await SB.get(FICHE_ID);
+  const _activeId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)||SESSION_FICHE_ID||FICHE_ID;
+  const row=await SB.get(_activeId);
   if(!row||!row.etat)return;
   // aptitudes = {se_deplacer_0: true, se_deplacer_1: true, ...}
   // Calculer le score de chaque aptitude en comptant les cases cochées
@@ -1626,6 +1636,69 @@ async function renderOctSimple(){
   }
 }
 
+
+function openFicheComplete(){
+  const cloneId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)||SESSION_FICHE_ID||FICHE_ID;
+  const base=window.location.href.replace(/[^/]*$/,'');
+  window.open(base+'octogone.html?fiche='+encodeURIComponent(cloneId)+'&pw='+encodeURIComponent(_fichePw),'_blank');
+}
+
+async function openEvt(){
+  document.getElementById('evt-overlay').style.display='flex';
+  await renderEvtOverlay();
+}
+function closeEvt(){
+  document.getElementById('evt-overlay').style.display='none';
+}
+async function renderEvtOverlay(){
+  const list=document.getElementById('evt-overlay-list');
+  if(!list) return;
+  const q=(document.getElementById('evt-search')?.value||'').toLowerCase();
+  const envId=(typeof sifhrState!=='undefined'&&sifhrState.envId)||'env-test';
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    const slots=d[0]?.etat?.slots||{};
+    const pid=FICHE_ID;
+    const keys=Object.keys(slots).filter(k=>{
+      const s=slots[k];
+      const rev=s.revele_a||'aucun';
+      if(rev==='aucun') return false;
+      if(rev!=='tous'&&!rev.split(',').map(x=>x.trim()).includes(pid)) return false;
+      if(q&&!((s.titre||'').toLowerCase().includes(q)||(s.texte||'').toLowerCase().includes(q))) return false;
+      return true;
+    }).sort((a,b)=>(slots[a].titre||a).localeCompare(slots[b].titre||b,'fr'));
+    list.innerHTML='';
+    if(!keys.length){
+      list.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;">Aucun événement visible.</p>';
+      return;
+    }
+    keys.forEach(key=>{
+      const s=slots[key];
+      const div=document.createElement('div');
+      div.style.cssText='margin-bottom:.5rem;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:6px;background:var(--section-bg);';
+      let html=`<div style="font-family:Cinzel,serif;font-size:.75rem;color:var(--accent);margin-bottom:.2rem;">${s.titre||key}</div>`;
+      if(s.texte) html+=`<div style="font-family:'Crimson Text',serif;font-size:.85rem;color:var(--ink2);">${s.texte.slice(0,150)}${s.texte.length>150?'…':''}</div>`;
+      div.innerHTML=html;
+      ['rumeur','indice','fait'].forEach(niv=>{
+        const rev=s['revele_'+niv]||'aucun';
+        const ok=rev==='tous'||rev===pid||rev.split(',').map(x=>x.trim()).includes(pid);
+        if(ok&&s['texte_'+niv]){
+          const b=document.createElement('span');
+          b.style.cssText='display:inline-block;font-family:Cinzel,serif;font-size:.6rem;padding:1px 7px;border-radius:8px;margin:.2rem .1rem 0;'
+            +(niv==='rumeur'?'background:#3a2a10;color:#c8a060;':niv==='indice'?'background:#1a2a4a;color:#a0c0e0;':'background:#1a4a2a;color:#a0d0a0;');
+          b.textContent=niv.charAt(0).toUpperCase()+niv.slice(1);
+          div.appendChild(b);
+        }
+      });
+      list.appendChild(div);
+    });
+  }catch(e){
+    list.innerHTML='<p style="color:var(--ink3);">Erreur.</p>';
+  }
+}
+
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
 
@@ -1673,5 +1746,20 @@ async function renderOctSimple(){
   <div id="status-bar"><div id="pills-axes"></div><div id="pills-apts"></div><div id="pills-vv"></div></div>
   <div id="inventory-bar"></div>
 </div>
+
+<!-- Overlay Événements -->
+<div id="evt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:480px;width:94vw;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;margin-bottom:.8rem;gap:.4rem;">
+      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;letter-spacing:.08em;flex:1;">📋 Événements</span>
+      <button onclick="openFicheComplete()" style="font-family:'Cinzel',serif;font-size:.65rem;padding:2px 10px;border:1px solid var(--accent);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">Carte →</button>
+      <button onclick="closeEvt()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">✕</button>
+    </div>
+    <input id="evt-search" type="text" placeholder="Rechercher…" oninput="renderEvtOverlay()"
+      style="width:100%;padding:.35rem .5rem;background:var(--input-bg);border:1px solid var(--border);border-radius:3px;font-family:'Crimson Text',serif;font-size:.85rem;color:var(--ink);outline:none;margin-bottom:.6rem;">
+    <div id="evt-overlay-list" style="overflow-y:auto;flex:1;"></div>
+  </div>
+</div>
+
 </body>
 </html>

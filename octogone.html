@@ -2738,6 +2738,18 @@ async function doLogin(tryGM){
           ro.textContent='👁 VUE EN LECTURE SEULE';
           document.body.prepend(ro);
         }
+        // Mode minimal — masquer les onglets latéraux (pour aventure.html)
+        const isMinimal=new URLSearchParams(location.search).get('minimal')==='1';
+        if(isMinimal){
+          ['vv-side-tab','et-side-tab','evt-side-tab','evt-list-tab'].forEach(id=>{
+            const el=document.getElementById(id);
+            if(el) el.style.display='none';
+          });
+          ['vv-panel','et-panel','evt-list-panel'].forEach(id=>{
+            const el=document.getElementById(id);
+            if(el){ el.style.display='none'; el.classList.remove('open'); }
+          });
+        }
         if(viewMode==='des'){
           // Masquer tout sauf le lanceur
           document.getElementById('app').style.display='none';
