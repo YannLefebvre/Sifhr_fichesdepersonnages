@@ -150,6 +150,10 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     <div id="story-subtitle">Aventure en solo · Yann Lefebvre</div>
     <div id="session-info" style="display:none;margin-top:.4rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;gap:.8rem;flex-wrap:wrap;">
       <span id="sifhr-temps-display" style="color:var(--accent);font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.05em;"></span>
+      <button onclick="document.getElementById('img-upload-overlay').style.display='flex'"
+        style="font-family:'Cinzel',serif;font-size:.62rem;padding:1px 8px;
+        border:1px solid var(--border);border-radius:3px;background:none;
+        color:var(--ink3);cursor:pointer;margin-right:.5rem;">📎 Images</button>
       💾 Votre code de sauvegarde : <span id="session-code" style="color:var(--accent);font-weight:600;cursor:pointer;" title="Cliquer pour copier" onclick="navigator.clipboard.writeText(this.textContent);this.textContent+=' ✓'"></span>
       <button onclick="restartAdventure()" style="margin-left:.8rem;font-family:'Cinzel',serif;font-size:.62rem;padding:2px 7px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">↺ Nouvelle partie</button>
     </div>
@@ -1310,7 +1314,25 @@ function _doRenderSequence(seq){
   const imgWrap=document.getElementById('seq-img-wrap');
   const imgEl=document.getElementById('seq-image');
   if(seq.image&&seq.image.id){
-    imgEl.src='./images/content/'+seq.image.id+'.jpg';
+    // Résoudre l'URL de l'image
+    const imgId=seq.image.id;
+    const aventureId=(typeof sifhrState!=='undefined'&&sifhrState.aventureId)||STORY_DATA._id||'default';
+    // Priorité 1 : URL externe définie dans le JSON (_imageUrls)
+    const extUrl=STORY_DATA._imageUrls&&STORY_DATA._imageUrls[imgId];
+    // Priorité 2 : Supabase Storage bucket 'aventure-images'
+    const sbUrl=`${SUPABASE_URL}/storage/v1/object/public/aventure-images/${aventureId}/${imgId}.jpg`;
+    imgEl.src=extUrl||sbUrl;
+    imgEl.onerror=()=>{
+      // Fallback : afficher un placeholder avec l'UUID
+      imgEl.style.display='none';
+      const ph=document.getElementById('seq-img-placeholder')||document.createElement('div');
+      ph.id='seq-img-placeholder';
+      ph.style.cssText='padding:.5rem;font-family:Cinzel,serif;font-size:.65rem;'
+        +'color:var(--ink3);text-align:center;border:1px dashed var(--border);border-radius:4px;';
+      ph.textContent='📎 Image non trouvée — '+imgId.slice(0,8)+'…';
+      imgWrap.appendChild(ph);
+    };
+    imgEl.style.display='';
     const maxH=seq.image.size==='huge'?'320px':seq.image.size==='medium'?'200px':'140px';
     imgEl.style.maxHeight=maxH;
     imgWrap.style.display='block';
@@ -2113,6 +2135,114 @@ async function sifhrShowEvent(args, el, markerId) {
 // ── Ajouter 'voyage' dans sifhrHandleMarker ──
 // (le cas 'voyage' est déjà ajouté via le switch plus bas)
 
+
+
+// ── Gestion des images d'aventure ──
+
+// Scanner toutes les images référencées dans STORY_DATA
+function imgScanStory() {
+  const list = document.getElementById('img-upload-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  const aventureId = (typeof sifhrState !== 'undefined' && sifhrState.aventureId)
+    || STORY_DATA._id || 'default';
+
+  // Collecter tous les image.id dans STORY_DATA
+  const imageIds = new Set();
+  const seqs = STORY_DATA.sequences || {};
+  Object.values(seqs).forEach(seq => {
+    if (seq.image && seq.image.id) imageIds.add(seq.image.id);
+  });
+
+  if (!imageIds.size) {
+    list.innerHTML = '<p style="color:var(--ink3);font-style:italic;font-size:.82rem;">Aucune image trouvée dans ce scénario.</p>';
+    return;
+  }
+
+  imageIds.forEach(imgId => {
+    const sbUrl = `${SUPABASE_URL}/storage/v1/object/public/aventure-images/${aventureId}/${imgId}.jpg`;
+    const row = document.createElement('div');
+    row.style.cssText = 'margin-bottom:.6rem;padding:.5rem;border:1px solid var(--border2);border-radius:4px;';
+    row.innerHTML = `
+      <div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--ink3);margin-bottom:.3rem;">
+        ${imgId.slice(0, 16)}…
+      </div>
+      <div style="display:flex;gap:.4rem;align-items:center;">
+        <input type="text" placeholder="URL externe (optionnel)"
+          id="ext-${imgId}"
+          style="flex:1;padding:.25rem .4rem;background:var(--input-bg);border:1px solid var(--border);
+          border-radius:3px;font-family:'Crimson Text',serif;font-size:.8rem;color:var(--ink);"
+          value="${(STORY_DATA._imageUrls && STORY_DATA._imageUrls[imgId]) || ''}">
+        <label style="font-family:Cinzel,serif;font-size:.62rem;padding:.25rem .5rem;
+          border:1px solid var(--border);border-radius:3px;cursor:pointer;
+          background:var(--section-bg);color:var(--ink2);">
+          ⬆ Fichier
+          <input type="file" accept="image/*" style="display:none"
+            onchange="imgUpload(this,'${imgId}','${aventureId}')">
+        </label>
+        <button onclick="imgSetExtUrl('${imgId}')"
+          style="font-family:Cinzel,serif;font-size:.62rem;padding:.25rem .5rem;
+          border:1px solid var(--accent);border-radius:3px;cursor:pointer;
+          background:none;color:var(--accent);">✓</button>
+      </div>
+      <div id="img-status-${imgId}" style="font-family:Cinzel,serif;font-size:.6rem;
+        color:var(--ink3);margin-top:.2rem;"></div>`;
+    list.appendChild(row);
+    // Vérifier si l'image existe déjà dans Supabase
+    fetch(sbUrl, { method: 'HEAD' })
+      .then(r => {
+        const st = document.getElementById('img-status-' + imgId);
+        if (st) st.textContent = r.ok ? '✓ Disponible dans Supabase' : '⚠ Non trouvée';
+        if (st) st.style.color = r.ok ? '#6aaa6a' : '#c06060';
+      }).catch(() => {});
+  });
+}
+
+// Upload une image vers Supabase Storage
+async function imgUpload(input, imgId, aventureId) {
+  const file = input.files[0];
+  if (!file) return;
+  const st = document.getElementById('img-status-' + imgId);
+  if (st) { st.textContent = '⏳ Upload en cours…'; st.style.color = 'var(--ink3)'; }
+
+  try {
+    const path = `${aventureId}/${imgId}.jpg`;
+    const r = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/aventure-images/${path}`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': file.type,
+          'x-upsert': 'true',
+        },
+        body: file,
+      }
+    );
+    if (r.ok) {
+      if (st) { st.textContent = '✓ Uploadé avec succès'; st.style.color = '#6aaa6a'; }
+    } else {
+      const err = await r.text();
+      if (st) { st.textContent = '✗ Erreur : ' + err.slice(0, 60); st.style.color = '#c06060'; }
+    }
+  } catch(e) {
+    if (st) { st.textContent = '✗ ' + e.message; st.style.color = '#c06060'; }
+  }
+}
+
+// Sauvegarder une URL externe dans STORY_DATA._imageUrls
+function imgSetExtUrl(imgId) {
+  const inp = document.getElementById('ext-' + imgId);
+  if (!inp) return;
+  const url = inp.value.trim();
+  if (!STORY_DATA._imageUrls) STORY_DATA._imageUrls = {};
+  STORY_DATA._imageUrls[imgId] = url;
+  const st = document.getElementById('img-status-' + imgId);
+  if (st) { st.textContent = url ? '✓ URL externe enregistrée' : '✗ URL effacée'; st.style.color = '#6aaa6a'; }
+}
+
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
 
@@ -2180,6 +2310,32 @@ async function sifhrShowEvent(args, el, markerId) {
 <!-- Overlay transition chronologique -->
 <div id="sifhr-transition-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.95);display:none;align-items:center;justify-content:center;z-index:400;pointer-events:none;">
   <pre id="sifhr-transition-content" style="font-family:'Cinzel',serif;font-size:.95rem;color:var(--accent);text-align:center;line-height:2;letter-spacing:.08em;white-space:pre-line;"></pre>
+</div>
+
+
+<!-- Panneau upload images (MJ) -->
+<div id="img-upload-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.92);
+  display:none;align-items:center;justify-content:center;z-index:400;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;
+    padding:1.4rem;max-width:480px;width:94vw;">
+    <div style="display:flex;align-items:center;margin-bottom:.8rem;">
+      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;flex:1;">
+        📎 Images de l'aventure
+      </span>
+      <button onclick="document.getElementById('img-upload-overlay').style.display='none'"
+        style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">✕</button>
+    </div>
+    <p style="font-family:'Crimson Text',serif;font-size:.85rem;color:var(--ink3);margin-bottom:.8rem;">
+      Associez les images Moiki à leur UUID. Elles seront stockées dans Supabase Storage.
+    </p>
+    <div id="img-upload-list" style="max-height:300px;overflow-y:auto;margin-bottom:.8rem;"></div>
+    <button onclick="imgScanStory()"
+      style="font-family:'Cinzel',serif;font-size:.68rem;padding:.35rem .8rem;
+      border:1px solid var(--accent);border-radius:4px;background:none;
+      color:var(--accent);cursor:pointer;width:100%;">
+      🔍 Scanner les images de l'aventure
+    </button>
+  </div>
 </div>
 
 </body>
