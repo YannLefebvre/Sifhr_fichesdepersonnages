@@ -1947,6 +1947,8 @@ function renderEvtList(){
     };
     scroll.appendChild(item);
   });
+  // Hook vue géographique
+  if(typeof geoActive!=='undefined'&&geoActive){ geoUpdateMarkers(); if(geoSelectedLieu) geoRenderSlots(geoSelectedLieu); }
 }
 
 // openSlot est un alias vers openEvtPanel
@@ -2355,11 +2357,7 @@ function geoMoveTooltip(e) {
 }
 
 // ── Mettre à jour la vue géo quand les slots changent ──
-const _origRenderEvtList = renderEvtList;
-function renderEvtList() {
-  _origRenderEvtList();
-  if (geoActive) { geoUpdateMarkers(); if (geoSelectedLieu) geoRenderSlots(geoSelectedLieu); }
-}
+
 
 </script>
 
