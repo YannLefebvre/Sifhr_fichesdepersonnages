@@ -1684,7 +1684,6 @@ function renderEvtList(){
       +(s.texte?'<div class="evtl-desc">'+(s.texte.length>180?s.texte.slice(0,180)+'...':s.texte)+'</div>':'')
       +(axes.length?'<div class="evtl-meta">Axes : '+axes.join(', ')+'</div>':'')
       +(s.date?'<div class="evtl-meta">Date : '+s.date+(s.heure?' · '+s.heure:'')+'</div>':'');
-    co
     const acts=document.createElement('div'); acts.className='evtl-acts';
     const btnEdit=document.createElement('button'); btnEdit.className='evtl-act';
     btnEdit.textContent='&#9998; Editer';
