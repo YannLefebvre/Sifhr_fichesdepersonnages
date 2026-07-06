@@ -423,7 +423,7 @@ let recognizedKeys=new Set(); // étoiles "reconnues" localement (tap court sur 
 const SB = {
   hdrs:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
   async get(id){const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(id)}&select=*`,{headers:this.hdrs});const d=await r.json();return d[0]||null;},
-  async upsert(id,carte){const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',headers:{...this.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id,carte})});return r.ok;}
+  async upsert(id,etat){const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',headers:{...this.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id,etat})});return r.ok;}
 };
 
 // ── Auth ──
@@ -455,8 +455,8 @@ document.getElementById('evt-list-tab').style.display='block';
           document.querySelectorAll('.gm-only').forEach(el=>el.style.display='inline-block');
           document.getElementById('btn-gen').style.display='inline-block';
         }
-        if(row.carte&&typeof row.carte==='object'&&Object.keys(row.carte).length>0){
-          applyRemoteState(row.carte);
+        if(row.etat&&typeof row.etat==='object'&&Object.keys(row.etat).length>0){
+          applyRemoteState(row.etat);
         } else {
           buildMap();
         }
@@ -538,7 +538,20 @@ function saveState(){
   saveTimer=setTimeout(async()=>{
     const msg=document.getElementById('save-msg');
     try{
-      const ok=await SB.upsert(FICHE_ID,JSON.parse(JSON.stringify(state)));
+      const stateCopy=JSON.parse(JSON.stringify(state));
+      // Protéger les champs critiques (lieux, chronologie, fichePersonnages, galerie...)
+      // en les relisant depuis Supabase si absents du state local
+      const CRITIQUES=['lieux','lieuActif','chronologie','fichePersonnages',
+        'bibliotheque_ideaux','galerie','galerieRecues','dynamiqueLog'];
+      const manquants=CRITIQUES.filter(k=>!stateCopy[k]||
+        (typeof stateCopy[k]==='object'&&!Array.isArray(stateCopy[k])&&!Object.keys(stateCopy[k]).length));
+      if(manquants.length){
+        try{
+          const cur=await SB.get(FICHE_ID);
+          if(cur?.etat) manquants.forEach(k=>{ if(cur.etat[k]!==undefined) stateCopy[k]=cur.etat[k]; });
+        }catch(e){}
+      }
+      const ok=await SB.upsert(FICHE_ID,stateCopy);
       if(ok){msg.textContent='Sauvegardé ✓';msg.className='save-msg saved';setTimeout(()=>{msg.textContent='';msg.className='';},2000);}
       else{msg.textContent='Erreur';msg.className='save-msg error';}
     }catch(e){msg.textContent='Hors-ligne';msg.className='save-msg error';}
@@ -562,7 +575,7 @@ function startRealtime(){
   function connect(){
     ws=new WebSocket(wsUrl);
     ws.onopen=()=>{ws.send(JSON.stringify({topic:'realtime:public:fiches:id=eq.'+FICHE_ID,event:'phx_join',payload:{},ref:'c1'}));hb=setInterval(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'})),25000);};
-    ws.onmessage=(e)=>{try{const m=JSON.parse(e.data);if((m.event==='UPDATE'||m.event==='INSERT')&&m.payload?.record?.carte&&!applyingRemote)applyRemoteState(m.payload.record.carte);}catch(err){}};
+    ws.onmessage=(e)=>{try{const m=JSON.parse(e.data);if((m.event==='UPDATE'||m.event==='INSERT')&&m.payload?.record?.etat&&!applyingRemote)applyRemoteState(m.payload.record.etat);}catch(err){}};
     ws.onclose=()=>{clearInterval(hb);setTimeout(connect,3000);};ws.onerror=()=>ws.close();
   }connect();
 }
