@@ -267,6 +267,28 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);
   .evtl-act:hover { border-color:var(--accent); color:var(--accent); }
   .evtl-act.danger { color:#c06050; border-color:#7a3a2a; }
   .evtl-act.danger:hover { background:#3a1a1a; }
+
+  /* ── Niveaux d'info événement ── */
+  .niveaux-tabs { display:flex; gap:.3rem; margin-bottom:.5rem; }
+  .niveau-tab { font-family:'Cinzel',serif; font-size:.65rem; padding:3px 10px;
+    border:1px solid var(--border); border-radius:4px; background:none;
+    color:var(--ink3); cursor:pointer; }
+  .niveau-tab.active { background:var(--accent); color:#1a1208; border-color:var(--accent); }
+  .niveau-tab.rumeur.active { background:#8b6020; color:#fff8e8; border-color:#8b6020; }
+  .niveau-tab.indice.active { background:#1a4a6e; color:#e8f0f8; border-color:#1a4a6e; }
+  .niveau-tab.fait.active { background:#1a4a2a; color:#e8f8e8; border-color:#1a4a2a; }
+  .niveau-badge { font-family:'Cinzel',serif; font-size:.55rem; padding:1px 5px;
+    border-radius:8px; margin-right:.3rem; }
+  .niveau-badge.rumeur { background:#8b6020; color:#fff8e8; }
+  .niveau-badge.indice { background:#1a4a6e; color:#e8f0f8; }
+  .niveau-badge.fait { background:#1a4a2a; color:#e8f8e8; }
+  .niveau-rev { font-family:'Cinzel',serif; font-size:.6rem; padding:2px 8px;
+    border:1px solid var(--border); border-radius:3px; background:var(--input-bg);
+    color:var(--ink3); cursor:pointer; margin-left:auto; }
+  .lieu-select { width:100%; padding:.3rem .5rem; background:var(--input-bg);
+    border:1px solid var(--border); border-radius:3px;
+    font-family:'Crimson Text',serif; font-size:.85rem; color:var(--ink); }
+  .lieu-select:focus { border-color:var(--accent); outline:none; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -438,6 +460,7 @@ document.getElementById('evt-list-tab').style.display='block';
         setTimeout(initPan,100);
         buildFondRosace();
         startRealtime();
+        loadLieuxCache();
       }
     }
   }catch(e){err.textContent='Erreur réseau.';}
@@ -517,6 +540,16 @@ function saveState(){
 }
 
 // ── Realtime ──
+// Charger et cacher les lieux de la fiche env
+async function loadLieuxCache(){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,
+      {headers:SB.hdrs});
+    const d=await r.json();
+    window._cachedLieux=d[0]?.etat?.lieux||{};
+  }catch(e){ window._cachedLieux={}; }
+}
+
 function startRealtime(){
   const wsUrl=SUPABASE_URL.replace('https://','wss://')+'/realtime/v1/websocket?apikey='+SUPABASE_KEY+'&vsn=1.0.0';
   let ws,hb;
@@ -1065,6 +1098,112 @@ function openEvtPanel(key){
     const ta=makeTa(slot.texte||'','Contenu…');
     ta.addEventListener('input',()=>{ensureSlot(key);state.slots[key].texte=ta.value;autoR(ta);saveState();});
     mjSec.body.appendChild(ta);setTimeout(()=>autoR(ta),10);
+
+    // ── Niveaux d'information (Rumeur / Indice / Fait établi) ──
+    const niveauxWrap=document.createElement('div');
+    niveauxWrap.style.cssText='margin-top:.6rem;';
+    const niveauxTitle=document.createElement('div');
+    niveauxTitle.style.cssText='font-family:Cinzel,serif;font-size:.72rem;color:var(--accent);margin-bottom:.4rem;';
+    niveauxTitle.textContent='Niveaux d’information';
+    niveauxWrap.appendChild(niveauxTitle);
+
+    const NIVEAUX=[
+      {id:'rumeur',label:'Rumeur',field:'texte_rumeur',rev:'revele_rumeur',
+       hint:'Ce que les gens murmurent — vrai ou faux…'},
+      {id:'indice', label:'Indice', field:'texte_indice',rev:'revele_indice',
+       hint:'Ce qu’une enquête permet de découvrir…'},
+      {id:'fait',   label:'Fait établi',field:'texte_fait',  rev:'revele_fait',
+       hint:'Ce qui s’est réellement passé…'},
+    ];
+
+    const tabsRow=document.createElement('div'); tabsRow.className='niveaux-tabs';
+    const niveauxContents={};
+
+    NIVEAUX.forEach((niv,ni)=>{
+      const tab=document.createElement('button');
+      tab.className='niveau-tab '+niv.id+(ni===0?' active':'');
+      tab.textContent=niv.label;
+      tabsRow.appendChild(tab);
+
+      const pane=document.createElement('div');
+      pane.style.display=ni===0?'block':'none';
+      pane.style.cssText+='padding:.4rem 0;';
+      niveauxContents[niv.id]=pane;
+
+      const fp=state.slots[key];
+      const ta2=makeTextarea(fp[niv.field]||'',niv.hint);
+      ta2.addEventListener('input',()=>{ensureSlot(key);state.slots[key][niv.field]=ta2.value;autoR(ta2);saveState();});
+      setTimeout(()=>autoR(ta2),10);
+
+      // Visibilité du niveau
+      const revRow=document.createElement('div');
+      revRow.style.cssText='display:flex;align-items:center;gap:.4rem;margin-top:.3rem;';
+      const revLabel=document.createElement('span');
+      revLabel.style.cssText='font-family:Cinzel,serif;font-size:.62rem;color:var(--ink3);';
+      revLabel.textContent='Révélé à :';
+      const revSelect=document.createElement('select');
+      revSelect.className='niveau-rev';
+      const fp2=state.slots[key];
+      const revVal=fp2[niv.rev]||'aucun';
+      [['aucun','Caché'],['tous','Tous']].forEach(([v,l])=>{
+        const opt=document.createElement('option');
+        opt.value=v; opt.textContent=l;
+        if(revVal===v) opt.selected=true;
+        revSelect.appendChild(opt);
+      });
+      // Ajouter les joueurs connus
+      (state.fichePersonnages||[]).forEach(p=>{
+        const pid=typeof p==='string'?p:p.id;
+        const opt=document.createElement('option');
+        opt.value=pid; opt.textContent=pid;
+        if(revVal===pid) opt.selected=true;
+        revSelect.appendChild(opt);
+      });
+      revSelect.addEventListener('change',()=>{ensureSlot(key);state.slots[key][niv.rev]=revSelect.value;saveState();});
+      revRow.appendChild(revLabel); revRow.appendChild(revSelect);
+      pane.appendChild(ta2); pane.appendChild(revRow);
+      niveauxWrap.appendChild(pane);
+      tab.addEventListener('click',()=>{
+        tabsRow.querySelectorAll('.niveau-tab').forEach(t=>t.classList.remove('active'));
+        tab.classList.add('active');
+        Object.values(niveauxContents).forEach(p=>p.style.display='none');
+        pane.style.display='block';
+      });
+    });
+    niveauxWrap.insertBefore(tabsRow, niveauxWrap.children[1]);
+    mjSec.body.appendChild(niveauxWrap);
+
+    // ── Lieu associé ──
+    const lieuSec=document.createElement('div');
+    lieuSec.style.cssText='margin-top:.6rem;';
+    const lieuTitle=document.createElement('div');
+    lieuTitle.style.cssText='font-family:Cinzel,serif;font-size:.72rem;color:var(--accent);margin-bottom:.3rem;';
+    lieuTitle.textContent='Lieu associé';
+    lieuSec.appendChild(lieuTitle);
+    const lieuSelect=document.createElement('select');
+    lieuSelect.className='lieu-select';
+    const lieuOpt0=document.createElement('option');
+    lieuOpt0.value=''; lieuOpt0.textContent='— Aucun lieu —';
+    lieuSelect.appendChild(lieuOpt0);
+    // Charger les lieux depuis Supabase de façon asynchrone
+    (async()=>{
+      try{
+        const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,
+          {headers:SB.hdrs});
+        const d=await r.json();
+        const lieux=d[0]?.etat?.lieux||{};
+        Object.entries(lieux).forEach(([lk,lv])=>{
+          const opt=document.createElement('option');
+          opt.value=lk; opt.textContent=lv.nom||lk;
+          if((state.slots[key]?.lieu_key||'')=== lk) opt.selected=true;
+          lieuSelect.appendChild(opt);
+        });
+      }catch(e){}
+    })();
+    lieuSelect.addEventListener('change',()=>{ensureSlot(key);state.slots[key].lieu_key=lieuSelect.value;saveState();});
+    lieuSec.appendChild(lieuSelect);
+    mjSec.body.appendChild(lieuSec);
+
     // Image
     const imgZone=document.createElement('div');imgZone.className='img-zone';
     imgZone.innerHTML=slot.image?`<img src="${slot.image}" class="img-preview">`:'📎 Ajouter une image';
@@ -1111,11 +1250,29 @@ function openEvtPanel(key){
     content.appendChild(mjSec.section);
   } else if(visible){
     const nClass=['n1','n2','n3'][(slot.niveau||1)-1];
-    const nLabel=['Rumeur','Indice','Fait établi'][(slot.niveau||1)-1];
     const rc=document.createElement('div');rc.style.padding='.4rem 0';
-    const nEl=document.createElement('div');nEl.className='rc-niveau '+nClass;nEl.textContent=nLabel;rc.appendChild(nEl);
     if(slot.image){const img=document.createElement('img');img.src=slot.image;img.className='img-preview';rc.appendChild(img);}
     const txt=document.createElement('div');txt.className='rc-text '+nClass;txt.textContent=slot.texte||'';rc.appendChild(txt);
+    // Niveaux d'information débloqués pour ce joueur
+    const NIVEAUX_J=[
+      {id:'rumeur',label:'Rumeur',field:'texte_rumeur',rev:'revele_rumeur'},
+      {id:'indice', label:'Indice', field:'texte_indice',rev:'revele_indice'},
+      {id:'fait',   label:'Fait établi',field:'texte_fait',  rev:'revele_fait'},
+    ];
+    NIVEAUX_J.forEach(niv=>{
+      const rev=(slot[niv.rev]||'aucun');
+      const ok=(rev==='tous')||(rev===playerId)||
+        rev.split(',').map(x=>x.trim()).includes(playerId);
+      if(!ok||!slot[niv.field]) return;
+      const badge=document.createElement('span');
+      badge.className='niveau-badge '+niv.id;
+      badge.textContent=niv.label;
+      rc.appendChild(badge);
+      const p=document.createElement('div');
+      p.style.cssText='font-family:Crimson Text,serif;font-size:.88rem;color:var(--ink2);margin:.2rem 0 .5rem;';
+      p.textContent=slot[niv.field];
+      rc.appendChild(p);
+    });
     content.appendChild(rc);
   }
 
@@ -1172,7 +1329,18 @@ function makeSec(title,badge){
 function makeInput(type,val,ph){const i=document.createElement('input');i.type=type;i.value=val;i.placeholder=ph;i.style.cssText='width:100%;background:var(--input-bg);border:none;border-left:2px solid var(--border);color:var(--ink);font-family:Cinzel,serif;font-size:.82rem;padding:4px 6px;outline:none;';return i;}
 function makeTa(val,ph){const ta=document.createElement('textarea');ta.className='evt-ta';ta.value=val;ta.placeholder=ph;return ta;}
 function autoR(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
-function ensureSlot(key){if(!state.slots[key])state.slots[key]={titre:'',texte:'',niveau:1,revele_a:'aucun',image:null,axes:[],poids:1};if(!Array.isArray(state.slots[key].axes))state.slots[key].axes=[];if(!state.slots[key].poids)state.slots[key].poids=1;}
+function ensureSlot(key){
+  if(!state.slots[key]) state.slots[key]={
+    titre:'',texte:'',niveau:1,revele_a:'aucun',image:null,axes:[],poids:1,
+    // Niveaux d'information
+    texte_rumeur:'',texte_indice:'',texte_fait:'',
+    revele_rumeur:'aucun',revele_indice:'aucun',revele_fait:'aucun',
+    // Lieu associé
+    lieu_key:''
+  };
+  const s=state.slots[key];
+  if(!Array.isArray(s.axes)) s.axes=[];
+  if(!s.poids) s.slots[key].poids=1;}
 function ensureHypo(key){if(!state.hypotheses[key])state.hypotheses[key]={};if(!state.hypotheses[key][playerId])state.hypotheses[key][playerId]={texte:'',partage:false};}
 
 // Aide CSS var manquante dans setAttribute
@@ -1496,9 +1664,15 @@ function renderEvtList(){
       +'<span class="evtl-rev '+revClass+'">'+revLabel+'</span>';
     const body=document.createElement('div'); body.className='evtl-body';
     const axes=(s.axes||[]).filter(Boolean);
-    body.innerHTML=(s.texte?'<div class="evtl-desc">'+(s.texte.length>180?s.texte.slice(0,180)+'...':s.texte)+'</div>':'')
+    // Lieu et niveaux
+    const nBadges=['rumeur','indice','fait'].filter(n=>s['texte_'+n])
+      .map(n=>`<span class="niveau-badge ${n}">${n==='fait'?'Fait':n.charAt(0).toUpperCase()+n.slice(1)}</span>`).join(' ');
+    body.innerHTML=(s.lieu_key?`<div style="font-family:Cinzel,serif;font-size:.62rem;color:var(--accent);margin-bottom:.2rem;">\u{1f3db} ${(window._cachedLieux&&window._cachedLieux[s.lieu_key]?.nom)||s.lieu_key}</div>`:'')
+      +(nBadges?`<div style="margin-bottom:.3rem;">${nBadges}</div>`:'')
+      +(s.texte?'<div class="evtl-desc">'+(s.texte.length>180?s.texte.slice(0,180)+'...':s.texte)+'</div>':'')
       +(axes.length?'<div class="evtl-meta">Axes : '+axes.join(', ')+'</div>':'')
       +(s.date?'<div class="evtl-meta">Date : '+s.date+(s.heure?' · '+s.heure:'')+'</div>':'');
+    co
     const acts=document.createElement('div'); acts.className='evtl-acts';
     const btnEdit=document.createElement('button'); btnEdit.className='evtl-act';
     btnEdit.textContent='&#9998; Editer';
@@ -1527,6 +1701,9 @@ function renderEvtList(){
     scroll.appendChild(item);
   });
 }
+
+// openSlot est un alias vers openEvtPanel
+function openSlot(key){ openEvtPanel(key); }
 
 function evtListNew(){
   const key='evt_'+Date.now();

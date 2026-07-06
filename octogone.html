@@ -4292,9 +4292,13 @@ function renderHistoiresCroisees(){
       item.style.borderColor=hc.perso?'rgba(26,74,42,.35)':'var(--border2)';
       const name=document.createElement('span'); name.className='perso-compact-name';
       name.textContent=hc.perso||'(non défini)';
+      const evtBtn=document.createElement('button'); evtBtn.className='perso-compact-del';
+      evtBtn.textContent='⊕'; evtBtn.title='Pousser vers les événements';
+      evtBtn.style.cssText='background:none;border:1px solid #1a4a2a;color:#1a4a2a;border-radius:3px;padding:0 4px;cursor:pointer;margin-right:2px;';
+      evtBtn.addEventListener('click',(e)=>{ e.stopPropagation(); pousserHcVersEvenements(idx); });
       const delBtn=document.createElement('button'); delBtn.className='perso-compact-del'; delBtn.textContent='✕';
       delBtn.addEventListener('click',(e)=>{ e.stopPropagation(); state.histoiresCroisees.splice(idx,1); saveState(); renderHistoiresCroisees(); });
-      item.appendChild(name); item.appendChild(delBtn);
+      item.appendChild(name); item.appendChild(evtBtn); item.appendChild(delBtn);
       item.addEventListener('click',()=>openHcDetail(idx));
       list.appendChild(item);
     });
@@ -4440,7 +4444,11 @@ function renderDettes(){
       if(octIsGM){
         const delBtn=document.createElement('button'); delBtn.className='perso-compact-del'; delBtn.textContent='✕';
         delBtn.addEventListener('click',(e)=>{ e.stopPropagation(); state.dettes.splice(idx,1); saveState(); renderDettes(); });
-        item.appendChild(delBtn);
+        const evtBtnD=document.createElement('button');
+        evtBtnD.textContent='⊕'; evtBtnD.title='Pousser vers les événements';
+        evtBtnD.style.cssText='background:none;border:1px solid #1a4a6e;color:#1a4a6e;border-radius:3px;padding:0 4px;cursor:pointer;margin-right:2px;';
+        evtBtnD.addEventListener('click',(e)=>{ e.stopPropagation(); pousserDetteVersEvenements(idx); });
+        item.appendChild(evtBtnD); item.appendChild(delBtn);
       }
       item.addEventListener('click',()=>openDetteDetail(idx));
       list.appendChild(item);
@@ -10788,6 +10796,112 @@ function checkIncomingGroupLancer(saved){
   waiting.classList.add('open');
   const equipeLabel=gl.mode==='opposition'?` (Équipe ${_dgMyEquipe})`:' (Collaboration)';
   label.textContent=`${gl.initiator} vous invite à un lancer de groupe${equipeLabel} — Lancez vos dés !`;
+}
+
+
+// ══════════════════════════════════════════════
+//   POUSSER HC / DETTE VERS CARTE.HTML (événements)
+// ══════════════════════════════════════════════
+
+async function pousserHcVersEvenements(idx){
+  const hc=state.histoiresCroisees[idx];
+  if(!hc) return;
+  const envId=state.envFiche||'';
+  if(!envId){ alert('Aucune fiche env configurée.'); return; }
+
+  const fp=await _fetchEnvFichePersonnages();
+  const opts=['aucun','tous',...fp];
+  const revele=prompt(
+    `Pousser l'histoire croisée avec "${hc.perso||'?'}" vers les événements.\n`+
+    `Révélé à : aucun | tous | id1,id2,...\nJoueurs : ${fp.join(', ')}`,
+    'aucun'
+  );
+  if(revele===null) return;
+
+  const key='hc_'+FICHE_ID+'_'+Date.now();
+  const slot={
+    titre:`Histoire croisée — ${FICHE_ID} / ${hc.perso||'?'}`,
+    texte:hc.text||'',
+    texte_rumeur:'', texte_indice:'', texte_fait:'',
+    revele_rumeur:'aucun', revele_indice:'aucun', revele_fait:'aucun',
+    revele_a:revele.trim(),
+    niveau:1, poids:1, axes:[], image:null, lieu_key:'',
+    source_type:'hc', source_joueur:FICHE_ID, source_perso:hc.perso||''
+  };
+  await _pushSlotToEnv(envId, key, slot);
+}
+
+async function pousserDetteVersEvenements(idx){
+  const d=state.dettes[idx];
+  if(!d) return;
+  const envId=state.envFiche||'';
+  if(!envId){ alert('Aucune fiche env configurée.'); return; }
+
+  const fp=await _fetchEnvFichePersonnages();
+  const bm=d.bm||0;
+  const revele=prompt(
+    `Pousser la dette avec "${d.perso||'?'}" (${bm>0?'+'+bm:bm}) vers les événements.\n`+
+    `Révélé à : aucun | tous | id1,id2,...\nJoueurs : ${fp.join(', ')}`,
+    'aucun'
+  );
+  if(revele===null) return;
+
+  const key='dette_'+FICHE_ID+'_'+Date.now();
+  const slot={
+    titre:`Dette/Créance — ${FICHE_ID} → ${d.perso||'?'} (${bm>0?'+'+bm:bm})`,
+    texte:d.texte||'',
+    texte_rumeur:'', texte_indice:'', texte_fait:'',
+    revele_rumeur:'aucun', revele_indice:'aucun', revele_fait:'aucun',
+    revele_a:revele.trim(),
+    niveau:1, poids:1, axes:[], image:null, lieu_key:'',
+    source_type:'dette', source_joueur:FICHE_ID, source_perso:d.perso||''
+  };
+  await _pushSlotToEnv(envId, key, slot);
+}
+
+// Récupérer la liste des joueurs depuis la fiche env
+async function _fetchEnvFichePersonnages(){
+  const envId=state.envFiche||'';
+  if(!envId) return [];
+  try{
+    const r=await fetch(
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    const d=await r.json();
+    const fp=d[0]?.etat?.fichePersonnages||[];
+    return fp.map(p=>typeof p==='string'?p:p.id);
+  }catch(e){ return []; }
+}
+
+// Écrire un slot dans la fiche env (carte.html lit depuis la fiche env)
+async function _pushSlotToEnv(envId, key, slot){
+  try{
+    const r=await fetch(
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    const d=await r.json();
+    const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    if(!etat.slots) etat.slots={};
+    etat.slots[key]=slot;
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}`,{
+      method:'PATCH',
+      headers:{
+        'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'
+      },
+      body:JSON.stringify({etat})
+    });
+    const msg=document.getElementById('save-msg');
+    if(msg){
+      msg.textContent='✓ Événement ajouté à la carte';
+      msg.className='save-info saved';
+      setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },3000);
+    }
+  }catch(e){
+    alert('Erreur lors de l\'envoi : '+e.message);
+  }
 }
 
 // ── Réception des messages depuis aventure.html ──
