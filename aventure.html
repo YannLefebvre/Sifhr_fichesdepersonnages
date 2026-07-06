@@ -133,22 +133,6 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
       <button onclick="restartAdventure()" style="margin-left:.8rem;font-family:'Cinzel',serif;font-size:.62rem;padding:2px 7px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">↺ Nouvelle partie</button>
     </div>
   </div>
-  <div id="status-bar">
-    <div class="stat-group">
-      <div class="stat-group-title">Octogone</div>
-      <div class="stat-pills" id="pills-axes"></div>
-    </div>
-    <div class="stat-sep"></div>
-    <div class="stat-group">
-      <div class="stat-group-title">Aptitudes</div>
-      <div class="stat-pills" id="pills-apts"></div>
-    </div>
-    <div class="stat-sep"></div>
-    <div class="stat-group">
-      <div class="stat-group-title">Vertus / Vices</div>
-      <div class="stat-pills" id="pills-vv"></div>
-    </div>
-  </div>
   <div id="inventory-bar">
     <div class="inv-title">Inventaire</div>
     <div class="inv-items" id="inv-items"></div>
@@ -179,12 +163,17 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 
 <!-- Fenêtre octogone -->
 <div id="oct-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.92);display:none;align-items:center;justify-content:center;z-index:300;">
-  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;width:min(760px,98vw);height:92vh;display:flex;flex-direction:column;overflow:hidden;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;width:min(520px,96vw);max-height:92vh;overflow-y:auto;display:flex;flex-direction:column;">
     <div style="padding:.5rem .8rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:.5rem;background:rgba(10,7,3,.5);flex-shrink:0;">
       <span style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--accent);letter-spacing:.08em;flex:1;">⬡ Octogone</span>
-      <button onclick="closeOct()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);">✕ Retour</button>
+      <button onclick="openOctFull()" style="font-family:'Cinzel',serif;font-size:.65rem;padding:2px 10px;border:1px solid var(--accent);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">Fiche complète →</button>
+      <button onclick="closeOct()" style="background:none;border:none;font-size:1rem;cursor:pointer;color:var(--ink3);margin-left:.3rem;">✕</button>
     </div>
-    <iframe id="oct-iframe" src="about:blank" style="flex:1;border:none;width:100%;"></iframe>
+    <div style="padding:.8rem;display:flex;flex-direction:column;align-items:center;gap:.8rem;">
+      <svg id="oct-simple-svg" viewBox="0 0 340 340" width="280" height="280"></svg>
+      <div id="oct-vv-list" style="width:100%;display:grid;grid-template-columns:1fr 1fr;gap:.3rem .8rem;padding:0 .5rem;"></div>
+      <div id="oct-etats-list" style="width:100%;padding:0 .5rem;"></div>
+    </div>
   </div>
 </div>
 
@@ -256,7 +245,20 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const SB = {
   hdrs:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},
   async get(id){const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(id)}&select=*`,{headers:this.hdrs});const d=await r.json();return d[0]||null;},
-  async patch(id,data){return fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',headers:{...this.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id,...data})});}
+  async patch(id,data){
+    // Vérifier que la fiche existe avant de patcher
+    const check=await this.get(id);
+    if(!check){
+      // Créer la fiche avec les données minimales
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',
+        headers:{...this.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({id,mot_de_passe:data.mot_de_passe||'aventure',...data})});
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{method:'POST',
+        headers:{...this.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({id,...data})});
+    }
+  }
 };
 
 // ── Mappings ──
@@ -419,19 +421,8 @@ const AXE_NARRATIFS_FICHE={
   air:{w:"Loyauté affirmée",b:"Duplicité possible"},
   sang:{w:"Espoir vivace",b:"Fureur contenue"},
 };
-async function openOct(){
-  const cloneId = (typeof sifhrState!=='undefined' && sifhrState.personnageActif)
-    || SESSION_FICHE_ID || FICHE_ID;
-  const base = window.location.href.replace(/[^/]*$/,'');
-  const url = base+'octogone.html?fiche='+encodeURIComponent(cloneId)
-    +'&pw='+encodeURIComponent(_fichePw);
-  document.getElementById('oct-iframe').src = url;
-  document.getElementById('oct-overlay').style.display = 'flex';
-}
-function closeOct(){
-  document.getElementById('oct-overlay').style.display='none';
-  document.getElementById('oct-iframe').src='about:blank';
-}
+async // openOct remplacé par renderOctSimple ci-dessus
+// closeOct remplacé ci-dessus
 function closeApt(){document.getElementById('apt-overlay').style.display='none';}
 
 // ── Équipements & Artefacts ──
@@ -1399,6 +1390,225 @@ function startRealtime(){
   if(autopw)document.getElementById('modal-pw').value=autopw;
   if(autofiche&&autopw)setTimeout(doLogin,50);
 })();
+
+
+async function openApt(){
+  document.getElementById('apt-overlay').style.display='flex';
+  const row=await SB.get(FICHE_ID);
+  if(!row||!row.etat)return;
+  // aptitudes = {se_deplacer_0: true, se_deplacer_1: true, ...}
+  // Calculer le score de chaque aptitude en comptant les cases cochées
+  const aptRaw=row.etat.aptitudes||{};
+  const aptTraits=row.etat.aptTraits||{};
+  // Grouper par aptitude
+  const scores={};
+  Object.entries(aptRaw).forEach(([key,val])=>{
+    if(!val) return;
+    // Format: aptKey_squareIndex
+    const parts=key.split('_');
+    // Reconstituer la clé aptitude (peut contenir des _)
+    const sqIdx=parts[parts.length-1];
+    const aptKey=parts.slice(0,-1).join('_');
+    if(!isNaN(sqIdx)){
+      scores[aptKey]=(scores[aptKey]||0)+1;
+    }
+  });
+  const cont=document.getElementById('fiche-apt-content');
+  cont.innerHTML='';
+  const aptKeys=Object.keys(APT_DISPLAY_NAMES);
+  let hasAny=false;
+  aptKeys.forEach(k=>{
+    const score=scores[k]||0;
+    const traits=(aptTraits[k]||[]).filter(t=>t.title||t.text);
+    if(score===0&&!traits.length) return;
+    hasAny=true;
+    const div=document.createElement('div');
+    div.style.cssText='margin-bottom:.7rem;padding:.5rem .7rem;border:1px solid var(--border2);border-radius:6px;background:var(--section-bg);';
+    // En-tête : nom + cases visuelles
+    const head=document.createElement('div');head.style.cssText='display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;flex-wrap:wrap;';
+    const name=document.createElement('span');name.style.cssText='font-family:Cinzel,serif;font-size:.78rem;color:var(--accent);flex:1;';
+    name.textContent=APT_DISPLAY_NAMES[k]||k.replace(/_/g,' ');
+    // Cases noires visuelles
+    const cases=document.createElement('div');cases.style.cssText='display:flex;gap:3px;';
+    for(let i=0;i<APT_MAX_SQUARES;i++){
+      const sq=document.createElement('span');
+      sq.style.cssText='width:10px;height:10px;border-radius:2px;border:1px solid #6a4a2a;'
+        +(i<score?'background:#e8d5a0;':'background:#1a1208;');
+      cases.appendChild(sq);
+    }
+    head.appendChild(name);head.appendChild(cases);div.appendChild(head);
+    // Traits liés
+    traits.forEach(t=>{
+      const tr=document.createElement('div');
+      tr.style.cssText='font-size:.82rem;color:var(--ink2);padding:.25rem .3rem;border-top:1px solid var(--border2);margin-top:.2rem;line-height:1.4;';
+      const tlabel=document.createElement('span');tlabel.style.cssText='font-family:Cinzel,serif;font-size:.72rem;color:var(--ink);';tlabel.textContent=t.title||'Trait';
+      tr.appendChild(tlabel);
+      if(t.level){
+        const lvl=document.createElement('span');lvl.style.cssText='font-family:Cinzel,serif;font-size:.62rem;padding:1px 5px;border-radius:8px;margin-left:.4rem;background:var(--input-bg);color:var(--ink3);';
+        lvl.textContent=t.level;tr.appendChild(lvl);
+      }
+      if(t.text){
+        const txt=document.createElement('div');txt.style.cssText='font-size:.78rem;color:var(--ink3);margin-top:.15rem;font-style:italic;';
+        txt.textContent=t.text.substring(0,100)+(t.text.length>100?'…':'');tr.appendChild(txt);
+      }
+      div.appendChild(tr);
+    });
+    cont.appendChild(div);
+  });
+  if(!hasAny) cont.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;">Aucune aptitude d\u00e9velopp\u00e9e pour l\u2019instant.</p>';
+}
+
+
+// ── Octogone simplifié ──
+const OCT_AXES_SIMPLE = [
+  {id:'feu',    label:'Feu',    vertu:'Force',    vice:'Lâcheté', angle:-90},
+  {id:'bile_j', label:'Bile J.',vertu:'Charité',  vice:'Luxure',  angle:-45},
+  {id:'terre',  label:'Terre',  vertu:'Loyauté',  vice:'Félonie', angle:0},
+  {id:'bile_n', label:'Bile N.',vertu:'Prudence', vice:'Témérité',angle:45},
+  {id:'eau',    label:'Eau',    vertu:'Tempérance',vice:'Envie',   angle:90},
+  {id:'flegme', label:'Flegme', vertu:'Chasteté', vice:'Avarice', angle:135},
+  {id:'air',    label:'Air',    vertu:'Foi',      vice:'Malignité',angle:180},
+  {id:'sang',   label:'Sang',   vertu:'Espérance',vice:'Témérité', angle:225},
+];
+
+function openOct(){
+  document.getElementById('oct-overlay').style.display='flex';
+  renderOctSimple();
+}
+
+function openOctFull(){
+  // Ouvrir la fiche complète dans un overlay séparé
+  const cloneId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)
+    ||SESSION_FICHE_ID||FICHE_ID;
+  const base=window.location.href.replace(/[^/]*$/,'');
+  const url=base+'octogone.html?fiche='+encodeURIComponent(cloneId)
+    +'&pw='+encodeURIComponent(_fichePw);
+  window.open(url,'_blank');
+}
+
+function closeOct(){
+  document.getElementById('oct-overlay').style.display='none';
+}
+
+async function renderOctSimple(){
+  const svg=document.getElementById('oct-simple-svg');
+  const vvList=document.getElementById('oct-vv-list');
+  const etatsEl=document.getElementById('oct-etats-list');
+  if(!svg||!vvList) return;
+  svg.innerHTML=''; vvList.innerHTML=''; etatsEl.innerHTML='';
+
+  // Charger la fiche clone
+  const cloneId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)
+    ||SESSION_FICHE_ID||FICHE_ID;
+  let etat={};
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json();
+    etat=d[0]?.etat||{};
+  }catch(e){}
+
+  const tokens=etat.tokens||{};
+  const scores=etat.scores||{};
+  const etats=etat.etatsSaturation||[];
+  const ns='http://www.w3.org/2000/svg';
+  const CX=170,CY=170,R=110,INNER=22;
+
+  // Fond polygone
+  const pts=OCT_AXES_SIMPLE.map(a=>{
+    const rad=a.angle*Math.PI/180;
+    return `${(CX+R*Math.cos(rad)).toFixed(1)},${(CY+R*Math.sin(rad)).toFixed(1)}`;
+  });
+  const bg=document.createElementNS(ns,'polygon');
+  bg.setAttribute('points',pts.join(' '));
+  bg.setAttribute('fill','rgba(26,18,8,0.6)');
+  bg.setAttribute('stroke','#4a3218');
+  bg.setAttribute('stroke-width','1.5');
+  svg.appendChild(bg);
+
+  OCT_AXES_SIMPLE.forEach(axe=>{
+    const rad=axe.angle*Math.PI/180;
+    const ax=Math.cos(rad), ay=Math.sin(rad);
+
+    // Ligne radiale
+    const line=document.createElementNS(ns,'line');
+    line.setAttribute('x1',(CX+INNER*ax).toFixed(1)); line.setAttribute('y1',(CY+INNER*ay).toFixed(1));
+    line.setAttribute('x2',(CX+R*ax).toFixed(1));     line.setAttribute('y2',(CY+R*ay).toFixed(1));
+    line.setAttribute('stroke','#3a2810'); line.setAttribute('stroke-width','0.8');
+    svg.appendChild(line);
+
+    // Jetons
+    const arr=tokens[axe.id]||['empty','empty','empty'];
+    const rings=[42,68,94];
+    arr.forEach((tok,idx)=>{
+      if(tok==='empty') return;
+      const r2=rings[idx];
+      const cx2=(CX+r2*ax).toFixed(1), cy2=(CY+r2*ay).toFixed(1);
+      const c=document.createElementNS(ns,'circle');
+      c.setAttribute('cx',cx2); c.setAttribute('cy',cy2); c.setAttribute('r','8');
+      const isW=tok==='white';
+      c.setAttribute('fill',isW?'#e8d5a0':'#3a2810');
+      c.setAttribute('stroke',isW?'#c8a060':'#6a4a2a');
+      c.setAttribute('stroke-width','1.5');
+      svg.appendChild(c);
+    });
+
+    // Label axe
+    const lx=(CX+(R+18)*ax).toFixed(1), ly=(CY+(R+18)*ay).toFixed(1);
+    const lt=document.createElementNS(ns,'text');
+    lt.setAttribute('x',lx); lt.setAttribute('y',ly);
+    lt.setAttribute('text-anchor','middle'); lt.setAttribute('dominant-baseline','middle');
+    lt.setAttribute('font-family','Cinzel,serif'); lt.setAttribute('font-size','9.5');
+    lt.setAttribute('fill','#9a7a5a'); lt.textContent=axe.label;
+    svg.appendChild(lt);
+  });
+
+  // Cercle intérieur
+  const ci=document.createElementNS(ns,'circle');
+  ci.setAttribute('cx',CX); ci.setAttribute('cy',CY); ci.setAttribute('r',INNER);
+  ci.setAttribute('fill','rgba(10,7,3,.4)'); ci.setAttribute('stroke','#4a3218'); ci.setAttribute('stroke-width','1');
+  svg.appendChild(ci);
+
+  // Vices & Vertus — grille sous le SVG
+  OCT_AXES_SIMPLE.forEach(axe=>{
+    const vScore=scores[axe.id+'_0']||0;
+    const viScore=scores[axe.id+'_1']||0;
+    if(vScore===0&&viScore===0) return;
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;justify-content:space-between;align-items:center;'
+      +'padding:.15rem .3rem;border-radius:3px;background:rgba(26,18,8,.4);';
+    if(vScore>0){
+      const v=document.createElement('span');
+      v.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:#6aaa6a;';
+      v.textContent='✦ '+axe.vertu+' '+vScore;
+      row.appendChild(v);
+    }
+    if(viScore>0){
+      const vi=document.createElement('span');
+      vi.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:#c06060;margin-left:auto;';
+      vi.textContent='⚡ '+axe.vice+' '+viScore;
+      row.appendChild(vi);
+    }
+    vvList.appendChild(row);
+  });
+
+  // États de saturation
+  if(etats.length){
+    const title=document.createElement('div');
+    title.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:var(--accent);'
+      +'letter-spacing:.05em;margin-bottom:.3rem;';
+    title.textContent='⚡ États actifs';
+    etatsEl.appendChild(title);
+    etats.forEach(e=>{
+      const chip=document.createElement('span');
+      chip.style.cssText='display:inline-block;font-family:Cinzel,serif;font-size:.62rem;'
+        +'padding:1px 8px;border-radius:10px;margin:.1rem;'
+        +(e.polarite==='positif'?'background:#1a4a2a;color:#a0d0a0;':'background:#4a1a1a;color:#d09090;');
+      chip.textContent=e.nom;
+      etatsEl.appendChild(chip);
+    });
+  }
+}
 
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
