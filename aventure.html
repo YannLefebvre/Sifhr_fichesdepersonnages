@@ -107,6 +107,50 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--border);}
+
+  /* ── Marqueurs Sifhr ── */
+  .sifhr-marker { display:block; margin:1rem 0; padding:.7rem 1rem;
+    border-left:3px solid var(--accent); background:rgba(200,134,10,.08);
+    border-radius:0 6px 6px 0; font-family:'Cinzel',serif; font-size:.75rem;
+    color:var(--accent); letter-spacing:.05em; cursor:pointer; }
+  .sifhr-marker:hover { background:rgba(200,134,10,.15); }
+  .sifhr-marker .sifhr-icon { margin-right:.4rem; }
+  .sifhr-marker .sifhr-label { flex:1; }
+  .sifhr-marker .sifhr-hint { font-family:'Crimson Text',serif; font-size:.8rem;
+    color:var(--ink3); font-style:italic; margin-top:.2rem; display:block; }
+  .sifhr-marker.done { border-color:#4a7a4a; background:rgba(74,122,74,.08);
+    color:#6aaa6a; cursor:default; }
+  .sifhr-marker.done::after { content:' ✓'; }
+  /* Overlay générique Sifhr */
+  .sifhr-overlay { position:fixed; inset:0; background:rgba(10,7,3,0.92);
+    display:none; align-items:center; justify-content:center; z-index:350; }
+  .sifhr-overlay.open { display:flex; }
+  .sifhr-overlay-box { background:var(--panel-bg); border:1px solid var(--accent);
+    border-radius:8px; width:min(680px,98vw); max-height:92vh;
+    display:flex; flex-direction:column; overflow:hidden; }
+  .sifhr-overlay-header { padding:.5rem .8rem; border-bottom:1px solid var(--border2);
+    display:flex; align-items:center; gap:.5rem; background:rgba(10,7,3,.5);
+    flex-shrink:0; }
+  .sifhr-overlay-title { font-family:'Cinzel',serif; font-size:.8rem;
+    color:var(--accent); flex:1; letter-spacing:.08em; }
+  .sifhr-overlay-close { background:none; border:none; font-size:1rem;
+    cursor:pointer; color:var(--ink3); }
+  .sifhr-overlay iframe { flex:1; border:none; width:100%; }
+  /* Résultat dé dans l'aventure */
+  .sifhr-dice-result { margin:1rem 0; padding:.7rem 1rem;
+    border:1px solid var(--accent); border-radius:6px;
+    background:rgba(200,134,10,.06); }
+  .sifhr-dice-result .sdr-titre { font-family:'Cinzel',serif; font-size:.75rem;
+    color:var(--accent); letter-spacing:.05em; margin-bottom:.4rem; }
+  .sifhr-dice-result .sdr-detail { font-family:'Crimson Text',serif;
+    font-size:.88rem; color:var(--ink2); }
+  /* Switch personnage */
+  .sifhr-switch-notif { position:fixed; top:1rem; left:50%; transform:translateX(-50%);
+    background:var(--accent); color:#1a1208; font-family:'Cinzel',serif;
+    font-size:.78rem; padding:.4rem 1.2rem; border-radius:20px;
+    box-shadow:0 4px 18px rgba(0,0,0,.4); z-index:400;
+    display:none; letter-spacing:.06em; }
+  .sifhr-switch-notif.show { display:block; }
 </style>
 </head>
 <body>
@@ -355,6 +399,8 @@ async function doLogin(){
             ?JSON.parse(sessionRow.aventure_state):sessionRow.aventure_state;
           if(saved&&saved.currentSeq){
             Object.assign(gameState,saved);
+            // Restaurer l'état Sifhr si présent
+            if(saved._sifhrState) Object.assign(sifhrState, saved._sifhrState);
             renderSequence(gameState.currentSeq);
             renderStatusBar();
             startRealtime();
@@ -363,7 +409,9 @@ async function doLogin(){
           }
         }catch(e){}
       }
-      // Nouvelle partie
+      // Nouvelle partie — initialiser les clones Sifhr
+      const aventureId = STORY_DATA._id || 'av_default';
+      await sifhrInitClones(fiche, pw, aventureId);
       syncFromOctogone();
       renderSequence(STORY_DATA.firstSequence);
       renderStatusBar();
@@ -825,8 +873,537 @@ function renderSequence(seqId){
 }
 
 function _doRenderSequence(seq){
+  // ── Parser les marqueurs [[sifhr:...]] dans le contenu ──
+  if(seq.content && seq.content.includes('[[sifhr:')){
+    seq = Object.assign({}, seq, {content: sifhrParseMarkers(seq.content)});
+  }
   // Image
   const imgWrap=document.getElementById('seq-img-wrap');
+
+
+// ══════════════════════════════════════════════════════════
+//   SYSTÈME SIFHR — Marqueurs [[sifhr:...]] dans Moiki
+// ══════════════════════════════════════════════════════════
+
+// ── État Sifhr ──
+const sifhrState = {
+  personnages: {},      // {id_reel: id_clone} ex: {christophe: christophe_av_intro}
+  personnageActif: '',  // id clone actif
+  aventureId: '',       // id du scénario Moiki
+  lastDice: null,       // {reussites, prouesse, echecCritique, valeur}
+  lastPsycho: null,     // {axe, gagnant, diff}
+  lastEvt: null,        // {slotKey, titre}
+  markersDone: {},      // {markerId: true} — marqueurs déjà exécutés
+};
+
+// ── SB aventures ──
+const SB_AV = {
+  hdrs: {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+    'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+  async get(id){
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/aventures?id=eq.${encodeURIComponent(id)}&select=*`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d=await r.json(); return d[0]||null;
+  },
+  async upsert(data){
+    return fetch(`${SUPABASE_URL}/rest/v1/aventures`,{
+      method:'POST', headers:this.hdrs, body:JSON.stringify(data)
+    });
+  }
+};
+
+// ── Initialisation des clones au démarrage ──
+async function sifhrInitClones(ficheId, pw, aventureId){
+  sifhrState.aventureId = aventureId;
+
+  // Chercher une sauvegarde existante pour ce joueur + cette aventure
+  const saveId = `${ficheId}_${aventureId}`;
+  const existing = await SB_AV.get(saveId);
+  if(existing){
+    Object.assign(sifhrState, existing.sifhr_state||{});
+    console.log('[Sifhr] Session restaurée:', saveId);
+    return;
+  }
+
+  // Nouvelle partie — créer un clone de la fiche joueur
+  const cloneId = `${ficheId}_av_${aventureId}`;
+  const realRow = await SB.get(ficheId);
+  const cloneEtat = JSON.parse(JSON.stringify(realRow?.etat||{}));
+  // Marquer comme clone
+  cloneEtat._clone_of = ficheId;
+  cloneEtat._aventure_id = aventureId;
+
+  // Créer le clone dans fiches
+  await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+    method:'POST',
+    headers:{...SB_AV.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body: JSON.stringify({id:cloneId, mot_de_passe:pw, etat:cloneEtat})
+  });
+
+  sifhrState.personnages[ficheId] = cloneId;
+  sifhrState.personnageActif = cloneId;
+
+  console.log('[Sifhr] Clone créé:', cloneId);
+}
+
+async function sifhrSaveState(){
+  const saveId = `${FICHE_ID}_${sifhrState.aventureId}`;
+  await SB_AV.upsert({
+    id: saveId,
+    joueur_id: FICHE_ID,
+    aventure_id: sifhrState.aventureId,
+    game_state: JSON.stringify(gameState),
+    sifhr_state: JSON.stringify(sifhrState),
+    updated_at: new Date().toISOString()
+  });
+}
+
+// ── Parser de marqueurs [[sifhr:...]] ──
+function sifhrParseMarkers(html){
+  // Remplace [[sifhr:type:param=val:...]] par un bloc cliquable
+  return html.replace(/\[\[sifhr:([^\]]+)\]\]/g, (match, params) => {
+    const parts = params.split(':');
+    const type = parts[0];
+    const args = {};
+    parts.slice(1).forEach(p=>{
+      const [k,v] = p.split('=');
+      if(k) args[k.trim()] = v ? v.trim() : true;
+    });
+    const markerId = 'sm_' + btoa(match).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
+    const done = sifhrState.markersDone[markerId];
+    const label = sifhrMarkerLabel(type, args);
+    const hint = sifhrMarkerHint(type, args);
+    return `<span class="sifhr-marker${done?' done':''}"
+      data-sifhr-type="${type}"
+      data-sifhr-args="${encodeURIComponent(JSON.stringify(args))}"
+      data-sifhr-id="${markerId}"
+      onclick="sifhrHandleMarker(this)"
+    ><span class="sifhr-icon">${sifhrMarkerIcon(type)}</span><span class="sifhr-label">${label}</span>${hint?'<span class="sifhr-hint">'+hint+'</span>':''}</span>`;
+  });
+}
+
+function sifhrMarkerIcon(type){
+  const icons = {dice:'🎲', psycho:'⚖', event:'📋', token:'⚪',
+    dette:'💰', etat:'⚡', switch:'🔄', check:'🔍', env:'🌐', carte:'🗺'};
+  return icons[type]||'✦';
+}
+function sifhrMarkerLabel(type, args){
+  if(type==='dice') return 'Lancer de dés'+(args.axe?' — '+args.axe:'');
+  if(type==='psycho') return 'Psychomachie'+(args.axe?' — '+args.axe:'');
+  if(type==='event') return 'Événement'+(args.id?' : '+args.id:'');
+  if(type==='token') return 'Jeton'+(args.axe?' '+args.axe:'')+(args.couleur?' '+args.couleur:'');
+  if(type==='dette') return 'Dette'+(args.perso?' avec '+args.perso:'');
+  if(type==='etat') return 'État'+(args.nom?' : '+args.nom:'');
+  if(type==='switch') return 'Changer de personnage'+(args.perso?' → '+args.perso:'');
+  if(type==='check') return 'Vérification'+(args.axe?' '+args.axe:'');
+  if(type==='env') return 'Ouvrir l\'environnement';
+  if(type==='carte') return 'Ouvrir la carte';
+  return type;
+}
+function sifhrMarkerHint(type, args){
+  if(type==='dice' && args.seuil) return 'Seuil de réussite : '+args.seuil;
+  if(type==='psycho') return 'Résistez ou cédez à vos penchants';
+  if(type==='token') return (args.action==='give'?'Gagnez':'Perdez')+' un jeton';
+  if(type==='etat' && args.nom) return args.action==='check'?'Si actif : branchement narratif':'Modifie votre état';
+  return '';
+}
+
+// ── Exécution d'un marqueur ──
+async function sifhrHandleMarker(el){
+  if(el.classList.contains('done')) return;
+  const type = el.dataset.sifhrType;
+  const args = JSON.parse(decodeURIComponent(el.dataset.sifhrArgs));
+  const markerId = el.dataset.sifhrId;
+
+  switch(type){
+    case 'dice':    await sifhrOpenDice(args, el, markerId); break;
+    case 'psycho':  await sifhrOpenPsycho(args, el, markerId); break;
+    case 'event':   await sifhrShowEvent(args, el, markerId); break;
+    case 'token':   await sifhrApplyToken(args, el, markerId); break;
+    case 'dette':   await sifhrApplyDette(args, el, markerId); break;
+    case 'etat':    await sifhrHandleEtat(args, el, markerId); break;
+    case 'switch':  await sifhrSwitchPerso(args, el, markerId); break;
+    case 'check':   await sifhrCheck(args, el, markerId); break;
+    case 'env':     sifhrOpenOverlay('env', args); break;
+    case 'carte':   sifhrOpenOverlay('carte', args); break;
+  }
+}
+
+// ── Marquer un marqueur comme accompli ──
+function sifhrMarkDone(el, markerId){
+  if(el){ el.classList.add('done'); }
+  sifhrState.markersDone[markerId] = true;
+  sifhrSaveState();
+}
+
+// ══════════════════════════════════════════════
+//   MARQUEUR DICE — Lanceur de dés
+// ══════════════════════════════════════════════
+let _sifhrDicePending = null; // {args, el, markerId, resolve}
+
+async function sifhrOpenDice(args, el, markerId){
+  const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
+  const base = window.location.href.replace(/[^/]*$/,'');
+  const url = base+'octogone.html?fiche='+encodeURIComponent(cloneId)
+    +'&pw='+encodeURIComponent(_fichePw)+'&view=des';
+
+  document.getElementById('des-iframe').src = url;
+  document.getElementById('des-overlay').style.display = 'flex';
+
+  // Attendre le résultat via postMessage
+  _sifhrDicePending = {args, el, markerId};
+}
+
+// ── postMessage listener — résultat du lanceur ──
+window.addEventListener('message', (evt)=>{
+  if(!evt.data||typeof evt.data!=='object') return;
+  const {type} = evt.data;
+
+  if(type==='DICE_RESULT'){
+    sifhrState.lastDice = {
+      reussites: evt.data.reussites||0,
+      prouesse: !!evt.data.prouesse,
+      echecCritique: !!evt.data.echecCritique,
+      valeur: evt.data.valeur||0
+    };
+    document.getElementById('des-overlay').style.display = 'none';
+    if(_sifhrDicePending){
+      const {args, el, markerId} = _sifhrDicePending;
+      _sifhrDicePending = null;
+      sifhrMarkDone(el, markerId);
+      sifhrShowDiceResult(sifhrState.lastDice);
+      sifhrBranchDice(args, sifhrState.lastDice);
+    }
+  }
+
+  if(type==='PSYCHO_RESULT'){
+    sifhrState.lastPsycho = evt.data;
+    sifhrCloseOverlay('oct');
+  }
+});
+
+function sifhrShowDiceResult(dice){
+  const wrap = document.getElementById('seq-content');
+  const div = document.createElement('div');
+  div.className = 'sifhr-dice-result';
+  const signe = dice.prouesse ? '✦ Prouesse' : dice.echecCritique ? '⚡ Échec critique'
+    : dice.reussites > 0 ? '✓ Réussite' : '✗ Échec';
+  div.innerHTML = `<div class="sdr-titre">${signe}</div>
+    <div class="sdr-detail">${dice.reussites} réussite${dice.reussites>1?'s':''} sur la valeur ${dice.valeur}</div>`;
+  wrap.appendChild(div);
+}
+
+function sifhrBranchDice(args, dice){
+  // Brancher selon seuil ou prouesse
+  const seuil = parseInt(args.seuil)||1;
+  let targetSeq = null;
+  if(dice.prouesse && args.onprouesse) targetSeq = args.onprouesse;
+  else if(dice.echecCritique && args.onecheccritique) targetSeq = args.onecheccritique;
+  else if(dice.reussites >= seuil && args.onsucces) targetSeq = args.onsucces;
+  else if(dice.reussites < seuil && args.onechec) targetSeq = args.onechec;
+
+  if(targetSeq){
+    // Désactiver tous les liens Moiki et forcer ce branchement
+    sifhrForceGoTo(targetSeq);
+  }
+  // Si pas de branchement → les choix Moiki normaux restent actifs
+}
+
+function sifhrForceGoTo(seqId){
+  // Naviguer vers une séquence en bypassing les choix Moiki
+  const seq = seqIndex[seqId];
+  if(seq){ setTimeout(()=>renderSequence(seqId), 800); }
+  else { console.warn('[Sifhr] Séquence introuvable:', seqId); }
+}
+
+// ══════════════════════════════════════════════
+//   MARQUEUR PSYCHO
+// ══════════════════════════════════════════════
+async function sifhrOpenPsycho(args, el, markerId){
+  const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
+  const base = window.location.href.replace(/[^/]*$/,'');
+  const url = base+'octogone.html?fiche='+encodeURIComponent(cloneId)
+    +'&pw='+encodeURIComponent(_fichePw)+'&view=psycho'
+    +(args.axe?'&axe='+encodeURIComponent(args.axe):'');
+  document.getElementById('sifhr-oct-iframe').src = url;
+  document.getElementById('sifhr-oct-overlay').classList.add('open');
+
+  // Résultat reçu via postMessage PSYCHO_RESULT
+  _sifhrDicePending = {args, el, markerId, type:'psycho'};
+}
+
+// ══════════════════════════════════════════════
+//   MARQUEUR EVENT — Afficher un événement
+// ══════════════════════════════════════════════
+async function sifhrShowEvent(args, el, markerId){
+  // Lire le slot depuis la fiche env
+  const envId = args.env || 'env-test';
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d = await r.json();
+    const slots = d[0]?.etat?.slots||{};
+    const slotKey = args.id;
+    const slot = slots[slotKey];
+    if(!slot){ console.warn('[Sifhr] Slot introuvable:', slotKey); return; }
+
+    const niveau = args.niveau||'texte';
+    const texte = niveau==='rumeur'?slot.texte_rumeur:
+                  niveau==='indice'?slot.texte_indice:
+                  niveau==='fait'?slot.texte_fait:
+                  slot.texte||'';
+
+    // Injecter dans le contenu de la séquence
+    const wrap = document.getElementById('seq-content');
+    const div = document.createElement('div');
+    div.style.cssText = 'margin:1rem 0;padding:.7rem 1rem;border:1px solid var(--border);'
+      +'border-radius:6px;background:rgba(0,0,0,.15);';
+    div.innerHTML = `<div style="font-family:Cinzel,serif;font-size:.72rem;color:var(--accent);margin-bottom:.4rem;">`
+      +`${slot.titre||slotKey}</div>`
+      +`<div style="font-family:'Crimson Text',serif;font-size:.9rem;color:var(--ink2);">${texte}</div>`;
+    wrap.appendChild(div);
+    sifhrState.lastEvt = {slotKey, titre:slot.titre||slotKey};
+    sifhrMarkDone(el, markerId);
+  }catch(e){ console.error('[Sifhr] event error:', e); }
+}
+
+// ══════════════════════════════════════════════
+//   MARQUEUR TOKEN — Transfert de jetons
+// ══════════════════════════════════════════════
+async function sifhrApplyToken(args, el, markerId){
+  const action = args.action||'give'; // give | take
+  const axe = args.axe;
+  const couleur = args.couleur||'white'; // white | black
+  const cible = args.cible || sifhrState.personnageActif || FICHE_ID;
+  const cloneId = sifhrState.personnages[cible] || cible;
+
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d = await r.json();
+    const etat = JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    if(!etat.tokens) etat.tokens={};
+    if(!etat.tokens[axe]) etat.tokens[axe]=['empty','empty','empty'];
+
+    const arr = etat.tokens[axe];
+    if(action==='give'){
+      const emptyIdx = arr.indexOf('empty');
+      if(emptyIdx>=0) arr[emptyIdx]=couleur;
+    } else {
+      const tokIdx = arr.lastIndexOf(couleur);
+      if(tokIdx>=0) arr[tokIdx]='empty';
+    }
+
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+    sifhrMarkDone(el, markerId);
+    // Notif visuelle
+    sifhrShowNotif((action==='give'?'⊕':'⊖')+' Jeton '+couleur+' sur '+axe);
+  }catch(e){ console.error('[Sifhr] token error:', e); }
+}
+
+// ══════════════════════════════════════════════
+//   MARQUEUR DETTE
+// ══════════════════════════════════════════════
+async function sifhrApplyDette(args, el, markerId){
+  const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d = await r.json();
+    const etat = JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    if(!etat.dettes) etat.dettes=[];
+    const valeur = parseInt(args.valeur)||1;
+    const action = args.action||'add';
+    if(action==='add'){
+      etat.dettes.push({perso:args.perso||'', bm:valeur, texte:args.texte||''});
+    } else {
+      // Retirer la première dette correspondante
+      const idx = etat.dettes.findIndex(d=>d.perso===args.perso);
+      if(idx>=0) etat.dettes.splice(idx,1);
+    }
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+    sifhrMarkDone(el, markerId);
+    sifhrShowNotif((action==='add'?'💰 Dette ajoutée':'💰 Dette retirée')+(args.perso?' avec '+args.perso:''));
+  }catch(e){ console.error('[Sifhr] dette error:', e); }
+}
+
+// ══════════════════════════════════════════════
+//   MARQUEUR ÉTAT
+// ══════════════════════════════════════════════
+async function sifhrHandleEtat(args, el, markerId){
+  const action = args.action||'check';
+  const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
+
+  if(action==='check'){
+    // Lire les états de saturation du clone
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d = await r.json();
+    const etats = d[0]?.etat?.etatsSaturation||[];
+    const found = etats.find(e=>e.nom===args.nom);
+    const targetSeq = found ? args.ontrue : args.onfalse;
+    sifhrMarkDone(el, markerId);
+    if(targetSeq) sifhrForceGoTo(targetSeq);
+    return;
+  }
+
+  // add / remove
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    const d = await r.json();
+    const etat = JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    if(!etat.etatsSaturation) etat.etatsSaturation=[];
+    if(action==='add'){
+      if(!etat.etatsSaturation.find(e=>e.nom===args.nom)){
+        etat.etatsSaturation.push({
+          nom:args.nom||'', polarite:args.polarite||'positif',
+          niveau:args.niveau||'N1', grpKey:args.grpKey||'feu_bilej',
+          desc:args.desc||''
+        });
+      }
+    } else {
+      etat.etatsSaturation = etat.etatsSaturation.filter(e=>e.nom!==args.nom);
+    }
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+    sifhrMarkDone(el, markerId);
+    sifhrShowNotif((action==='add'?'⚡ État ajouté':'⚡ État retiré')+' : '+(args.nom||''));
+  }catch(e){ console.error('[Sifhr] etat error:', e); }
+}
+
+// ══════════════════════════════════════════════
+//   MARQUEUR SWITCH — Changer de personnage actif
+// ══════════════════════════════════════════════
+async function sifhrSwitchPerso(args, el, markerId){
+  const persoId = args.perso;
+  if(!persoId) return;
+
+  // Trouver ou créer le clone pour ce personnage
+  let cloneId = sifhrState.personnages[persoId];
+  if(!cloneId){
+    const aventureId = sifhrState.aventureId;
+    cloneId = `${persoId}_av_${aventureId}`;
+    // Créer le clone si inexistant
+    const realRow = await SB.get(persoId);
+    if(realRow){
+      const cloneEtat = JSON.parse(JSON.stringify(realRow.etat||{}));
+      cloneEtat._clone_of = persoId;
+      cloneEtat._aventure_id = aventureId;
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+        method:'POST',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+          'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({id:cloneId, mot_de_passe:_fichePw, etat:cloneEtat})
+      });
+      sifhrState.personnages[persoId] = cloneId;
+    }
+  }
+
+  sifhrState.personnageActif = cloneId;
+  sifhrMarkDone(el, markerId);
+
+  // Notification
+  const notif = document.getElementById('sifhr-switch-notif');
+  notif.textContent = '🔄 Vous incarnez maintenant ' + persoId;
+  notif.classList.add('show');
+  setTimeout(()=>notif.classList.remove('show'), 3000);
+
+  sifhrSaveState();
+}
+
+// ══════════════════════════════════════════════
+//   MARQUEUR CHECK — Condition sur la fiche clone
+// ══════════════════════════════════════════════
+async function sifhrCheck(args, el, markerId){
+  const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}&select=etat`,
+    {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+  const d = await r.json();
+  const etat = d[0]?.etat||{};
+  let result = false;
+
+  if(args.tokens){
+    const arr = etat.tokens?.[args.axe]||[];
+    const count = arr.filter(t=>t===(args.couleur||'white')).length;
+    const min = parseInt(args.min)||1;
+    result = count >= min;
+  } else if(args.score){
+    const val = etat.scores?.[args.axe]||0;
+    const min = parseInt(args.min)||1;
+    result = val >= min;
+  } else if(args.etat){
+    const etats = etat.etatsSaturation||[];
+    result = !!etats.find(e=>e.nom===args.nom);
+  } else if(args.flag){
+    result = !!gameState.flags[args.flag];
+  }
+
+  sifhrMarkDone(el, markerId);
+  const targetSeq = result ? args.ontrue : args.onfalse;
+  if(targetSeq) sifhrForceGoTo(targetSeq);
+}
+
+// ══════════════════════════════════════════════
+//   OVERLAYS (ENV, CARTE, OCT complet)
+// ══════════════════════════════════════════════
+function sifhrOpenOverlay(type, args={}){
+  const base = window.location.href.replace(/[^/]*$/,'');
+  const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
+  let url = '';
+  if(type==='env'){
+    const envFiche = args.fiche || 'env-test';
+    url = base+'environnement.html?fiche='+encodeURIComponent(envFiche)
+      +'&pw='+encodeURIComponent(args.pw||'mdpj')+'&player=1'
+      +'&player_fiche='+encodeURIComponent(cloneId)
+      +'&player_pw='+encodeURIComponent(_fichePw);
+  } else if(type==='carte'){
+    const carteFiche = args.fiche || 'env-test';
+    url = base+'carte.html?fiche='+encodeURIComponent(carteFiche)
+      +'&pw='+encodeURIComponent(args.pw||'mdpj');
+  } else if(type==='oct'){
+    url = base+'octogone.html?fiche='+encodeURIComponent(cloneId)
+      +'&pw='+encodeURIComponent(_fichePw);
+  }
+  document.getElementById(`sifhr-${type}-iframe`).src = url;
+  document.getElementById(`sifhr-${type}-overlay`).classList.add('open');
+}
+
+function sifhrCloseOverlay(type){
+  document.getElementById(`sifhr-${type}-overlay`).classList.remove('open');
+  document.getElementById(`sifhr-${type}-iframe`).src = 'about:blank';
+}
+
+// ── Notification légère ──
+function sifhrShowNotif(msg){
+  const n = document.getElementById('sifhr-switch-notif');
+  n.textContent = msg;
+  n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════════════════
+//   HOOK dans _doRenderSequence
+//   Parser les marqueurs [[sifhr:...]] avant affichage
+// ══════════════════════════════════════════════
+const _origDoRender = _doRenderSequence;
+// On ne peut pas wrapper une function déclarée avec function
+// On patch via un hook dans renderSequence
+
   const imgEl=document.getElementById('seq-image');
   if(seq.image&&seq.image.id){
     imgEl.src='./images/content/'+seq.image.id+'.jpg';
@@ -924,9 +1501,11 @@ function scheduleSave(){
     try{
       await SB.patch(saveId,{
         id:saveId,
-        mot_de_passe:'aventure', // mdp générique pour les fiches session
+        mot_de_passe:'aventure',
         aventure_state:JSON.stringify(gameState)
       });
+      // Sauvegarder aussi l'état Sifhr (clones, marqueurs accomplis)
+      await sifhrSaveState();
       ind.textContent='Sauvegardé ✓';
       setTimeout(()=>ind.classList.remove('show'),1500);
     }catch(e){ind.textContent='Hors-ligne';setTimeout(()=>ind.classList.remove('show'),2000);}
@@ -969,5 +1548,46 @@ function startRealtime(){
 })();
 
 </script>
+
+<!-- ══ OVERLAYS SIFHR ══ -->
+
+<!-- Overlay Dés (déjà existant, on garde) -->
+
+<!-- Overlay Octogone complet -->
+<div id="sifhr-oct-overlay" class="sifhr-overlay">
+  <div class="sifhr-overlay-box">
+    <div class="sifhr-overlay-header">
+      <span class="sifhr-overlay-title">⬡ Octogone</span>
+      <button class="sifhr-overlay-close" onclick="sifhrCloseOverlay('oct')">✕ Retour</button>
+    </div>
+    <iframe id="sifhr-oct-iframe" src="about:blank" style="flex:1;border:none;width:100%;height:80vh;"></iframe>
+  </div>
+</div>
+
+<!-- Overlay Environnement -->
+<div id="sifhr-env-overlay" class="sifhr-overlay">
+  <div class="sifhr-overlay-box">
+    <div class="sifhr-overlay-header">
+      <span class="sifhr-overlay-title">🌐 Environnement</span>
+      <button class="sifhr-overlay-close" onclick="sifhrCloseOverlay('env')">✕ Retour</button>
+    </div>
+    <iframe id="sifhr-env-iframe" src="about:blank" style="flex:1;border:none;width:100%;height:80vh;"></iframe>
+  </div>
+</div>
+
+<!-- Overlay Carte -->
+<div id="sifhr-carte-overlay" class="sifhr-overlay">
+  <div class="sifhr-overlay-box">
+    <div class="sifhr-overlay-header">
+      <span class="sifhr-overlay-title">🗺 Carte</span>
+      <button class="sifhr-overlay-close" onclick="sifhrCloseOverlay('carte')">✕ Retour</button>
+    </div>
+    <iframe id="sifhr-carte-iframe" src="about:blank" style="flex:1;border:none;width:100%;height:80vh;"></iframe>
+  </div>
+</div>
+
+<!-- Notification switch personnage -->
+<div id="sifhr-switch-notif" class="sifhr-switch-notif"></div>
+
 </body>
 </html>
