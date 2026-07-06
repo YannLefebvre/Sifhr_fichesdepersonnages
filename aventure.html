@@ -148,7 +148,8 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   <div id="story-header">
     <div id="story-title">Sifhr — Introduction</div>
     <div id="story-subtitle">Aventure en solo · Yann Lefebvre</div>
-    <div id="session-info" style="display:none;margin-top:.4rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;">
+    <div id="session-info" style="display:none;margin-top:.4rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;display:flex;gap:.8rem;flex-wrap:wrap;">
+      <span id="sifhr-temps-display" style="color:var(--accent);font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.05em;"></span>
       💾 Votre code de sauvegarde : <span id="session-code" style="color:var(--accent);font-weight:600;cursor:pointer;" title="Cliquer pour copier" onclick="navigator.clipboard.writeText(this.textContent);this.textContent+=' ✓'"></span>
       <button onclick="restartAdventure()" style="margin-left:.8rem;font-family:'Cinzel',serif;font-size:.62rem;padding:2px 7px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">↺ Nouvelle partie</button>
     </div>
@@ -315,7 +316,7 @@ const VV_COUNTERS = ['Force','Envie','Charité','Luxure','Loyauté','Malignité'
 
 // ── État ──
 let FICHE_ID='', ficheEtat=null, saveTimer=null, _syncOctTimer=null;
-let gameState = {counters:{},flags:{},inventory:[],currentSeq:'',history:[]};
+let gameState = {tempsEcoule:0,chronoDone:{},counters:{},flags:{},inventory:[],currentSeq:'',history:[]};
 
 const seqIndex={}, counterIndex={}, flagIndex={}, assetIndex={};
 
@@ -855,7 +856,8 @@ function sifhrParseMarkers(html){
 
 function sifhrMarkerIcon(type){
   const icons = {dice:'🎲', psycho:'⚖', event:'📋', token:'⚪',
-    dette:'💰', etat:'⚡', switch:'🔄', check:'🔍', env:'🌐', carte:'🗺'};
+    dette:'💰', etat:'⚡', switch:'🔄', check:'🔍', env:'🌐', carte:'🗺',
+    temps:'⏳', pause:'◉'};
   return icons[type]||'✦';
 }
 function sifhrMarkerLabel(type, args){
@@ -869,6 +871,8 @@ function sifhrMarkerLabel(type, args){
   if(type==='check') return 'Vérification'+(args.axe?' '+args.axe:'');
   if(type==='env') return 'Ouvrir l\'environnement';
   if(type==='carte') return 'Ouvrir la carte';
+  if(type==='temps') return 'Le temps passe'+(args.delta?' ('+args.delta+(args.unite?' '+args.unite:'')+')'  :'');
+  if(type==='pause') return 'Fenêtre narrative';
   return type;
 }
 function sifhrMarkerHint(type, args){
@@ -895,6 +899,8 @@ async function sifhrHandleMarker(el){
     case 'etat':    await sifhrHandleEtat(args, el, markerId); break;
     case 'switch':  await sifhrSwitchPerso(args, el, markerId); break;
     case 'check':   await sifhrCheck(args, el, markerId); break;
+    case 'temps':   await sifhrApplyTemps(args, el, markerId); break;
+    case 'pause':   await sifhrHandlePause(args, el, markerId); break;
     case 'env':     sifhrOpenOverlay('env', args); break;
     case 'carte':   sifhrOpenOverlay('carte', args); break;
   }
@@ -1699,6 +1705,262 @@ async function renderEvtOverlay(){
   }
 }
 
+
+
+// ══════════════════════════════════════════════════════════
+//   SYSTÈME CHRONOLOGIQUE SIFHR
+//   Basé sur les cinq prières journalières
+//   Point zéro : 3 Rabi' al-Awwal 572 H = 16 septembre 1176
+// ══════════════════════════════════════════════════════════
+
+const SIFHR_CHRONO = {
+
+  // ── Prières (cycle de 5) ──
+  PRIERES: ['fajr','dhuhr','asr','maghrib','isha'],
+  PRIERES_FR: {
+    fajr:    { label:'Fajr',    moment:'À l\'aube'              },
+    dhuhr:   { label:'Dhuhr',   moment:'À midi'                 },
+    asr:     { label:'Asr',     moment:'En fin d\'après-midi'   },
+    maghrib: { label:'Maghrib', moment:'Au coucher du soleil'   },
+    isha:    { label:'Isha',    moment:'Dans la nuit'           },
+  },
+
+  // ── Mois hégirien ──
+  MOIS_ARABE: ['Muharram','Safar','Rabīʿ al-Awwal','Rabīʿ al-Thānī',
+               'Jumādā al-Ūlā','Jumādā al-Ākhira','Rajab','Shaʿbān',
+               'Ramaḍān','Shawwāl','Dhū al-Qaʿda','Dhū al-Ḥijja'],
+
+  // ── Point zéro ──
+  ZERO: {
+    priere: 0,        // 0=fajr (début du jour islamique)
+    jours: 0,
+    // Date hégirienne de départ
+    hijri: { year: 572, month: 3, day: 3 },
+    // JD correspondant (pour recalcul)
+    jd0: 2150843,     // JD du 16 septembre 1176
+  },
+
+  // ── Calculs ──
+
+  gregorianToJD(y, m, d) {
+    const a = Math.floor((14-m)/12);
+    const yr = y + 4800 - a;
+    const mo = m + 12*a - 3;
+    return d + Math.floor((153*mo+2)/5) + 365*yr
+      + Math.floor(yr/4) - Math.floor(yr/100) + Math.floor(yr/400) - 32045;
+  },
+
+  jdToGregorian(jd) {
+    const z = Math.floor(jd);
+    const a = z + 32044;
+    const b = Math.floor((4*a+3)/146097);
+    const c = a - Math.floor(146097*b/4);
+    const d = Math.floor((4*c+3)/1461);
+    const e = c - Math.floor(1461*d/4);
+    const m = Math.floor((5*e+2)/153);
+    return {
+      day:   e - Math.floor((153*m+2)/5) + 1,
+      month: m + 3 - 12*Math.floor(m/10),
+      year:  100*b + d - 4800 + Math.floor(m/10),
+    };
+  },
+
+  jdToHijri(jd) {
+    jd = Math.floor(jd);
+    let year = Math.floor((30*(jd-1948440)+29)/10631) + 1;
+    const epoch = y => 1948440 + 354*(y-1) + Math.floor((11*y-3)/30);
+    while (epoch(year+1) <= jd) year++;
+    while (epoch(year)   >  jd) year--;
+    const dayInYear = jd - epoch(year);
+    let month = Math.min(12, Math.floor((11*dayInYear+330)/325));
+    const day = jd - epoch(year) - (month-1)*29 - Math.floor((6*month-1)/11) + 1;
+    return { year, month, day };
+  },
+
+  hijriToJD(year, month, day) {
+    return 1948440 + 354*(year-1) + Math.floor((11*year-3)/30)
+      + (month-1)*29 + Math.floor((6*month-1)/11) + day - 1;
+  },
+
+  // ── Depuis tempsEcoule (en unités de prière) ──
+  fromTemps(tempsEcoule) {
+    const priereIdx = ((tempsEcoule % 5) + 5) % 5;
+    const joursEcoules = Math.floor(tempsEcoule / 5);
+
+    // Calculer le JD courant
+    const jdCourant = this.ZERO.jd0 + joursEcoules;
+    const greg = this.jdToGregorian(jdCourant);
+    const hijri = this.jdToHijri(jdCourant);
+
+    return {
+      priereIdx,
+      priere: this.PRIERES[priereIdx],
+      priereFR: this.PRIERES_FR[this.PRIERES[priereIdx]],
+      joursEcoules,
+      gregorien: greg,
+      hijri,
+      moisArabe: this.MOIS_ARABE[hijri.month - 1],
+    };
+  },
+
+  // ── Formater la date pour l'en-tête ──
+  formatCourt(tempsEcoule) {
+    const t = this.fromTemps(tempsEcoule);
+    return `${t.priereFR.label} · ${t.hijri.day} ${t.moisArabe} ${t.hijri.year} H`;
+  },
+
+  // ── Formater le texte de transition ──
+  formatTransition(tempsEcoule, labelEvenement) {
+    const t = this.fromTemps(tempsEcoule);
+    const MOIS_FR = ['janvier','février','mars','avril','mai','juin',
+                     'juillet','août','septembre','octobre','novembre','décembre'];
+    const gregStr = `${t.gregorien.day} ${MOIS_FR[t.gregorien.month-1]} ${t.gregorien.year}`;
+    const hijriStr = `${t.hijri.day} ${t.moisArabe} ${t.hijri.year} H`;
+    return [
+      `— ${t.priereFR.label} · ${t.priereFR.moment} —`,
+      `${hijriStr} · ${gregStr}`,
+      `─────────────────────`,
+      labelEvenement ? `Soudain… ${labelEvenement}` : `Soudain…`,
+    ].join('\n');
+  },
+
+  // ── Parser l'unité de delta ──
+  parseDelta(delta, unite) {
+    const d = parseInt(delta) || 1;
+    switch(unite) {
+      case 'jour':    return d * 5;
+      case 'semaine': return d * 35;
+      case 'mois':    return d * 150;
+      default:        return d; // prières par défaut
+    }
+  },
+};
+
+// ── État chronologique dans gameState ──
+// gameState.tempsEcoule = 0 au démarrage
+
+// ── Mise à jour de l'affichage de l'en-tête ──
+function sifhrUpdateTempsDisplay() {
+  const t = gameState.tempsEcoule || 0;
+  const el = document.getElementById('sifhr-temps-display');
+  if (el) el.textContent = SIFHR_CHRONO.formatCourt(t);
+}
+
+// ── Appliquer un delta de temps ──
+async function sifhrApplyTemps(args, el, markerId) {
+  const delta = SIFHR_CHRONO.parseDelta(args.delta || 1, args.unite);
+  if (!gameState.tempsEcoule) gameState.tempsEcoule = 0;
+  gameState.tempsEcoule += delta;
+  sifhrUpdateTempsDisplay();
+
+  // Vérifier si des événements chronologiques sont déclenchés
+  sifhrCheckChronoEvents();
+
+  sifhrMarkDone(el, markerId);
+  sifhrShowNotif(SIFHR_CHRONO.formatCourt(gameState.tempsEcoule));
+}
+
+// ── Vérifier les événements chronologiques ──
+function sifhrCheckChronoEvents() {
+  const chrono = STORY_DATA._chronologie;
+  if (!chrono || !chrono.evenements) return;
+
+  const t = gameState.tempsEcoule || 0;
+  if (!gameState.chronoDone) gameState.chronoDone = {};
+  if (!sifhrState.chronoQueue) sifhrState.chronoQueue = [];
+
+  chrono.evenements.forEach(evt => {
+    const key = `chrono_${evt.seqId}_${evt.seuil}`;
+    // Ignorer si "once" et déjà déclenché
+    if (evt.once && gameState.chronoDone[key]) return;
+    // Déclencher si seuil franchi
+    if (t >= evt.seuil) {
+      gameState.chronoDone[key] = true;
+      // Mettre en file d'attente (attend un [[sifhr:pause]])
+      if (!sifhrState.chronoQueue.find(e => e.key === key)) {
+        sifhrState.chronoQueue.push({
+          key, seqId: evt.seqId,
+          label: evt.label || '',
+          urgence: evt.urgence || false,
+        });
+      }
+    }
+  });
+}
+
+// ── Traiter une pause ──
+async function sifhrHandlePause(args, el, markerId) {
+  if (!sifhrState.chronoQueue || !sifhrState.chronoQueue.length) {
+    sifhrMarkDone(el, markerId);
+    return;
+  }
+
+  // Filtrer selon priorité
+  const priorite = args.priorite || 'tous';
+  let evt = null;
+  if (priorite === 'haute') {
+    evt = sifhrState.chronoQueue.find(e => e.urgence);
+  } else {
+    evt = sifhrState.chronoQueue[0];
+  }
+
+  if (!evt) {
+    sifhrMarkDone(el, markerId);
+    return;
+  }
+
+  // Retirer de la file
+  sifhrState.chronoQueue = sifhrState.chronoQueue.filter(e => e.key !== evt.key);
+  sifhrMarkDone(el, markerId);
+
+  // Sauvegarder la séquence de retour
+  sifhrState.chronoRetour = gameState.currentSeq;
+
+  // Afficher la transition narrative
+  const t = gameState.tempsEcoule || 0;
+  const transitionText = SIFHR_CHRONO.formatTransition(t, evt.label);
+  await sifhrShowTransition(transitionText);
+
+  // Naviguer vers la séquence de l'événement
+  setTimeout(() => renderSequence(evt.seqId), 600);
+}
+
+// ── Afficher la transition narrative ──
+function sifhrShowTransition(texte) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('sifhr-transition-overlay');
+    const content = document.getElementById('sifhr-transition-content');
+    if (!overlay || !content) { resolve(); return; }
+
+    content.textContent = texte;
+    overlay.style.display = 'flex';
+    overlay.style.opacity = '0';
+
+    // Fondu entrant
+    requestAnimationFrame(() => {
+      overlay.style.transition = 'opacity .6s';
+      overlay.style.opacity = '1';
+      setTimeout(() => {
+        // Rester visible 2.5s puis fondre
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+          overlay.style.display = 'none';
+          resolve();
+        }, 700);
+      }, 2500);
+    });
+  });
+}
+
+// ── Marqueur [[sifhr:fin_chrono_event]] ──
+// Retour au fil principal après un événement chronologique
+function sifhrFinChronoEvent() {
+  const retour = sifhrState.chronoRetour;
+  sifhrState.chronoRetour = null;
+  if (retour) setTimeout(() => renderSequence(retour), 300);
+}
+
+
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
 
@@ -1759,6 +2021,12 @@ async function renderEvtOverlay(){
       style="width:100%;padding:.35rem .5rem;background:var(--input-bg);border:1px solid var(--border);border-radius:3px;font-family:'Crimson Text',serif;font-size:.85rem;color:var(--ink);outline:none;margin-bottom:.6rem;">
     <div id="evt-overlay-list" style="overflow-y:auto;flex:1;"></div>
   </div>
+</div>
+
+
+<!-- Overlay transition chronologique -->
+<div id="sifhr-transition-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.95);display:none;align-items:center;justify-content:center;z-index:400;pointer-events:none;">
+  <pre id="sifhr-transition-content" style="font-family:'Cinzel',serif;font-size:.95rem;color:var(--accent);text-align:center;line-height:2;letter-spacing:.08em;white-space:pre-line;"></pre>
 </div>
 
 </body>
