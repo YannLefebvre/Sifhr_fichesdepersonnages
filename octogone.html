@@ -10828,9 +10828,12 @@ async function pousserHcVersEvenements(idx){
   if(revele===null) return;
 
   const key='hc_'+FICHE_ID+'_'+Date.now();
+  // Construire un texte descriptif complet
+  const hcDesc='Histoire croisée entre '+FICHE_ID+' et '+(hc.perso||'?')+'.'
+    +(hc.text?'\n\n'+hc.text:'');
   await _pushSlotToEnv(envId, key, {
     titre:'HC : '+FICHE_ID+' / '+(hc.perso||'?'),
-    texte:hc.text||'',
+    texte:hcDesc,
     texte_rumeur:'',texte_indice:'',texte_fait:'',
     revele_rumeur:'aucun',revele_indice:'aucun',revele_fait:'aucun',
     revele_a:revele.trim(),
@@ -10862,9 +10865,13 @@ async function pousserDetteVersEvenements(idx){
   if(revele===null) return;
 
   const key='dette_'+FICHE_ID+'_'+Date.now();
+  const detteDesc=(bm>0
+    ? FICHE_ID+' doit '+('+'+bm)+' à '+(d.perso||'?')
+    : (d.perso||'?')+' doit '+(Math.abs(bm))+' à '+FICHE_ID)
+    +(d.texte?'\n\n'+d.texte:'');
   await _pushSlotToEnv(envId, key, {
-    titre:'Dette : '+FICHE_ID+' → '+(d.perso||'?')+' ('+(bm>0?'+'+bm:bm)+')',
-    texte:d.texte||'',
+    titre:'Dette : '+FICHE_ID+' ↔ '+(d.perso||'?')+' ('+(bm>0?'+'+bm:bm)+')',
+    texte:detteDesc,
     texte_rumeur:'',texte_indice:'',texte_fait:'',
     revele_rumeur:'aucun',revele_indice:'aucun',revele_fait:'aucun',
     revele_a:revele.trim(),

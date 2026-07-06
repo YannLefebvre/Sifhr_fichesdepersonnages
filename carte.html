@@ -521,6 +521,7 @@ function applyRemoteState(saved){
   applyingRemote=true;
   try{
     if(saved.slots){ console.log('[applyRemoteState] slots:', Object.keys(saved.slots).length); state.slots=saved.slots; if(typeof renderEvtList==='function') renderEvtList(); }
+    if(saved.evtsMasques) state.evtsMasques=saved.evtsMasques;
     if(saved.hypotheses) state.hypotheses=saved.hypotheses;
     if(saved.couleurs) state.couleurs=saved.couleurs;
     if(saved.carte) state.carte=Object.assign({positions:{},players:{}},saved.carte);
@@ -1646,8 +1647,11 @@ function renderEvtList(){
   if(!scroll) return;
   const q=(document.getElementById('evt-list-search')?.value||'').toLowerCase();
   const slots=state.slots||{};
+  const evtsMasques=state.evtsMasques||{};
   const keys=Object.keys(slots).filter(k=>{
     const s=slots[k];
+    // Filtrer les événements masqués localement par le joueur
+    if(!isGM && evtsMasques[k]) return false;
     if(!isGM){
       const r=s.revele_a||'aucun';
       if(r==='aucun') return false;
@@ -1693,12 +1697,22 @@ function renderEvtList(){
     btnLoc.textContent='&#128506; Localiser';
     btnLoc.onclick=()=>evtListLocate(key);
     acts.appendChild(btnLoc);
-    if(isGM){
-      const btnDel=document.createElement('button'); btnDel.className='evtl-act danger';
-      btnDel.textContent='&#128465; Supprimer';
-      btnDel.onclick=()=>evtListDelete(key);
-      acts.appendChild(btnDel);
-    }
+    // Bouton supprimer — MJ supprime réellement, joueur masque localement
+    const btnDel=document.createElement('button');
+    btnDel.className='evtl-act danger';
+    btnDel.textContent=isGM?'&#128465; Supprimer':'&#10005; Masquer';
+    btnDel.title=isGM?'Supprimer définitivement cet événement':'Masquer cet événement de votre liste';
+    btnDel.onclick=()=>{
+      if(isGM){ evtListDelete(key); }
+      else {
+        // Masquer localement — stocker dans state un set d'events masqués
+        if(!state.evtsMasques) state.evtsMasques={};
+        state.evtsMasques[key]=true;
+        saveState();
+        renderEvtList();
+      }
+    };
+    acts.appendChild(btnDel);
     body.appendChild(acts);
     item.appendChild(head); item.appendChild(body);
     head.onclick=()=>{
