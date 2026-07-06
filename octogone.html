@@ -4441,14 +4441,16 @@ function renderDettes(){
       badge.textContent=bm>0?'+'+bm:(bm===0?'0':bm);
       badge.style.display=(octIsGM||bm!==0)?'':'none';
       item.appendChild(name); item.appendChild(badge);
+      // Bouton ⊕ Événements — accessible à tous les joueurs
+      const evtBtnD=document.createElement('button');
+      evtBtnD.textContent='⊕'; evtBtnD.title='Pousser vers les événements';
+      evtBtnD.style.cssText='background:none;border:1px solid #1a4a6e;color:#1a4a6e;border-radius:3px;padding:0 4px;cursor:pointer;margin-right:2px;';
+      evtBtnD.addEventListener('click',(e)=>{ e.stopPropagation(); pousserDetteVersEvenements(idx); });
+      item.appendChild(evtBtnD);
       if(octIsGM){
         const delBtn=document.createElement('button'); delBtn.className='perso-compact-del'; delBtn.textContent='✕';
         delBtn.addEventListener('click',(e)=>{ e.stopPropagation(); state.dettes.splice(idx,1); saveState(); renderDettes(); });
-        const evtBtnD=document.createElement('button');
-        evtBtnD.textContent='⊕'; evtBtnD.title='Pousser vers les événements';
-        evtBtnD.style.cssText='background:none;border:1px solid #1a4a6e;color:#1a4a6e;border-radius:3px;padding:0 4px;cursor:pointer;margin-right:2px;';
-        evtBtnD.addEventListener('click',(e)=>{ e.stopPropagation(); pousserDetteVersEvenements(idx); });
-        item.appendChild(evtBtnD); item.appendChild(delBtn);
+        item.appendChild(delBtn);
       }
       item.addEventListener('click',()=>openDetteDetail(idx));
       list.appendChild(item);

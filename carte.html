@@ -517,7 +517,7 @@ function highlightStar(key){
 function applyRemoteState(saved){
   applyingRemote=true;
   try{
-    if(saved.slots) state.slots=saved.slots;
+    if(saved.slots){ state.slots=saved.slots; if(typeof renderEvtList==='function') renderEvtList(); }
     if(saved.hypotheses) state.hypotheses=saved.hypotheses;
     if(saved.couleurs) state.couleurs=saved.couleurs;
     if(saved.carte) state.carte=Object.assign({positions:{},players:{}},saved.carte);
@@ -1340,7 +1340,15 @@ function ensureSlot(key){
   };
   const s=state.slots[key];
   if(!Array.isArray(s.axes)) s.axes=[];
-  if(!s.poids) s.slots[key].poids=1;}
+  if(!s.poids) s.poids=1;
+  if(s.texte_rumeur===undefined) s.texte_rumeur='';
+  if(s.texte_indice===undefined) s.texte_indice='';
+  if(s.texte_fait===undefined) s.texte_fait='';
+  if(s.revele_rumeur===undefined) s.revele_rumeur='aucun';
+  if(s.revele_indice===undefined) s.revele_indice='aucun';
+  if(s.revele_fait===undefined) s.revele_fait='aucun';
+  if(s.lieu_key===undefined) s.lieu_key='';
+}
 function ensureHypo(key){if(!state.hypotheses[key])state.hypotheses[key]={};if(!state.hypotheses[key][playerId])state.hypotheses[key][playerId]={texte:'',partage:false};}
 
 // Aide CSS var manquante dans setAttribute
