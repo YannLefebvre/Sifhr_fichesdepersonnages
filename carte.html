@@ -455,10 +455,11 @@ document.getElementById('evt-list-tab').style.display='block';
           document.querySelectorAll('.gm-only').forEach(el=>el.style.display='inline-block');
           document.getElementById('btn-gen').style.display='inline-block';
         }
-        console.log('[carte] row.carte:', row.carte);
-        console.log('[carte] row.carte.slots:', row.carte?.slots);
-        if(row.carte&&Object.keys(row.carte).length>0) applyRemoteState(row.carte);
-        else buildMap();
+        if(row.carte&&typeof row.carte==='object'&&Object.keys(row.carte).length>0){
+          applyRemoteState(row.carte);
+        } else {
+          buildMap();
+        }
         renderEvtList();
         setTimeout(initPan,100);
         buildFondRosace();
@@ -518,15 +519,16 @@ function highlightStar(key){
 }
 
 function applyRemoteState(saved){
+  if(!saved||typeof saved!=='object'){ buildMap(); return; }
   applyingRemote=true;
   try{
-    if(saved.slots){ console.log('[applyRemoteState] slots:', Object.keys(saved.slots).length); state.slots=saved.slots; if(typeof renderEvtList==='function') renderEvtList(); }
-    if(saved.evtsMasques) state.evtsMasques=saved.evtsMasques;
-    if(saved.hypotheses) state.hypotheses=saved.hypotheses;
-    if(saved.couleurs) state.couleurs=saved.couleurs;
-    if(saved.carte) state.carte=Object.assign({positions:{},players:{}},saved.carte);
+    if(saved.slots!==undefined){ state.slots=saved.slots||{}; if(typeof renderEvtList==='function') renderEvtList(); }
+    if(saved.evtsMasques!==undefined) state.evtsMasques=saved.evtsMasques||{};
+    if(saved.hypotheses!==undefined) state.hypotheses=saved.hypotheses||{};
+    if(saved.couleurs!==undefined) state.couleurs=saved.couleurs||{};
+    if(saved.carte!==undefined) state.carte=Object.assign({positions:{},players:{}},saved.carte);
     buildMap();
-  }catch(e){console.error(e);}
+  }catch(e){console.error('[applyRemoteState]',e);}
   applyingRemote=false;
 }
 
