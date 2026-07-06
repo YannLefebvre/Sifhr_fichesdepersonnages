@@ -1134,7 +1134,7 @@ function openEvtPanel(key){
       niveauxContents[niv.id]=pane;
 
       const fp=state.slots[key];
-      const ta2=makeTextarea(fp[niv.field]||'',niv.hint);
+      const ta2=makeTa(fp[niv.field]||'',niv.hint);
       ta2.addEventListener('input',()=>{ensureSlot(key);state.slots[key][niv.field]=ta2.value;autoR(ta2);saveState();});
       setTimeout(()=>autoR(ta2),10);
 
