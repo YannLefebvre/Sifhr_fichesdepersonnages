@@ -108,6 +108,23 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--border);}
 
+
+  /* ── Overlays Sifhr ── */
+  .sifhr-overlay { position:fixed; inset:0; background:rgba(10,7,3,0.92);
+    display:none; align-items:center; justify-content:center; z-index:350; }
+  .sifhr-overlay.open { display:flex; }
+  .sifhr-overlay-box { background:var(--panel-bg); border:1px solid var(--accent);
+    border-radius:8px; width:min(680px,98vw); max-height:92vh;
+    display:flex; flex-direction:column; overflow:hidden; }
+  .sifhr-overlay-header { padding:.5rem .8rem; border-bottom:1px solid var(--border2);
+    display:flex; align-items:center; gap:.5rem; background:rgba(10,7,3,.5);
+    flex-shrink:0; }
+  .sifhr-overlay-title { font-family:'Cinzel',serif; font-size:.8rem;
+    color:var(--accent); flex:1; letter-spacing:.08em; }
+  .sifhr-overlay-close { background:none; border:none; font-size:1rem;
+    cursor:pointer; color:var(--ink3); }
+  .sifhr-overlay iframe { flex:1; border:none; width:100%; min-height:80vh; }
+
 </style>
 </head>
 <body>
@@ -548,6 +565,7 @@ function syncToOctogoneDebounced(){clearTimeout(_syncOctTimer);_syncOctTimer=set
 function renderStatusBar(){
   // Axes
   const pillsAxes=document.getElementById('pills-axes');
+  if(!pillsAxes) return; // status-bar supprimé — skip
   pillsAxes.innerHTML='';
   AXES.forEach(axe=>{
     const purC=Object.values(counterIndex).find(c=>c.name&&COUNTER_TO_OCT[c.name]?.axe===axe&&COUNTER_TO_OCT[c.name]?.pol==='w');
@@ -1652,5 +1670,10 @@ async function renderOctSimple(){
 <div id="sifhr-switch-notif" class="sifhr-switch-notif"></div>
 
 
+<!-- Pills cachés requis par renderStatusBar -->
+<div style="display:none">
+  <div id="status-bar"><div id="pills-axes"></div><div id="pills-apts"></div><div id="pills-vv"></div></div>
+  <div id="inventory-bar"></div>
+</div>
 </body>
 </html>
