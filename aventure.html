@@ -774,6 +774,27 @@ const SB_AV = {
 async function sifhrInitClones(ficheId, pw, aventureId){
   sifhrState.aventureId = aventureId;
 
+  // Résoudre la fiche env — priorité : JSON Moiki > fiche joueur > défaut
+  if (STORY_DATA._env?.fiche) {
+    sifhrState.envId = STORY_DATA._env.fiche;
+    sifhrState.envPw = STORY_DATA._env.pw || 'mdpj';
+  } else {
+    // Lire envFiche depuis la fiche joueur (fédération d'identité)
+    try {
+      const rEnv = await fetch(
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+      );
+      const dEnv = await rEnv.json();
+      const envFromFiche = dEnv[0]?.etat?.envFiche;
+      sifhrState.envId = envFromFiche || 'env-test';
+    } catch(e) {
+      sifhrState.envId = 'env-test';
+    }
+    sifhrState.envPw = 'mdpj';
+  }
+  console.log('[Sifhr] Env résolu:', sifhrState.envId);
+
   // Chercher une sauvegarde existante pour ce joueur + cette aventure
   const saveId = `${ficheId}_${aventureId}`;
   const existing = await SB_AV.get(saveId);
@@ -1019,7 +1040,7 @@ async function sifhrOpenPsycho(args, el, markerId){
 // ══════════════════════════════════════════════
 async function sifhrShowEvent(args, el, markerId){
   // Lire le slot depuis la fiche env
-  const envId = args.env || 'env-test';
+  const envId = args.env || (typeof sifhrState!=='undefined'&&sifhrState.envId) || 'env-test';
   try{
     const r = await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
       {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
@@ -1248,15 +1269,17 @@ function sifhrOpenOverlay(type, args={}){
   const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
   let url = '';
   if(type==='env'){
-    const envFiche = args.fiche || 'env-test';
+    const envFiche = args.fiche || (typeof sifhrState!=='undefined'&&sifhrState.envId) || 'env-test';
+    const envPw = args.pw || (typeof sifhrState!=='undefined'&&sifhrState.envPw) || 'mdpj';
     url = base+'environnement.html?fiche='+encodeURIComponent(envFiche)
-      +'&pw='+encodeURIComponent(args.pw||'mdpj')+'&player=1'
+      +'&pw='+encodeURIComponent(envPw)+'&player=1'
       +'&player_fiche='+encodeURIComponent(cloneId)
       +'&player_pw='+encodeURIComponent(_fichePw);
   } else if(type==='carte'){
-    const carteFiche = args.fiche || 'env-test';
+    const carteFiche = args.fiche || (typeof sifhrState!=='undefined'&&sifhrState.envId) || 'env-test';
+    const cartePw = args.pw || (typeof sifhrState!=='undefined'&&sifhrState.envPw) || 'mdpj';
     url = base+'carte.html?fiche='+encodeURIComponent(carteFiche)
-      +'&pw='+encodeURIComponent(args.pw||'mdpj');
+      +'&pw='+encodeURIComponent(cartePw);
   } else if(type==='oct'){
     url = base+'octogone.html?fiche='+encodeURIComponent(cloneId)
       +'&pw='+encodeURIComponent(_fichePw);
@@ -1981,7 +2004,7 @@ let _carteVoyageCallback = null; // résout quand le joueur choisit
 function openCarteDamas(opts = {}) {
   const base = window.location.href.replace(/[^/]*$/, '');
   const envId = (typeof sifhrState !== 'undefined' && sifhrState.envId) || 'env-test';
-  const pw = opts.pw || 'mdpj';
+  const pw = opts.pw || (typeof sifhrState!=='undefined'&&sifhrState.envPw) || 'mdpj';
 
   // Paramètres transmis à carte.html
   const params = new URLSearchParams({
