@@ -1678,6 +1678,22 @@ function renderEvtList(){
       +'<span class="evtl-titre">'+(s.titre||'(sans titre)')+'</span>'
       +'<span class="evtl-niv n'+niv+'">N'+niv+'</span>'
       +'<span class="evtl-rev '+revClass+'">'+revLabel+'</span>';
+    // Bouton ✕ dans l'en-tête — toujours visible
+    const btnX=document.createElement('button');
+    btnX.textContent='✕';
+    btnX.title=isGM?'Supprimer':'Masquer';
+    btnX.style.cssText='background:none;border:none;cursor:pointer;color:var(--ink3);font-size:.85rem;padding:0 2px;flex-shrink:0;margin-left:.2rem;';
+    btnX.onclick=(e)=>{
+      e.stopPropagation();
+      if(isGM){ evtListDelete(key); }
+      else {
+        if(!state.evtsMasques) state.evtsMasques={};
+        state.evtsMasques[key]=true;
+        saveState();
+        renderEvtList();
+      }
+    };
+    head.appendChild(btnX);
     const body=document.createElement('div'); body.className='evtl-body';
     const axes=(s.axes||[]).filter(Boolean);
     // Lieu et niveaux
