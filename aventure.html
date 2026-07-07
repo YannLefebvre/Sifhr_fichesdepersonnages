@@ -125,6 +125,49 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     cursor:pointer; color:var(--ink3); }
   .sifhr-overlay iframe { flex:1; border:none; width:100%; min-height:80vh; }
 
+
+  /* ── Fiche-bar responsive ── */
+  #fiche-bar {
+    display:none; position:fixed; bottom:0; left:0; right:0;
+    z-index:290; background:rgba(26,18,8,0.96);
+    border-top:1px solid var(--border);
+    padding:.3rem .2rem env(safe-area-inset-bottom,.3rem);
+    backdrop-filter:blur(8px);
+    flex-wrap:nowrap; overflow-x:auto; gap:.2rem;
+    justify-content:center; align-items:center;
+    scrollbar-width:none;
+  }
+  #fiche-bar::-webkit-scrollbar { display:none; }
+  .fb-btn {
+    display:flex; flex-direction:column; align-items:center; gap:1px;
+    background:none; border:1px solid var(--border);
+    border-radius:8px; cursor:pointer; color:var(--ink2);
+    padding:.35rem .5rem; flex-shrink:0;
+    transition:border-color .15s, color .15s;
+    min-width:48px;
+  }
+  .fb-btn:active, .fb-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .fb-icon { font-size:1.1rem; line-height:1; }
+  .fb-label { font-family:'Cinzel',serif; font-size:.5rem; letter-spacing:.04em;
+    white-space:nowrap; }
+  /* Sur desktop — barre flottante centrée */
+  @media (min-width:600px) {
+    #fiche-bar {
+      bottom:1.2rem; left:50%; right:auto;
+      transform:translateX(-50%);
+      border-radius:20px; border:1px solid var(--border);
+      padding:.35rem .6rem;
+      width:auto; max-width:90vw;
+    }
+    .fb-label { font-size:.58rem; }
+    .fb-btn { padding:.35rem .6rem; min-width:auto; }
+  }
+  /* Contenu principal — marge basse pour la fiche-bar mobile */
+  @media (max-width:599px) {
+    #sequence-wrap { padding-bottom:5rem; }
+    #choices-wrap  { padding-bottom:1rem; }
+  }
+
 </style>
 </head>
 <body>
@@ -239,17 +282,14 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 </div>
 
 <!-- Barre de boutons fiche -->
-<div id="fiche-bar" style="display:none;position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);
-  display:none;gap:.4rem;z-index:290;background:rgba(26,18,8,0.92);
-  border:1px solid var(--border);border-radius:20px;padding:.35rem .6rem;
-  backdrop-filter:blur(4px);">
-  <button onclick="openDes()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Lanceur de dés">🎲 Dés</button>
-  <button onclick="openOct()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Octogone">⬡ Octogone</button>
-  <button onclick="openApt()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Aptitudes">◈ Aptitudes</button>
-  <button onclick="openEquip()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Équipements">⚔ Équipements</button>
-  <button onclick="openHist()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Historique">📜 Historique</button>
-  <button onclick="openEvt()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Événements">📋 Événements</button>
-  <button onclick="openCarteDamas()" style="font-family:'Cinzel',serif;font-size:.68rem;padding:4px 10px;border:1px solid var(--border);border-radius:12px;background:none;color:var(--ink2);cursor:pointer;" title="Carte de Damas">🗺 Carte</button>
+<div id="fiche-bar">
+  <button class="fb-btn" onclick="openDes()" title="Lanceur de dés"><span class="fb-icon">🎲</span><span class="fb-label">Dés</span></button>
+  <button class="fb-btn" onclick="openOct()" title="Octogone"><span class="fb-icon">⬡</span><span class="fb-label">Octogone</span></button>
+  <button class="fb-btn" onclick="openApt()" title="Aptitudes"><span class="fb-icon">◈</span><span class="fb-label">Aptitudes</span></button>
+  <button class="fb-btn" onclick="openEquip()" title="Équipements"><span class="fb-icon">⚔</span><span class="fb-label">Équipements</span></button>
+  <button class="fb-btn" onclick="openHist()" title="Historique"><span class="fb-icon">📜</span><span class="fb-label">Historique</span></button>
+  <button class="fb-btn" onclick="openEvt()" title="Événements"><span class="fb-icon">📋</span><span class="fb-label">Événements</span></button>
+  <button class="fb-btn" onclick="openCarteDamas()" title="Carte"><span class="fb-icon">🗺</span><span class="fb-label">Carte</span></button>
 </div>
 
 <!-- Lightbox -->
@@ -818,25 +858,30 @@ async function sifhrInitClones(ficheId, pw, aventureId){
   }
 
   // Nouvelle partie — créer un clone de la fiche joueur
-  const cloneId = `${ficheId}_av_${aventureId}`;
-  const realRow = await SB.get(ficheId);
-  const cloneEtat = JSON.parse(JSON.stringify(realRow?.etat||{}));
-  // Marquer comme clone
-  cloneEtat._clone_of = ficheId;
-  cloneEtat._aventure_id = aventureId;
+  // Inclure le code session dans le clone pour multi-sauvegardes
+  const sessionCode = (typeof SESSION_FICHE_ID!=='undefined'&&SESSION_FICHE_ID)
+    ? SESSION_FICHE_ID.split('_').pop() : 'new';
+  const cloneId = ficheId+'_av_'+aventureId.slice(-8)+'_'+sessionCode;
 
-  // Créer le clone dans fiches
-  await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
-    method:'POST',
-    headers:{...SB_AV.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},
-    body: JSON.stringify({id:cloneId, mot_de_passe:pw, etat:cloneEtat})
-  });
-
-  sifhrState.personnages[ficheId] = cloneId;
-  sifhrState.personnageActif = cloneId;
-
-  console.log('[Sifhr] Clone créé:', cloneId);
-  // Sauvegarder immédiatement la nouvelle session
+  const existingClone = await SB.get(cloneId);
+  if(!existingClone){
+    const realRow = await SB.get(ficheId);
+    const realEtat = JSON.parse(JSON.stringify(realRow?.etat||{}));
+    const cloneEtat = Object.assign({},realEtat,{
+      tokens:{}, scores:{}, etatsSaturation:[],
+      _clone_of:ficheId, _aventure_id:aventureId, _session_code:sessionCode
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+      method:'POST',
+      headers:{...SB_AV.hdrs,'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({id:cloneId,mot_de_passe:pw,etat:cloneEtat})
+    });
+    console.log('[Sifhr] Nouveau clone créé:',cloneId);
+  } else {
+    console.log('[Sifhr] Clone existant:',cloneId);
+  }
+  sifhrState.personnages[ficheId]=cloneId;
+  sifhrState.personnageActif=cloneId;
   await sifhrSaveState();
 }
 
@@ -885,7 +930,7 @@ function sifhrParseMarkers(html){
 function sifhrMarkerIcon(type){
   const icons = {dice:'🎲', psycho:'⚖', event:'📋', token:'⚪',
     dette:'💰', etat:'⚡', switch:'🔄', check:'🔍', env:'🌐', carte:'🗺',
-    temps:'⏳', pause:'◉', voyage:'🗺'};
+    temps:'⏳', pause:'◉', voyage:'🗺', ouvrir:'▶'};
   return icons[type]||'✦';
 }
 function sifhrMarkerLabel(type, args){
@@ -901,7 +946,12 @@ function sifhrMarkerLabel(type, args){
   if(type==='carte') return 'Ouvrir la carte';
   if(type==='temps') return 'Le temps passe'+(args.delta?' ('+args.delta+(args.unite?' '+args.unite:'')+')'  :'');
   if(type==='pause') return 'Fenêtre narrative';
-  if(type==='voyage') return 'Choisir une destination'+(args.lieux?' ('+args.lieux.split(',').length+' lieux)':'');
+  if(type==='voyage') return 'Choisir une destination'
+  if(type==='ouvrir' && args.panneau){
+    const noms={octogone:'Octogone',aptitudes:'Aptitudes',historique:'Historique',
+      equipement:'Équipements',evenements:'Événements',carte:'Carte'};
+    return 'Ouvrir : '+(noms[args.panneau]||args.panneau);
+  }+(args.lieux?' ('+args.lieux.split(',').length+' lieux)':'');
   return type;
 }
 function sifhrMarkerHint(type, args){
@@ -931,6 +981,7 @@ async function sifhrHandleMarker(el){
     case 'temps':   await sifhrApplyTemps(args, el, markerId); break;
     case 'pause':   await sifhrHandlePause(args, el, markerId); break;
     case 'voyage':  await sifhrOpenVoyage(args, el, markerId); break;
+    case 'ouvrir':  sifhrOuvrirPanneau(args, el, markerId); break;
     case 'env':     sifhrOpenOverlay('env', args); break;
     case 'carte':   sifhrOpenOverlay('carte', args); break;
   }
@@ -1473,11 +1524,22 @@ function startRealtime(){
 })();
 
 
+
+// ── Constantes aptitudes (depuis octogone.html) ──
+const APTITUDE_KEYS = ['se_deplacer','se_mesurer','occulter','imaginer','fabriquer','devoiler','resister','ravir'];
+const APT_DISPLAY_NAMES = {
+  'se_deplacer':'Se déplacer','se_mesurer':'Se mesurer','occulter':'Occulter',
+  'imaginer':'Imaginer','fabriquer':'Fabriquer','devoiler':'Dévoiler',
+  'resister':'Résister','ravir':'Ravir'
+};
+const APT_MAX_SQUARES = 5; // 5 cases par aptitude
+
 async function openApt(){
   document.getElementById('apt-overlay').style.display='flex';
   const _activeId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)||SESSION_FICHE_ID||FICHE_ID;
   const row=await SB.get(_activeId);
-  if(!row||!row.etat)return;
+  if(!row||!row.etat){ console.log("[openApt] no etat for", _activeId); return; }
+  console.log("[openApt] etat keys:", Object.keys(row.etat));
   // aptitudes = {se_deplacer_0: true, se_deplacer_1: true, ...}
   // Calculer le score de chaque aptitude en comptant les cases cochées
   const aptRaw=row.etat.aptitudes||{};
@@ -1497,7 +1559,7 @@ async function openApt(){
   });
   const cont=document.getElementById('fiche-apt-content');
   cont.innerHTML='';
-  const aptKeys=Object.keys(APT_DISPLAY_NAMES);
+  const aptKeys=APTITUDE_KEYS;
   let hasAny=false;
   aptKeys.forEach(k=>{
     const score=scores[k]||0;
@@ -2241,6 +2303,22 @@ function imgSetExtUrl(imgId) {
   STORY_DATA._imageUrls[imgId] = url;
   const st = document.getElementById('img-status-' + imgId);
   if (st) { st.textContent = url ? '✓ URL externe enregistrée' : '✗ URL effacée'; st.style.color = '#6aaa6a'; }
+}
+
+
+// ── Marqueur [[sifhr:ouvrir:panneau=...]] ──
+function sifhrOuvrirPanneau(args, el, markerId) {
+  const p = args.panneau || '';
+  const fns = {
+    octogone:   ()=>openOct(),
+    aptitudes:  ()=>openApt(),
+    historique: ()=>openHist(),
+    equipement: ()=>openEquip(),
+    evenements: ()=>openEvt(),
+    carte:      ()=>openCarteDamas(),
+  };
+  if (fns[p]) fns[p]();
+  sifhrMarkDone(el, markerId);
 }
 
 </script>
