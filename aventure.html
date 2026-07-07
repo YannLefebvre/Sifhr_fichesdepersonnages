@@ -1126,20 +1126,38 @@ function sifhrShowDiceResult(dice){
 }
 
 function sifhrBranchDice(args, dice){
-  // Brancher selon seuil ou prouesse
-  const seuil = parseInt(args.seuil)||1;
+  const r = dice.reussites || 0;
   let targetSeq = null;
-  if(dice.prouesse && args.onprouesse) targetSeq = args.onprouesse;
-  else if(dice.echecCritique && args.onecheccritique) targetSeq = args.onecheccritique;
-  else if(dice.reussites >= seuil && args.onsucces) targetSeq = args.onsucces;
-  else if(dice.reussites < seuil && args.onechec) targetSeq = args.onechec;
 
-  if(targetSeq){
-    sifhrForceGoTo(targetSeq);
-  } else {
-    // Pas de branchement — réafficher les choix Moiki
-    sifhrShowChoices();
+  // ── Option B : stocker le résultat dans un compteur Moiki ──
+  if(args.compteur){
+    const ctr = counterIndex[args.compteur];
+    if(ctr){
+      const old = gameState.counters[ctr.id]||0;
+      gameState.counters[ctr.id] = r;
+      if(old !== r) showChangeNotif([{type:'counter',name:ctr.name,old,val:r}]);
+    }
   }
+  // Stocker aussi dans gameState.lastDice pour accès via check:lastdice
+  gameState.lastDiceReussites = r;
+  gameState.lastDiceProuesse  = dice.prouesse  || false;
+  gameState.lastDiceEchec     = dice.echecCritique || false;
+
+  // ── Option A : seuils multiples on0=, on1=, on2=, on3= ──
+  const onN = args['on'+r];
+  if(onN){ targetSeq = onN; }
+
+  // ── Branchements standard (prouesse, seuil, succès/échec) ──
+  if(!targetSeq){
+    const seuil = parseInt(args.seuil)||1;
+    if(dice.prouesse           && args.onprouesse)      targetSeq = args.onprouesse;
+    else if(dice.echecCritique && args.onecheccritique) targetSeq = args.onecheccritique;
+    else if(r >= seuil         && args.onsucces)        targetSeq = args.onsucces;
+    else if(r < seuil          && args.onechec)         targetSeq = args.onechec;
+  }
+
+  if(targetSeq){ sifhrForceGoTo(targetSeq); }
+  else { sifhrShowChoices(); }
 }
 
 function sifhrForceGoTo(seqId){
@@ -1385,6 +1403,16 @@ async function sifhrCheck(args, el, markerId){
     result = !!etats.find(e=>e.nom===args.nom);
   } else if(args.flag){
     result = !!gameState.flags[args.flag];
+  } else if(args.lastdice){
+    // Vérifier le nombre de réussites du dernier lancer
+    const lastR = gameState.lastDiceReussites||0;
+    const op = args.op||'gte'; // gte=>=, gt=>, eq===, lt=<, lte=<=
+    const val = parseInt(args.val||args.min)||1;
+    if(op==='gte') result = lastR >= val;
+    else if(op==='gt')  result = lastR > val;
+    else if(op==='eq')  result = lastR === val;
+    else if(op==='lt')  result = lastR < val;
+    else if(op==='lte') result = lastR <= val;
   }
 
   sifhrMarkDone(el, markerId);
