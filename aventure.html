@@ -886,18 +886,20 @@ async function sifhrInitClones(ficheId, pw, aventureId){
 }
 
 async function sifhrSaveState(){
-  if(!FICHE_ID || !sifhrState.aventureId) return; // pas encore initialisé
-  const saveId = FICHE_ID+'_'+sifhrState.aventureId;
+  if(!FICHE_ID || !sifhrState.aventureId) return;
+  // Inclure le code session dans l'id de sauvegarde
+  const sessionSuffix = (SESSION_FICHE_ID||'').split('-').pop()||'default';
+  const saveId = FICHE_ID+'_'+sifhrState.aventureId+'_'+sessionSuffix;
   try{
     const ok = await SB_AV.upsert({
       id: saveId,
       joueur_id: FICHE_ID,
       aventure_id: sifhrState.aventureId,
-      game_state: gameState,           // JSONB — objet direct
-      sifhr_state: sifhrState,         // JSONB — objet direct
+      game_state: gameState,
+      sifhr_state: sifhrState,
       updated_at: new Date().toISOString()
     });
-    if(ok) console.log('[Sifhr] Sauvegardé dans aventures:', saveId);
+    if(ok) console.log('[Sifhr] Sauvegardé:', saveId);
   }catch(e){
     console.error('[Sifhr] sifhrSaveState error:', e);
   }
@@ -1474,13 +1476,7 @@ function scheduleSave(){
   saveTimer=setTimeout(async()=>{
     const ind=document.getElementById('save-indicator');
     ind.textContent='Sauvegarde…';ind.classList.add('show');
-    const saveId=SESSION_FICHE_ID||FICHE_ID;
     try{
-      await SB.patch(saveId,{
-        id:saveId,
-        mot_de_passe:'aventure',
-        aventure_state:JSON.stringify(gameState)
-      });
       await sifhrSaveState();
       ind.textContent='Sauvegardé ✓';
       setTimeout(()=>ind.classList.remove('show'),1500);
@@ -1544,6 +1540,8 @@ async function openApt(){
   // Calculer le score de chaque aptitude en comptant les cases cochées
   const aptRaw=row.etat.aptitudes||{};
   const aptTraits=row.etat.aptTraits||{};
+  console.log('[openApt] aptRaw keys:', Object.keys(aptRaw).slice(0,5));
+  console.log('[openApt] aptTraits keys:', Object.keys(aptTraits).slice(0,5));
   // Grouper par aptitude
   const scores={};
   Object.entries(aptRaw).forEach(([key,val])=>{
@@ -1576,8 +1574,10 @@ async function openApt(){
     const cases=document.createElement('div');cases.style.cssText='display:flex;gap:3px;';
     for(let i=0;i<APT_MAX_SQUARES;i++){
       const sq=document.createElement('span');
-      sq.style.cssText='width:10px;height:10px;border-radius:2px;border:1px solid #6a4a2a;'
-        +(i<score?'background:#e8d5a0;':'background:#1a1208;');
+      sq.style.cssText='width:12px;height:12px;border-radius:2px;'
+        +(i<score
+          ?'background:#e8d5a0;border:1px solid #c8a060;box-shadow:0 0 4px rgba(200,160,96,0.4);'
+          :'background:#2a1e10;border:1px solid #4a3218;');
       cases.appendChild(sq);
     }
     head.appendChild(name);head.appendChild(cases);div.appendChild(head);
