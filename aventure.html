@@ -404,7 +404,7 @@ const COUNTER_TO_SCORE = {
 
 // ── État ──
 let FICHE_ID='', ficheEtat=null, saveTimer=null, _syncOctTimer=null;
-let gameState = {tempsEcoule:0,chronoDone:{},counters:{},flags:{},inventory:[],currentSeq:'',history:[]};
+let gameState = {tempsEcoule:0,chronoDone:{},navHistory:[],counters:{},flags:{},inventory:[],currentSeq:'',history:[]};
 
 const seqIndex={}, counterIndex={}, flagIndex={}, assetIndex={};
 
@@ -882,7 +882,18 @@ let _nextSeq=null;
 function renderSequence(seqId){
   const seq=seqIndex[seqId];
   if(!seq){console.error('Séquence introuvable:',seqId);return;}
+  // Historique navigation (pour bouton Retour)
+  if(typeof currentSeq!=='undefined'&&currentSeq&&currentSeq!==seqId){
+    if(!gameState.navHistory) gameState.navHistory=[];
+    gameState.navHistory.push(currentSeq);
+    if(gameState.navHistory.length>20) gameState.navHistory.shift();
+  }
   gameState.currentSeq=seqId;
+  // Mettre à jour bouton retour
+  setTimeout(()=>{
+    const _btnR=document.getElementById('btn-retour');
+    if(_btnR) _btnR.style.display=(gameState.navHistory&&gameState.navHistory.length>0)?'inline-block':'none';
+  },50);
   if(!gameState.history||gameState.history[gameState.history.length-1]!==seqId)
     (gameState.history=gameState.history||[]).push(seqId);
   _nextSeq=seq.next||null;
@@ -1244,13 +1255,13 @@ async function sifhrOpenPsycho(args, el, markerId){
   const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
   const base = window.location.href.replace(/[^/]*$/,'');
   const url = base+'octogone.html?fiche='+encodeURIComponent(cloneId)
-    +'&pw='+encodeURIComponent(_fichePw)+'&view=psycho'
+    +'&pw='+encodeURIComponent(_fichePw)+'&view=vv'
     +(args.axe?'&axe='+encodeURIComponent(args.axe):'');
   document.getElementById('sifhr-oct-iframe').src = url;
+  const title=document.querySelector('#sifhr-oct-overlay .sifhr-overlay-title');
+  if(title) title.textContent='⚖ Psychomachie'+(args.axe?' — '+args.axe:'');
   document.getElementById('sifhr-oct-overlay').classList.add('open');
-
-  // Résultat reçu via postMessage PSYCHO_RESULT
-  _sifhrDicePending = {args, el, markerId, type:'psycho'};
+  _sifhrDicePending={args,el,markerId,type:'psycho'};
 }
 
 // ══════════════════════════════════════════════
@@ -1649,15 +1660,27 @@ function _renderEnding(seq){
   syncToOctogone();
 }
 
-function restartAdventure(){
+async function restartAdventure(){
   if(!confirm('Commencer une nouvelle partie ? Votre progression actuelle sera conservée sous le code «'+SESSION_FICHE_ID+'».')) return;
-  // Créer un nouveau code session
-  const newCode=genSessionCode();
-  SESSION_FICHE_ID='aventure-'+FICHE_ID+'-'+newCode;
-  document.getElementById('session-code').textContent=SESSION_FICHE_ID;
-  // Réinitialiser l'état
-  initIndexes();syncFromOctogone();gameState.history=[];
-  renderSequence(STORY_DATA.firstSequence);renderStatusBar();
+  // Nouveau code session → nouveau clone
+  const newCode = genSessionCode();
+  SESSION_FICHE_ID = 'aventure-'+FICHE_ID+'-'+newCode;
+  document.getElementById('session-code').textContent = SESSION_FICHE_ID;
+  // Réinitialiser les compteurs Moiki aux valeurs par défaut du JSON
+  initIndexes();
+  // Créer le nouveau clone depuis la fiche réelle
+  const aventureId = STORY_DATA._id || 'av_default';
+  await sifhrInitClones(FICHE_ID, _fichePw, aventureId);
+  // Remettre à zéro l'historique et la chrono
+  gameState.history = [];
+  gameState.tempsEcoule = 0;
+  gameState.desDevoyes = 0;
+  gameState.lastDiceReussites = 0;
+  // Resynchroniser depuis le nouveau clone vierge
+  const cloneRow = await SB.get(sifhrState.personnageActif);
+  if(cloneRow) { ficheEtat = cloneRow.etat; syncFromOctogone(); }
+  renderSequence(STORY_DATA.firstSequence);
+  renderStatusBar();
 }
 
 // ── Sauvegarde ──
@@ -2754,6 +2777,17 @@ async function sifhrRetirer(args, el, markerId) {
   } catch(e) { console.error('[sifhrRetirer]', e); }
 }
 
+
+function retourParagraphe(){
+  const hist=gameState.navHistory||[];
+  if(!hist.length)return;
+  const prev=hist.pop();
+  gameState.navHistory=hist;
+  const tmpCurrent=currentSeq;
+  currentSeq="";
+  renderSequence(prev);
+  scheduleSave();
+}
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
 
