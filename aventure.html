@@ -1540,19 +1540,21 @@ async function openApt(){
   // Calculer le score de chaque aptitude en comptant les cases cochées
   const aptRaw=row.etat.aptitudes||{};
   const aptTraits=row.etat.aptTraits||{};
-  console.log('[openApt] aptRaw keys:', Object.keys(aptRaw).slice(0,5));
-  console.log('[openApt] aptTraits keys:', Object.keys(aptTraits).slice(0,5));
-  // Grouper par aptitude
+  // Format réel : clé = '{aptIndex}_{squareIndex}' ex: '0_0' = Se déplacer case 0
+  // APTITUDE_KEYS[aptIndex] donne la clé textuelle
   const scores={};
   Object.entries(aptRaw).forEach(([key,val])=>{
     if(!val) return;
-    // Format: aptKey_squareIndex
     const parts=key.split('_');
-    // Reconstituer la clé aptitude (peut contenir des _)
-    const sqIdx=parts[parts.length-1];
-    const aptKey=parts.slice(0,-1).join('_');
-    if(!isNaN(sqIdx)){
-      scores[aptKey]=(scores[aptKey]||0)+1;
+    if(parts.length===2 && !isNaN(parts[0]) && !isNaN(parts[1])){
+      // Nouveau format numérique : {ai}_{si}
+      const aptKey=APTITUDE_KEYS[parseInt(parts[0])];
+      if(aptKey) scores[aptKey]=(scores[aptKey]||0)+1;
+    } else {
+      // Ancien format textuel : 'se_deplacer_0'
+      const sqIdx=parts[parts.length-1];
+      const aptKey=parts.slice(0,-1).join('_');
+      if(!isNaN(sqIdx)) scores[aptKey]=(scores[aptKey]||0)+1;
     }
   });
   const cont=document.getElementById('fiche-apt-content');
