@@ -1022,6 +1022,14 @@ async function sifhrHandleMarker(el){
   const args = JSON.parse(decodeURIComponent(el.dataset.sifhrArgs));
   const markerId = el.dataset.sifhrId;
 
+  // Masquer les choix Moiki si ce marqueur peut brancher
+  const BRANCHANTS = ['dice','psycho','etat','check','voyage','pause'];
+  const peutBrancher = BRANCHANTS.includes(type) && (
+    args.onsucces||args.onechec||args.onprouesse||
+    args.ontrue||args.onfalse||args.onchoisir||true
+  );
+  if(peutBrancher) sifhrHideChoices();
+
   switch(type){
     case 'dice':    await sifhrOpenDice(args, el, markerId); break;
     case 'psycho':  await sifhrOpenPsycho(args, el, markerId); break;
@@ -1127,10 +1135,11 @@ function sifhrBranchDice(args, dice){
   else if(dice.reussites < seuil && args.onechec) targetSeq = args.onechec;
 
   if(targetSeq){
-    // Désactiver tous les liens Moiki et forcer ce branchement
     sifhrForceGoTo(targetSeq);
+  } else {
+    // Pas de branchement — réafficher les choix Moiki
+    sifhrShowChoices();
   }
-  // Si pas de branchement → les choix Moiki normaux restent actifs
 }
 
 function sifhrForceGoTo(seqId){
@@ -1277,7 +1286,8 @@ async function sifhrHandleEtat(args, el, markerId){
     const found = etats.find(e=>e.nom===args.nom);
     const targetSeq = found ? args.ontrue : args.onfalse;
     sifhrMarkDone(el, markerId);
-    if(targetSeq) sifhrForceGoTo(targetSeq);
+    if(targetSeq){ sifhrForceGoTo(targetSeq); }
+    else { sifhrShowChoices(); }
     return;
   }
 
@@ -1379,7 +1389,8 @@ async function sifhrCheck(args, el, markerId){
 
   sifhrMarkDone(el, markerId);
   const targetSeq = result ? args.ontrue : args.onfalse;
-  if(targetSeq) sifhrForceGoTo(targetSeq);
+  if(targetSeq){ sifhrForceGoTo(targetSeq); }
+  else { sifhrShowChoices(); }
 }
 
 // ══════════════════════════════════════════════
@@ -2492,6 +2503,17 @@ function sifhrShowPsychoResult(psycho) {
   wrap.appendChild(div);
 }
 
+
+
+// ── Masquage des choix Moiki pendant un marqueur Sifhr ──
+function sifhrHideChoices() {
+  const w = document.getElementById('choices-wrap');
+  if (w) w.style.visibility = 'hidden';
+}
+function sifhrShowChoices() {
+  const w = document.getElementById('choices-wrap');
+  if (w) w.style.visibility = '';
+}
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
 
