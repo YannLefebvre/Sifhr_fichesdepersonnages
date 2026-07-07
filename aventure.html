@@ -982,7 +982,7 @@ function sifhrParseMarkers(html){
 function sifhrMarkerIcon(type){
   const icons = {dice:'🎲', psycho:'⚖', event:'📋', token:'⚪',
     dette:'💰', etat:'⚡', switch:'🔄', check:'🔍', env:'🌐', carte:'🗺',
-    temps:'⏳', pause:'◉', voyage:'🗺', ouvrir:'▶', pushevent:'📌'};
+    temps:'⏳', pause:'◉', voyage:'🗺', ouvrir:'▶', pushevent:'📌', donner:'🎁', retirer:'↩'};
   return icons[type]||'✦';
 }
 function sifhrMarkerLabel(type, args){
@@ -1000,6 +1000,11 @@ function sifhrMarkerLabel(type, args){
   if(type==='pause') return 'Fenêtre narrative';
   if(type==='voyage') return 'Choisir une destination'
   if(type==='pushevent') return 'Événement : '+(args.titre||'sans titre');
+  if(type==='donner') {
+    const t={'trait':'Trait','equipement':'Équipement','artefact':'Artefact','prodige':'Prodige'};
+    return 'Recevoir : '+(args.titre||args.id||args.type||'item');
+  }
+  if(type==='retirer') return 'Retirer : '+(args.titre||args.id||args.type||'item');
   if(type==='ouvrir' && args.panneau){
     const noms={octogone:'Octogone',aptitudes:'Aptitudes',historique:'Historique',
       equipement:'Équipements',evenements:'Événements',carte:'Carte'};
@@ -1043,6 +1048,8 @@ async function sifhrHandleMarker(el){
     case 'pause':   await sifhrHandlePause(args, el, markerId); break;
     case 'voyage':  await sifhrOpenVoyage(args, el, markerId); break;
     case 'pushevent': await sifhrPushEvent(args, el, markerId); break;
+    case 'donner':    await sifhrDonner(args, el, markerId); break;
+    case 'retirer':   await sifhrRetirer(args, el, markerId); break;
     case 'ouvrir':  sifhrOuvrirPanneau(args, el, markerId); break;
     case 'env':     sifhrOpenOverlay('env', args); break;
     case 'carte':   sifhrOpenOverlay('carte', args); break;
@@ -2542,6 +2549,127 @@ function sifhrShowChoices() {
   const w = document.getElementById('choices-wrap');
   if (w) w.style.visibility = '';
 }
+
+// ══════════════════════════════════════════════════════════
+//   MARQUEUR [[sifhr:donner:type=trait:titre=...:texte=...]]
+//   ou      [[sifhr:donner:type=trait:id=nom_dans_bib:niveau=bonus-2]]
+//   Ajoute un trait/équipement/artefact/prodige dans la fiche clone
+// ══════════════════════════════════════════════════════════
+async function sifhrDonner(args, el, markerId) {
+  const type    = args.type || 'trait'; // trait|equipement|artefact|prodige
+  const cloneId = (typeof sifhrState!=='undefined'&&sifhrState.personnageActif)||SESSION_FICHE_ID||FICHE_ID;
+
+  try {
+    // Charger la fiche clone
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    const d = await r.json();
+    const etat = JSON.parse(JSON.stringify(d[0]?.etat||{}));
+
+    // ── Construire l'item à ajouter ──
+    let item = null;
+
+    if(args.id) {
+      // Chercher dans la bibliothèque de la fiche env
+      const envId = (typeof sifhrState!=='undefined'&&sifhrState.envId)||'env-test';
+      const rEnv = await fetch(
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+      );
+      const dEnv = await rEnv.json();
+      const bib  = dEnv[0]?.etat?.bibliotheque_ideaux||{};
+      // La bib est un objet {nom: itemData} — chercher par nom ou id
+      const bibItem = bib[args.id]
+        || Object.values(bib).find(it=>it.nom===args.id||it.id===args.id);
+      if(bibItem) {
+        item = {
+          title:    bibItem.nom||args.id,
+          text:     bibItem.descriptif||'',
+          level:    args.niveau||null,
+          levelType:args.niveau||(bibItem.type==='Positif'?'bonus-1':'malus-1'),
+          locked:   false,
+        };
+      }
+    }
+
+    // Si pas trouvé en bib ou pas d'id → utiliser titre/texte directs
+    if(!item) {
+      item = {
+        title:    decodeURIComponent(args.titre||'').replace(/\+/g,' ')||'Item',
+        text:     decodeURIComponent(args.texte||'').replace(/\+/g,' '),
+        level:    args.niveau||null,
+        levelType:args.niveau||null,
+        bm:       parseInt(args.bm)||0,
+        locked:   false,
+      };
+    }
+
+    // ── Trouver le bon tableau et le premier slot vide ──
+    const TABLES = {
+      trait:      {key:'traits',     empty:t=>!t.title&&!t.text, max:10},
+      equipement: {key:'equipement', empty:t=>!t.title&&!t.text, max:6},
+      artefact:   {key:'artefacts',  empty:t=>!t.title&&!t.text, max:5},
+      prodige:    {key:'prodiges',   empty:t=>!t.title&&!t.text, max:5},
+    };
+    const table = TABLES[type];
+    if(!table) { console.warn('[sifhrDonner] type inconnu:', type); return; }
+
+    if(!etat[table.key]) {
+      etat[table.key] = Array.from({length:table.max}, ()=>({title:'',text:'',bm:0,level:null,levelType:null}));
+    }
+    const emptyIdx = etat[table.key].findIndex(table.empty);
+    if(emptyIdx === -1) {
+      sifhrShowNotif('⚠ Plus de place pour '+type);
+      sifhrMarkDone(el, markerId);
+      return;
+    }
+    etat[table.key][emptyIdx] = Object.assign(etat[table.key][emptyIdx], item);
+
+    // Sauvegarder
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body: JSON.stringify({etat})
+    });
+    sifhrMarkDone(el, markerId);
+    sifhrShowNotif('🎁 '+item.title+' ajouté à vos '+type+'s');
+  } catch(e) {
+    console.error('[sifhrDonner]', e);
+  }
+}
+
+// ── Retirer un trait/équipement/artefact/prodige par titre ──
+async function sifhrRetirer(args, el, markerId) {
+  const type    = args.type || 'trait';
+  const titre   = decodeURIComponent(args.titre||'').replace(/\+/g,' ');
+  const cloneId = (typeof sifhrState!=='undefined'&&sifhrState.personnageActif)||SESSION_FICHE_ID||FICHE_ID;
+
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    const d = await r.json();
+    const etat = JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    const KEYS = {trait:'traits',equipement:'equipement',artefact:'artefacts',prodige:'prodiges'};
+    const key  = KEYS[type];
+    if(!key||!etat[key]) { sifhrMarkDone(el,markerId); return; }
+    const idx  = etat[key].findIndex(t=>t.title===titre);
+    if(idx>=0) etat[key][idx] = {title:'',text:'',bm:0,level:null,levelType:null};
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+    sifhrMarkDone(el, markerId);
+    sifhrShowNotif('↩ '+titre+' retiré');
+  } catch(e) { console.error('[sifhrRetirer]', e); }
+}
+
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
 
