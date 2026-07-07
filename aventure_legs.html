@@ -403,6 +403,15 @@ const COUNTER_TO_SCORE = {
 };
 
 // ── État ──
+
+// ── URL de base — robuste sur Vercel sans extension ──
+function getBase(){
+  // window.location.pathname = '/aventure_legs' ou '/aventure_legs.html'
+  // On remonte au dossier racine en supprimant le dernier segment
+  const path = window.location.pathname; // ex: '/aventure_legs'
+  const dir  = path.substring(0, path.lastIndexOf('/') + 1); // ex: '/'
+  return window.location.origin + dir; // ex: 'https://site.vercel.app/'
+}
 let FICHE_ID='', _REAL_FICHE_ID='', ficheEtat=null, saveTimer=null, _syncOctTimer=null;
 let gameState = {tempsEcoule:0,chronoDone:{},navHistory:[],counters:{},flags:{},inventory:[],currentSeq:'',history:[]};
 
@@ -512,7 +521,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){
 let _fichePw='';
 function openDes(){
   const cloneId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)||SESSION_FICHE_ID||FICHE_ID;
-  const base=window.location.href.replace(/[^/]*$/,'');
+  const base=getBase();
   const url=base+'octogone.html?fiche='+encodeURIComponent(cloneId)
     +'&pw='+encodeURIComponent(_fichePw)
     +'&view=des&minimal=1';
@@ -1152,7 +1161,7 @@ let _sifhrDicePending = null; // {args, el, markerId, resolve}
 
 async function sifhrOpenDice(args, el, markerId){
   const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
-  const base = window.location.href.replace(/[^/]*$/,'');
+  const base=getBase();
   const url = base+'octogone.html?fiche='+encodeURIComponent(cloneId)
     +'&pw='+encodeURIComponent(_fichePw)+'&view=des';
 
@@ -1261,7 +1270,7 @@ function sifhrForceGoTo(seqId){
 // ══════════════════════════════════════════════
 async function sifhrOpenPsycho(args, el, markerId){
   const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
-  const base = window.location.href.replace(/[^/]*$/,'');
+  const base=getBase();
   const url = base+'octogone.html?fiche='+encodeURIComponent(cloneId)
     +'&pw='+encodeURIComponent(_fichePw)+'&view=vv'
     +(args.axe?'&axe='+encodeURIComponent(args.axe):'');
@@ -1531,7 +1540,7 @@ async function sifhrCheck(args, el, markerId){
 //   OVERLAYS (ENV, CARTE, OCT complet)
 // ══════════════════════════════════════════════
 function sifhrOpenOverlay(type, args={}){
-  const base = window.location.href.replace(/[^/]*$/,'');
+  const base=getBase();
   const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
   let url = '';
   if(type==='env'){
@@ -1847,7 +1856,7 @@ function openOctFull(){
   // Ouvrir la fiche complète dans un overlay séparé
   const cloneId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)
     ||SESSION_FICHE_ID||FICHE_ID;
-  const base=window.location.href.replace(/[^/]*$/,'');
+  const base=getBase();
   const url=base+'octogone.html?fiche='+encodeURIComponent(cloneId)
     +'&pw='+encodeURIComponent(_fichePw);
   window.open(url,'_blank');
@@ -2036,8 +2045,7 @@ function openFicheComplete(){
   const cloneId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)
     || (_REAL_FICHE_ID||FICHE_ID);
   // Construire la base URL proprement (sans le nom du fichier .html)
-  const base=window.location.origin
-    + window.location.pathname.replace(/\/[^/]*$/, '/');
+  const base=getBase();
   console.log('[openFicheComplete] cloneId:', cloneId, 'base:', base);
   window.open(base+'octogone.html?fiche='+encodeURIComponent(cloneId)+'&pw='+encodeURIComponent(_fichePw),'_blank');
 }
@@ -2367,7 +2375,7 @@ let _carteVoyageCallback = null; // résout quand le joueur choisit
 
 // ── CAS 3 : Ouvrir la carte librement ──
 function openCarteDamas(opts = {}) {
-  const base = window.location.href.replace(/[^/]*$/, '');
+  const base = getBase();
   const envId = (typeof sifhrState !== 'undefined' && sifhrState.envId) || 'env-test';
   const pw = opts.pw || (typeof sifhrState!=='undefined'&&sifhrState.envPw) || 'mdpj';
 
