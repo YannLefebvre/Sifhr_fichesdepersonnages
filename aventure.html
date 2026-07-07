@@ -358,6 +358,17 @@ const APT_NAME_TO_KEY = {
 };
 const VV_COUNTERS = ['Force','Envie','Charité','Luxure','Loyauté','Malignité',
   'Prudence','Acédie','Tempérance','Lâcheté','Chasteté','Avarice','Foi','Félonie','Espérance','Témérité'];
+// Mapping nom compteur → clé score octogone {axe}_{0=vertu,1=vice}
+const COUNTER_TO_SCORE = {
+  'Force':'feu_0',     'Lâcheté':'feu_1',
+  'Charité':'bile_j_0','Luxure':'bile_j_1',
+  'Loyauté':'terre_0', 'Malignité':'terre_1',
+  'Prudence':'bile_n_0','Acédie':'bile_n_1',
+  'Tempérance':'eau_0','Envie':'eau_1',
+  'Chasteté':'flegme_0','Avarice':'flegme_1',
+  'Foi':'air_0',       'Félonie':'air_1',
+  'Espérance':'sang_0','Témérité':'sang_1',
+};
 
 // ── État ──
 let FICHE_ID='', ficheEtat=null, saveTimer=null, _syncOctTimer=null;
@@ -592,10 +603,16 @@ function syncFromOctogone(){
 
 // ── Sync Moiki → Octogone ──
 async function syncToOctogone(){
-  if(!ficheEtat) return;
-  const etat=JSON.parse(JSON.stringify(ficheEtat));
+  // Cible : la fiche clone active (pas la fiche réelle)
+  const targetId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)
+    ||SESSION_FICHE_ID||FICHE_ID;
+  const row=await SB.get(targetId);
+  if(!row) return;
+  const etat=JSON.parse(JSON.stringify(row.etat||{}));
   if(!etat.tokens) etat.tokens={};
   AXES.forEach(axe=>{if(!etat.tokens[axe])etat.tokens[axe]=['empty','empty','empty'];});
+
+  // Répercuter les compteurs octogone (jetons)
   Object.entries(COUNTER_TO_OCT).forEach(([cName,{axe,pol}])=>{
     const c=counterIndex[cName];if(!c)return;
     const val=Math.max(0,Math.min(3,gameState.counters[c.id]||0));
@@ -611,8 +628,34 @@ async function syncToOctogone(){
     }
     etat.tokens[axe]=newArr;
   });
+
+  // Répercuter les vertus/vices (scores)
+  if(!etat.scores) etat.scores={};
+  VV_COUNTERS.forEach(cName=>{
+    const c=counterIndex[cName];if(!c)return;
+    const val=gameState.counters[c.id]||0;
+    if(val===0) return;
+    // Trouver l'axe et la polarité via COUNTER_TO_SCORE
+    if(COUNTER_TO_SCORE[cName])
+      etat.scores[COUNTER_TO_SCORE[cName]]=val;
+  });
+
+  // Répercuter l'inventaire Moiki dans etat.equipement
+  if(!etat.equipement) etat.equipement={items:[]};
+  const moikiItems=(gameState.inventory||[]).map(id=>{
+    const a=assetIndex[id];
+    return a?{id,nom:a.label||id,desc:a.description||'',source:'moiki'}:{id,nom:id,source:'moiki'};
+  });
+  // Fusionner — garder les items existants non-Moiki, remplacer les items Moiki
+  const existingNonMoiki=(etat.equipement.items||[]).filter(it=>it.source!=='moiki');
+  etat.equipement.items=[...existingNonMoiki,...moikiItems];
+
+  // Répercuter les dés dévoyés Moiki (des)
+  const desDevoyes=gameState.desDevoyes||0;
+  if(desDevoyes>0) etat.des=(etat.des||0)+desDevoyes;
+
+  await SB.patch(targetId,{etat});
   ficheEtat=etat;
-  await SB.patch(FICHE_ID,{etat});
 }
 function syncToOctogoneDebounced(){clearTimeout(_syncOctTimer);_syncOctTimer=setTimeout(syncToOctogone,2000);}
 
@@ -740,6 +783,13 @@ function applyActions(actions){
         if(a)changes.push({type:'item',name:a.label,acquired:true});
       }
       if(params.modifier==='remove')gameState.inventory=gameState.inventory.filter(id=>id!==params.target);
+    }
+    // Dés dévoyés Moiki (compteur spécial 'des' ou 'desDevoyes')
+    if(kind==='counter'&&params.target){
+      const cDes=counterIndex[params.target];
+      if(cDes&&(cDes.name==='des'||cDes.name==='desDevoyes')){
+        gameState.desDevoyes=(gameState.desDevoyes||0)+(params.value||0);
+      }
     }
   });
   if(changes.length)showChangeNotif(changes);
@@ -932,7 +982,7 @@ function sifhrParseMarkers(html){
 function sifhrMarkerIcon(type){
   const icons = {dice:'🎲', psycho:'⚖', event:'📋', token:'⚪',
     dette:'💰', etat:'⚡', switch:'🔄', check:'🔍', env:'🌐', carte:'🗺',
-    temps:'⏳', pause:'◉', voyage:'🗺', ouvrir:'▶'};
+    temps:'⏳', pause:'◉', voyage:'🗺', ouvrir:'▶', pushevent:'📌'};
   return icons[type]||'✦';
 }
 function sifhrMarkerLabel(type, args){
@@ -949,6 +999,7 @@ function sifhrMarkerLabel(type, args){
   if(type==='temps') return 'Le temps passe'+(args.delta?' ('+args.delta+(args.unite?' '+args.unite:'')+')'  :'');
   if(type==='pause') return 'Fenêtre narrative';
   if(type==='voyage') return 'Choisir une destination'
+  if(type==='pushevent') return 'Événement : '+(args.titre||'sans titre');
   if(type==='ouvrir' && args.panneau){
     const noms={octogone:'Octogone',aptitudes:'Aptitudes',historique:'Historique',
       equipement:'Équipements',evenements:'Événements',carte:'Carte'};
@@ -983,6 +1034,7 @@ async function sifhrHandleMarker(el){
     case 'temps':   await sifhrApplyTemps(args, el, markerId); break;
     case 'pause':   await sifhrHandlePause(args, el, markerId); break;
     case 'voyage':  await sifhrOpenVoyage(args, el, markerId); break;
+    case 'pushevent': await sifhrPushEvent(args, el, markerId); break;
     case 'ouvrir':  sifhrOuvrirPanneau(args, el, markerId); break;
     case 'env':     sifhrOpenOverlay('env', args); break;
     case 'carte':   sifhrOpenOverlay('carte', args); break;
@@ -1715,28 +1767,77 @@ async function renderOctSimple(){
   ci.setAttribute('fill','rgba(10,7,3,.4)'); ci.setAttribute('stroke','#4a3218'); ci.setAttribute('stroke-width','1');
   svg.appendChild(ci);
 
-  // Vices & Vertus — grille sous le SVG
-  OCT_AXES_SIMPLE.forEach(axe=>{
-    const vScore=scores[axe.id+'_0']||0;
-    const viScore=scores[axe.id+'_1']||0;
-    if(vScore===0&&viScore===0) return;
-    const row=document.createElement('div');
-    row.style.cssText='display:flex;justify-content:space-between;align-items:center;'
-      +'padding:.15rem .3rem;border-radius:3px;background:rgba(26,18,8,.4);';
-    if(vScore>0){
-      const v=document.createElement('span');
-      v.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:#6aaa6a;';
-      v.textContent='✦ '+axe.vertu+' '+vScore;
-      row.appendChild(v);
-    }
-    if(viScore>0){
-      const vi=document.createElement('span');
-      vi.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:#c06060;margin-left:auto;';
-      vi.textContent='⚡ '+axe.vice+' '+viScore;
-      row.appendChild(vi);
-    }
-    vvList.appendChild(row);
+  // Vices & Vertus — paires opposées (axe 1↔5, 2↔6, 3↔7, 4↔8)
+  // Afficher TOUS les axes avec leur score, même à 0
+  const PAIRES = [
+    [0,4], // Feu↔Eau
+    [1,5], // BileJ↔Flegme
+    [2,6], // Terre↔Air
+    [3,7], // BileN↔Sang
+  ];
+
+  // En-tête colonnes
+  const header=document.createElement('div');
+  header.style.cssText='display:grid;grid-template-columns:1fr auto 1fr;gap:.3rem;'
+    +'font-family:Cinzel,serif;font-size:.52rem;color:var(--ink3);'
+    +'padding:.1rem .3rem;margin-bottom:.1rem;letter-spacing:.04em;';
+  header.innerHTML='<span style="color:#6aaa6a;">Vertus</span>'
+    +'<span style="text-align:center;">Axe</span>'
+    +'<span style="color:#c06060;text-align:right;">Vices</span>';
+  vvList.appendChild(header);
+
+  PAIRES.forEach(([i1,i2])=>{
+    const a1=OCT_AXES_SIMPLE[i1], a2=OCT_AXES_SIMPLE[i2];
+    // Ligne axe 1 : vertu gauche | label axe | vice droite
+    const makeRow=(axe,invertSides)=>{
+      const vScore=scores[axe.id+'_0']||0;
+      const viScore=scores[axe.id+'_1']||0;
+      const row=document.createElement('div');
+      row.style.cssText='display:grid;grid-template-columns:1fr auto 1fr;gap:.3rem;'
+        +'align-items:center;padding:.15rem .3rem;border-radius:3px;'
+        +'background:rgba(26,18,8,.35);margin-bottom:1px;';
+      // Vertu
+      const vEl=document.createElement('span');
+      vEl.style.cssText='font-family:Cinzel,serif;font-size:.6rem;'
+        +(vScore>0?'color:#6aaa6a;font-weight:600;':'color:var(--ink3);');
+      vEl.textContent=(vScore>0?'✦ ':' ')+axe.vertu+(vScore>0?' '+vScore:'');
+      // Axe
+      const aEl=document.createElement('span');
+      aEl.style.cssText='font-family:Cinzel,serif;font-size:.52rem;color:var(--ink3);'
+        +'text-align:center;white-space:nowrap;';
+      aEl.textContent=axe.label;
+      // Vice
+      const viEl=document.createElement('span');
+      viEl.style.cssText='font-family:Cinzel,serif;font-size:.6rem;text-align:right;'
+        +(viScore>0?'color:#c06060;font-weight:600;':'color:var(--ink3);');
+      viEl.textContent=(viScore>0?viScore+' ⚡':' ⚡')+axe.vice;
+      row.appendChild(vEl); row.appendChild(aEl); row.appendChild(viEl);
+      return row;
+    };
+    vvList.appendChild(makeRow(a1));
+
+    // Séparateur entre les deux axes opposés
+    const sep=document.createElement('div');
+    sep.style.cssText='border-top:1px solid rgba(74,50,24,.4);margin:.1rem .3rem;';
+    vvList.appendChild(sep);
+    vvList.appendChild(makeRow(a2));
+
+    // Espace entre les paires
+    const gap=document.createElement('div');
+    gap.style.cssText='height:.3rem;';
+    vvList.appendChild(gap);
   });
+
+  // Dés dévoyés (depuis gameState)
+  const desDevoyes=gameState?.desDevoyes||0;
+  if(desDevoyes>0){
+    const desEl=document.createElement('div');
+    desEl.style.cssText='padding:.3rem .5rem;border-radius:4px;'
+      +'background:rgba(192,96,96,0.12);border:1px solid rgba(192,96,96,0.3);'
+      +'font-family:Cinzel,serif;font-size:.65rem;color:#c06060;text-align:center;';
+    desEl.textContent='🎲 Dés dévoyés : '+desDevoyes;
+    etatsEl.appendChild(desEl);
+  }
 
   // États de saturation
   if(etats.length){
@@ -2321,6 +2422,45 @@ function sifhrOuvrirPanneau(args, el, markerId) {
   };
   if (fns[p]) fns[p]();
   sifhrMarkDone(el, markerId);
+}
+
+
+// ── Marqueur [[sifhr:pushevent:titre=...:texte=...:lieu=...:revele=tous]] ──
+async function sifhrPushEvent(args, el, markerId) {
+  const envId = (typeof sifhrState!=='undefined'&&sifhrState.envId)||'env-test';
+  const key = 'ev_'+markerId; // clé stable basée sur le markerId
+  const slot = {
+    titre:  decodeURIComponent(args.titre||'Événement').replace(/\+/g,' '),
+    texte:  decodeURIComponent(args.texte||'').replace(/\+/g,' '),
+    texte_rumeur: decodeURIComponent(args.rumeur||'').replace(/\+/g,' '),
+    texte_indice: decodeURIComponent(args.indice||'').replace(/\+/g,' '),
+    texte_fait:   decodeURIComponent(args.fait||'').replace(/\+/g,' '),
+    revele_a:     args.revele||'tous',
+    revele_rumeur:'aucun', revele_indice:'aucun', revele_fait:'aucun',
+    niveau:1, poids:1, axes:[], image:null,
+    lieu_key: args.lieu||'',
+    source_type:'moiki', source_marqueur:markerId,
+  };
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+    );
+    const d = await r.json();
+    const etat = JSON.parse(JSON.stringify(d[0]?.etat||{}));
+    if(!etat.slots) etat.slots={};
+    etat.slots[key] = slot;
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}`,{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+        'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({etat})
+    });
+    sifhrMarkDone(el, markerId);
+    sifhrShowNotif('📌 Événement ajouté : '+(args.titre||''));
+  } catch(e) {
+    console.error('[pushevent]', e);
+  }
 }
 
 </script>
