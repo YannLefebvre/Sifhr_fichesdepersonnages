@@ -168,6 +168,38 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     #choices-wrap  { padding-bottom:1rem; }
   }
 
+
+  /* ── Marqueurs Sifhr ── */
+  .sifhr-marker {
+    display:block; margin:.6rem 0; padding:.55rem .9rem;
+    border-left:3px solid var(--accent); background:rgba(200,134,10,.07);
+    border-radius:0 6px 6px 0; font-family:'Cinzel',serif; font-size:.75rem;
+    color:var(--accent); letter-spacing:.05em; cursor:pointer;
+    user-select:none; -webkit-user-select:none;
+  }
+  .sifhr-marker:hover { background:rgba(200,134,10,.14); }
+  .sifhr-marker .sifhr-icon { margin-right:.4rem; }
+  .sifhr-marker .sifhr-hint {
+    font-family:'Crimson Text',serif; font-size:.8rem;
+    color:var(--ink3); font-style:italic; margin-top:.2rem; display:block;
+  }
+  .sifhr-marker.done {
+    border-color:#4a7a4a; background:rgba(74,122,74,.07);
+    color:#6aaa6a; cursor:default; pointer-events:none;
+  }
+  .sifhr-dice-result {
+    margin:1rem 0; padding:.7rem 1rem;
+    border:1px solid var(--accent); border-radius:6px;
+    background:rgba(200,134,10,.06);
+  }
+  .sifhr-dice-result .sdr-titre {
+    font-family:'Cinzel',serif; font-size:.75rem;
+    color:var(--accent); letter-spacing:.05em; margin-bottom:.4rem;
+  }
+  .sifhr-dice-result .sdr-detail {
+    font-family:'Crimson Text',serif; font-size:.88rem; color:var(--ink2);
+  }
+
 </style>
 </head>
 <body>
@@ -720,32 +752,58 @@ function renderStatusBar(){
 
 // ── Conditions ──
 function evalCondition(cond){
-  if(!cond||!cond.kind)return true;
-  const {kind,query}=cond;
-  if(kind==='flag'){
-    return (query?.params||[]).every(p=>{
-      const val=gameState.flags[p.target];
-      if(p.condition==='=')return val===p.value;
-      if(p.condition==='!=')return val!==p.value;
+  if(!cond) return true;
+  // Format Moiki v2 : {kind, query:{operator, params:[...]}}
+  // Format Moiki v1 : {kind, query:{params:[{kind,target,condition,value}]}}
+  // Certains params ont eux-mêmes un 'kind' (format imbriqué)
+  const kind = cond.kind;
+  const query = cond.query||{};
+  const params = query.params||[];
+  const operator = (query.operator||'and').toLowerCase(); // 'and' | 'or'
+
+  // Évaluer un paramètre individuel
+  function evalParam(p){
+    const pk = p.kind || kind; // le param peut avoir son propre kind
+    if(pk==='flag'){
+      const val = gameState.flags[p.target];
+      if(p.condition==='=')  return val===p.value;
+      if(p.condition==='!=') return val!==p.value;
       return true;
-    });
+    }
+    if(pk==='counter'){
+      const val = gameState.counters[p.target]||0;
+      if(p.condition==='=')  return val===p.value;
+      if(p.condition==='!=') return val!==p.value;
+      if(p.condition==='>')  return val>p.value;
+      if(p.condition==='>=') return val>=p.value;
+      if(p.condition==='<')  return val<p.value;
+      if(p.condition==='<=') return val<=p.value;
+      return true;
+    }
+    if(pk==='object'){
+      // Vérifier l'inventaire Moiki
+      const has = gameState.inventory.includes(p.target);
+      if(p.condition==='with')    return has;
+      if(p.condition==='without') return !has;
+      return true;
+    }
+    if(pk==='multiple'||pk==='or'||pk==='and'){
+      return evalCondition(p);
+    }
+    return true;
   }
-  if(kind==='counter'){
-    return (query?.params||[]).every(p=>{
-      const val=gameState.counters[p.target]||0;
-      if(p.condition==='=')return val===p.value;
-      if(p.condition==='!=')return val!==p.value;
-      if(p.condition==='>') return val>p.value;
-      if(p.condition==='>=')return val>=p.value;
-      if(p.condition==='<') return val<p.value;
-      if(p.condition==='<=')return val<=p.value;
-      return true;
-    });
+
+  if(!kind && params.length===0) return true;
+
+  // Conditions sans kind (format flat params)
+  if(!kind || kind==='flag' || kind==='counter' || kind==='object'){
+    if(params.length===0) return true;
+    const results = params.map(evalParam);
+    return operator==='or' ? results.some(Boolean) : results.every(Boolean);
   }
   if(kind==='multiple'){
-    const op=query?.operator||'AND';
-    const results=(query?.params||[]).map(p=>evalCondition(p));
-    return op==='AND'?results.every(Boolean):results.some(Boolean);
+    const results = params.map(p => p.kind ? evalParam(p) : evalCondition(p));
+    return operator==='or' ? results.some(Boolean) : results.every(Boolean);
   }
   return true;
 }
@@ -781,8 +839,13 @@ function applyActions(actions){
         gameState.inventory.push(params.target);
         const a=assetIndex[params.target];
         if(a)changes.push({type:'item',name:a.label,acquired:true});
+        // Répercuter immédiatement dans la fiche clone
+        setTimeout(syncToOctogone, 300);
       }
-      if(params.modifier==='remove')gameState.inventory=gameState.inventory.filter(id=>id!==params.target);
+      if(params.modifier==='remove'){
+        gameState.inventory=gameState.inventory.filter(id=>id!==params.target);
+        setTimeout(syncToOctogone, 300);
+      }
     }
     // Dés dévoyés Moiki (compteur spécial 'des' ou 'desDevoyes')
     if(kind==='counter'&&params.target){
@@ -1291,7 +1354,24 @@ async function sifhrApplyDette(args, el, markerId){
       body:JSON.stringify({etat})
     });
     sifhrMarkDone(el, markerId);
-    sifhrShowNotif((action==='add'?'💰 Dette ajoutée':'💰 Dette retirée')+(args.perso?' avec '+args.perso:''));
+    const detteTexte = args.texte ? decodeURIComponent(args.texte).replace(/\+/g,' ') : '';
+    const detteLabel = (action==='add'?'💰 ':'💰 Retrait ')
+      +(args.perso||'')
+      +(detteTexte?' — '+detteTexte.slice(0,40):'');
+    sifhrShowNotif(detteLabel);
+    // Afficher aussi dans la séquence
+    const wrapD=document.getElementById('seq-content');
+    if(wrapD&&action==='add'){
+      const divD=document.createElement('div');
+      divD.style.cssText='margin:.6rem 0;padding:.5rem .8rem;border-left:3px solid #1a4a6e;'
+        +'background:rgba(26,74,110,.08);border-radius:0 5px 5px 0;';
+      const bm=parseInt(args.valeur)||1;
+      divD.innerHTML='<span style="font-family:Cinzel,serif;font-size:.7rem;color:#6aaccc;">'
+        +(bm>0?'💰 Dette':'✦ Créance')
+        +' : '+(args.perso||'')+(args.valeur?' ('+( bm>0?'+':'')+bm+')':'')+'</span>'
+        +(detteTexte?'<div style="font-family:Crimson Text,serif;font-size:.85rem;color:var(--ink3);margin-top:.2rem;">'+detteTexte+'</div>':'');
+      wrapD.appendChild(divD);
+    }
   }catch(e){ console.error('[Sifhr] dette error:', e); }
 }
 
@@ -1749,6 +1829,7 @@ function closeOct(){
 async function renderOctSimple(){
   const svg=document.getElementById('oct-simple-svg');
   const vvList=document.getElementById('oct-vv-list');
+  vvList.style.cssText='width:100%;display:flex;flex-direction:column;gap:0;padding:0 .3rem;';
   const etatsEl=document.getElementById('oct-etats-list');
   if(!svg||!vvList) return;
   svg.innerHTML=''; vvList.innerHTML=''; etatsEl.innerHTML='';
@@ -1836,11 +1917,12 @@ async function renderOctSimple(){
 
   // En-tête colonnes
   const header=document.createElement('div');
-  header.style.cssText='display:grid;grid-template-columns:1fr auto 1fr;gap:.3rem;'
+  header.style.cssText='display:grid;grid-template-columns:1fr 52px 1fr;gap:.3rem;'
     +'font-family:Cinzel,serif;font-size:.52rem;color:var(--ink3);'
-    +'padding:.1rem .3rem;margin-bottom:.1rem;letter-spacing:.04em;';
-  header.innerHTML='<span style="color:#6aaa6a;">Vertus</span>'
-    +'<span style="text-align:center;">Axe</span>'
+    +'padding:.15rem .3rem .1rem;margin-bottom:.1rem;letter-spacing:.04em;'
+    +'border-bottom:1px solid rgba(74,50,24,.3);';
+  header.innerHTML='<span style="color:#6aaa6a;text-align:left;">Vertus</span>'
+    +'<span style="text-align:center;color:var(--ink3);">Axe</span>'
     +'<span style="color:#c06060;text-align:right;">Vices</span>';
   vvList.appendChild(header);
 
@@ -1851,7 +1933,7 @@ async function renderOctSimple(){
       const vScore=scores[axe.id+'_0']||0;
       const viScore=scores[axe.id+'_1']||0;
       const row=document.createElement('div');
-      row.style.cssText='display:grid;grid-template-columns:1fr auto 1fr;gap:.3rem;'
+      row.style.cssText='display:grid;grid-template-columns:1fr 52px 1fr;gap:.3rem;'
         +'align-items:center;padding:.15rem .3rem;border-radius:3px;'
         +'background:rgba(26,18,8,.35);margin-bottom:1px;';
       // Vertu
@@ -1886,8 +1968,10 @@ async function renderOctSimple(){
     vvList.appendChild(gap);
   });
 
-  // Dés dévoyés (depuis gameState)
-  const desDevoyes=gameState?.desDevoyes||0;
+  // Dés dévoyés (depuis gameState ET depuis la fiche clone etat.des)
+  const desGameState=gameState?.desDevoyes||0;
+  const desClone=parseInt(etat?.des)||0;
+  const desDevoyes=Math.max(desGameState, desClone);
   if(desDevoyes>0){
     const desEl=document.createElement('div');
     desEl.style.cssText='padding:.3rem .5rem;border-radius:4px;'
