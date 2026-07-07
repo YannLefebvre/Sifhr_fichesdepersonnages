@@ -1091,6 +1091,18 @@ window.addEventListener('message', (evt)=>{
   if(type==='PSYCHO_RESULT'){
     sifhrState.lastPsycho = evt.data;
     sifhrCloseOverlay('oct');
+    // Brancher selon le résultat si un marqueur psycho est en attente
+    if(_sifhrDicePending && _sifhrDicePending.type==='psycho'){
+      const {args, el, markerId} = _sifhrDicePending;
+      _sifhrDicePending = null;
+      sifhrMarkDone(el, markerId);
+      // Afficher un résumé
+      sifhrShowPsychoResult(evt.data);
+      // Brancher : vertu → onsucces, vice → onechec
+      const gagnant = evt.data.gagnant; // 'vertu' ou 'vice'
+      const targetSeq = (gagnant==='vertu') ? args.onsucces : args.onechec;
+      if(targetSeq) sifhrForceGoTo(targetSeq);
+    }
   }
 });
 
@@ -2461,6 +2473,23 @@ async function sifhrPushEvent(args, el, markerId) {
   } catch(e) {
     console.error('[pushevent]', e);
   }
+}
+
+
+// ── Afficher le résultat de la psychomachie dans la séquence ──
+function sifhrShowPsychoResult(psycho) {
+  const wrap = document.getElementById('seq-content');
+  if (!wrap) return;
+  const div = document.createElement('div');
+  div.className = 'sifhr-dice-result';
+  const gagnant = psycho.gagnant || 'vertu';
+  const isVertu = gagnant === 'vertu';
+  const signe = isVertu
+    ? (psycho.suivi ? '✦ Vertu suivie' : '✦ Vice résisté')
+    : '⚡ Vice cédé';
+  div.innerHTML = `<div class="sdr-titre" style="color:${isVertu?'#6aaa6a':'#c06060'};">${signe}</div>`
+    + (psycho.axe ? `<div class="sdr-detail">${psycho.axe}${psycho.diff?' · différence : '+Math.abs(psycho.diff):''}</div>` : '');
+  wrap.appendChild(div);
 }
 
 </script>

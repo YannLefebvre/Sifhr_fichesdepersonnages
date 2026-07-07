@@ -10357,6 +10357,16 @@ function lancerPsychomachie(idx){
                           resultat==='vice'  ? '⚡ Céder au vice' : '◈ Accepter l’équilibre';
   btnSuivre.addEventListener('click',()=>{
     zone.innerHTML='<em style="color:var(--ink3);">Vous avez choisi de suivre vos penchants.</em>';
+    // Notifier le parent (aventure.html)
+    if(window.parent&&window.parent!==window){
+      window.parent.postMessage({
+        type:'PSYCHO_RESULT',
+        axe: pair?.axe||'',
+        gagnant: resultat, // 'vertu' ou 'vice'
+        suivi: true,       // le joueur a suivi le résultat
+        diff: diff||0
+      },'*');
+    }
   });
 
   // Bouton "Résister" (uniquement si vice domine)
@@ -10403,6 +10413,16 @@ async function psychomachieResister(pair, diff, zone, resistVertu=false){
     + `Cet effort vous coûte : vous gagnez <strong>${desGagnes} dé${desGagnes>1?'s':''} dévoyé${desGagnes>1?'s':''}</strong>`
     + ` (total : ${desNouveaux}).`
     + `<br><em style="color:var(--ink3);">Un état lié à cette résistance sera déterminé ultérieurement.</em>`;
+  // Notifier le parent (aventure.html) — résister = succès moral
+  if(window.parent&&window.parent!==window){
+    window.parent.postMessage({
+      type:'PSYCHO_RESULT',
+      axe: pair?.axe||'',
+      gagnant: 'vertu',  // résister = victoire de la vertu
+      suivi: false,      // le joueur a résisté
+      diff: diff||0
+    },'*');
+  }
 }
 
 
