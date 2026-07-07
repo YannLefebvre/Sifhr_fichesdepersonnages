@@ -521,10 +521,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){
 let _fichePw='';
 function openDes(){
   const base=getBase();
-  // Utiliser le clone si disponible, sinon la fiche réelle
-  const cloneId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)
-    ||(_REAL_FICHE_ID||FICHE_ID);
-  const url=base+'octogone.html?fiche='+encodeURIComponent(cloneId)
+  // Toujours passer la fiche réelle à octogone — le clone n'a pas de mot de passe
+  const realId=_REAL_FICHE_ID||FICHE_ID;
+  const url=base+'octogone.html?fiche='+encodeURIComponent(realId)
     +'&pw='+encodeURIComponent(_fichePw)
     +'&view=des&minimal=1';
   console.log('[openDes] url:', url);
@@ -1891,9 +1890,23 @@ async function renderOctSimple(){
     console.log('[renderOctSimple] fetchId:', fetchId, 'etat keys:', Object.keys(etat).slice(0,5));
   }catch(e){ console.error('[renderOctSimple]',e); }
 
-  const tokens=etat.tokens||{};
-  const scores=etat.scores||{};
-  const etats=etat.etatsSaturation||[];
+  // Si le clone n'a pas de tokens/scores, charger la fiche réelle comme base
+  let etatBase=etat;
+  if(!etat.tokens||Object.keys(etat.tokens).length===0){
+    try{
+      const realId=_REAL_FICHE_ID||FICHE_ID;
+      const r2=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(realId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const d2=await r2.json();
+      const realEtat=d2[0]?.etat||{};
+      // Fusionner : données réelles en base, données clone par-dessus
+      etatBase=Object.assign({},realEtat,etat);
+      console.log('[renderOctSimple] merged from real fiche');
+    }catch(e){}
+  }
+  const tokens=etatBase.tokens||{};
+  const scores=etatBase.scores||{};
+  const etats=etatBase.etatsSaturation||[];
   const ns='http://www.w3.org/2000/svg';
   const CX=170,CY=170,R=110,INNER=22;
 
@@ -2051,7 +2064,28 @@ function openFicheComplete(){
   const realId=_REAL_FICHE_ID||FICHE_ID;
   const url=base+'octogone.html?fiche='+encodeURIComponent(realId)+'&pw='+encodeURIComponent(_fichePw);
   console.log('[openFicheComplete] url:', url);
-  window.open(url,'_blank');
+  let overlay=document.getElementById('fiche-full-overlay');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='fiche-full-overlay';
+    overlay.style.cssText='position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;flex-direction:column;';
+    const bar=document.createElement('div');
+    bar.style.cssText='display:flex;align-items:center;padding:.5rem .8rem;background:rgba(10,7,3,.9);border-bottom:1px solid var(--border);gap:.5rem;';
+    bar.innerHTML='<span style="font-family:Cinzel,serif;font-size:.8rem;color:var(--accent);flex:1;">Fiche de personnage</span>';
+    const closeBtn=document.createElement('button');
+    closeBtn.textContent='✕ Retour';
+    closeBtn.style.cssText='background:none;border:none;font-size:.9rem;cursor:pointer;color:var(--ink3);font-family:Cinzel,serif;';
+    closeBtn.onclick=()=>overlay.style.display='none';
+    bar.appendChild(closeBtn);
+    const iframe=document.createElement('iframe');
+    iframe.id='fiche-full-iframe';
+    iframe.style.cssText='flex:1;border:none;width:100%;';
+    overlay.appendChild(bar);
+    overlay.appendChild(iframe);
+    document.body.appendChild(overlay);
+  }
+  document.getElementById('fiche-full-iframe').src=url;
+  overlay.style.display='flex';
 }
 
 async function openEvt(){
