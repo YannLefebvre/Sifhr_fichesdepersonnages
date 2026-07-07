@@ -403,7 +403,7 @@ const COUNTER_TO_SCORE = {
 };
 
 // ── État ──
-let FICHE_ID='', ficheEtat=null, saveTimer=null, _syncOctTimer=null;
+let FICHE_ID='', _REAL_FICHE_ID='', ficheEtat=null, saveTimer=null, _syncOctTimer=null;
 let gameState = {tempsEcoule:0,chronoDone:{},navHistory:[],counters:{},flags:{},inventory:[],currentSeq:'',history:[]};
 
 const seqIndex={}, counterIndex={}, flagIndex={}, assetIndex={};
@@ -443,6 +443,7 @@ async function doLogin(){
     else if(row.mot_de_passe!==pw){err.textContent='Mot de passe incorrect.';}
     else{
       FICHE_ID=fiche;
+      _REAL_FICHE_ID=fiche; // id joueur réel — jamais modifié
       ficheEtat=row.etat||{};
       _fichePw=pw;
 
@@ -964,7 +965,11 @@ async function sifhrInitClones(ficheId, pw, aventureId){
   console.log('[Sifhr] Env résolu:', sifhrState.envId);
 
   // Chercher une sauvegarde existante pour ce joueur + cette aventure
-  const saveId = `${ficheId}_${aventureId}`;
+  // saveId inclut le code session pour permettre les multi-sauvegardes
+  // Format identique à sifhrSaveState
+  const _initSessionSuffix = (typeof SESSION_FICHE_ID!=='undefined'&&SESSION_FICHE_ID)
+    ? SESSION_FICHE_ID.split('-').pop() : 'new';
+  const saveId = ficheId+'_'+aventureId+'_'+_initSessionSuffix;
   const existing = await SB_AV.get(saveId);
   if(existing){
     try{
@@ -983,8 +988,10 @@ async function sifhrInitClones(ficheId, pw, aventureId){
 
   // Nouvelle partie — créer un clone de la fiche joueur
   // Inclure le code session dans le clone pour multi-sauvegardes
+  // Extraire le code session (dernière partie après le dernier '-')
+  // SESSION_FICHE_ID = 'aventure-christophe-FGNI' → code = 'FGNI'
   const sessionCode = (typeof SESSION_FICHE_ID!=='undefined'&&SESSION_FICHE_ID)
-    ? SESSION_FICHE_ID.split('_').pop() : 'new';
+    ? SESSION_FICHE_ID.split('-').pop() : 'new';
   const cloneId = ficheId+'_av_'+aventureId.slice(-8)+'_'+sessionCode;
 
   const existingClone = await SB.get(cloneId);
@@ -1013,7 +1020,8 @@ async function sifhrSaveState(){
   if(!FICHE_ID || !sifhrState.aventureId) return;
   // Inclure le code session dans l'id de sauvegarde
   const sessionSuffix = (SESSION_FICHE_ID||'').split('-').pop()||'default';
-  const saveId = FICHE_ID+'_'+sifhrState.aventureId+'_'+sessionSuffix;
+  const realId = _REAL_FICHE_ID||FICHE_ID;
+  const saveId = realId+'_'+sifhrState.aventureId+'_'+sessionSuffix;
   try{
     const ok = await SB_AV.upsert({
       id: saveId,
@@ -1664,7 +1672,7 @@ async function restartAdventure(){
   if(!confirm('Commencer une nouvelle partie ? Votre progression actuelle sera conservée sous le code «'+SESSION_FICHE_ID+'».')) return;
   // Nouveau code session → nouveau clone
   const newCode = genSessionCode();
-  SESSION_FICHE_ID = 'aventure-'+FICHE_ID+'-'+newCode;
+  SESSION_FICHE_ID = 'aventure-'+(_REAL_FICHE_ID||FICHE_ID)+'-'+newCode;
   document.getElementById('session-code').textContent = SESSION_FICHE_ID;
   // Réinitialiser les compteurs Moiki aux valeurs par défaut du JSON
   initIndexes();
@@ -2024,8 +2032,13 @@ async function renderOctSimple(){
 
 
 function openFicheComplete(){
-  const cloneId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)||SESSION_FICHE_ID||FICHE_ID;
-  const base=window.location.href.replace(/[^/]*$/,'');
+  // Priorité : clone actif → fiche réelle
+  const cloneId=(typeof sifhrState!=='undefined'&&sifhrState.personnageActif)
+    || (_REAL_FICHE_ID||FICHE_ID);
+  // Construire la base URL proprement (sans le nom du fichier .html)
+  const base=window.location.origin
+    + window.location.pathname.replace(/\/[^/]*$/, '/');
+  console.log('[openFicheComplete] cloneId:', cloneId, 'base:', base);
   window.open(base+'octogone.html?fiche='+encodeURIComponent(cloneId)+'&pw='+encodeURIComponent(_fichePw),'_blank');
 }
 
