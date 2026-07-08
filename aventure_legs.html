@@ -131,11 +131,11 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     display:none; position:fixed; bottom:0; left:0; right:0;
     z-index:290; background:rgba(26,18,8,0.96);
     border-top:1px solid var(--border);
-    padding:.3rem .2rem env(safe-area-inset-bottom,.3rem);
+    padding:.3rem .4rem env(safe-area-inset-bottom,.3rem);
     backdrop-filter:blur(8px);
-    flex-wrap:nowrap; overflow-x:auto; gap:.2rem;
-    justify-content:center; align-items:center;
-    scrollbar-width:none;
+    flex-wrap:nowrap; overflow-x:auto; gap:.3rem;
+    justify-content:flex-start; align-items:center;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch;
   }
   #fiche-bar::-webkit-scrollbar { display:none; }
   .fb-btn {
@@ -158,6 +158,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
       border-radius:20px; border:1px solid var(--border);
       padding:.35rem .6rem;
       width:auto; max-width:90vw;
+      justify-content:center;
     }
     .fb-label { font-size:.58rem; }
     .fb-btn { padding:.35rem .6rem; min-width:auto; }
@@ -1010,8 +1011,16 @@ async function sifhrInitClones(ficheId, pw, aventureId){
   if(!existingClone){
     const realRow = await SB.get(ficheId);
     const realEtat = JSON.parse(JSON.stringify(realRow?.etat||{}));
+    // Copier les valeurs de base de la fiche réelle (jetons, vices/vertus, états)
+    // Ce sont les valeurs initiales du personnage — pas les valeurs de jeu acquises
     const cloneEtat = Object.assign({},realEtat,{
-      tokens:{}, scores:{}, etatsSaturation:[],
+      // Conserver tokens, scores et etatsSaturation de la fiche réelle
+      tokens: JSON.parse(JSON.stringify(realEtat.tokens||{})),
+      scores: JSON.parse(JSON.stringify(realEtat.scores||{})),
+      etatsSaturation: JSON.parse(JSON.stringify(realEtat.etatsSaturation||[])),
+      // Réinitialiser uniquement les données de partie (compteurs, dettes de jeu)
+      dettes: [],
+      histoiresCroisees: JSON.parse(JSON.stringify(realEtat.histoiresCroisees||[])),
       _clone_of:ficheId, _aventure_id:aventureId, _session_code:sessionCode
     });
     await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
@@ -1869,11 +1878,11 @@ function closeOct(){
   document.getElementById('oct-overlay').style.display='none';
 }
 
-async function renderOctSimple(){
-  const svg=document.getElementById('oct-simple-svg');
-  const vvList=document.getElementById('oct-vv-list');
+async function renderOctSimple(svgId, vvId, etatsId){
+  const svg=document.getElementById(svgId||'oct-simple-svg');
+  const vvList=document.getElementById(vvId||'oct-vv-list');
   vvList.style.cssText='width:100%;display:flex;flex-direction:column;gap:0;padding:0 .3rem;';
-  const etatsEl=document.getElementById('oct-etats-list');
+  const etatsEl=document.getElementById(etatsId||'oct-etats-list');
   if(!svg||!vvList) return;
   svg.innerHTML=''; vvList.innerHTML=''; etatsEl.innerHTML='';
 
@@ -2115,6 +2124,39 @@ async function renderEvtOverlay(){
       if(q&&!((s.titre||'').toLowerCase().includes(q)||(s.texte||'').toLowerCase().includes(q))) return false;
       return true;
     }).sort((a,b)=>(slots[a].titre||a).localeCompare(slots[b].titre||b,'fr'));
+    // ── Octogone joueur simplifié ──
+    const octWrap = document.getElementById('evt-oct-wrap');
+    if(octWrap){
+      await renderOctSimple('evt-oct-svg','evt-vv-list','evt-etats-list');
+    }
+
+    // ── Chronologie depuis la fiche env ──
+    const chronoWrap = document.getElementById('evt-chrono-wrap');
+    if(chronoWrap){
+      const chrono = d[0]?.etat?.chronologie||[];
+      chronoWrap.innerHTML = '';
+      if(chrono.length){
+        const hdr = document.createElement('div');
+        hdr.style.cssText = 'font-family:Cinzel,serif;font-size:.65rem;'
+          +'color:var(--accent);letter-spacing:.05em;margin-bottom:.4rem;';
+        hdr.textContent = '⏱ Chronologie';
+        chronoWrap.appendChild(hdr);
+        // Trier par ordre chronologique (index)
+        const sorted = [...chrono].sort((a,b)=>(a.ordre||0)-(b.ordre||0));
+        sorted.forEach(ev=>{
+          const el=document.createElement('div');
+          el.style.cssText='padding:.3rem .5rem;margin:.2rem 0;'
+            +'border-left:2px solid var(--border2);border-radius:0 4px 4px 0;'
+            +'background:rgba(200,160,96,.04);font-size:.8rem;color:var(--ink3);';
+          el.innerHTML='<span style="font-family:Cinzel,serif;font-size:.62rem;'
+            +'color:var(--ink3);display:block;margin-bottom:.1rem;">'
+            +(ev.date||'')+'</span>'
+            +'<span style="color:var(--ink2);">'+(ev.titre||ev.texte||'')+'</span>';
+          chronoWrap.appendChild(el);
+        });
+      }
+    }
+
     list.innerHTML='';
     if(!keys.length){
       list.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;">Aucun événement visible.</p>';
@@ -2902,11 +2944,30 @@ function retourParagraphe(){
   <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:480px;width:94vw;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
     <div style="display:flex;align-items:center;margin-bottom:.8rem;gap:.4rem;">
       <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;letter-spacing:.08em;flex:1;">📋 Événements</span>
-      <button onclick="openFicheComplete()" style="font-family:'Cinzel',serif;font-size:.65rem;padding:2px 10px;border:1px solid var(--accent);border-radius:4px;background:none;color:var(--accent);cursor:pointer;">Carte →</button>
+      
       <button onclick="closeEvt()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">✕</button>
     </div>
     <input id="evt-search" type="text" placeholder="Rechercher…" oninput="renderEvtOverlay()"
       style="width:100%;padding:.35rem .5rem;background:var(--input-bg);border:1px solid var(--border);border-radius:3px;font-family:'Crimson Text',serif;font-size:.85rem;color:var(--ink);outline:none;margin-bottom:.6rem;">
+    <!-- Octogone joueur simplifié -->
+    <div id="evt-oct-wrap" style="border:1px solid var(--border2);border-radius:6px;
+      padding:.4rem .5rem;margin-bottom:.5rem;background:rgba(26,18,8,.4);">
+      <div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);
+        letter-spacing:.05em;margin-bottom:.3rem;">⬡ Octogone</div>
+      <div style="display:flex;gap:.4rem;align-items:flex-start;">
+        <svg id="evt-oct-svg" viewBox="0 0 340 340"
+          style="width:120px;height:120px;flex-shrink:0;"></svg>
+        <div style="flex:1;min-width:0;overflow:hidden;">
+          <div id="evt-vv-list"></div>
+          <div id="evt-etats-list" style="margin-top:.2rem;"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Chronologie -->
+    <div id="evt-chrono-wrap" style="border:1px solid var(--border2);border-radius:6px;
+      padding:.4rem .5rem;margin-bottom:.5rem;background:rgba(26,18,8,.3);
+      max-height:140px;overflow-y:auto;display:none;"></div>
+    <!-- Liste événements -->
     <div id="evt-overlay-list" style="overflow-y:auto;flex:1;"></div>
   </div>
 </div>
