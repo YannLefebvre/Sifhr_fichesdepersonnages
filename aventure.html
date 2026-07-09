@@ -211,7 +211,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260709-1442 -->
+<!-- sifhr-v20260709-1506 -->
 </head>
 <body>
 
@@ -1013,6 +1013,7 @@ async function sifhrInitClones(ficheId, pw, aventureId){
   if (STORY_DATA._env?.fiche) {
     sifhrState.envId = STORY_DATA._env.fiche;
     sifhrState.envPw = STORY_DATA._env.pw || 'mdpj';
+    if(STORY_DATA._env.carte) sifhrState.carteType = STORY_DATA._env.carte;
   } else {
     // Lire envFiche depuis la fiche joueur (fédération d'identité)
     try {
@@ -1087,6 +1088,17 @@ async function sifhrInitClones(ficheId, pw, aventureId){
   }
   sifhrState.personnages[ficheId]=cloneId;
   sifhrState.personnageActif=cloneId;
+  // Charger carteType depuis la fiche env dès le login
+  if(sifhrState.envId && !sifhrState.carteType){
+    try{
+      const _rEnv=await fetch(
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(sifhrState.envId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+      );
+      const _dEnv=await _rEnv.json();
+      if(_dEnv[0]?.etat?.carte !== undefined) sifhrState.carteType = _dEnv[0].etat.carte || '';
+    }catch(e){}
+  }
   await sifhrSaveState();
 }
 
@@ -2599,6 +2611,17 @@ let _carteVoyageLieux = [];     // lieux autorisés en mode voyage
 let _carteVoyageCallback = null; // résout quand le joueur choisit
 
 // ── CAS 3 : Ouvrir la carte librement ──
+
+// ── Résolution fichier carte selon environnement ──
+const CARTE_FICHIERS = {
+  '':              'carte.html',
+  'damas':         'carte.html',
+  'myriokephalon': 'carte_myriokephalon.html',
+};
+function getCarteFichier(){
+  const t = (typeof sifhrState!=='undefined'&&sifhrState.carteType) || '';
+  return CARTE_FICHIERS[t] || (t ? 'carte_'+t+'.html' : 'carte.html');
+}
 function openCarteDamas(opts = {}) {
   const base = getBase();
   const envId = (typeof sifhrState !== 'undefined' && sifhrState.envId) || 'env-test';
@@ -2621,7 +2644,7 @@ function openCarteDamas(opts = {}) {
     params.set('lieu_focus', opts.lieu_focus);
   }
 
-  document.getElementById('sifhr-carte-iframe').src = base + 'carte.html?' + params.toString();
+  document.getElementById('sifhr-carte-iframe').src = base + getCarteFichier() + '?' + params.toString();
 
   // Hint dans l'en-tête
   const hint = document.getElementById('carte-voyage-hint');

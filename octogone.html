@@ -1375,6 +1375,7 @@ function saveEnvFiche(){
   state.envFiche=val;
   state.envFichePw=pwPlayer;
   state.envFichePwGM=pwGM;
+  state.carteType=''; // sera résolu au prochain chargement de l'env
   saveState();
   const envIframe=document.getElementById('env-iframe');
   const carteIframe=document.getElementById('carte-iframe');
@@ -1439,13 +1440,24 @@ function closeEnvPanel(){
   document.getElementById('env-fab').classList.remove('open');
 }
 
+
+// ── Résolution du fichier carte selon l'environnement ──
+const CARTE_FICHIERS = {
+  '':              'carte.html',
+  'damas':         'carte.html',
+  'myriokephalon': 'carte_myriokephalon.html',
+};
+function getCarteFichier(){
+  const t = state.carteType || '';
+  return CARTE_FICHIERS[t] || (t ? 'carte_'+t+'.html' : 'carte.html');
+}
 // ── Carte ──
 const CartePanel = {
   toggle(){
     const ol=document.getElementById('carte-overlay');
     if(ol.classList.contains('open')){ this.close(); return; }
     const iframe=document.getElementById('carte-iframe');
-    const url=getBaseUrl()+'carte.html?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
+    const url=getBaseUrl()+getCarteFichier()+'?fiche='+encodeURIComponent(getEnvFicheId())+buildAutoLoginParams();
     iframe.src=url;
     ol.classList.add('open');
     document.getElementById('carte-fab').classList.add('open');
@@ -3041,7 +3053,7 @@ const NUM_TRAITS=10,SQ_PER_APTITUDE=6;
 let wheelRot=0;
 const NUM_EQUIPEMENT=6, NUM_ARTEFACTS=5, NUM_PRODIGES=5;
 const NUM_CONFRERIE=4;
-let state={tokens:{},scores:{},aptitudes:{},envFiche:'',
+let state={tokens:{},scores:{},aptitudes:{},envFiche:'',carteType:'',
   traits:Array.from({length:NUM_TRAITS},()=>({title:'',text:'',level:null,levelType:null,locked:false})),
   aptTraits:{}, // {aptKey: [{id,title,text,level,levelType,locked}]}
   confrerie:Array.from({length:NUM_CONFRERIE},()=>({title:'',text:''})),
@@ -7351,6 +7363,7 @@ const NotifSystem = {
         });
         const d=await r.json();
         const envData=d[0]||null;
+        if(envData?.etat?.carte !== undefined) state.carteType = envData.etat.carte || '';
 
         if(envData?.etat?.tokens){
           this._axes.forEach(axe=>{
@@ -8949,6 +8962,7 @@ async function loadEvtPanel(){
     const d=await r.json();
     const envEtat=d[0]?.etat||{};
     const slots=d[0]?.carte?.slots||{};
+    if(d[0]?.etat?.carte !== undefined) state.carteType = d[0].etat.carte || '';
     body.innerHTML='';
     let hasContent=false;
 

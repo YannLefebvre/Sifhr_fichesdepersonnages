@@ -1454,6 +1454,17 @@ async function gmReset(){
       <span style="font-family:'Cinzel',serif;font-size:.68rem;color:#8a6a20;">h</span>
     </div>
     <div class="chrono-config-row" style="gap:.4rem;margin-top:.3rem;">
+      <!-- Type de carte -->
+      <div class="chrono-config-row" style="margin-top:.5rem;border-top:1px solid #e8d5a0;padding-top:.5rem;">
+        <span class="chrono-config-label">🗺 Carte liée :</span>
+        <select id="cfg-carte-type" class="chrono-inp"
+          style="flex:1;font-family:'Cinzel',serif;font-size:.72rem;"
+          onchange="configSaveCarte()">
+          <option value="">Damas (défaut)</option>
+          <option value="damas">Damas</option>
+          <option value="myriokephalon">Myriokephalon 1176</option>
+        </select>
+      </div>
       <button class="chrono-btn" onclick="chronoSaveConfig()">💾 Enregistrer</button>
       <button class="chrono-btn secondary" onclick="chronoAvancerJour(1)">+1 Jour →</button>
       <button class="chrono-btn secondary" onclick="chronoAvancerJour(7)">+7 Jours →</button>
@@ -2331,7 +2342,7 @@ function saveState(){
     try{
       const stateCopy=JSON.parse(JSON.stringify(state));
       // Protéger les champs critiques absents : merger avec Supabase avant upsert
-      const CHAMPS_CRITIQUES=['bibliotheque_ideaux','chronologie','fichePersonnages',
+      const CHAMPS_CRITIQUES=['bibliotheque_ideaux','chronologie','fichePersonnages','carte',
         'lieux','lieuHistorique','galerie','slots','hypotheses','couleurs','positions'];
       const manquants=CHAMPS_CRITIQUES.filter(k=>!stateCopy[k]||
         (typeof stateCopy[k]==='object'&&!Array.isArray(stateCopy[k])&&Object.keys(stateCopy[k]).length===0));
@@ -2408,6 +2419,10 @@ function applyRemoteState(saved){
     if(saved.chronologie!==undefined){
       state.chronologie=saved.chronologie;
       if(typeof chronoRender==='function') chronoRender();
+    }
+    if(saved.carte!==undefined){
+      state.carte=saved.carte;
+      if(typeof configLoadCarte==='function') configLoadCarte();
     }
     if(saved.fichePersonnages!==undefined){ state.fichePersonnages=saved.fichePersonnages; if(isGM) renderFichesPersoList(); }
     if(saved.nineCount!==undefined){ state.nineCount=saved.nineCount; }
@@ -4850,6 +4865,26 @@ async function chronoSaveConfig(){
   state.chronologie.dateCourante=cur||debut;
   await saveState();
   chronoRender();
+}
+
+// ── Configuration type de carte ──
+function configSaveCarte(){
+  const sel = document.getElementById('cfg-carte-type');
+  if(!sel) return;
+  state.carte = sel.value || '';
+  saveState();
+  const label = sel.options[sel.selectedIndex]?.text || sel.value || 'Damas';
+  if(typeof showToast === 'function') showToast('🗺 Carte : '+label);
+}
+
+function configLoadCarte(){
+  const sel = document.getElementById('cfg-carte-type');
+  if(!sel) return;
+  const val = state.carte || '';
+  // Sélectionner l'option correspondante
+  for(let i=0;i<sel.options.length;i++){
+    if(sel.options[i].value === val){ sel.selectedIndex=i; break; }
+  }
 }
 
 async function chronoAvancerJour(n){
