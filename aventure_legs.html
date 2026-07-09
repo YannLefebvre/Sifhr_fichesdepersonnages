@@ -186,7 +186,14 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
   .sifhr-marker.done {
     border-color:#4a7a4a; background:rgba(74,122,74,.07);
-    color:#6aaa6a; cursor:default; pointer-events:none;
+    color:#6aaa6a; cursor:pointer; pointer-events:auto;
+    opacity:0.75;
+  }
+  .sifhr-marker.reusable {
+    opacity:0.9 !important; /* réouvrable — pleinement visible */
+  }
+  .sifhr-marker.done::after {
+    content:'✓'; margin-left:.3rem; font-size:.7rem; opacity:.6;
   }
   .sifhr-dice-result {
     margin:1rem 0; padding:.7rem 1rem;
@@ -227,10 +234,6 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
     <div id="story-subtitle">Aventure en solo · Yann Lefebvre</div>
     <div id="session-info" style="display:none;margin-top:.4rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;gap:.8rem;flex-wrap:wrap;">
       <span id="sifhr-temps-display" style="color:var(--accent);font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.05em;"></span>
-      <button onclick="document.getElementById('img-upload-overlay').style.display='flex'"
-        style="font-family:'Cinzel',serif;font-size:.62rem;padding:1px 8px;
-        border:1px solid var(--border);border-radius:3px;background:none;
-        color:var(--ink3);cursor:pointer;margin-right:.5rem;">📎 Images</button>
       💾 Votre code de sauvegarde : <span id="session-code" style="color:var(--accent);font-weight:600;cursor:pointer;" title="Cliquer pour copier" onclick="navigator.clipboard.writeText(this.textContent);this.textContent+=' ✓'"></span>
       <button onclick="restartAdventure()" style="margin-left:.8rem;font-family:'Cinzel',serif;font-size:.62rem;padding:2px 7px;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;">↺ Nouvelle partie</button>
     </div>
@@ -317,6 +320,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 
 <!-- Barre de boutons fiche -->
 <div id="fiche-bar">
+  <button id="btn-retour" class="fb-btn" onclick="retourParagraphe()" title="Paragraphe précédent" style="display:none;"><span class="fb-icon">←</span><span class="fb-label">Retour</span></button>
   <button class="fb-btn" onclick="openDes()" title="Lanceur de dés"><span class="fb-icon">🎲</span><span class="fb-label">Dés</span></button>
   <button class="fb-btn" onclick="openOct()" title="Octogone"><span class="fb-icon">⬡</span><span class="fb-label">Octogone</span></button>
   <button class="fb-btn" onclick="openApt()" title="Aptitudes"><span class="fb-icon">◈</span><span class="fb-label">Aptitudes</span></button>
@@ -1085,7 +1089,7 @@ function sifhrParseMarkers(html){
 function sifhrMarkerIcon(type){
   const icons = {dice:'🎲', psycho:'⚖', event:'📋', token:'⚪',
     dette:'💰', etat:'⚡', switch:'🔄', check:'🔍', env:'🌐', carte:'🗺',
-    temps:'⏳', pause:'◉', voyage:'🗺', ouvrir:'▶', pushevent:'📌', donner:'🎁', retirer:'↩'};
+    temps:'⏳', pause:'◉', voyage:'🗺', ouvrir:'▶', pushevent:'📌', donner:'🎁', retirer:'↩', image:'🖼'};
   return icons[type]||'✦';
 }
 function sifhrMarkerLabel(type, args){
@@ -1103,6 +1107,7 @@ function sifhrMarkerLabel(type, args){
   if(type==='pause') return 'Fenêtre narrative';
   if(type==='voyage') return 'Choisir une destination'
   if(type==='pushevent') return 'Événement : '+(args.titre||'sans titre');
+  if(type==='image') return 'Image';
   if(type==='donner') {
     const t={'trait':'Trait','equipement':'Équipement','artefact':'Artefact','prodige':'Prodige'};
     return 'Recevoir : '+(args.titre||args.id||args.type||'item');
@@ -1125,7 +1130,7 @@ function sifhrMarkerHint(type, args){
 
 // ── Exécution d'un marqueur ──
 async function sifhrHandleMarker(el){
-  if(el.classList.contains('done')) return;
+  if(el.classList.contains('done') && !el.classList.contains('reusable')) return;
   const type = el.dataset.sifhrType;
   const args = JSON.parse(decodeURIComponent(el.dataset.sifhrArgs));
   const markerId = el.dataset.sifhrId;
@@ -1154,14 +1159,19 @@ async function sifhrHandleMarker(el){
     case 'donner':    await sifhrDonner(args, el, markerId); break;
     case 'retirer':   await sifhrRetirer(args, el, markerId); break;
     case 'ouvrir':  sifhrOuvrirPanneau(args, el, markerId); break;
+    case 'image':   sifhrAfficherImage(args, el, markerId); break;
     case 'env':     sifhrOpenOverlay('env', args); break;
     case 'carte':   sifhrOpenOverlay('carte', args); break;
   }
 }
 
 // ── Marquer un marqueur comme accompli ──
-function sifhrMarkDone(el, markerId){
-  if(el){ el.classList.add('done'); }
+function sifhrMarkDone(el, markerId, reusable){
+  // reusable=true : le marqueur reste cliquable (panneaux, carte...)
+  if(el){
+    el.classList.add('done');
+    if(reusable) el.classList.add('reusable');
+  }
   sifhrState.markersDone[markerId] = true;
   sifhrSaveState();
 }
@@ -2707,7 +2717,8 @@ function sifhrOuvrirPanneau(args, el, markerId) {
     carte:      ()=>openCarteDamas(),
   };
   if (fns[p]) fns[p]();
-  sifhrMarkDone(el, markerId);
+  // Panneaux = réouvrable à volonté
+  sifhrMarkDone(el, markerId, true);
 }
 
 
@@ -2963,6 +2974,74 @@ function C_voyage(ids,onChoix){
 
 
 function C_closeInfo(){const pw=document.getElementById('carte-popup-wrap');if(pw)pw.innerHTML='';}
+
+// ── Marqueur [[sifhr:image:url=https://...:effet=zoom:legende=Mon texte]] ──
+function sifhrAfficherImage(args, el, markerId) {
+  const url   = args.url || '';
+  const effet = args.effet || 'normal'; // normal | zoom | fondu | sepia
+  const legende = args.legende ? decodeURIComponent(args.legende).replace(/\+/g,' ') : '';
+  const taille  = args.taille  || 'medium'; // small | medium | large | full
+
+  if(!url){ sifhrMarkDone(el, markerId); return; }
+
+  const wrap = document.getElementById('seq-content');
+  if(!wrap){ sifhrMarkDone(el, markerId); return; }
+
+  const maxH = {small:'120px', medium:'220px', large:'340px', full:'80vh'}[taille] || '220px';
+
+  // Styles d'effets CSS
+  const effetStyles = {
+    normal:  '',
+    sepia:   'filter:sepia(60%) contrast(1.1);',
+    fondu:   'animation:imgFondu .8s ease-in;',
+    zoom:    'cursor:zoom-in;transition:transform .3s;',
+  };
+
+  const div = document.createElement('div');
+  div.style.cssText = 'margin:.8rem 0;text-align:center;';
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = legende || '';
+  img.style.cssText = 'max-width:100%;max-height:'+maxH+';border-radius:4px;'
+    +'border:1px solid var(--border);'+(effetStyles[effet]||'');
+
+  if(effet==='zoom'){
+    let zoomed=false;
+    img.onclick=()=>{
+      zoomed=!zoomed;
+      img.style.transform=zoomed?'scale(1.9)':'scale(1)';
+      img.style.cursor=zoomed?'zoom-out':'zoom-in';
+      img.style.zIndex=zoomed?'50':'auto';
+      img.style.position=zoomed?'relative':'static';
+    };
+  } else {
+    img.onclick=()=>openLightbox(url);
+    img.style.cursor='zoom-in';
+  }
+
+  div.appendChild(img);
+
+  if(legende){
+    const cap=document.createElement('div');
+    cap.style.cssText='font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3);'
+      +'font-style:italic;margin-top:.3rem;text-align:center;';
+    cap.textContent=legende;
+    div.appendChild(cap);
+  }
+  wrap.appendChild(div);
+
+  // Marquer comme réutilisable (on peut le revoir)
+  sifhrMarkDone(el, markerId, true);
+}
+
+// CSS animation fondu (injecté une fois)
+if(!document.getElementById('sifhr-img-css')){
+  const st=document.createElement('style');
+  st.id='sifhr-img-css';
+  st.textContent='@keyframes imgFondu{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}';
+  document.head.appendChild(st);
+}
+
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
 
