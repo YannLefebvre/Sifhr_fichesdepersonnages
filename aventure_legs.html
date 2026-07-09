@@ -209,7 +209,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260709-1356 -->
+<!-- sifhr-v20260709-1405 -->
 </head>
 <body>
 
@@ -924,12 +924,10 @@ function showChangeNotif(changes){
 
 // ── Rendu séquence ──
 let _nextSeq=null;
-let _renderLock=false;
 function renderSequence(seqId){
   const seq=seqIndex[seqId];
   if(!seq){console.error('Séquence introuvable:',seqId);return;}
-  if(_renderLock){console.warn('[Sifhr] renderSequence verrouillé, ignoré:',seqId);return;}
-  _renderLock=true; setTimeout(()=>_renderLock=false, 500);
+
   // Historique navigation (pour bouton Retour)
   if(currentSeq && currentSeq!==seqId){
     if(!gameState.navHistory) gameState.navHistory=[];
@@ -1101,7 +1099,7 @@ async function sifhrSaveState(){
 }
 
 // ── Parser de marqueurs [[sifhr:...]] ──
-function sifhrParseMarkers(html){
+function sifhrParseMarkers(html, _seqId){
   // Remplace [[sifhr:type:param=val:...]] par un bloc cliquable
   return html.replace(/\[\[sifhr:([^\]]+)\]\]/g, (match, params) => {
     const parts = params.split(':');
@@ -1111,7 +1109,7 @@ function sifhrParseMarkers(html){
       const [k,v] = p.split('=');
       if(k) args[k.trim()] = v ? v.trim() : true;
     });
-    const markerId = 'sm_' + seqId + '_' + btoa(match).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
+    const markerId = 'sm_' + (_seqId||currentSeq||'x') + '_' + btoa(match).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
     const done = sifhrState.markersDone[markerId];
     const label = sifhrMarkerLabel(type, args);
     const hint = sifhrMarkerHint(type, args);
@@ -1689,7 +1687,7 @@ function sifhrShowNotif(msg){
 function _doRenderSequence(seq){
   // ── Parser les marqueurs [[sifhr:...]] dans le contenu ──
   if(seq.content && seq.content.includes('[[sifhr:')){
-    seq = Object.assign({}, seq, {content: sifhrParseMarkers(seq.content)});
+    seq = Object.assign({}, seq, {content: sifhrParseMarkers(seq.content, seq.id)});
   }
   // Image
   const imgWrap=document.getElementById('seq-img-wrap');
