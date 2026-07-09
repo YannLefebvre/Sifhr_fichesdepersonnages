@@ -209,7 +209,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260709-1310 -->
+<!-- sifhr-v20260709-1346 -->
 </head>
 <body>
 
@@ -1108,7 +1108,7 @@ function sifhrParseMarkers(html){
       const [k,v] = p.split('=');
       if(k) args[k.trim()] = v ? v.trim() : true;
     });
-    const markerId = 'sm_' + btoa(match).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
+    const markerId = 'sm_' + seqId + '_' + btoa(match).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
     const done = sifhrState.markersDone[markerId];
     const label = sifhrMarkerLabel(type, args);
     const hint = sifhrMarkerHint(type, args);
@@ -1197,6 +1197,7 @@ async function sifhrHandleMarker(el){
     case 'image':   sifhrAfficherImage(args, el, markerId); break;
     case 'env':     sifhrOpenOverlay('env', args); break;
     case 'carte':   sifhrOpenOverlay('carte', args); break;
+    case 'devoye':  sifhrApplyDevoye(args, el, markerId); break;
   }
 }
 
@@ -1218,14 +1219,52 @@ let _sifhrDicePending = null; // {args, el, markerId, resolve}
 
 async function sifhrOpenDice(args, el, markerId){
   const cloneId = sifhrState.personnageActif || SESSION_FICHE_ID || FICHE_ID;
-  const base=getBase();
+  const base = getBase();
+
+  // ── Mode OR (axe=air,sang) : choisir silencieusement l'axe le plus favorable ──
+  let axeEffectif = args.axe || '';
+  if(axeEffectif.includes(',') && (!args.mode || args.mode==='or')){
+    const axes = axeEffectif.split(',').map(a=>a.trim());
+    // Lire la fiche clone pour comparer les scores
+    try{
+      const r=await fetch(
+        `${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}
+      );
+      const d=await r.json();
+      const etat=d[0]?.etat||{};
+      const tokens=etat.tokens||{}, scores=etat.scores||{};
+      // Score effectif d'un axe = score_vertu - score_vice + jetons_blancs - jetons_noirs
+      const scoreAxe = axe => {
+        const tok = tokens[axe]||[];
+        const blancs = tok.filter(t=>t==='white').length;
+        const noirs  = tok.filter(t=>t==='black').length;
+        const sv = parseInt(scores[axe+'_0'])||0;
+        const sv2= parseInt(scores[axe+'_1'])||0;
+        return (sv - sv2) + (blancs - noirs);
+      };
+      // Prendre l'axe avec le meilleur score
+      axeEffectif = axes.reduce((best,a) => scoreAxe(a) >= scoreAxe(best) ? a : best, axes[0]);
+      // Notifier le joueur
+      const AXES_FR = {feu:'Feu',bile_j:'Bile jaune',terre:'Terre',bile_n:'Bile noire',
+        eau:'Eau',flegme:'Flegme',air:'Air',sang:'Sang'};
+      sifhrShowNotif('⚖ Axe retenu : '+(AXES_FR[axeEffectif]||axeEffectif));
+    }catch(e){
+      // Fallback : prendre le premier axe
+      axeEffectif = axes[0];
+    }
+  }
+
+  const axeParam   = axeEffectif ? '&axe='+encodeURIComponent(axeEffectif) : '';
+  const seuilParam = args.seuil  ? '&seuil='+args.seuil : '';
+  const devoyeParam= (gameState.desDevoyes||0)>0 ? '&devoyes='+gameState.desDevoyes : '';
+
   const url = base+'octogone.html?fiche='+encodeURIComponent(cloneId)
-    +'&pw='+encodeURIComponent(_fichePw)+'&view=des';
+    +'&pw='+encodeURIComponent(_fichePw)+'&view=des'
+    +axeParam+seuilParam+devoyeParam;
 
   document.getElementById('des-iframe').src = url;
   document.getElementById('des-overlay').style.display = 'flex';
-
-  // Attendre le résultat via postMessage
   _sifhrDicePending = {args, el, markerId};
 }
 
@@ -1687,6 +1726,8 @@ function _doRenderSequence(seq){
   // Choix
   const choicesWrap=document.getElementById('choices-wrap');
   choicesWrap.innerHTML='';
+  choicesWrap.style.visibility=''; // toujours réinitialiser
+  delete choicesWrap.dataset.hidden;
   const btnNext=document.getElementById('btn-next');
   btnNext.style.display='none';
   // Bouton "Ouvrir ma fiche" si épreuve détectée
@@ -2827,11 +2868,11 @@ function sifhrShowPsychoResult(psycho) {
 // ── Masquage des choix Moiki pendant un marqueur Sifhr ──
 function sifhrHideChoices() {
   const w = document.getElementById('choices-wrap');
-  if (w) w.style.visibility = 'hidden';
+  if(w){ w.dataset.hidden='1'; w.style.visibility='hidden'; }
 }
 function sifhrShowChoices() {
   const w = document.getElementById('choices-wrap');
-  if (w) w.style.visibility = '';
+  if(w){ delete w.dataset.hidden; w.style.visibility=''; }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -3299,23 +3340,33 @@ function sifhrRenderPsychoOct(etat, pair, resultat){
 }
 
 function sifhrResolvePsycho(gagnant, pair, diff, resiste){
-  // Afficher résumé dans la séquence
-  sifhrShowPsychoResult({gagnant, axe:pair.axe, diff, suivi:!resiste});
-
-  // Déclencher les dés dévoyés si résistance
+  // Dés dévoyés si résistance
   if(resiste && diff > 0){
     gameState.desDevoyes = (gameState.desDevoyes||0) + diff;
-    sifhrShowNotif('🎲 '+diff+' dé'+(diff>1?'s':'') +' dévoyé'+(diff>1?'s':'')+' gagnés');
+    sifhrShowNotif('🎲 '+diff+' dé'+(diff>1?'s':'')+' dévoyé'+(diff>1?'s':'')+' gagnés');
   }
 
-  // Brancher vers onsucces/onechec
-  if(_sifhrDicePending && _sifhrDicePending.type==='psycho'){
-    const {args, el, markerId} = _sifhrDicePending;
-    _sifhrDicePending = null;
-    sifhrMarkDone(el, markerId);
-    const targetSeq = gagnant==='vertu' ? args.onsucces : args.onechec;
-    if(targetSeq){ sifhrForceGoTo(targetSeq); }
-    else { sifhrShowChoices(); }
+  if(!_sifhrDicePending || _sifhrDicePending.type!=='psycho') return;
+  const {args, el, markerId} = _sifhrDicePending;
+  _sifhrDicePending = null;
+  sifhrMarkDone(el, markerId);
+
+  const targetSeq = gagnant==='vertu' ? args.onsucces : args.onechec;
+
+  // Fermer le panneau psycho
+  const pp=document.getElementById('psycho-panel-overlay');
+  if(pp) pp.style.display='none';
+
+  if(targetSeq){
+    // Navigation avec réaffichage garanti des choix
+    setTimeout(()=>{
+      renderSequence(targetSeq);
+      // Forcer la visibilité des choix APRÈS le rendu
+      setTimeout(()=>{ sifhrShowChoices(); },100);
+    }, 400);
+  } else {
+    // Pas de branche → juste réafficher les choix courants
+    sifhrShowChoices();
   }
 }
 
@@ -3328,6 +3379,21 @@ function sifhrClosePsycho(){
     _sifhrDicePending = null;
     sifhrShowChoices();
   }
+}
+
+
+// ── Marqueur [[sifhr:devoye:action=add:valeur=2]] ──
+function sifhrApplyDevoye(args, el, markerId){
+  const action = args.action || 'add';
+  const valeur = parseInt(args.valeur) || 1;
+  if(!gameState.desDevoyes) gameState.desDevoyes = 0;
+  if(action==='add')         gameState.desDevoyes += valeur;
+  else if(action==='remove') gameState.desDevoyes = Math.max(0, gameState.desDevoyes - valeur);
+  else if(action==='set')    gameState.desDevoyes = Math.max(0, valeur);
+  const n = gameState.desDevoyes;
+  sifhrShowNotif('🎲 Dés dévoyés : ' + n + (n===0?' (aucun)':n===1?' dé':' dés'));
+  scheduleSave();
+  sifhrMarkDone(el, markerId, true);
 }
 
 </script>
