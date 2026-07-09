@@ -478,6 +478,9 @@ async function doLogin(){
       document.getElementById('modal-overlay').style.display='none';
       document.getElementById('app').style.display='block';
       document.getElementById('fiche-bar').style.display='flex';
+  // Cacher btn-retour au démarrage (pas encore d'historique)
+  const _initBtnR=document.getElementById('btn-retour');
+  if(_initBtnR) _initBtnR.style.display='none';
       initIndexes();
 
       // Charger ou créer la fiche session
@@ -910,7 +913,7 @@ function renderSequence(seqId){
   // Mettre à jour bouton retour
   setTimeout(()=>{
     const _btnR=document.getElementById('btn-retour');
-    if(_btnR) _btnR.style.display=(gameState.navHistory&&gameState.navHistory.length>0)?'inline-block':'none';
+    if(_btnR) _btnR.style.display=(gameState.navHistory&&gameState.navHistory.length>0)?'flex':'none';
   },50);
   if(!gameState.history||gameState.history[gameState.history.length-1]!==seqId)
     (gameState.history=gameState.history||[]).push(seqId);
@@ -1585,9 +1588,14 @@ function sifhrOpenOverlay(type, args={}){
   document.getElementById(`sifhr-${type}-overlay`).classList.add('open');
 }
 
-function sifhrCloseOverlay(type){
-  document.getElementById(`sifhr-${type}-overlay`).classList.remove('open');
-  document.getElementById(`sifhr-${type}-iframe`).src = 'about:blank';
+function sifhrCloseOverlay(name){
+  const ov=document.getElementById('sifhr-'+name+'-overlay');
+  if(ov) ov.classList.remove('open');
+  if(name==='psycho'||name==='oct'){
+    const pp=document.getElementById('psycho-panel-overlay');
+    if(pp) pp.style.display='none';
+    if(_sifhrDicePending&&_sifhrDicePending.type==='psycho') sifhrShowChoices();
+  }
 }
 
 // ── Notification légère ──
@@ -1712,6 +1720,7 @@ async function restartAdventure(){
   await sifhrInitClones(FICHE_ID, _fichePw, aventureId);
   // Remettre à zéro l'historique et la chrono
   gameState.history = [];
+  if(!gameState.navHistory) gameState.navHistory = [];
   gameState.tempsEcoule = 0;
   gameState.desDevoyes = 0;
   gameState.lastDiceReussites = 0;
@@ -3040,6 +3049,236 @@ if(!document.getElementById('sifhr-img-css')){
   st.id='sifhr-img-css';
   st.textContent='@keyframes imgFondu{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}';
   document.head.appendChild(st);
+}
+
+
+// ── Retour au paragraphe précédent ──
+function retourParagraphe(){
+  const hist = gameState.navHistory || [];
+  if(!hist.length) return;
+  const prev = hist.pop();
+  gameState.navHistory = hist;
+  currentSeq = ''; // évite de re-enregistrer dans l'historique
+  renderSequence(prev);
+  // Mettre à jour visibilité du bouton
+  const btnR = document.getElementById('btn-retour');
+  if(btnR) btnR.style.display = hist.length > 0 ? 'flex' : 'none';
+  scheduleSave();
+}
+
+
+// ══════════════════════════════════════════════
+// PANNEAU PSYCHOMACHIE INLINE
+// ══════════════════════════════════════════════
+
+const PSYCHO_VV_PAIRS = [
+  {v:'force',      vi:'lachete',   vLabel:'Force',      viLabel:'Lâcheté',   axe:'feu',    vAxis:1, viAxis:5},
+  {v:'charite',    vi:'luxure',    vLabel:'Charité',    viLabel:'Luxure',    axe:'bile_j', vAxis:2, viAxis:6},
+  {v:'loyaute',    vi:'malignite', vLabel:'Loyauté',    viLabel:'Malignité', axe:'terre',  vAxis:3, viAxis:7},
+  {v:'prudence',   vi:'acedie',    vLabel:'Prudence',   viLabel:'Acédie',    axe:'bile_n', vAxis:4, viAxis:8},
+  {v:'temperance', vi:'envie',     vLabel:'Tempérance', viLabel:'Envie',     axe:'eau',    vAxis:5, viAxis:1},
+  {v:'chastete',   vi:'avarice',   vLabel:'Chasteté',   viLabel:'Avarice',   axe:'flegme', vAxis:6, viAxis:2},
+  {v:'foi',        vi:'felonie',   vLabel:'Foi',        viLabel:'Félonie',   axe:'air',    vAxis:7, viAxis:3},
+  {v:'esperance',  vi:'temerite',  vLabel:'Espérance',  viLabel:'Témérité',  axe:'sang',   vAxis:8, viAxis:4},
+];
+
+const OCT_SIMPLE_AXES = [
+  {id:'feu',    angle:-90}, {id:'bile_j', angle:-45}, {id:'terre',  angle:0},
+  {id:'bile_n', angle:45},  {id:'eau',    angle:90},  {id:'flegme', angle:135},
+  {id:'air',    angle:180}, {id:'sang',   angle:225},
+];
+
+function sifhrRenderPsychoPanel(args, etat){
+  const overlay = document.getElementById('psycho-panel-overlay');
+  const title   = document.getElementById('psycho-panel-title');
+  const result  = document.getElementById('psycho-panel-result');
+  const actions = document.getElementById('psycho-panel-actions');
+  if(!overlay) return;
+
+  // Trouver la paire demandée (par axe ou vertu)
+  const axeArg = (args.axe||'').toLowerCase().replace(/[éèê]/g,'e').replace(/[àâ]/g,'a');
+  let pair = PSYCHO_VV_PAIRS.find(p=>
+    p.axe===axeArg || p.v===axeArg || p.vLabel.toLowerCase()===axeArg
+  ) || PSYCHO_VV_PAIRS[0];
+
+  title.textContent = '⚖ Psychomachie — '+pair.vLabel+' / '+pair.viLabel;
+
+  // Calcul des scores
+  const tokens = etat.tokens || {};
+  const scores = etat.scores || {};
+
+  const vScore  = parseInt(scores[pair.axe+'_0']) || 0;
+  const viScore = parseInt(scores[pair.axe+'_1']) || 0;
+  const vJetB   = (tokens[pair.axe]||[]).filter(t=>t==='white').length;
+  const viJetN  = (tokens[pair.axe]||[]).filter(t=>t==='black').length;
+  const vTotal  = vScore + vJetB;
+  const viTotal = viScore + viJetN;
+  const diff    = vTotal - viTotal;
+
+  // Résultat
+  let resultat, couleur;
+  if(diff > 0)      { resultat='vertu';     couleur='#1a4a2a'; }
+  else if(diff < 0) { resultat='vice';      couleur='#8b2020'; }
+  else              { resultat='equilibre'; couleur='#c8860a'; }
+
+  // Mini-octogone SVG
+  sifhrRenderPsychoOct(etat, pair, resultat);
+
+  // Texte résultat
+  const signDiff = diff > 0 ? '+'+diff : String(diff);
+  let html = '';
+  if(resultat==='vertu'){
+    html += `<div style="color:#4a8a4a;margin-bottom:.4rem;">✦ La vertu l'emporte (${signDiff})</div>`;
+    html += `<strong>${pair.vLabel}</strong> : ${vScore} (score) + ${vJetB} jeton${vJetB>1?'s':''} blanc${vJetB>1?'s':''} = <strong>${vTotal}</strong><br>`;
+    html += `<strong>${pair.viLabel}</strong> : ${viScore} (score) + ${viJetN} jeton${viJetN>1?'s':''} noir${viJetN>1?'s':''} = <strong>${viTotal}</strong>`;
+    html += `<div style="margin-top:.5rem;color:var(--ink3);font-style:italic;">Votre ${pair.vLabel} guide vos actes. Suivre cet élan est naturel.</div>`;
+  } else if(resultat==='vice'){
+    html += `<div style="color:#8b3030;margin-bottom:.4rem;">⚡ Le vice domine (${signDiff})</div>`;
+    html += `<strong>${pair.vLabel}</strong> : ${vScore} + ${vJetB} = <strong>${vTotal}</strong><br>`;
+    html += `<strong>${pair.viLabel}</strong> : ${viScore} + ${viJetN} = <strong>${viTotal}</strong>`;
+    html += `<div style="margin-top:.5rem;color:var(--ink3);font-style:italic;">Votre ${pair.viLabel} pèse sur vos décisions. Succomber est la pente naturelle.</div>`;
+  } else {
+    html += `<div style="color:#c8860a;margin-bottom:.4rem;">◈ Équilibre parfait (0)</div>`;
+    html += `Vertu et vice se neutralisent. Votre choix sera déterminant.`;
+  }
+  result.innerHTML = html;
+
+  // Boutons d'action
+  actions.innerHTML = '';
+
+  // Bouton SUIVRE (aller dans le sens du résultat)
+  const btnSuivre = document.createElement('button');
+  btnSuivre.style.cssText = 'font-family:Cinzel,serif;font-size:.68rem;padding:6px 14px;'
+    +'border:1px solid '+couleur+';border-radius:5px;background:none;color:'+couleur+';cursor:pointer;';
+  btnSuivre.textContent = resultat==='vertu' ? '✦ Suivre la vertu'
+                        : resultat==='vice'  ? '⚡ Céder au vice'
+                        : '◈ Accepter l\'équilibre';
+  btnSuivre.onclick = () => {
+    overlay.style.display = 'none';
+    sifhrResolvePsycho(resultat, pair, diff, false);
+  };
+  actions.appendChild(btnSuivre);
+
+  // Bouton RÉSISTER (si vice domine ou équilibre)
+  if(resultat === 'vice' || resultat === 'equilibre'){
+    const btnResister = document.createElement('button');
+    btnResister.style.cssText = 'font-family:Cinzel,serif;font-size:.68rem;padding:6px 14px;'
+      +'border:1px solid #1a4a2a;border-radius:5px;background:none;color:#4a8a4a;cursor:pointer;';
+    btnResister.textContent = '✦ Résister au vice';
+    btnResister.onclick = () => {
+      overlay.style.display = 'none';
+      sifhrResolvePsycho('vertu', pair, Math.abs(diff), true);
+    };
+    actions.appendChild(btnResister);
+  }
+
+  // Bouton RÉSISTER (si vertu domine — rarissime, résister à la vertu)
+  if(resultat === 'vertu'){
+    const btnCeder = document.createElement('button');
+    btnCeder.style.cssText = 'font-family:Cinzel,serif;font-size:.68rem;padding:6px 14px;'
+      +'border:1px solid #5a2020;border-radius:5px;background:none;color:#a04040;cursor:pointer;';
+    btnCeder.textContent = '⚡ Résister à la vertu';
+    btnCeder.onclick = () => {
+      overlay.style.display = 'none';
+      sifhrResolvePsycho('vice', pair, Math.abs(diff), true);
+    };
+    actions.appendChild(btnCeder);
+  }
+
+  overlay.style.display = 'flex';
+}
+
+function sifhrRenderPsychoOct(etat, pair, resultat){
+  const svg = document.getElementById('psycho-oct-svg');
+  if(!svg) return;
+  const ns = 'http://www.w3.org/2000/svg';
+  svg.innerHTML = '';
+  const CX=170, CY=170, R=110, INNER=22;
+  const tokens = etat.tokens||{}, scores = etat.scores||{};
+
+  // Polygone de fond
+  const pts = OCT_SIMPLE_AXES.map(a=>{
+    const rad = a.angle*Math.PI/180;
+    return `${(CX+R*Math.cos(rad)).toFixed(1)},${(CY+R*Math.sin(rad)).toFixed(1)}`;
+  }).join(' ');
+  const bg = document.createElementNS(ns,'polygon');
+  bg.setAttribute('points',pts);
+  bg.setAttribute('fill','rgba(26,18,8,.6)');
+  bg.setAttribute('stroke','#4a3820');
+  bg.setAttribute('stroke-width','1');
+  svg.appendChild(bg);
+
+  // Axes
+  OCT_SIMPLE_AXES.forEach(a=>{
+    const rad=a.angle*Math.PI/180;
+    const ax=CX+R*Math.cos(rad), ay=CY+R*Math.sin(rad);
+    const line=document.createElementNS(ns,'line');
+    line.setAttribute('x1',CX); line.setAttribute('y1',CY);
+    line.setAttribute('x2',ax.toFixed(1)); line.setAttribute('y2',ay.toFixed(1));
+    // Mettre en évidence l'axe de la paire
+    const isActive = a.id===pair.axe;
+    line.setAttribute('stroke',isActive?'#c8a060':'#3a2810');
+    line.setAttribute('stroke-width',isActive?'2':'0.8');
+    svg.appendChild(line);
+
+    // Jetons sur cet axe
+    const tok = tokens[a.id]||[];
+    tok.forEach((t,idx)=>{
+      const r_pos = INNER + idx*28;
+      const tx = CX + r_pos*Math.cos(rad);
+      const ty = CY + r_pos*Math.sin(rad);
+      if(t==='empty') return;
+      const c=document.createElementNS(ns,'circle');
+      c.setAttribute('cx',tx.toFixed(1)); c.setAttribute('cy',ty.toFixed(1));
+      c.setAttribute('r','8');
+      c.setAttribute('fill',t==='white'?'#e8d5a0':'#2a1208');
+      c.setAttribute('stroke',t==='white'?'#c8a060':'#8a3030');
+      c.setAttribute('stroke-width','1.5');
+      svg.appendChild(c);
+    });
+  });
+
+  // Centre
+  const ctr=document.createElementNS(ns,'circle');
+  ctr.setAttribute('cx',CX); ctr.setAttribute('cy',CY); ctr.setAttribute('r','12');
+  ctr.setAttribute('fill','rgba(200,160,96,.15)'); ctr.setAttribute('stroke','#c8a060');
+  ctr.setAttribute('stroke-width','1');
+  svg.appendChild(ctr);
+
+  // Surbrillance de l'axe actif
+  const activeAxe = OCT_SIMPLE_AXES.find(a=>a.id===pair.axe);
+  if(activeAxe){
+    const rad=activeAxe.angle*Math.PI/180;
+    const ax2=CX+R*1.15*Math.cos(rad), ay2=CY+R*1.15*Math.sin(rad);
+    const lbl=document.createElementNS(ns,'text');
+    lbl.setAttribute('x',ax2.toFixed(1)); lbl.setAttribute('y',(ay2+4).toFixed(1));
+    lbl.setAttribute('text-anchor','middle');
+    lbl.setAttribute('font-family','serif'); lbl.setAttribute('font-size','11');
+    lbl.setAttribute('fill','#c8a060');
+    lbl.textContent=pair.vLabel+'/'+pair.viLabel;
+    svg.appendChild(lbl);
+  }
+}
+
+function sifhrResolvePsycho(gagnant, pair, diff, resiste){
+  // Afficher résumé dans la séquence
+  sifhrShowPsychoResult({gagnant, axe:pair.axe, diff, suivi:!resiste});
+
+  // Déclencher les dés dévoyés si résistance
+  if(resiste && diff > 0){
+    gameState.desDevoyes = (gameState.desDevoyes||0) + diff;
+    sifhrShowNotif('🎲 '+diff+' dé'+(diff>1?'s':'') +' dévoyé'+(diff>1?'s':'')+' gagnés');
+  }
+
+  // Brancher vers onsucces/onechec
+  if(_sifhrDicePending && _sifhrDicePending.type==='psycho'){
+    const {args, el, markerId} = _sifhrDicePending;
+    _sifhrDicePending = null;
+    sifhrMarkDone(el, markerId);
+    const targetSeq = gagnant==='vertu' ? args.onsucces : args.onechec;
+    if(targetSeq){ sifhrForceGoTo(targetSeq); }
+    else { sifhrShowChoices(); }
+  }
 }
 
 </script>
