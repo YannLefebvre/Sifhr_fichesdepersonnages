@@ -299,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260710-0713 -->
+<!-- sifhr-v20260710-0728 -->
 </head>
 <body>
 
@@ -1262,7 +1262,7 @@ function sifhrParseMarkers(html, _seqId){
     const done = sifhrState.markersDone[markerId];
     const label = sifhrMarkerLabel(type, args);
     const hint = sifhrMarkerHint(type, args);
-    return `<span class="sifhr-marker${done?' done':''}"
+    return `<span id="sifhr-m-${markerId}" class="sifhr-marker${done?' done':''}"
       data-sifhr-type="${type}"
       data-sifhr-args="${encodeURIComponent(JSON.stringify(args))}"
       data-sifhr-id="${markerId}"
@@ -3180,7 +3180,9 @@ let C_sc=0.7,C_px=0,C_py=0,C_pan=false,C_sx=0,C_sy=0,C_ox=0,C_oy=0,C_td=null,C_o
 const C_W=1200,C_H=900,C_IX=120,C_IY=90,C_IW=960,C_IH=720;
 let C_SEUILS={3:0.5,2:1.4,1:2.4};
 function C_wrap(){return document.getElementById('sifhr-carte-inline');}
-function C_s(){return document.getElementById('damas-svg');}
+function C_s(){
+  return document.getElementById('myrk-svg')||document.getElementById('damas-svg');
+}
 function C_tr(){
   const s=C_s();if(!s)return;
   s.style.cssText='position:absolute;transform:translate('+C_px+'px,'+C_py+'px) scale('+C_sc+');transform-origin:0 0;width:'+C_W+'px;height:'+C_H+'px;';
@@ -3249,7 +3251,11 @@ function C_init(){
     const yp=Math.round(((e.clientY-r.top-C_py)/C_sc-C_IY)/C_IH*1000)/10;
     if(xp>=0&&xp<=100&&yp>=0&&yp<=100){e.preventDefault();navigator.clipboard.writeText('x_pct:'+xp+', y_pct:'+yp);}
   });
-  document.querySelectorAll('#damas-svg .lieu-marker').forEach(el=>{
+  // Sélectionner les marqueurs du bon SVG
+  const _svgSel = document.getElementById('myrk-svg')
+    ? '#myrk-svg .lieu-marker-myrk'
+    : '#damas-svg .lieu-marker';
+  document.querySelectorAll(_svgSel).forEach(el=>{
     el.addEventListener('click',ev=>{ev.stopPropagation();C_sel(el.dataset.id);});
   });
   C_resetView();
@@ -3341,9 +3347,20 @@ function sifhrAfficherImage(args, el, markerId) {
     cap.textContent=legende;
     div.appendChild(cap);
   }
-  wrap.appendChild(div);
+  // Insérer l'image AVANT le marqueur (dans le flux du texte)
+  // el est le bouton .sifhr-marker — on insère le div avant lui
+  if(el && el.parentNode){
+    el.parentNode.insertBefore(div, el);
+  } else {
+    wrap.appendChild(div);
+  }
 
-  // Marquer comme réutilisable (on peut le revoir)
+  // Masquer le bouton marqueur (l'image le remplace visuellement)
+  if(el){
+    el.style.display='none';
+  }
+
+  // Marquer comme réutilisable
   sifhrMarkDone(el, markerId, true);
 }
 
