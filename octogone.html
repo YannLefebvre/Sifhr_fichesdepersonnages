@@ -3846,21 +3846,48 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
   titleInp.placeholder=titlePlaceholder;
   const cur=(getArr()[idx])||{title:'',text:'',locked:false};
   titleInp.value=cur.title||'';
+  // Joueur : champ lecture seule
+  if(!isGM) titleInp.readOnly=true;
   titleWrap.appendChild(titleInp);
 
-  // Cadenas
+  // Cadenas — GM only
+  let isLocked=cur.locked||false;
   const lockBtn=document.createElement('button'); lockBtn.className='acc-lock-btn';
   lockBtn.title='Verrouiller / déverrouiller la saisie';
-  let isLocked=cur.locked||false;
   lockBtn.textContent=isLocked?'🔒':'🔓';
+  lockBtn.style.display=isGM?'':'none';
   titleWrap.appendChild(lockBtn);
+
+  // Bouton supprimer — GM only
+  if(isGM){
+    const delBtn=document.createElement('button');
+    delBtn.className='acc-del-btn';
+    delBtn.textContent='🗑';
+    delBtn.title='Supprimer cet élément';
+    delBtn.style.cssText='background:none;border:none;cursor:pointer;font-size:.8rem;'
+      +'color:var(--ink3);padding:0 .2rem;opacity:.6;';
+    delBtn.onmouseenter=()=>delBtn.style.opacity='1';
+    delBtn.onmouseleave=()=>delBtn.style.opacity='.6';
+    delBtn.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      if(!confirm('Supprimer cet élément ?')) return;
+      const arr=getArr();
+      // Vider l'item (ne pas splicer pour éviter ré-indexation)
+      arr[idx]={title:'',text:'',locked:false,bm:0,image:null};
+      saveState();
+      // Masquer visuellement
+      item.style.display='none';
+    });
+    titleWrap.appendChild(delBtn);
+  }
+
   item.appendChild(titleWrap);
 
   const body=document.createElement('div'); body.className='acc-body';
 
   const textArea=document.createElement('textarea'); textArea.className='acc-text';
   textArea.placeholder=textPlaceholder; textArea.value=cur.text||'';
-  textArea.disabled=isLocked;
+  textArea.disabled=isLocked||(!isGM); // Joueur : toujours lecture seule
 
   const rendered=document.createElement('div'); rendered.className='acc-rendered';
   if(isLocked){
@@ -3925,6 +3952,8 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
   titleInp.addEventListener('input', saveItem);
   textArea.addEventListener('input', saveItem);
 
+  // Masquer les items vides au chargement
+  if(!cur.title&&!cur.text) item.style.display='none';
   panel.appendChild(item);
   return {titleInp, textArea, rendered, body, toggle, autoResize,
     applyLock: (locked)=>{
@@ -3978,11 +4007,37 @@ function buildEnhancedAccItem(panel, getArr, idx, titlePlaceholder, textPlacehol
   titleInp.placeholder=titlePlaceholder;
   const cur=(getArr()[idx])||{title:'',text:'',bm:0,image:null,locked:false};
   titleInp.value=cur.title||'';
+  if(!isGM) titleInp.readOnly=true;
   titleWrap.appendChild(titleInp);
-  const lockBtn=document.createElement('button'); lockBtn.className='acc-lock-btn';
   let isLocked=cur.locked||false;
+  const lockBtn=document.createElement('button'); lockBtn.className='acc-lock-btn';
   lockBtn.textContent=isLocked?'🔒':'🔓';
+  lockBtn.style.display=isGM?'':'none';
   titleWrap.appendChild(lockBtn);
+
+  // Bouton supprimer — GM only
+  if(isGM){
+    const delBtn=document.createElement('button');
+    delBtn.className='acc-del-btn';
+    delBtn.textContent='🗑';
+    delBtn.title='Supprimer cet élément';
+    delBtn.style.cssText='background:none;border:none;cursor:pointer;font-size:.8rem;'
+      +'color:var(--ink3);padding:0 .2rem;opacity:.6;';
+    delBtn.onmouseenter=()=>delBtn.style.opacity='1';
+    delBtn.onmouseleave=()=>delBtn.style.opacity='.6';
+    delBtn.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      if(!confirm('Supprimer cet élément ?')) return;
+      const arr=getArr();
+      arr.splice(idx,1);
+      saveState();
+      const parentFn=panel._rebuildFn;
+      if(typeof parentFn==='function') parentFn();
+      else { panel.innerHTML=''; }
+    });
+    titleWrap.appendChild(delBtn);
+  }
+
   item.appendChild(titleWrap);
 
   const body=document.createElement('div'); body.className='acc-body';
@@ -4104,6 +4159,8 @@ function buildEnhancedAccItem(panel, getArr, idx, titlePlaceholder, textPlacehol
   titleInp.addEventListener('input', saveItem);
   textArea.addEventListener('input', saveItem);
 
+  // Masquer les items vides au chargement
+  if(!cur.title&&!cur.text) item.style.display='none';
   panel.appendChild(item);
   return {titleInp, textArea, rendered, body, toggle, autoResize, bibBtn,
     applyLock:(locked)=>{ isLocked=locked; lockBtn.textContent=locked?'🔒':'🔓'; textArea.disabled=locked; if(locked){ rendered.innerHTML=markdownToHtml(textArea.value); rendered.classList.add('visible'); textArea.style.display='none'; } else { rendered.classList.remove('visible'); textArea.style.display=''; } }
