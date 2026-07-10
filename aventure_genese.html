@@ -113,7 +113,6 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   .sifhr-overlay { position:fixed; inset:0; background:rgba(10,7,3,0.92);
     display:none; align-items:center; justify-content:center; z-index:350; }
   .sifhr-overlay.open { display:flex; }
-  #sifhr-carte-overlay { flex-direction:column; align-items:stretch; justify-content:flex-start; }
   .sifhr-overlay-box { background:var(--panel-bg); border:1px solid var(--accent);
     border-radius:8px; width:min(680px,98vw); max-height:92vh;
     display:flex; flex-direction:column; overflow:hidden; }
@@ -300,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260710-0729 -->
+<!-- sifhr-v20260710-0737 -->
 </head>
 <body>
 
@@ -3137,7 +3136,8 @@ async function sifhrDonner(args, el, markerId) {
       // Sauver
       await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(cloneId)}`,{
         method:'PATCH',
-        headers:{...SB_AV.hdrs,'Prefer':'return=minimal'},
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+          'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify({etat})
       });
       sifhrShowNotif('✦ Trait ajouté à '+args.aptitude+' : '+item.title);
@@ -3181,9 +3181,7 @@ let C_sc=0.7,C_px=0,C_py=0,C_pan=false,C_sx=0,C_sy=0,C_ox=0,C_oy=0,C_td=null,C_o
 const C_W=1200,C_H=900,C_IX=0,C_IY=0,C_IW=1200,C_IH=900;
 let C_SEUILS={3:0.5,2:1.4,1:2.4};
 function C_wrap(){return document.getElementById('sifhr-carte-inline');}
-function C_s(){
-  return document.getElementById('myrk-svg')||document.getElementById('myrk-svg')||document.getElementById('damas-svg');
-}
+function C_s(){return document.getElementById('myrk-svg')||document.getElementById('damas-svg');}
 function C_tr(){
   const s=C_s();if(!s)return;
   s.style.cssText='position:absolute;transform:translate('+C_px+'px,'+C_py+'px) scale('+C_sc+');transform-origin:0 0;width:'+C_W+'px;height:'+C_H+'px;';
@@ -3194,7 +3192,7 @@ function C_vis(){
   const myrk=document.getElementById('myrk-svg');
   const sel=myrk
     ? '#myrk-svg .lieu-marker-myrk'
-    : '#myrk-svg .lieu-marker-myrk';
+    : '#damas-svg .lieu-marker';
   const reveles=(typeof sifhrState!=='undefined'&&sifhrState.lieuxReveles)||null;
 
   document.querySelectorAll(sel).forEach(el=>{
@@ -3255,14 +3253,15 @@ function C_init(){
   // Sélectionner les marqueurs du bon SVG
   const _svgSel = document.getElementById('myrk-svg')
     ? '#myrk-svg .lieu-marker-myrk'
-    : '#myrk-svg .lieu-marker-myrk';
+    : '#damas-svg .lieu-marker';
   document.querySelectorAll(_svgSel).forEach(el=>{
     el.addEventListener('click',ev=>{ev.stopPropagation();C_sel(el.dataset.id);});
   });
   C_resetView();
+  if(typeof C_buildLegend==='function') C_buildLegend();
 }
 function C_sel(id){
-  document.querySelectorAll('#myrk-svg .lieu-marker-myrk').forEach(el=>el.classList.toggle('selected',el.dataset.id===id));
+  document.querySelectorAll('#damas-svg .lieu-marker').forEach(el=>el.classList.toggle('selected',el.dataset.id===id));
   const l=C_LIEUX_DATA.find(x=>x.id===id);
   if(l&&l.x!=null){const w=C_wrap().getBoundingClientRect();C_px=w.width/2-(C_IX+l.x/100*C_IW)*C_sc;C_py=w.height/2-(C_IY+l.y/100*C_IH)*C_sc;C_tr();}
   const pw=document.getElementById('carte-popup-wrap');if(!pw)return;
@@ -3280,7 +3279,7 @@ function openCarteDamas(opts){
   setTimeout(()=>{C_init();if(opts&&opts.lieux)C_voyage(opts.lieux,opts.onChoix);},60);
 }
 function C_voyage(ids,onChoix){
-  document.querySelectorAll('#myrk-svg .lieu-marker-myrk').forEach(el=>{
+  document.querySelectorAll('#damas-svg .lieu-marker').forEach(el=>{
     const ok=ids.includes(el.dataset.id);
     el.style.opacity=ok?'1':'0.25';el.style.cursor=ok?'pointer':'not-allowed';
     el.onclick=ok?(ev=>{ev.stopPropagation();if(onChoix)onChoix(el.dataset.id);}):(ev=>ev.stopPropagation());
@@ -3348,18 +3347,10 @@ function sifhrAfficherImage(args, el, markerId) {
     cap.textContent=legende;
     div.appendChild(cap);
   }
-  // Insérer l'image AVANT le marqueur (dans le flux du texte)
-  // el est le bouton .sifhr-marker — on insère le div avant lui
   if(el && el.parentNode){
     el.parentNode.insertBefore(div, el);
-  } else {
-    wrap.appendChild(div);
-  }
-
-  // Masquer le bouton marqueur (l'image le remplace visuellement)
-  if(el){
     el.style.display='none';
-  }
+  } else if(wrap){ wrap.appendChild(div); }
 
   // Marquer comme réutilisable
   sifhrMarkDone(el, markerId, true);
@@ -4013,33 +4004,67 @@ function C_buildLegend(){
   if(!list) return;
   list.innerHTML='';
   const reveles=(typeof sifhrState!=='undefined'&&sifhrState.lieuxReveles)||{};
-  C_LIEUX_DATA.forEach(l=>{
+  C_LIEUX_DATA.forEach(function(l){
     if(!l.nom) return;
     const el=document.getElementById('gl-'+l.id);
-    const isInitial=el&&el.dataset.initial;
-    if(!isInitial&&!reveles[l.id]) return;
+    if(!el||(!el.dataset.initial&&!reveles[l.id])) return;
     const div=document.createElement('div');
-    div.style.cssText='padding:.22rem .3rem;border-bottom:1px solid var(--border2);cursor:pointer;transition:background .1s;';
-    div.onmouseenter=()=>div.style.background='rgba(200,160,96,.08)';
-    div.onmouseleave=()=>div.style.background='';
+    div.style.cssText='padding:.22rem .3rem;border-bottom:1px solid var(--border2);cursor:pointer;';
+    div.onmouseenter=function(){div.style.background='rgba(200,160,96,.08)';};
+    div.onmouseleave=function(){div.style.background='';};
     div.innerHTML='<span style="font-size:.75rem;">'+l.icone+'</span>'
       +' <span style="font-family:Cinzel,serif;font-size:.58rem;color:var(--ink2);">'+l.nom+'</span>'
-      +(l.nom_med&&l.nom_med!==l.nom?'<span style="display:block;font-size:.52rem;color:var(--ink3);font-style:italic;padding-left:1.1rem;line-height:1.3;">'+l.nom_med+'</span>':'')
-      +(l.desc?'<span style="display:block;font-size:.55rem;color:var(--ink3);padding-left:1.1rem;line-height:1.3;margin-top:.1rem;">'+l.desc.slice(0,80)+'…</span>':'');
-    div.onclick=()=>C_sel(l.id);
+      +(l.nom_med&&l.nom_med!==l.nom?'<span style="display:block;font-size:.52rem;color:var(--ink3);font-style:italic;padding-left:1.1rem;">'+l.nom_med+'</span>':'')
+      +(l.desc?'<span style="display:block;font-size:.52rem;color:var(--ink3);padding-left:1.1rem;">'+l.desc.slice(0,70)+'&#8230;</span>':'');
+    div.onclick=function(){C_sel(l.id);};
     list.appendChild(div);
   });
-}
-const _C_origInit=C_init;
-function C_init(){
-  if(typeof _C_origInit==='function') _C_origInit();
-  C_buildLegend();
 }
 
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
 
 <!-- Overlay Dés (déjà existant, on garde) -->
+
+
+<!-- ── Overlay Événements ── -->
+<div id="evt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);
+  display:none;align-items:center;justify-content:center;z-index:300;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;
+    padding:1.2rem;max-width:480px;width:94vw;max-height:90vh;overflow-y:auto;
+    display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;margin-bottom:.8rem;">
+      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;flex:1;">
+        &#128203; Événements &amp; Chronologie
+      </span>
+      <button onclick="document.getElementById('evt-overlay').style.display='none'"
+        style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">&#10005;</button>
+    </div>
+    <div id="evt-oct-wrap" style="border:1px solid var(--border2);border-radius:6px;
+      padding:.4rem .5rem;margin-bottom:.5rem;background:rgba(26,18,8,.4);">
+      <div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);
+        letter-spacing:.05em;margin-bottom:.3rem;">&#11042; Environnement</div>
+      <div style="display:flex;gap:.4rem;align-items:flex-start;">
+        <svg id="evt-oct-svg" viewBox="0 0 340 340"
+          style="width:120px;height:120px;flex-shrink:0;"></svg>
+        <div style="flex:1;min-width:0;overflow:hidden;">
+          <div id="evt-vv-list"></div>
+          <div id="evt-etats-list" style="margin-top:.2rem;"></div>
+        </div>
+      </div>
+    </div>
+    <div id="evt-chrono-wrap" style="border:1px solid var(--border2);border-radius:6px;
+      padding:.4rem .5rem;margin-bottom:.5rem;background:rgba(26,18,8,.3);
+      max-height:140px;overflow-y:auto;display:none;"></div>
+    <input id="evt-search" type="text" placeholder="&#128269; Rechercher un événement…"
+      oninput="renderEvtOverlay()"
+      style="width:100%;padding:.35rem .5rem;background:rgba(26,18,8,.6);
+        border:1px solid var(--border);border-radius:4px;
+        font-family:'Crimson Text',serif;font-size:.85rem;color:var(--ink);
+        outline:none;margin-bottom:.5rem;">
+    <div id="evt-overlay-list" style="overflow-y:auto;flex:1;"></div>
+  </div>
+</div>
 
 <!-- Overlay Octogone complet -->
 <div id="sifhr-oct-overlay" class="sifhr-overlay">
@@ -4064,18 +4089,18 @@ function C_init(){
 </div>
 
 <!-- Overlay Carte -->
-<div <div <div id="sifhr-carte-overlay" class="sifhr-overlay">
+<div <div <div id="sifhr-carte-overlay" class="sifhr-overlay" style="flex-direction:column;align-items:stretch;justify-content:flex-start;">
   <div class="sifhr-overlay-header">
     <span class="sifhr-overlay-title">&#128506; Myriokephalon &middot; 1176</span>
     <button class="sifhr-overlay-close" onclick="sifhrCloseOverlay('carte')">&#10005;</button>
   </div>
-  <div style="display:flex;gap:.5rem;align-items:center;padding:.25rem .8rem;background:rgba(10,7,3,.4);border-bottom:1px solid var(--border2);flex-shrink:0;">
-    <span style="font-family:Cinzel,serif;font-size:.52rem;color:var(--ink3);">Grille</span>
-    <input type="range" min="0" max="100" value="0" step="5" oninput="setCarteLayerOpacity('layer-grille',this.value)" style="width:55px;accent-color:var(--accent);">
-    <span style="font-family:Cinzel,serif;font-size:.52rem;color:var(--ink3);">Route</span>
-    <input type="range" min="0" max="100" value="100" step="5" oninput="setCarteLayerOpacity('layer-route',this.value)" style="width:55px;accent-color:var(--accent);">
-    <span style="font-family:Cinzel,serif;font-size:.52rem;color:var(--ink3);">Front.</span>
-    <input type="range" min="0" max="100" value="100" step="5" oninput="setCarteLayerOpacity('layer-frontiere',this.value)" style="width:55px;accent-color:var(--accent);">
+  <div style="display:flex;gap:.4rem;align-items:center;padding:.2rem .6rem;background:rgba(10,7,3,.4);border-bottom:1px solid var(--border2);flex-shrink:0;">
+    <span style="font-family:Cinzel,serif;font-size:.5rem;color:var(--ink3);">Grille</span>
+    <input type="range" min="0" max="100" value="0" step="5" oninput="setCarteLayerOpacity('layer-grille',this.value)" style="width:50px;accent-color:var(--accent);">
+    <span style="font-family:Cinzel,serif;font-size:.5rem;color:var(--ink3);">Route</span>
+    <input type="range" min="0" max="100" value="100" step="5" oninput="setCarteLayerOpacity('layer-route',this.value)" style="width:50px;accent-color:var(--accent);">
+    <span style="font-family:Cinzel,serif;font-size:.5rem;color:var(--ink3);">Front.</span>
+    <input type="range" min="0" max="100" value="100" step="5" oninput="setCarteLayerOpacity('layer-frontiere',this.value)" style="width:50px;accent-color:var(--accent);">
   </div>
   <div style="flex:1;display:flex;overflow:hidden;min-height:0;">
     <div id="sifhr-carte-inline" style="flex:1;position:relative;overflow:hidden;cursor:grab;">
@@ -4227,7 +4252,7 @@ function C_init(){
         <button onclick="C_resetView()" style="width:26px;height:26px;background:rgba(10,7,3,.9);border:1px solid var(--border);border-radius:3px;color:var(--ink);cursor:pointer;font-size:.7rem;">&#8962;</button>
       </div>
     </div>
-    <div id="sifhr-carte-legend" style="width:190px;flex-shrink:0;background:rgba(14,9,4,.95);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
+    <div style="width:185px;flex-shrink:0;background:rgba(14,9,4,.95);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;">
       <div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);padding:.4rem .5rem;border-bottom:1px solid var(--border2);letter-spacing:.05em;flex-shrink:0;">Lieux</div>
       <div id="sifhr-carte-legend-list" style="padding:.3rem;flex:1;overflow-y:auto;"></div>
     </div>
