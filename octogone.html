@@ -2651,6 +2651,8 @@ async function doLogin(tryGM){
         authenticated = true;
         octIsGM = tryGM;
         isGM = tryGM; // sync pour buildAutoLoginParams
+        // Appliquer le mode lecture seule si joueur
+        setTimeout(applyPlayerReadOnly, 500);
         if(!tryGM){
           window._playerPw = pw;
           // Si envFichePw absent, le lire depuis la fiche env pour auto-login
@@ -3847,7 +3849,6 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
   const cur=(getArr()[idx])||{title:'',text:'',locked:false};
   titleInp.value=cur.title||'';
   // Joueur : champ lecture seule
-  if(isGM===false) titleInp.readOnly=true; // readOnly uniquement si joueur confirmé
   titleWrap.appendChild(titleInp);
 
   // Cadenas — GM only
@@ -3885,7 +3886,7 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
 
   const textArea=document.createElement('textarea'); textArea.className='acc-text';
   textArea.placeholder=textPlaceholder; textArea.value=cur.text||'';
-  textArea.disabled=isLocked||(isGM===false); // Joueur confirmé : lecture seule
+  textArea.disabled=isLocked;
 
   const rendered=document.createElement('div'); rendered.className='acc-rendered';
   if(isLocked){
@@ -4003,7 +4004,6 @@ function buildEnhancedAccItem(panel, getArr, idx, titlePlaceholder, textPlacehol
   titleInp.placeholder=titlePlaceholder;
   const cur=(getArr()[idx])||{title:'',text:'',bm:0,image:null,locked:false};
   titleInp.value=cur.title||'';
-  if(isGM===false) titleInp.readOnly=true; // readOnly uniquement si joueur confirmé
   titleWrap.appendChild(titleInp);
   let isLocked=cur.locked||false;
   const lockBtn=document.createElement('button'); lockBtn.className='acc-lock-btn';
@@ -4023,13 +4023,12 @@ function buildEnhancedAccItem(panel, getArr, idx, titlePlaceholder, textPlacehol
     delBtn.onmouseleave=()=>delBtn.style.opacity='.6';
     delBtn.addEventListener('click',(e)=>{
       e.stopPropagation();
-      if(!confirm('Supprimer cet élément ?')) return;
+      const nom=titleInp.value||'cet élément';
+      if(!confirm('Supprimer "'+nom+'" ?')) return;
       const arr=getArr();
-      arr.splice(idx,1);
+      arr[idx]={title:'',text:'',locked:false,bm:0,level:null,levelType:null,image:null};
       saveState();
-      const parentFn=panel._rebuildFn;
-      if(typeof parentFn==='function') parentFn();
-      else { panel.innerHTML=''; }
+      item.style.display='none';
     });
     titleWrap.appendChild(delBtn);
   }
@@ -11137,6 +11136,21 @@ function checkIncomingGaleriePush(saved){
   if(!state.galerieRecues) state.galerieRecues={};
   state.galerieRecues[push.key]={...push, pushedAt:push.ts};
   galerieShowNotif(push.key, push.titre, push.url);
+}
+
+
+// ── Appliquer le mode lecture seule joueur sur équipement/artefacts/prodiges/confrérie ──
+function applyPlayerReadOnly(){
+  if(isGM) return; // MJ peut toujours éditer
+  // Rendre tous les inputs de ces sections en readonly
+  ['equipement-inner','artefacts-inner','prodiges-inner','confrerie-inner'].forEach(id=>{
+    const panel=document.getElementById(id);
+    if(!panel) return;
+    panel.querySelectorAll('.acc-title').forEach(inp=>{ inp.readOnly=true; });
+    panel.querySelectorAll('.acc-text').forEach(ta=>{ ta.disabled=true; });
+    panel.querySelectorAll('.acc-lock-btn').forEach(btn=>{ btn.style.display='none'; });
+    panel.querySelectorAll('.acc-bib-btn').forEach(btn=>{ btn.style.display='none'; });
+  });
 }
 
 </script>
