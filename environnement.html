@@ -3180,7 +3180,10 @@ async function pushVisibilitesToFiche(ficheId, pw, otherId, niveau){
 let _ninesPollTimer=null;
 async function pollNines(){
   if(!isGM) return;
-  const fiches = state.fichePersonnages||[];
+  // fichePersonnages peut contenir des objets {id,...} ou des strings — normaliser
+  const fiches = (state.fichePersonnages||[]).map(p=>
+    typeof p==='string' ? p : (p.id||p)
+  ).filter(id=>typeof id==='string'&&id.length>0);
   if(!fiches.length){
     document.getElementById('nine-count-val').textContent='0';
     document.getElementById('nine-threshold-label').textContent='/ seuil : '+(state.nineThreshold||'?');
