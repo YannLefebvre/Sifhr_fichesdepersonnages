@@ -299,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260710-0737 -->
+<!-- sifhr-v20260710-0752 -->
 </head>
 <body>
 
@@ -1241,11 +1241,10 @@ function sifhrParseMarkers(html, _seqId){
     const joinedParts = [];
     for(let ri=0;ri<rawParts.length;ri++){
       const p=rawParts[ri];
-      if(ri>0 && rawParts[ri-1].slice(-1)==='/' && p.startsWith('/')){
-        // Fragment d'URL '//' → fusionner avec le précédent
-        joinedParts[joinedParts.length-1]+= ':'+p;
-      } else if(ri>0 && joinedParts.length>0 && joinedParts[joinedParts.length-1].includes('=http')){
-        // Continuation d'une URL (ex: https:)
+      // Fusionner uniquement le fragment '//' qui suit 'https' ou 'http'
+      // (rawParts[ri-1] se termine par 'https' ou 'http', p commence par '//')
+      const prev=rawParts[ri-1]||'';
+      if(ri>0 && (prev.endsWith('https')||prev.endsWith('http')) && p.startsWith('//')){
         joinedParts[joinedParts.length-1]+= ':'+p;
       } else {
         joinedParts.push(p);
@@ -3181,7 +3180,9 @@ let C_sc=0.7,C_px=0,C_py=0,C_pan=false,C_sx=0,C_sy=0,C_ox=0,C_oy=0,C_td=null,C_o
 const C_W=1200,C_H=900,C_IX=0,C_IY=0,C_IW=1200,C_IH=900;
 let C_SEUILS={3:0.5,2:1.4,1:2.4};
 function C_wrap(){return document.getElementById('sifhr-carte-inline');}
-function C_s(){return document.getElementById('myrk-svg')||document.getElementById('damas-svg');}
+function C_s(){
+  return document.getElementById('myrk-svg')||document.getElementById('damas-svg');
+}
 function C_tr(){
   const s=C_s();if(!s)return;
   s.style.cssText='position:absolute;transform:translate('+C_px+'px,'+C_py+'px) scale('+C_sc+');transform-origin:0 0;width:'+C_W+'px;height:'+C_H+'px;';
@@ -4000,21 +4001,20 @@ function _dsClose(){
 
 
 function C_buildLegend(){
-  const list=document.getElementById('sifhr-carte-legend-list');
+  var list=document.getElementById('sifhr-carte-legend-list');
   if(!list) return;
   list.innerHTML='';
-  const reveles=(typeof sifhrState!=='undefined'&&sifhrState.lieuxReveles)||{};
+  var reveles=(typeof sifhrState!=='undefined'&&sifhrState.lieuxReveles)||{};
   C_LIEUX_DATA.forEach(function(l){
     if(!l.nom) return;
-    const el=document.getElementById('gl-'+l.id);
+    var el=document.getElementById('gl-'+l.id);
     if(!el||(!el.dataset.initial&&!reveles[l.id])) return;
-    const div=document.createElement('div');
+    var div=document.createElement('div');
     div.style.cssText='padding:.22rem .3rem;border-bottom:1px solid var(--border2);cursor:pointer;';
     div.onmouseenter=function(){div.style.background='rgba(200,160,96,.08)';};
     div.onmouseleave=function(){div.style.background='';};
     div.innerHTML='<span style="font-size:.75rem;">'+l.icone+'</span>'
       +' <span style="font-family:Cinzel,serif;font-size:.58rem;color:var(--ink2);">'+l.nom+'</span>'
-      +(l.nom_med&&l.nom_med!==l.nom?'<span style="display:block;font-size:.52rem;color:var(--ink3);font-style:italic;padding-left:1.1rem;">'+l.nom_med+'</span>':'')
       +(l.desc?'<span style="display:block;font-size:.52rem;color:var(--ink3);padding-left:1.1rem;">'+l.desc.slice(0,70)+'&#8230;</span>':'');
     div.onclick=function(){C_sel(l.id);};
     list.appendChild(div);
@@ -4028,44 +4028,25 @@ function C_buildLegend(){
 
 
 <!-- ── Overlay Événements ── -->
-<div id="evt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);
-  display:none;align-items:center;justify-content:center;z-index:300;">
-  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;
-    padding:1.2rem;max-width:480px;width:94vw;max-height:90vh;overflow-y:auto;
-    display:flex;flex-direction:column;">
-    <div style="display:flex;align-items:center;margin-bottom:.8rem;">
-      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;flex:1;">
-        &#128203; Événements &amp; Chronologie
-      </span>
-      <button onclick="document.getElementById('evt-overlay').style.display='none'"
-        style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">&#10005;</button>
+<div id="evt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:500px;width:96vw;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;align-items:center;margin-bottom:.8rem;flex-shrink:0;">
+      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;flex:1;">&#128203; Événements &amp; Chronologie</span>
+      <button onclick="document.getElementById('evt-overlay').style.display='none'" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">&#10005;</button>
     </div>
-    <div id="evt-oct-wrap" style="border:1px solid var(--border2);border-radius:6px;
-      padding:.4rem .5rem;margin-bottom:.5rem;background:rgba(26,18,8,.4);">
-      <div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);
-        letter-spacing:.05em;margin-bottom:.3rem;">&#11042; Environnement</div>
-      <div style="display:flex;gap:.4rem;align-items:flex-start;">
-        <svg id="evt-oct-svg" viewBox="0 0 340 340"
-          style="width:120px;height:120px;flex-shrink:0;"></svg>
-        <div style="flex:1;min-width:0;overflow:hidden;">
-          <div id="evt-vv-list"></div>
-          <div id="evt-etats-list" style="margin-top:.2rem;"></div>
+    <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;padding-right:.2rem;">
+      <div id="evt-oct-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.4);flex-shrink:0;">
+        <div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);letter-spacing:.05em;margin-bottom:.3rem;">&#11042; Environnement</div>
+        <div style="display:flex;gap:.4rem;align-items:flex-start;">
+          <svg id="evt-oct-svg" viewBox="0 0 340 340" style="width:110px;height:110px;flex-shrink:0;"></svg>
+          <div style="flex:1;min-width:0;"><div id="evt-vv-list"></div><div id="evt-etats-list" style="margin-top:.2rem;"></div></div>
         </div>
       </div>
+      <div id="evt-chrono-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.3);flex-shrink:0;display:none;"></div>
+      <div id="evt-overlay-list" style="flex-shrink:0;"></div>
     </div>
-    <div id="evt-chrono-wrap" style="border:1px solid var(--border2);border-radius:6px;
-      padding:.4rem .5rem;margin-bottom:.5rem;background:rgba(26,18,8,.3);
-      max-height:140px;overflow-y:auto;display:none;"></div>
-    <input id="evt-search" type="text" placeholder="&#128269; Rechercher un événement…"
-      oninput="renderEvtOverlay()"
-      style="width:100%;padding:.35rem .5rem;background:rgba(26,18,8,.6);
-        border:1px solid var(--border);border-radius:4px;
-        font-family:'Crimson Text',serif;font-size:.85rem;color:var(--ink);
-        outline:none;margin-bottom:.5rem;">
-    <div id="evt-overlay-list" style="overflow-y:auto;flex:1;"></div>
   </div>
 </div>
-
 <!-- Overlay Octogone complet -->
 <div id="sifhr-oct-overlay" class="sifhr-overlay">
   <div class="sifhr-overlay-box">

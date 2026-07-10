@@ -299,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260710-0736 -->
+<!-- sifhr-v20260710-0751 -->
 </head>
 <body>
 
@@ -1241,11 +1241,10 @@ function sifhrParseMarkers(html, _seqId){
     const joinedParts = [];
     for(let ri=0;ri<rawParts.length;ri++){
       const p=rawParts[ri];
-      if(ri>0 && rawParts[ri-1].slice(-1)==='/' && p.startsWith('/')){
-        // Fragment d'URL '//' → fusionner avec le précédent
-        joinedParts[joinedParts.length-1]+= ':'+p;
-      } else if(ri>0 && joinedParts.length>0 && joinedParts[joinedParts.length-1].includes('=http')){
-        // Continuation d'une URL (ex: https:)
+      // Fusionner uniquement le fragment '//' qui suit 'https' ou 'http'
+      // (rawParts[ri-1] se termine par 'https' ou 'http', p commence par '//')
+      const prev=rawParts[ri-1]||'';
+      if(ri>0 && (prev.endsWith('https')||prev.endsWith('http')) && p.startsWith('//')){
         joinedParts[joinedParts.length-1]+= ':'+p;
       } else {
         joinedParts.push(p);
@@ -4670,44 +4669,22 @@ function _dsClose(){
 </div>
 
 <!-- ── Overlay Événements ── -->
-<div id="evt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);
-  display:none;align-items:center;justify-content:center;z-index:300;">
-  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;
-    padding:1.2rem;max-width:480px;width:94vw;max-height:90vh;overflow-y:auto;
-    display:flex;flex-direction:column;">
-    <div style="display:flex;align-items:center;margin-bottom:.8rem;">
-      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;flex:1;">
-        📋 Événements &amp; Chronologie
-      </span>
-      <button onclick="document.getElementById('evt-overlay').style.display='none'"
-        style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">✕</button>
+<div div <div id="evt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;">
+  <div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:500px;width:96vw;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;align-items:center;margin-bottom:.8rem;flex-shrink:0;">
+      <span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;flex:1;">&#128203; Événements &amp; Chronologie</span>
+      <button onclick="document.getElementById('evt-overlay').style.display='none'" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">&#10005;</button>
     </div>
-    <!-- Octogone env simplifié -->
-    <div id="evt-oct-wrap" style="border:1px solid var(--border2);border-radius:6px;
-      padding:.4rem .5rem;margin-bottom:.5rem;background:rgba(26,18,8,.4);">
-      <div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);
-        letter-spacing:.05em;margin-bottom:.3rem;">⬡ Environnement</div>
-      <div style="display:flex;gap:.4rem;align-items:flex-start;">
-        <svg id="evt-oct-svg" viewBox="0 0 340 340"
-          style="width:120px;height:120px;flex-shrink:0;"></svg>
-        <div style="flex:1;min-width:0;overflow:hidden;">
-          <div id="evt-vv-list"></div>
-          <div id="evt-etats-list" style="margin-top:.2rem;"></div>
+    <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;padding-right:.2rem;">
+      <div id="evt-oct-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.4);flex-shrink:0;">
+        <div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);letter-spacing:.05em;margin-bottom:.3rem;">&#11042; Environnement</div>
+        <div style="display:flex;gap:.4rem;align-items:flex-start;">
+          <svg id="evt-oct-svg" viewBox="0 0 340 340" style="width:110px;height:110px;flex-shrink:0;"></svg>
+          <div style="flex:1;min-width:0;"><div id="evt-vv-list"></div><div id="evt-etats-list" style="margin-top:.2rem;"></div></div>
         </div>
       </div>
+      <div id="evt-chrono-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.3);flex-shrink:0;display:none;"></div>
+      <div id="evt-overlay-list" style="flex-shrink:0;"></div>
     </div>
-    <!-- Chronologie -->
-    <div id="evt-chrono-wrap" style="border:1px solid var(--border2);border-radius:6px;
-      padding:.4rem .5rem;margin-bottom:.5rem;background:rgba(26,18,8,.3);
-      max-height:140px;overflow-y:auto;display:none;"></div>
-    <!-- Recherche -->
-    <input id="evt-search" type="text" placeholder="🔍 Rechercher un événement…"
-      oninput="renderEvtOverlay()"
-      style="width:100%;padding:.35rem .5rem;background:rgba(26,18,8,.6);
-        border:1px solid var(--border);border-radius:4px;
-        font-family:'Crimson Text',serif;font-size:.85rem;color:var(--ink);
-        outline:none;margin-bottom:.5rem;">
-    <!-- Liste -->
-    <div id="evt-overlay-list" style="overflow-y:auto;flex:1;"></div>
   </div>
 </div>
