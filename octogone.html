@@ -3717,6 +3717,7 @@ function buildTraitAccItem(panel, idx){
   lockBtn.title='Verrouiller / déverrouiller la saisie';
   let isLocked=cur.locked||false;
   lockBtn.textContent=isLocked?'🔒':'🔓';
+  lockBtn.style.display=isGM?'':'none'; // Cadenas invisible pour joueur
   titleWrap.appendChild(lockBtn);
   // Bouton supprimer (MJ only)
   const delTraitBtn=document.createElement('button');
@@ -3787,7 +3788,7 @@ function buildTraitAccItem(panel, idx){
   item._levelRow=levelRow;
   return {titleInp, textArea, rendered, body, toggle, autoResize,
     applyLock:(locked)=>{
-      isLocked=locked; lockBtn.textContent=locked?'🔒':'🔓'; textArea.disabled=locked;
+      isLocked=locked; lockBtn.textContent=locked?'🔒':'🔓'; textArea.disabled=locked&&!isGM;
       if(locked){ rendered.innerHTML=markdownToHtml(textArea.value); rendered.classList.add('visible'); textArea.style.display='none'; }
       else { rendered.classList.remove('visible'); textArea.style.display=''; }
     }
@@ -3956,7 +3957,7 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
     applyLock: (locked)=>{
       isLocked=locked;
       lockBtn.textContent=locked?'🔒':'🔓';
-      textArea.disabled=locked;
+      textArea.disabled=locked&&!isGM; // MJ jamais bloqué
       if(locked){
         rendered.innerHTML=markdownToHtml(textArea.value);
         rendered.classList.add('visible');
@@ -4156,7 +4157,7 @@ function buildEnhancedAccItem(panel, getArr, idx, titlePlaceholder, textPlacehol
 
   panel.appendChild(item);
   return {titleInp, textArea, rendered, body, toggle, autoResize, bibBtn,
-    applyLock:(locked)=>{ isLocked=locked; lockBtn.textContent=locked?'🔒':'🔓'; textArea.disabled=locked; if(locked){ rendered.innerHTML=markdownToHtml(textArea.value); rendered.classList.add('visible'); textArea.style.display='none'; } else { rendered.classList.remove('visible'); textArea.style.display=''; } }
+    applyLock:(locked)=>{ isLocked=locked; lockBtn.textContent=locked?'🔒':'🔓'; textArea.disabled=locked&&!isGM; if(locked){ rendered.innerHTML=markdownToHtml(textArea.value); rendered.classList.add('visible'); textArea.style.display=isGM?'':'none'; } else { rendered.classList.remove('visible'); textArea.style.display=''; } }
   };
 }
 
@@ -11143,7 +11144,7 @@ function checkIncomingGaleriePush(saved){
 function applyPlayerReadOnly(){
   if(isGM) return; // MJ peut toujours éditer
   // Rendre tous les inputs de ces sections en readonly
-  ['equipement-inner','artefacts-inner','prodiges-inner','confrerie-inner'].forEach(id=>{
+  ['equipement-inner','artefacts-inner','prodiges-inner','confrerie-inner','traits-inner'].forEach(id=>{
     const panel=document.getElementById(id);
     if(!panel) return;
     panel.querySelectorAll('.acc-title').forEach(inp=>{ inp.readOnly=true; });
