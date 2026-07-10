@@ -3847,7 +3847,7 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
   const cur=(getArr()[idx])||{title:'',text:'',locked:false};
   titleInp.value=cur.title||'';
   // Joueur : champ lecture seule
-  if(!isGM) titleInp.readOnly=true;
+  if(isGM===false) titleInp.readOnly=true; // readOnly uniquement si joueur confirmé
   titleWrap.appendChild(titleInp);
 
   // Cadenas — GM only
@@ -3870,13 +3870,11 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
     delBtn.onmouseleave=()=>delBtn.style.opacity='.6';
     delBtn.addEventListener('click',(e)=>{
       e.stopPropagation();
-      if(!confirm('Supprimer cet élément ?')) return;
+      if(!confirm('Supprimer "'+titleInp.value+'" ?')) return;
       const arr=getArr();
-      // Vider l'item (ne pas splicer pour éviter ré-indexation)
       arr[idx]={title:'',text:'',locked:false,bm:0,image:null};
       saveState();
-      // Masquer visuellement
-      item.style.display='none';
+      item.style.display='none'; // Masquer ce slot après suppression
     });
     titleWrap.appendChild(delBtn);
   }
@@ -3887,7 +3885,7 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
 
   const textArea=document.createElement('textarea'); textArea.className='acc-text';
   textArea.placeholder=textPlaceholder; textArea.value=cur.text||'';
-  textArea.disabled=isLocked||(!isGM); // Joueur : toujours lecture seule
+  textArea.disabled=isLocked||(isGM===false); // Joueur confirmé : lecture seule
 
   const rendered=document.createElement('div'); rendered.className='acc-rendered';
   if(isLocked){
@@ -3952,8 +3950,6 @@ function buildAccItem(panel, getArr, idx, titlePlaceholder, textPlaceholder){
   titleInp.addEventListener('input', saveItem);
   textArea.addEventListener('input', saveItem);
 
-  // Masquer les items vides au chargement
-  if(!cur.title&&!cur.text) item.style.display='none';
   panel.appendChild(item);
   return {titleInp, textArea, rendered, body, toggle, autoResize,
     applyLock: (locked)=>{
@@ -4007,7 +4003,7 @@ function buildEnhancedAccItem(panel, getArr, idx, titlePlaceholder, textPlacehol
   titleInp.placeholder=titlePlaceholder;
   const cur=(getArr()[idx])||{title:'',text:'',bm:0,image:null,locked:false};
   titleInp.value=cur.title||'';
-  if(!isGM) titleInp.readOnly=true;
+  if(isGM===false) titleInp.readOnly=true; // readOnly uniquement si joueur confirmé
   titleWrap.appendChild(titleInp);
   let isLocked=cur.locked||false;
   const lockBtn=document.createElement('button'); lockBtn.className='acc-lock-btn';
@@ -4159,8 +4155,6 @@ function buildEnhancedAccItem(panel, getArr, idx, titlePlaceholder, textPlacehol
   titleInp.addEventListener('input', saveItem);
   textArea.addEventListener('input', saveItem);
 
-  // Masquer les items vides au chargement
-  if(!cur.title&&!cur.text) item.style.display='none';
   panel.appendChild(item);
   return {titleInp, textArea, rendered, body, toggle, autoResize, bibBtn,
     applyLock:(locked)=>{ isLocked=locked; lockBtn.textContent=locked?'🔒':'🔓'; textArea.disabled=locked; if(locked){ rendered.innerHTML=markdownToHtml(textArea.value); rendered.classList.add('visible'); textArea.style.display='none'; } else { rendered.classList.remove('visible'); textArea.style.display=''; } }
