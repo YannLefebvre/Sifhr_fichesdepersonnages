@@ -300,7 +300,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260710-2152 -->
+<!-- sifhr-v20260710-2156 -->
 </head>
 <body>
 
@@ -1258,7 +1258,9 @@ function sifhrParseMarkers(html, _seqId){
       const v=p.slice(eqIdx+1).trim();
       if(k) args[k]=v||true;
     });
-    const markerId = 'sm_' + (_seqId||currentSeq||'x') + '_' + btoa(match).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
+    // btoa ne supporte pas les caractères non-Latin1 → hash numérique simple
+    const _mhash = match.split('').reduce((h,c)=>((h<<5)-h+c.charCodeAt(0))|0, 0);
+    const markerId = 'sm_' + (_seqId||currentSeq||'x') + '_' + Math.abs(_mhash).toString(36);
     const done = sifhrState.markersDone[markerId];
     const label = sifhrMarkerLabel(type, args);
     const hint = sifhrMarkerHint(type, args);
@@ -4070,7 +4072,7 @@ function C_buildLegend(){var list=document.getElementById('sifhr-carte-legend-li
 <!-- Overlay Dés (déjà existant, on garde) -->
 
 
-<div id="evt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;"><div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:500px;width:96vw;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;"><div style="display:flex;align-items:center;margin-bottom:.8rem;flex-shrink:0;"><span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;flex:1;">&#128203; Événements &amp; Chronologie</span><button onclick="document.getElementById('evt-overlay').style.display='none'" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">&#10005;</button></div><div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;padding-right:.2rem;"><div id="evt-oct-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.4);flex-shrink:0;"><div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);letter-spacing:.05em;margin-bottom:.3rem;">&#11042; Environnement</div><div style="display:flex;gap:.4rem;align-items:flex-start;"><svg id="evt-oct-svg" viewBox="0 0 340 340" style="width:110px;height:110px;flex-shrink:0;"></svg><div style="flex:1;min-width:0;"><div id="evt-vv-list"></div><div id="evt-etats-list" style="margin-top:.2rem;"></div></div></div></div><div id="evt-chrono-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.3);flex-shrink:0;display:none;"></div><div id="evt-overlay-list" style="flex-shrink:0;"></div></div></div></div>
+<div id="evt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;"><div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:500px;width:96vw;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;"><div style="display:flex;align-items:center;margin-bottom:.8rem;flex-shrink:0;"><span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;flex:1;">&#128203; Événements</span><button onclick="document.getElementById('evt-overlay').style.display='none'" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">&#10005;</button></div><div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;padding-right:.2rem;"><div id="evt-oct-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.4);flex-shrink:0;"><div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);letter-spacing:.05em;margin-bottom:.3rem;">&#11042; Environnement</div><div style="display:flex;gap:.4rem;align-items:flex-start;"><svg id="evt-oct-svg" viewBox="0 0 340 340" style="width:110px;height:110px;flex-shrink:0;"></svg><div style="flex:1;min-width:0;"><div id="evt-vv-list"></div><div id="evt-etats-list" style="margin-top:.2rem;"></div></div></div></div><div id="evt-chrono-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.3);flex-shrink:0;display:none;"></div><div id="evt-overlay-list" style="flex-shrink:0;"></div></div></div></div>
 <!-- Overlay Octogone complet -->
 <div id="sifhr-oct-overlay" class="sifhr-overlay">
   <div class="sifhr-overlay-box">

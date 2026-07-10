@@ -299,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260710-2151 -->
+<!-- sifhr-v20260710-2156 -->
 </head>
 <body>
 
@@ -1257,7 +1257,9 @@ function sifhrParseMarkers(html, _seqId){
       const v=p.slice(eqIdx+1).trim();
       if(k) args[k]=v||true;
     });
-    const markerId = 'sm_' + (_seqId||currentSeq||'x') + '_' + btoa(match).replace(/[^a-zA-Z0-9]/g,'').slice(0,12);
+    // btoa ne supporte pas les caractères non-Latin1 → hash numérique simple
+    const _mhash = match.split('').reduce((h,c)=>((h<<5)-h+c.charCodeAt(0))|0, 0);
+    const markerId = 'sm_' + (_seqId||currentSeq||'x') + '_' + Math.abs(_mhash).toString(36);
     const done = sifhrState.markersDone[markerId];
     const label = sifhrMarkerLabel(type, args);
     const hint = sifhrMarkerHint(type, args);
