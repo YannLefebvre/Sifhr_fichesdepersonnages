@@ -4658,6 +4658,16 @@ async function bibOctSave(){
 
 // ── Mini SVG octogone ──
 const BIB_CX=150, BIB_CY=150, BIB_OUTER=110, BIB_INNER=18, BIB_RINGS=6;
+const BIB_AXES = [
+  {id:'feu',    label:'Feu',     angle:0},
+  {id:'bile_j', label:'BileJ',   angle:45},
+  {id:'terre',  label:'Terre',   angle:90},
+  {id:'bile_n', label:'BileN',   angle:135},
+  {id:'eau',    label:'Eau',     angle:180},
+  {id:'flegme', label:'Flegme',  angle:225},
+  {id:'air',    label:'Air',     angle:270},
+  {id:'sang',   label:'Sang',    angle:315},
+];
 
 function bibPolar(r,deg){
   const a=(deg-90)*Math.PI/180;
