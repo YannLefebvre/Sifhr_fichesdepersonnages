@@ -299,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260713-1934 -->
+<!-- sifhr-v20260713-1953 -->
 </head>
 <body>
 
@@ -628,6 +628,8 @@ async function doLogin(){
             ?JSON.parse(sessionRow.aventure_state):sessionRow.aventure_state;
           if(saved&&saved.currentSeq){
             Object.assign(gameState,saved);
+            // Normaliser les types numériques (peuvent être strings depuis Supabase)
+            gameState.desDevoyes = parseInt(gameState.desDevoyes)||0;
             currentSeq = gameState.currentSeq||''; // sync var locale
             renderSequence(gameState.currentSeq);
             renderStatusBar();
@@ -747,13 +749,15 @@ async function openHist(){
     const b=document.createElement('div');b.style.cssText='font-size:.88rem;color:var(--ink2);line-height:1.6;font-family:Crimson Text,serif;';b.innerHTML=html;
     s.appendChild(t);s.appendChild(b);cont.appendChild(s);
   };
-  if(hist.title||hist.text) mkSection('Histoire du personnage',(hist.title?'<strong>'+hist.title+'</strong><br>':'')+(hist.text||'').split('\n').join('<br>'));
+  // Ordre : Histoires croisées → Dettes/Créances → Histoire du personnage
   hc.filter(h=>h.text||h.perso).forEach(h=>mkSection('Histoire avec '+(h.perso||'?'),h.text||''));
   dettes.filter(d=>d.perso).forEach(d=>{
     const bm=d.bm||0;
     const bmStr=bm!==0?` <span style="font-family:Cinzel,serif;font-size:.68rem;padding:1px 5px;border-radius:8px;${bm>0?'background:#d4edda;color:#1a5c2a':'background:#fde8e8;color:#8b2020'}">${bm>0?'+':''}${bm}</span>`:'';
-    mkSection('Dette envers '+(d.perso||'?'),bmStr+(d.text?'<br>'+d.text:''));
+    const label=d.type==='creance'?'Créance sur ':'Dette envers ';
+    mkSection(label+(d.perso||'?'),bmStr+(d.text?'<br>'+d.text:''));
   });
+  if(hist.title||hist.text) mkSection('Histoire du personnage',(hist.title?'<strong>'+hist.title+'</strong><br>':'')+(hist.text||'').split('\n').join('<br>'));
   if(!cont.children.length)cont.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;">Aucun historique.</p>';
 }
 function closeHist(){document.getElementById('hist-overlay').style.display='none';}
@@ -3614,7 +3618,7 @@ function sifhrResolvePsycho(gagnant, pair, diff, resiste){
   if(resiste && diff > 0){
     // Limiter à 3 dés max par résistance (sécurité contre valeurs aberrantes)
     const diffClamped = Math.min(Math.max(1, Math.abs(Math.round(diff))), 3);
-    gameState.desDevoyes = (gameState.desDevoyes||0) + diffClamped;
+    gameState.desDevoyes = (parseInt(gameState.desDevoyes)||0) + diffClamped;
     sifhrShowNotif('🎲 +'+diffClamped+' dé'+(diffClamped>1?'s':'')+' dévoyé'+(diffClamped>1?'s':''));
   }
 
@@ -3658,7 +3662,7 @@ function sifhrClosePsycho(){
 function sifhrApplyDevoye(args, el, markerId){
   const action = args.action || 'add';
   const valeur = parseInt(args.valeur) || 1;
-  if(!gameState.desDevoyes) gameState.desDevoyes = 0;
+  gameState.desDevoyes = parseInt(gameState.desDevoyes)||0; // Toujours un entier
   if(action==='add')         gameState.desDevoyes += valeur;
   else if(action==='remove') gameState.desDevoyes = Math.max(0, gameState.desDevoyes - valeur);
   else if(action==='set')    gameState.desDevoyes = Math.max(0, valeur);
