@@ -299,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260713-2003 -->
+<!-- sifhr-v20260713-2021 -->
 </head>
 <body>
 
@@ -641,10 +641,15 @@ async function doLogin(){
       }
       // Nouvelle partie — initialiser les clones Sifhr
       const aventureId = STORY_DATA._id || 'av_default';
-      await sifhrInitClones(fiche, pw, aventureId);
+      const _restored = await sifhrInitClones(fiche, pw, aventureId);
       syncFromOctogone();
-      currentSeq = ''; // nouvelle partie, pas d'historique
-      renderSequence(STORY_DATA.firstSequence);
+      if(_restored && gameState.currentSeq){
+        currentSeq = gameState.currentSeq;
+        renderSequence(gameState.currentSeq);
+      } else {
+        currentSeq = '';
+        renderSequence(STORY_DATA.firstSequence);
+      }
       renderStatusBar();
       startRealtime();
     }
@@ -1153,11 +1158,13 @@ async function sifhrInitClones(ficheId, pw, aventureId){
         ? JSON.parse(existing.sifhr_state) : (existing.sifhr_state||{});
       Object.assign(gameState, gs);
       Object.assign(sifhrState, ss);
+      // Normaliser les types numériques
+      gameState.desDevoyes = parseInt(gameState.desDevoyes)||0;
       console.log('[Sifhr] Session restaurée:', saveId, 
         'seq:', gameState.currentSeq,
         'marqueurs done:', Object.keys(sifhrState.markersDone||{}).length);
     }catch(e){ console.error('[Sifhr] restore error:', e); }
-    return;
+    return true; // Sauvegarde trouvée
   }
 
   // Nouvelle partie — créer un clone de la fiche joueur
@@ -3141,10 +3148,22 @@ async function sifhrDonner(args, el, markerId) {
       }
     }
 
-    // Si pas trouvé en bib ou pas d'id → utiliser titre/texte directs
+    // Si pas trouvé en bib — chercher dans assetIndex Moiki, puis fallback args
+    if(!item && args.id){
+      const moikiAsset = assetIndex[args.id] || Object.values(assetIndex).find(a=>
+        (a.label||'').toLowerCase()===args.id.toLowerCase()
+      );
+      if(moikiAsset){
+        item = {
+          title: moikiAsset.label || args.id,
+          text:  moikiAsset.desc  || moikiAsset.description || '',
+          level: args.niveau||null, levelType:args.niveau||null, locked:false,
+        };
+      }
+    }
     if(!item) {
       item = {
-        title:    decodeURIComponent(args.titre||'').replace(/\+/g,' ')||'Item',
+        title:    decodeURIComponent(args.titre||args.id||'').replace(/\+/g,' ')||'Item',
         text:     decodeURIComponent(args.texte||'').replace(/\+/g,' '),
         level:    args.niveau||null,
         levelType:args.niveau||null,
