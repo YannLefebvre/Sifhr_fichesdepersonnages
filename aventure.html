@@ -299,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260713-1953 -->
+<!-- sifhr-v20260713-2003 -->
 </head>
 <body>
 
@@ -750,12 +750,13 @@ async function openHist(){
     s.appendChild(t);s.appendChild(b);cont.appendChild(s);
   };
   // Ordre : Histoires croisées → Dettes/Créances → Histoire du personnage
-  hc.filter(h=>h.text||h.perso).forEach(h=>mkSection('Histoire avec '+(h.perso||'?'),h.text||''));
+  hc.filter(h=>h.text||h.texte||h.perso).forEach(h=>mkSection('Histoire avec '+(h.perso||'?'),h.text||h.texte||''));
   dettes.filter(d=>d.perso).forEach(d=>{
     const bm=d.bm||0;
     const bmStr=bm!==0?` <span style="font-family:Cinzel,serif;font-size:.68rem;padding:1px 5px;border-radius:8px;${bm>0?'background:#d4edda;color:#1a5c2a':'background:#fde8e8;color:#8b2020'}">${bm>0?'+':''}${bm}</span>`:'';
     const label=d.type==='creance'?'Créance sur ':'Dette envers ';
-    mkSection(label+(d.perso||'?'),bmStr+(d.text?'<br>'+d.text:''));
+    const txt=d.text||d.texte||''; // compatibilité text/texte
+    mkSection(label+(d.perso||'?'),bmStr+(txt?'<br>'+txt:''));
   });
   if(hist.title||hist.text) mkSection('Histoire du personnage',(hist.title?'<strong>'+hist.title+'</strong><br>':'')+(hist.text||'').split('\n').join('<br>'));
   if(!cont.children.length)cont.innerHTML='<p style="color:var(--ink3);font-style:italic;font-size:.85rem;">Aucun historique.</p>';
@@ -846,9 +847,9 @@ async function syncToOctogone(){
   const existingNonMoiki=(etat.equipement.items||[]).filter(it=>it.source!=='moiki');
   etat.equipement.items=[...existingNonMoiki,...moikiItems];
 
-  // Répercuter les dés dévoyés Moiki (des)
-  const desDevoyes=gameState.desDevoyes||0;
-  if(desDevoyes>0) etat.des=(etat.des||0)+desDevoyes;
+  // Répercuter les dés dévoyés — refléter la valeur courante (pas cumuler)
+  const desDevoyes=parseInt(gameState.desDevoyes)||0;
+  etat.des=desDevoyes; // Écraser, pas additionner
 
   await SB.patch(targetId,{etat});
   ficheEtat=etat;
@@ -1637,7 +1638,8 @@ async function sifhrApplyDette(args, el, markerId, isCreance=false){
     const valeur = parseInt(args.valeur)||1;
     const action = args.action||'add';
     if(action==='add'){
-      etat.dettes.push({perso:args.perso||'', bm:valeur, texte:args.texte||''});
+      const detteTexteRaw=args.texte ? decodeURIComponent(args.texte).replace(/\+/g,' ') : '';
+      etat.dettes.push({perso:args.perso||'', bm:valeur, text:detteTexteRaw, texte:detteTexteRaw});
     } else {
       // Retirer la première dette correspondante
       const idx = etat.dettes.findIndex(d=>d.perso===args.perso);
