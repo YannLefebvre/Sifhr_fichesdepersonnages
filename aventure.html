@@ -299,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260710-2156 -->
+<!-- sifhr-v20260713-1934 -->
 </head>
 <body>
 
@@ -3096,7 +3096,18 @@ async function sifhrDonner(args, el, markerId) {
     // ── Construire l'item à ajouter ──
     let item = null;
 
-    if(args.id) {
+    // Construction directe depuis args si titre/texte fournis explicitement
+    if(args.titre || args.texte) {
+      item = {
+        title:     args.titre || args.id || '',
+        text:      args.texte || '',
+        level:     args.niveau || null,
+        levelType: args.niveau || null,
+        locked:    false,
+      };
+    }
+
+    if(!item && args.id) {
       // Chercher dans la bibliothèque de la fiche env
       const envId = (typeof sifhrState!=='undefined'&&sifhrState.envId)||'env-test';
       const rEnv = await fetch(
@@ -3444,12 +3455,13 @@ function sifhrRenderPsychoPanel(args, etat){
   const tokens = etat.tokens || {};
   const scores = etat.scores || {};
 
-  const vScore  = parseInt(scores[pair.axe+'_0']) || 0;
-  const viScore = parseInt(scores[pair.axe+'_1']) || 0;
+  const vScore  = Math.round(parseFloat(scores[pair.axe+'_0'])||0);
+  const viScore = Math.round(parseFloat(scores[pair.axe+'_1'])||0);
   const vJetB   = (tokens[pair.axe]||[]).filter(t=>t==='white').length;
   const viJetN  = (tokens[pair.axe]||[]).filter(t=>t==='black').length;
   const vTotal  = vScore + vJetB;
   const viTotal = viScore + viJetN;
+  console.log('[psycho]',pair.axe,'vScore:',vScore,'viScore:',viScore,'vJetB:',vJetB,'viJetN:',viJetN,'diff:',vTotal-viTotal);
   const diff    = vTotal - viTotal;
 
   // Résultat
@@ -3600,8 +3612,10 @@ function sifhrRenderPsychoOct(etat, pair, resultat){
 function sifhrResolvePsycho(gagnant, pair, diff, resiste){
   // Dés dévoyés si résistance
   if(resiste && diff > 0){
-    gameState.desDevoyes = (gameState.desDevoyes||0) + diff;
-    sifhrShowNotif('🎲 '+diff+' dé'+(diff>1?'s':'')+' dévoyé'+(diff>1?'s':'')+' gagnés');
+    // Limiter à 3 dés max par résistance (sécurité contre valeurs aberrantes)
+    const diffClamped = Math.min(Math.max(1, Math.abs(Math.round(diff))), 3);
+    gameState.desDevoyes = (gameState.desDevoyes||0) + diffClamped;
+    sifhrShowNotif('🎲 +'+diffClamped+' dé'+(diffClamped>1?'s':'')+' dévoyé'+(diffClamped>1?'s':''));
   }
 
   if(!_sifhrDicePending || _sifhrDicePending.type!=='psycho') return;
