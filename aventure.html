@@ -247,6 +247,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   position:relative;transition:all .15s;}
 .di-die-w{background:rgba(232,213,160,.15);border-color:var(--accent);}
 .di-die-r{background:rgba(120,32,20,.15);border-color:#8a3020;}
+.di-die-d{background:rgba(40,10,60,.3);border-color:#5a1080;} /* dévoyé */
 .di-die-hit{box-shadow:0 0 10px rgba(200,160,96,.5);}
 .di-die-w.di-die-hit{background:rgba(200,160,96,.3);border-color:#c8a060;}
 .di-die-r.di-die-hit{background:rgba(180,60,30,.3);border-color:#c04020;}
@@ -299,7 +300,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260714-0545 -->
+<!-- sifhr-v20260714-0804 -->
 </head>
 <body>
 
@@ -1578,7 +1579,20 @@ async function sifhrShowEvent(args, el, markerId){
            const k=Object.keys(slots).find(k2=>slots[k2]===s);
            return k && k.replace(/&#39;/g,"'").replace(/&amp;/g,'&')===slotKeyNorm;
          });
-    if(!slot){ console.warn('[Sifhr] Slot introuvable:', slotKey, '(normalisé:', slotKeyNorm,') dans', Object.keys(slots)); return; }
+    if(!slot){
+      // Slot introuvable → afficher un message générique mais marquer comme fait
+      console.warn('[Sifhr] Slot introuvable:', slotKey, 'dans', Object.keys(slots));
+      const wrap2=document.getElementById('seq-content');
+      if(wrap2){
+        const div2=document.createElement('div');
+        div2.style.cssText='margin:.5rem 0;padding:.5rem .8rem;border:1px solid var(--border);border-radius:5px;background:rgba(0,0,0,.12);';
+        div2.innerHTML='<span style="font-family:Cinzel,serif;font-size:.68rem;color:var(--accent);">📋 '+
+          (slotKeyNorm||slotKey)+'</span><br><span style="font-size:.82rem;color:var(--ink3);font-style:italic;">Cet événement n’a pas encore de description.</span>';
+        wrap2.appendChild(div2);
+      }
+      sifhrMarkDone(el, markerId);
+      return;
+    }
 
     const niveau = args.niveau||'texte';
     const texte = niveau==='rumeur'?slot.texte_rumeur:
@@ -3818,7 +3832,12 @@ function _dsInitDice(){
   const devoyés=parseInt(_DS.desDevoyes)||0;
   for(let i=0;i<whites;i++)   nd.push({color:'white',     value:null,locked:false,modified:false});
   for(let i=0;i<reds;i++)     nd.push({color:'red',       value:null,locked:false,modified:false});
-  for(let i=0;i<devoyés;i++)  nd.push({color:'black_token',value:null,locked:false,modified:false});
+  // Les dés dévoyés remplacent des dés blancs existants (les corrompent)
+  // Ils sont verrouillés avec une valeur aléatoire non modifiable
+  for(let i=0;i<Math.min(devoyés,whites);i++){
+    // Corrompre le i-ème dé blanc : le rendre dévoyé (verrouillé, couleur noire)
+    if(nd[i]) nd[i]={color:'black_token',value:null,locked:true,modified:false};
+  }
   _DS.dice = nd;
   _DS._bonusAdded=false; _DS._expertiseAdded=false; // Reset flags
 }
@@ -4001,10 +4020,11 @@ function _dsRollDice(){
     _DS._expertiseAdded=true;
   }
 
-  // Lancer uniquement les dés sans valeur
+  // Lancer tous les dés sans valeur (y compris les dévoyés verrouillés)
   _DS.dice.forEach((d,i)=>{
     if(special[i]==='maitrise') return;
     if(d.value===null) d.value=_dsRollOnce(d);
+    // Les dés dévoyés sont verrouillés — leur valeur ne peut être modifiée manuellement
   });
 
   // Malus 3 : Négation
@@ -4030,12 +4050,15 @@ function _dsRenderResult(){
   let html=`<div class="di-step-title">🎲 Résultat</div>`;
   html+='<div class="di-dice-row">';
   dice.forEach((d,i)=>{
-    const isW=d.color==='white', isR=d.color==='red'||d.color==='black_token';
+    const isW=d.color==='white';
+    const isDevoy=d.color==='black_token';
+    const isR=d.color==='red';
     const isSuc=_dsIsSuccess(d.value);
-    const cls=`di-die ${isW?'di-die-w':'di-die-r'}${isSuc?' di-die-hit':''}`;
-    html+=`<div class="${cls}" onclick="_dsToggleDie(${i})" title="${d.locked?'Verrouillé':'Cliquer pour modifier'}">`
+    const cls=`di-die ${isW?'di-die-w':isDevoy?'di-die-d':'di-die-r'}${isSuc?' di-die-hit':''}`;
+    const title=isDevoy?'Dé dévoyé (verrouillé)':d.locked?'Verrouillé':'Cliquer pour modifier';
+    html+=`<div class="${cls}" onclick="${d.locked||isDevoy?'':'_dsToggleDie('+i+')'}" title="${title}">`
       +`<span class="di-die-val">${d.value??'—'}</span>`
-      +(d.locked?'<span class="di-die-lock">🔒</span>':'')
+      +(isDevoy?'<span class="di-die-lock" title="Dévoyé">☠</span>':d.locked?'<span class="di-die-lock">🔒</span>':'')
       +'</div>';
   });
   html+='</div>';
