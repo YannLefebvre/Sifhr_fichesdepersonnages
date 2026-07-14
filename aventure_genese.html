@@ -211,14 +211,14 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 .di-summary{font-size:.8rem;color:var(--ink2);margin:.2rem 0;}
 
 /* Aptitudes */
-.di-apt-grid{display:grid;grid-template-columns:1fr 1fr;gap:.25rem;margin:.25rem 0;}
+.di-apt-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.2rem;margin:.2rem 0;}
 .di-apt-btn{background:var(--section-bg);border:1px solid var(--border2);border-radius:5px;
-  padding:.4rem .5rem;cursor:pointer;text-align:left;transition:all .1s;color:var(--ink);}
+  padding:.3rem .4rem;cursor:pointer;text-align:left;transition:all .1s;color:var(--ink);font-size:.9rem;}
 .di-apt-btn:hover{border-color:var(--accent);background:rgba(200,160,96,.08);}
 .di-apt-empty{opacity:.5;}
-.di-apt-name{display:block;font-family:Cinzel,serif;font-size:.65rem;color:var(--ink2);}
+.di-apt-name{display:block;font-family:Cinzel,serif;font-size:.6rem;color:var(--ink2);}
 .di-apt-squares{display:flex;gap:2px;margin-top:3px;}
-.di-sq{width:9px;height:9px;border:1px solid var(--border);border-radius:1px;display:inline-block;}
+.di-sq{width:7px;height:7px;border:1px solid var(--border);border-radius:1px;display:inline-block;}
 .di-sq-on{background:var(--accent);border-color:var(--accent);}
 
 /* Traits */
@@ -234,8 +234,8 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 .di-no-trait{font-size:.78rem;color:var(--ink3);font-style:italic;padding:.3rem 0;}
 
 /* Valeurs */
-.di-val-grid{display:flex;flex-wrap:wrap;gap:.25rem;margin:.3rem 0;}
-.di-val-btn{width:36px;height:36px;border:1px solid var(--border);border-radius:4px;
+.di-val-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.25rem;margin:.3rem 0;}
+.di-val-btn{width:100%;height:34px;border:1px solid var(--border);border-radius:4px;
   background:var(--section-bg);cursor:pointer;font-family:Cinzel,serif;font-size:.8rem;
   color:var(--ink);transition:all .1s;}
 .di-val-btn:hover{border-color:var(--accent);}
@@ -300,7 +300,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260714-0527 -->
+<!-- sifhr-v20260714-0546 -->
 </head>
 <body>
 
@@ -1597,6 +1597,32 @@ async function sifhrShowEvent(args, el, markerId){
       +`<div style="font-family:'Crimson Text',serif;font-size:.9rem;color:var(--ink2);">${texte}</div>`;
     wrap.appendChild(div);
     sifhrState.lastEvt = {slotKey, titre:slot.titre||slotKey};
+    // Révéler l'événement au joueur dans etat.slots de la fiche env
+    // (pour qu'il apparaisse dans renderEvtOverlay)
+    try{
+      const rEnv=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const dEnv=await rEnv.json();
+      const etatEnv=JSON.parse(JSON.stringify(dEnv[0]?.etat||{}));
+      if(!etatEnv.slots) etatEnv.slots={};
+      const slotNorm=slotKey.replace(/&#39;/g,"'").replace(/&amp;/g,'&');
+      const targetKey=etatEnv.slots[slotKey]?slotKey:(etatEnv.slots[slotNorm]?slotNorm:null);
+      if(targetKey){
+        const existing=etatEnv.slots[targetKey].revele_a||'aucun';
+        const ids=existing==='aucun'?[]:existing==='tous'?['tous']:existing.split(',').map(s=>s.trim());
+        if(!ids.includes(FICHE_ID)&&!ids.includes('tous')){
+          ids.push(FICHE_ID);
+          etatEnv.slots[targetKey].revele_a=ids.join(',');
+          await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}`,{
+            method:'PATCH',
+            headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+              'Content-Type':'application/json','Prefer':'return=minimal'},
+            body:JSON.stringify({etat:etatEnv})
+          });
+          console.log('[Sifhr] Event révélé:', targetKey, 'pour', FICHE_ID);
+        }
+      }
+    }catch(e2){ console.warn('[Sifhr] event reveal error:', e2); }
     sifhrMarkDone(el, markerId);
   }catch(e){ console.error('[Sifhr] event error:', e); }
 }
@@ -3960,11 +3986,15 @@ function _dsRollDice(){
   const special=_DS.specialDice||{};
   const bm=_DS.bonusMalus||{};
 
+  // Vérifier cohérence avant bonus : max = whites + reds + devoyes + 1 (bonus)
+  const _maxDice=(_DS.whites||0)+(_DS.reds||2)+(_DS.desDevoyes||0);
   // Bonus 1 : Avantage — +1 dé blanc (si pas déjà ajouté)
-  if(bm.bonus&&bm.bonus[1]>0&&!_DS._bonusAdded){
+  if(bm.bonus&&bm.bonus[1]>0&&!_DS._bonusAdded&&_DS.dice.length<=_maxDice){
     _DS.dice.push({color:'white',value:null,locked:false,modified:false});
     _DS._bonusAdded=true;
   }
+  // Sécurité : ne jamais dépasser whites+reds+devoyes+1
+  if(_DS.dice.length>_maxDice+1) _DS.dice=_DS.dice.slice(0,_maxDice+1);
   // Bonus 2 : Expertise — fixer une valeur sur un dé blanc libre
   if(bm.bonus&&bm.bonus[2]>0&&!_DS._expertiseAdded){
     const d=_DS.dice.find(d=>d.color==='white'&&d.value===null);
@@ -4139,7 +4169,7 @@ function C_buildLegend(){var list=document.getElementById('sifhr-carte-legend-li
 <!-- Overlay Dés (déjà existant, on garde) -->
 
 
-<div id="evt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;"><div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:500px;width:96vw;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;"><div style="display:flex;align-items:center;margin-bottom:.8rem;flex-shrink:0;"><span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;flex:1;">&#128203; Événements</span><button onclick="document.getElementById('evt-overlay').style.display='none'" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">&#10005;</button></div><div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;padding-right:.2rem;"><div id="evt-oct-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.4);flex-shrink:0;"><div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);letter-spacing:.05em;margin-bottom:.3rem;">&#11042; Environnement</div><div style="display:flex;gap:.4rem;align-items:flex-start;"><svg id="evt-oct-svg" viewBox="0 0 340 340" style="width:110px;height:110px;flex-shrink:0;"></svg><div style="flex:1;min-width:0;"><div id="evt-vv-list"></div><div id="evt-etats-list" style="margin-top:.2rem;"></div></div></div></div><div id="evt-chrono-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.3);flex-shrink:0;display:none;"></div><div id="evt-overlay-list" style="flex-shrink:0;"></div></div></div></div>
+<div id="evt-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.88);display:none;align-items:center;justify-content:center;z-index:300;"><div style="background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:1.2rem;max-width:500px;width:96vw;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;"><div style="display:flex;align-items:center;margin-bottom:.8rem;flex-shrink:0;"><span style="font-family:'Cinzel',serif;color:var(--accent);font-size:.85rem;flex:1;">&#128203; Événements</span><button onclick="document.getElementById('evt-overlay').style.display='none'" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">&#10005;</button></div><div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;padding-right:.2rem;"><div id="evt-oct-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.4);flex-shrink:0;"><div style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);letter-spacing:.05em;margin-bottom:.2rem;">&#11042; Pneuma locale</div><div style="font-family:'Crimson Text',serif;font-size:.72rem;color:var(--ink3);font-style:italic;margin-bottom:.3rem;line-height:1.35;">Ce sont les valeurs du lieu dans lequel vous vous trouvez. Pour l'instant, vous n'avez aucun moyen pour les lire ou les pressentir.</div><div style="display:flex;gap:.4rem;align-items:flex-start;"><svg id="evt-oct-svg" viewBox="0 0 340 340" style="width:110px;height:110px;flex-shrink:0;"></svg><div style="flex:1;min-width:0;"><div id="evt-vv-list"></div><div id="evt-etats-list" style="margin-top:.2rem;"></div></div></div></div><div id="evt-chrono-wrap" style="border:1px solid var(--border2);border-radius:6px;padding:.4rem .5rem;background:rgba(26,18,8,.3);flex-shrink:0;display:none;"></div><div id="evt-overlay-list" style="flex-shrink:0;"></div></div></div></div>
 <!-- Overlay Octogone complet -->
 <div id="sifhr-oct-overlay" class="sifhr-overlay">
   <div class="sifhr-overlay-box">
