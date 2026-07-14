@@ -299,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260713-2021 -->
+<!-- sifhr-v20260714-0445 -->
 </head>
 <body>
 
@@ -3771,7 +3771,9 @@ function _dsReset(){
     successVal1:null, successVal2:null,
     dice:[], rolled:false,
     bonusMalus:{bonus:{},malus:{}},
-    specialDice:{}, desDevoyes:gameState.desDevoyes||0,
+    specialDice:{},
+    desDevoyes:parseInt(gameState.desDevoyes)||0, // Toujours entier
+    _bonusAdded:false, _expertiseAdded:false,     // Flags anti-accumulation
   };
 }
 
@@ -3940,29 +3942,37 @@ function _dsRenderStep4(){
 }
 
 function _dsRollDice(){
+  // _dsInitDice() a déjà créé les dés de base
+  // Ajouter les dés bonus UNE SEULE FOIS (vérifier qu'ils ne sont pas déjà là)
   const special=_DS.specialDice||{};
-  // Effets bonus
   const bm=_DS.bonusMalus||{};
-  // Bonus 1 : Avantage — +1 dé blanc
-  if(bm.bonus&&bm.bonus[1]>0) _DS.dice.push({color:'white',value:null,locked:false,modified:false});
-  // Bonus 2 : Expertise — le joueur fixe une valeur (ici auto: successVal1)
-  if(bm.bonus&&bm.bonus[2]>0){
+
+  // Bonus 1 : Avantage — +1 dé blanc (si pas déjà ajouté)
+  if(bm.bonus&&bm.bonus[1]>0&&!_DS._bonusAdded){
+    _DS.dice.push({color:'white',value:null,locked:false,modified:false});
+    _DS._bonusAdded=true;
+  }
+  // Bonus 2 : Expertise — fixer une valeur sur un dé blanc libre
+  if(bm.bonus&&bm.bonus[2]>0&&!_DS._expertiseAdded){
     const d=_DS.dice.find(d=>d.color==='white'&&d.value===null);
     if(d){ d.value=_DS.successVal1; special[_DS.dice.indexOf(d)]='expertise'; }
+    _DS._expertiseAdded=true;
   }
-  // Lancer les dés libres
+
+  // Lancer uniquement les dés sans valeur
   _DS.dice.forEach((d,i)=>{
     if(special[i]==='maitrise') return;
     if(d.value===null) d.value=_dsRollOnce(d);
   });
-  // Malus 3 : Négation — relance les réussites en boucle
+
+  // Malus 3 : Négation
   if(bm.malus&&bm.malus[3]>0){
     _DS.dice.forEach(d=>{
       let guard=0;
       while(_dsIsSuccess(d.value)&&guard<200){ d.value=_dsRollOnce(d); guard++; }
     });
   }
-  // Malus 1 : Relance — relance chaque réussite une fois
+  // Malus 1 : Relance
   else if(bm.malus&&bm.malus[1]>0){
     _DS.dice.forEach(d=>{ if(_dsIsSuccess(d.value)) d.value=_dsRollOnce(d); });
   }
@@ -4017,6 +4027,7 @@ function _dsToggleDie(i){
 }
 
 function _dsReroll(){
+  // Relancer uniquement les dés non verrouillés (ne pas recréer)
   _DS.dice.forEach(d=>{ if(!d.locked) d.value=_dsRollOnce(d); });
   _dsRenderResult();
 }
