@@ -198,8 +198,8 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 }
 #des-inline-box {
   background:var(--bg);border:1px solid var(--accent);border-radius:10px;
-  padding:1.2rem;max-width:480px;width:94vw;max-height:92vh;
-  overflow-y:auto;display:flex;flex-direction:column;gap:.7rem;
+  padding:1rem;max-width:480px;width:94vw;max-height:96vh;
+  overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;
 }
 #des-inline-box::-webkit-scrollbar{width:3px;}
 #des-inline-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
@@ -210,7 +210,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 .di-summary{font-size:.8rem;color:var(--ink2);margin:.2rem 0;}
 
 /* Aptitudes */
-.di-apt-grid{display:grid;grid-template-columns:1fr 1fr;gap:.3rem;margin:.3rem 0;}
+.di-apt-grid{display:grid;grid-template-columns:1fr 1fr;gap:.25rem;margin:.25rem 0;}
 .di-apt-btn{background:var(--section-bg);border:1px solid var(--border2);border-radius:5px;
   padding:.4rem .5rem;cursor:pointer;text-align:left;transition:all .1s;color:var(--ink);}
 .di-apt-btn:hover{border-color:var(--accent);background:rgba(200,160,96,.08);}
@@ -299,7 +299,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260714-0445 -->
+<!-- sifhr-v20260714-0509 -->
 </head>
 <body>
 
@@ -1568,9 +1568,17 @@ async function sifhrShowEvent(args, el, markerId){
       {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
     const d = await r.json();
     const slots = d[0]?.etat?.slots||{};
+    // Normaliser la clé : décoder entités HTML, cherche exact puis insensible
     const slotKey = args.id;
-    const slot = slots[slotKey];
-    if(!slot){ console.warn('[Sifhr] Slot introuvable:', slotKey); return; }
+    const slotKeyNorm = slotKey
+      .replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"')
+      .replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+    const slot = slots[slotKey] || slots[slotKeyNorm]
+      || Object.values(slots).find((s,_,arr)=>{
+           const k=Object.keys(slots).find(k2=>slots[k2]===s);
+           return k && k.replace(/&#39;/g,"'").replace(/&amp;/g,'&')===slotKeyNorm;
+         });
+    if(!slot){ console.warn('[Sifhr] Slot introuvable:', slotKey, '(normalisé:', slotKeyNorm,') dans', Object.keys(slots)); return; }
 
     const niveau = args.niveau||'texte';
     const texte = niveau==='rumeur'?slot.texte_rumeur:
@@ -3773,17 +3781,20 @@ function _dsReset(){
     bonusMalus:{bonus:{},malus:{}},
     specialDice:{},
     desDevoyes:parseInt(gameState.desDevoyes)||0, // Toujours entier
-    _bonusAdded:false, _expertiseAdded:false,     // Flags anti-accumulation
+    _bonusAdded:false, _expertiseAdded:false, _rerolled:false, // Flags
   };
 }
 
 function _dsInitDice(){
   const nd=[];
-  for(let i=0;i<_DS.whites;i++) nd.push({color:'white',value:null,locked:false,modified:false});
-  for(let i=0;i<_DS.reds;i++)   nd.push({color:'red',  value:null,locked:false,modified:false});
-  // Dés dévoyés (noirs supplémentaires)
-  for(let i=0;i<(_DS.desDevoyes||0);i++) nd.push({color:'black_token',value:null,locked:false,modified:false});
+  const whites=parseInt(_DS.whites)||0;
+  const reds=parseInt(_DS.reds)||2;
+  const devoyés=parseInt(_DS.desDevoyes)||0;
+  for(let i=0;i<whites;i++)   nd.push({color:'white',     value:null,locked:false,modified:false});
+  for(let i=0;i<reds;i++)     nd.push({color:'red',       value:null,locked:false,modified:false});
+  for(let i=0;i<devoyés;i++)  nd.push({color:'black_token',value:null,locked:false,modified:false});
   _DS.dice = nd;
+  _DS._bonusAdded=false; _DS._expertiseAdded=false; // Reset flags
 }
 
 function _dsIsSuccess(v){
@@ -3856,7 +3867,8 @@ function _dsRenderStep1(){
 }
 
 function _dsSelectApt(key, score){
-  _DS.aptKey=key; _DS.aptScore=score; _DS.whites=score||1;
+  _DS.aptKey=key; _DS.aptScore=score;
+  _DS.whites=parseInt(score)||0; // 0 dés blancs si aptitude vide
   _dsRenderStep2();
 }
 
@@ -3999,7 +4011,11 @@ function _dsRenderResult(){
   html+='</div>';
 
   // Bouton relancer les libres
-  html+=`<button class="di-btn-reroll" onclick="_dsReroll()">↺ Relancer les dés libres</button>`;
+  const rerollDone=_DS._rerolled||false;
+  html+=`<button class="di-btn-reroll${rerollDone?' di-btn-disabled':''}"
+    onclick="${rerollDone?'sifhrShowNotif("Relance déjà utilisée")':'_dsReroll()'}"
+    style="${rerollDone?'opacity:.4;cursor:not-allowed;':''}"
+    >↺ Relancer les dés libres${rerollDone?' (utilisé)':''}</button>`;
 
   // Résultats par valeur
   html+='<div class="di-results">';
@@ -4027,7 +4043,8 @@ function _dsToggleDie(i){
 }
 
 function _dsReroll(){
-  // Relancer uniquement les dés non verrouillés (ne pas recréer)
+  if(_DS._rerolled){ sifhrShowNotif('Relance déjà utilisée'); return; }
+  _DS._rerolled=true;
   _DS.dice.forEach(d=>{ if(!d.locked) d.value=_dsRollOnce(d); });
   _dsRenderResult();
 }
