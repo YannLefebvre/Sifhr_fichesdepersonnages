@@ -301,7 +301,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260714-0936 -->
+<!-- sifhr-v20260715-0612 -->
 </head>
 <body>
 
@@ -1277,7 +1277,8 @@ function sifhrParseMarkers(html, _seqId){
     const done = sifhrState.markersDone[markerId];
     const label = sifhrMarkerLabel(type, args);
     const hint = sifhrMarkerHint(type, args);
-    return `<span id="sifhr-m-${markerId}" class="sifhr-marker${done?' done':''}"
+    const el_reusable2 = type==='event'||type==='image'||type==='ouvrir'||type==='carte';
+    return `<span id="sifhr-m-${markerId}" class="sifhr-marker${done?' done':''}${(done&&el_reusable2)?' reusable':''}"
       data-sifhr-type="${type}"
       data-sifhr-args="${encodeURIComponent(JSON.stringify(args))}"
       data-sifhr-id="${markerId}"
@@ -3385,7 +3386,7 @@ function C_init(){
   if(typeof C_buildLegend==='function') C_buildLegend();
 }
 function C_sel(id){
-  document.querySelectorAll('#damas-svg .lieu-marker').forEach(el=>el.classList.toggle('selected',el.dataset.id===id));
+  document.querySelectorAll('#myrk-svg .lieu-marker-myrk, #damas-svg .lieu-marker').forEach(el=>el.classList.toggle('selected',el.dataset.id===id));
   const l=C_LIEUX_DATA.find(x=>x.id===id);
   if(l&&l.x!=null){const w=C_wrap().getBoundingClientRect();C_px=w.width/2-(C_IX+l.x/100*C_IW)*C_sc;C_py=w.height/2-(C_IY+l.y/100*C_IH)*C_sc;C_tr();}
   const pw=document.getElementById('carte-popup-wrap');if(!pw)return;
@@ -3396,7 +3397,7 @@ function C_sel(id){
     +'<span style="font-family:Cinzel,serif;font-size:.7rem;color:var(--accent);">'+l2.nom+'</span>'
     +'<button onclick="C_closeInfo()" '
     +'style="margin-left:auto;background:none;border:none;color:var(--ink3);cursor:pointer;">✕</button></div>'
-    +'<div style="font-size:.76rem;color:var(--ink2);line-height:1.4;">'+(l2.description||'')+'</div></div>';
+    +'<div style="font-size:.76rem;color:var(--ink2);line-height:1.4;">'+(l2.desc||l2.description||'')+'</div></div>';
 }
 function openCarteDamas(opts){
   document.getElementById('sifhr-carte-overlay').classList.add('open');
@@ -4250,7 +4251,7 @@ async function sauvegarderMaintenant(){
 }
 
 
-function C_buildLegend(){var list=document.getElementById('sifhr-carte-legend-list');if(!list)return;list.innerHTML='';var reveles=(typeof sifhrState!=='undefined'&&sifhrState.lieuxReveles)||{};C_LIEUX_DATA.forEach(function(l){if(!l.nom)return;var el=document.getElementById('gl-'+l.id);if(!el||(!el.dataset.initial&&!reveles[l.id]))return;var div=document.createElement('div');div.style.cssText='padding:.35rem .4rem;border-bottom:1px solid var(--border2);cursor:pointer;';div.onmouseenter=function(){div.style.background='rgba(200,160,96,.08)';};div.onmouseleave=function(){div.style.background='';};var h=document.createElement('div');h.style.cssText='display:flex;align-items:center;gap:.3rem;';h.innerHTML='<span style="font-size:.85rem;">'+l.icone+'</span><span style="font-family:Cinzel,serif;font-size:.6rem;color:var(--ink2);">'+l.nom+'</span>';div.appendChild(h);if(l.desc){var d=document.createElement('div');d.style.cssText='font-size:.58rem;color:var(--ink3);padding:.1rem 0 0 1.1rem;line-height:1.4;';d.textContent=l.desc;div.appendChild(d);}div.onclick=function(){C_sel(l.id);};list.appendChild(div);});}
+function C_buildLegend(){var list=document.getElementById('sifhr-carte-legend-list');if(!list)return;list.innerHTML='';var reveles=(typeof sifhrState!=='undefined'&&sifhrState.lieuxReveles)||{};var shownIds=Object.keys(reveles);document.querySelectorAll('[data-initial]').forEach(function(el){var id=el.dataset.id||el.id.replace('gl-','');if(id&&shownIds.indexOf(id)<0) shownIds.push(id);});C_LIEUX_DATA.forEach(function(l){if(!l.nom||shownIds.indexOf(l.id)<0)return;var div=document.createElement('div');div.style.cssText='padding:.35rem .4rem;border-bottom:1px solid var(--border2);cursor:pointer;';div.onmouseenter=function(){div.style.background='rgba(200,160,96,.08)';};div.onmouseleave=function(){div.style.background='';};var h=document.createElement('div');h.style.cssText='display:flex;align-items:center;gap:.3rem;';h.innerHTML='<span style="font-size:.85rem;">'+l.icone+'</span><span style="font-family:Cinzel,serif;font-size:.6rem;color:var(--ink2);">'+l.nom+'</span>';div.appendChild(h);if(l.desc){var d=document.createElement('div');d.style.cssText='font-size:.58rem;color:var(--ink3);padding:.1rem 0 0 1.1rem;line-height:1.4;';d.textContent=l.desc;div.appendChild(d);}div.onclick=function(){C_sel(l.id);};list.appendChild(div);});if(!list.children.length){var emp=document.createElement('div');emp.style.cssText='font-size:.6rem;color:var(--ink3);font-style:italic;padding:.3rem;';emp.textContent='Aucun lieu révélé pour l’instant.';list.appendChild(emp);}}
 
 </script>
 <!-- ══ OVERLAYS SIFHR ══ -->
