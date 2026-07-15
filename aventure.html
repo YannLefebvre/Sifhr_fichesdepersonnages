@@ -4951,3 +4951,13 @@ function openRegles(){
     </div>
   </div>
 </div>
+<!-- ── Overlay Règles ── -->
+<div id="regles-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.95);display:none;align-items:center;justify-content:center;z-index:400;">
+  <div style="background:var(--panel-bg);border:1px solid var(--accent);border-radius:10px;width:min(900px,98vw);height:92vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;align-items:center;padding:.5rem .8rem;border-bottom:1px solid var(--border2);flex-shrink:0;background:rgba(10,7,3,.5);">
+      <span style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--accent);flex:1;letter-spacing:.08em;">&#128218; Règles de l'aventure</span>
+      <button onclick="document.getElementById('regles-overlay').style.display='none'" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">&#10005;</button>
+    </div>
+    <iframe id="regles-iframe" src="about:blank" style="flex:1;border:none;width:100%;"></iframe>
+  </div>
+</div>

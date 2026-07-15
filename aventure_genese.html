@@ -301,7 +301,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260715-0702 -->
+<!-- sifhr-v20260715-0712 -->
 </head>
 <body>
 
@@ -4436,3 +4436,5 @@ function C_buildLegend(){var list=document.getElementById('sifhr-carte-legend-li
 </g>
 <g id="layer-pneuma-myrk"></g>
 </svg><div id="carte-popup-wrap"></div><div style="position:absolute;bottom:.5rem;right:.5rem;display:flex;flex-direction:column;gap:.2rem;z-index:10;"><button onclick="C_zoomBy(1.25)" style="width:26px;height:26px;background:rgba(10,7,3,.9);border:1px solid var(--border);border-radius:3px;color:var(--ink);cursor:pointer;">+</button><button onclick="C_zoomBy(1/1.25)" style="width:26px;height:26px;background:rgba(10,7,3,.9);border:1px solid var(--border);border-radius:3px;color:var(--ink);cursor:pointer;">&#8722;</button><button onclick="C_resetView()" style="width:26px;height:26px;background:rgba(10,7,3,.9);border:1px solid var(--border);border-radius:3px;color:var(--ink);cursor:pointer;font-size:.7rem;">&#8962;</button></div></div><div style="background:rgba(14,9,4,.95);border-top:1px solid var(--border);max-height:40%;overflow:hidden;display:flex;flex-direction:column;flex-shrink:0;"><button onclick="var p=document.getElementById('sifhr-carte-legend-list');var a=document.getElementById('carte-lieux-arrow');p.style.display=p.style.display==='none'?'block':'none';a.textContent=p.style.display==='none'?'&#9654;':'&#9660;';" style="font-family:Cinzel,serif;font-size:.6rem;color:var(--accent);padding:.3rem .5rem;background:none;border:none;border-bottom:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;gap:.3rem;flex-shrink:0;width:100%;text-align:left;"><span id="carte-lieux-arrow">&#9654;</span> Lieux</button><div id="sifhr-carte-legend-list" style="padding:.3rem;overflow-y:auto;display:none;"></div></div></div></div>
+<!-- ── Overlay Règles ── -->
+<div id="regles-overlay" style="position:fixed;inset:0;background:rgba(10,7,3,0.95);display:none;align-items:center;justify-content:center;z-index:400;"><div style="background:var(--panel-bg);border:1px solid var(--accent);border-radius:10px;width:min(900px,98vw);height:92vh;display:flex;flex-direction:column;overflow:hidden;"><div style="display:flex;align-items:center;padding:.5rem .8rem;border-bottom:1px solid var(--border2);flex-shrink:0;background:rgba(10,7,3,.5);"><span style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--accent);flex:1;letter-spacing:.08em;">&#128218; Règles de l'aventure</span><button onclick="document.getElementById('regles-overlay').style.display='none'" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink3);">&#10005;</button></div><iframe id="regles-iframe" src="about:blank" style="flex:1;border:none;width:100%;"></iframe></div></div>
