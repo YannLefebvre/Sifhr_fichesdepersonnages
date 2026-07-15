@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Règles — Sifhr</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1a1208;--ink:#f5e8c8;--ink2:#d4b896;--ink3:#9a7a5a;
+  --accent:#c8860a;--border:#4a3218;--border2:#3a2810;
+  --section-bg:#1e1508;--panel-bg:#241a0c;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden;}
+
+/* ── Layout ── */
+.rg-shell{display:flex;max-width:960px;margin:0 auto;min-height:100vh;}
+
+/* ── Sidebar nav ── */
+#rg-nav{
+  width:200px;flex-shrink:0;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  border-right:1px solid var(--border2);
+  background:var(--panel-bg);
+  display:flex;flex-direction:column;
+  padding:.8rem 0;
+}
+.rg-nav-title{
+  font-family:'Cinzel',serif;font-size:.65rem;color:var(--accent);
+  letter-spacing:.1em;text-transform:uppercase;padding:.4rem 1rem .8rem;
+  border-bottom:1px solid var(--border2);margin-bottom:.4rem;
+}
+.rg-nav-link{
+  display:block;padding:.4rem 1rem;font-family:'Cinzel',serif;
+  font-size:.6rem;color:var(--ink3);letter-spacing:.04em;
+  text-decoration:none;border-left:2px solid transparent;
+  transition:all .15s;line-height:1.4;
+}
+.rg-nav-link:hover{color:var(--ink2);border-color:var(--border);}
+.rg-nav-link.active{color:var(--accent);border-color:var(--accent);background:rgba(200,134,10,.06);}
+
+/* ── Contenu ── */
+#rg-content{flex:1;padding:2rem 2rem 4rem;overflow-y:auto;max-width:760px;}
+
+/* Sections */
+.rg-section{
+  padding-top:1.5rem;margin-bottom:2rem;
+  border-top:1px solid var(--border2);
+  scroll-margin-top:1rem;
+}
+.rg-section:first-child{border-top:none;}
+.rg-h1{
+  font-family:'Cinzel',serif;font-size:1.3rem;color:var(--accent);
+  letter-spacing:.1em;text-align:center;margin-bottom:.3rem;padding-bottom:.8rem;
+  border-bottom:1px solid var(--border2);
+}
+.rg-intro{
+  font-style:italic;font-size:.95rem;color:var(--ink3);
+  text-align:center;margin-bottom:2rem;line-height:1.6;
+}
+.rg-h2{
+  font-family:'Cinzel',serif;font-size:.9rem;color:var(--accent);
+  letter-spacing:.08em;margin-bottom:.8rem;display:flex;align-items:center;gap:.5rem;
+}
+.rg-h2::after{content:'';flex:1;height:1px;background:var(--border2);}
+p{font-size:.95rem;color:var(--ink2);line-height:1.7;margin-bottom:.7rem;}
+p:last-child{margin-bottom:0;}
+strong{color:var(--ink);font-weight:600;}
+em{color:var(--ink3);}
+
+/* Screenshots */
+.rg-img{
+  display:block;width:100%;max-width:520px;margin:.8rem auto;
+  border:1px solid var(--border);border-radius:6px;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);
+}
+.rg-img-sm{max-width:320px;}
+.rg-img-cap{
+  text-align:center;font-family:'Cinzel',serif;font-size:.58rem;
+  color:var(--ink3);letter-spacing:.05em;margin-top:.3rem;margin-bottom:.8rem;
+}
+
+/* Callout */
+.rg-callout{
+  background:rgba(200,134,10,.07);border-left:3px solid var(--accent);
+  border-radius:0 6px 6px 0;padding:.6rem .9rem;margin:.8rem 0;
+  font-size:.88rem;color:var(--ink2);font-style:italic;line-height:1.6;
+}
+
+/* Liste numérotée des humeurs */
+.rg-list{margin:.5rem 0 .5rem 1.2rem;display:flex;flex-direction:column;gap:.4rem;}
+.rg-list li{font-size:.92rem;color:var(--ink2);line-height:1.6;}
+.rg-list li strong{color:var(--ink);}
+
+/* Grille étapes lanceur */
+.rg-steps{display:flex;flex-direction:column;gap:.6rem;margin:.8rem 0;}
+.rg-step{display:flex;gap:.7rem;align-items:flex-start;}
+.rg-step-num{
+  width:26px;height:26px;border-radius:50%;background:var(--accent);
+  color:#1a1208;font-family:'Cinzel',serif;font-size:.75rem;font-weight:600;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem;
+}
+.rg-step-txt{font-size:.92rem;color:var(--ink2);line-height:1.6;}
+
+/* Tag final */
+.rg-final{
+  text-align:center;margin-top:2rem;padding:1.2rem;
+  border:1px solid var(--border);border-radius:8px;background:var(--section-bg);
+  font-family:'Cinzel',serif;font-size:.85rem;color:var(--accent);
+  letter-spacing:.08em;
+}
+
+/* ── Mobile : nav en haut ── */
+#rg-mobile-toggle{
+  display:none;position:fixed;top:.6rem;left:.6rem;z-index:100;
+  width:38px;height:38px;border-radius:8px;border:1px solid var(--border);
+  background:var(--panel-bg);color:var(--ink);font-size:1.1rem;
+  cursor:pointer;align-items:center;justify-content:center;
+}
+@media(max-width:640px){
+  .rg-shell{flex-direction:column;}
+  #rg-nav{
+    position:fixed;top:0;left:-220px;width:200px;height:100vh;z-index:90;
+    transition:left .25s;
+  }
+  #rg-nav.open{left:0;}
+  #rg-mobile-toggle{display:flex;}
+  #rg-content{padding:3.5rem 1rem 4rem;}
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<button id="rg-mobile-toggle" onclick="document.getElementById('rg-nav').classList.toggle('open')">☰</button>
+
+<div class="rg-shell">
+
+<!-- Sidebar -->
+<nav id="rg-nav">
+  <div class="rg-nav-title">📖 Règles</div>
+  <a class="rg-nav-link" href="#interface">L'interface</a>
+  <a class="rg-nav-link" href="#personnage">Votre personnage</a>
+  <a class="rg-nav-link" href="#equipement">Équipement</a>
+  <a class="rg-nav-link" href="#historique">Historique & Dettes</a>
+  <a class="rg-nav-link" href="#psychomachie">Dilemmes moraux</a>
+  <a class="rg-nav-link" href="#aptitudes">Aptitudes</a>
+  <a class="rg-nav-link" href="#epreuves">Les épreuves</a>
+  <a class="rg-nav-link" href="#lanceur">Le lanceur de dés</a>
+  <a class="rg-nav-link" href="#environnement">Environnement</a>
+  <a class="rg-nav-link" href="#sauvegarde">Sauvegarde</a>
+</nav>
+
+<!-- Contenu principal -->
+<main id="rg-content">
+
+  <h1 class="rg-h1">Règles de l'aventure interactive</h1>
+  <p class="rg-intro">Bienvenu dans le monde de Sifhr. Ces règles expliquent le fonctionnement de l'interface et les mécaniques du jeu.</p>
+
+  <!-- Interface -->
+  <section class="rg-section" id="interface">
+    <h2 class="rg-h2">L'interface principale</h2>
+    <p>En bas de page, vous trouvez toutes les fonctionnalités principales, accessibles à tout moment. Certaines seront appelées directement dans le texte, car leur recours est particulièrement significatif à ce moment de l'aventure.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/wdo951i2qf14mc5dc360sceic.PNG" alt="Barre de fonctionnalités">
+    <p class="rg-img-cap">La barre de navigation — toujours accessible en bas de l'écran</p>
+  </section>
+
+  <!-- Personnage -->
+  <section class="rg-section" id="personnage">
+    <h2 class="rg-h2">L'état de votre personnage</h2>
+    <p>Le panneau <strong>Octogone</strong> vous ouvre la vue de l'état de votre alter ego. Vous y découvrez l'octogone qui reprend les éléments et les humeurs, avec les jetons <strong>blancs</strong> (influence bénéfique) et <strong>noirs</strong> (emprise néfaste).</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/s1xbj1k8sc83d5i1rttr0240x.PNG" alt="Panneau octogone">
+    <p>En-dessous, les <strong>vertus</strong> et les <strong>vices</strong> livrent leurs scores (de 1 à 3), rangés selon les axes de l'octogone. Cela donne un aperçu actualisé des valeurs morales de votre héros.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/m5hktnuamgbgynbfp2v2nlpku.PNG" alt="Vertus et vices">
+    <p>Mémentos sur le sens des éléments et des humeurs :</p>
+    <ol class="rg-list">
+      <li>La <strong>bile jaune</strong> est sollicitée pour des actions brusques, à grand renfort d'énergie. Elle est liée au <strong>Feu</strong>.</li>
+      <li>Le <strong>flegme</strong> est utilisé pour des actions réfléchies, demandant un calme souverain. Il est lié à l'<strong>Eau</strong>.</li>
+      <li>Le <strong>sang</strong> est lié aux actions spirituelles, à l'intuition, aux choses évanescentes. Il est lié à l'<strong>Air</strong>.</li>
+      <li>La <strong>bile noire</strong> règne sur les actions pragmatiques et concrètes. Elle est liée à la <strong>Terre</strong>.</li>
+      <li>L'<strong>éther</strong>, cinquième élément, permet une connexion entre le personnage et la pneuma.</li>
+    </ol>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/fjxjyws39t6ox8jr6jsqh4fs7.PNG" alt="Éléments et humeurs">
+    <div class="rg-callout">À certains moments de l'aventure, la fatigue ou la prise de risques vous contraindra à acquérir des <strong>dés dévoyés</strong>. Ces dés corrompent vos lancers et ne sont pas modifiables.</div>
+  </section>
+
+  <!-- Équipement -->
+  <section class="rg-section" id="equipement">
+    <h2 class="rg-h2">Votre équipement</h2>
+    <p>Votre héros possède des objets et des <strong>artefacts</strong> — instruments utilisant la pneuma pour décupler les capacités de l'initié. Le panneau <strong>Équipement</strong> vous indique vos possessions.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/qnjhrxi2wpitdqfm2gwgj48up.PNG" alt="Panneau équipement">
+    <p>Lors de vos pérégrinations, vous aurez l'opportunité d'acquérir ces objets : <strong>cliquez sur le marqueur dans le texte</strong> pour qu'ils rejoignent votre équipement.</p>
+    <img class="rg-img rg-img-sm" src="https://minio.apps.education.fr/codimd-prod/uploads/o6635y9mxwaovdwgdkrfczoh7.PNG" alt="Marqueur d'acquisition">
+  </section>
+
+  <!-- Historique -->
+  <section class="rg-section" id="historique">
+    <h2 class="rg-h2">Historique, dettes &amp; créances</h2>
+    <p>Votre héros a déjà un vécu que vous trouvez dans le panneau <strong>Historique</strong>.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/brgv0csylcssf9h166ejjy9tl.PNG" alt="Panneau historique">
+    <p>En cours d'aventure, il contracte des <strong>dettes</strong> et des <strong>créances</strong> envers les autres protagonistes. Ces éléments sociaux de grande importance sont consignés au même endroit.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/v9asetomra5jbk26zopy5y7fj.PNG" alt="Dettes et créances">
+  </section>
+
+  <!-- Psychomachie -->
+  <section class="rg-section" id="psychomachie">
+    <h2 class="rg-h2">Dilemmes moraux — Psychomachie</h2>
+    <p>Les personnages de Sifhr sont réceptifs à un <strong>ordre moral</strong> : les vertus prônées par les sociétés ont pour pendant des vices terriblement humains.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/iq0oqcutn6eik9565adzzau8a.PNG" alt="Panneau psychomachie">
+    <p>Les occasions sont nombreuses pour réaliser des <strong>psychomachies</strong> — ces combats intérieurs où le héros penche vers l'un ou l'autre versant. La psychomachie offre toujours la possibilité de s'affranchir d'un penchant, mais au prix d'un gain de <strong>dés dévoyés</strong>.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/x07sbv96chx7bbiahpys0lpy7.PNG" alt="Panneau psychomachie détail">
+    <div class="rg-callout"><em>Le marqueur de psychomachie vous branche directement sur la suite de l'aventure selon votre choix de succomber ou de résister à votre penchant. Si vous préférez agir de votre libre arbitre, ignorez-le.</em></div>
+  </section>
+
+  <!-- Aptitudes -->
+  <section class="rg-section" id="aptitudes">
+    <h2 class="rg-h2">Les aptitudes</h2>
+    <p>Dans Sifhr, les personnages ont des capacités reflétées par <strong>huit aptitudes</strong>. Chacune possède un score qui donnera le nombre de dés à lancer dans les épreuves.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/vgbvupdht3julmp40vnabi3az.PNG" alt="Panneau aptitudes">
+    <p>Ces aptitudes possèdent des <strong>Traits</strong> — particularités du personnage qui confèrent des bonus ou des malus si le contexte s'y prête.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/f5xr4mlm27gg5betvysuwp53y.PNG" alt="Traits d'aptitude">
+    <p>Tout est accessible par le panneau <strong>Aptitudes</strong>.</p>
+  </section>
+
+  <!-- Épreuves -->
+  <section class="rg-section" id="epreuves">
+    <h2 class="rg-h2">Les épreuves</h2>
+    <p>Le hasard — ou la destinée — détermine en partie l'ordre des choses. Les épreuves sont les moments où l'on met en jeu les aptitudes, les traits, et l'état de votre alter ego.</p>
+    <p>Une épreuve est toujours <strong>explicitée dans le texte</strong> : quelle aptitude est requise, quelles valeurs de réussite...</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/izvepwzslf0l3aptgjf1fpmwk.PNG" alt="Épreuve dans le texte">
+    <p>Le plus souvent, vous avez le choix de recourir à un <strong>lanceur de dés minimaliste</strong>, ou à celui hérité du jeu de rôles Sifhr, avec toutes les options.</p>
+  </section>
+
+  <!-- Lanceur -->
+  <section class="rg-section" id="lanceur">
+    <h2 class="rg-h2">Le lanceur de dés</h2>
+    <img class="rg-img rg-img-sm" src="https://minio.apps.education.fr/codimd-prod/uploads/p4f30xh75fooqm8mhg5jce5pg.PNG" alt="Lanceur simplifié">
+    <p>Le lanceur simplifié se déroule en quatre étapes :</p>
+    <div class="rg-steps">
+      <div class="rg-step"><div class="rg-step-num">1</div><div class="rg-step-txt">Sélectionner l'<strong>aptitude</strong> que le texte a exigée. Un trait peut être invoqué si le contexte le permet.</div></div>
+      <div class="rg-step"><div class="rg-step-num">2</div><div class="rg-step-txt">Choisir un <strong>trait mobilisé</strong> parmi ceux liés à l'aptitude (bonus ou malus).</div></div>
+      <div class="rg-step"><div class="rg-step-num">3</div><div class="rg-step-txt">Sélectionner les <strong>valeurs de réussite</strong> indiquées par le texte — toujours un élément et son humeur associée.</div></div>
+      <div class="rg-step"><div class="rg-step-num">4</div><div class="rg-step-txt">Lancer, lire le résultat, et valider la valeur de réussite retenue.</div></div>
+    </div>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/b058vy7aoibea2wqefgk65vs8.PNG" alt="Sélection aptitude et trait">
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/rxbl3ozs2usmvtef0rrgavs85.PNG" alt="Valeurs de réussite">
+    <div class="rg-callout">Il est possible de <strong>modifier les valeurs des dés</strong> — au prix d'un gain d'un dé dévoyé à chaque modification. Les dés dévoyés corrompent un dé blanc et le verrouillent.</div>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/x90slqb3a716im5nr46jxsace.PNG" alt="Résultats du lanceur">
+    <p>Le lanceur indique le nombre de réussites <strong>pour chaque valeur de réussite</strong>. Vous choisissez celle que vous retenez — le système sélectionne alors la suite de l'aventure.</p>
+  </section>
+
+  <!-- Environnement -->
+  <section class="rg-section" id="environnement">
+    <h2 class="rg-h2">Votre environnement</h2>
+    <p>Des <strong>illustrations</strong> sont accessibles par un appel dans le texte. Cliquez sur l'illustration pour l'agrandir.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/hub8696emu5mlkxvtbwn89qpb.PNG" alt="Images dans le texte">
+    <img class="rg-img rg-img-sm" src="https://minio.apps.education.fr/codimd-prod/uploads/yrhe8vb7wgvu0ghi0f3s5bnk2.PNG" alt="Image agrandie">
+    <p>Une <strong>carte de situation</strong> est disponible, avec les lieux visités révélés progressivement au fil de l'histoire.</p>
+    <img class="rg-img" src="https://minio.apps.education.fr/codimd-prod/uploads/uabxfechci1fhosuw8n8n4ee1.PNG" alt="Carte de situation">
+    <p>Des <strong>événements marquants</strong> sont signalés dans le texte. Cliquez sur leur marqueur pour en découvrir le contenu — ils auront un rôle dans des choix ultérieurs.</p>
+  </section>
+
+  <!-- Sauvegarde -->
+  <section class="rg-section" id="sauvegarde">
+    <h2 class="rg-h2">Fin de l'aventure &amp; sauvegarde</h2>
+    <img class="rg-img rg-img-sm" src="https://minio.apps.education.fr/codimd-prod/uploads/h4ffix4wuxj5w5xj34b6kb2db.PNG" alt="Fin d'aventure">
+    <p>Les fins d'aventure sont tantôt heureuses, tantôt funestes. Pour éviter les mauvaises surprises, <strong>sauvegardez votre progression</strong> grâce au bouton dédié en bas de l'écran.</p>
+    <p>Il vous suffit de copier le <strong>code de votre session</strong> (en haut à droite), et de le renseigner lors d'une prochaine connexion pour retrouver l'intégralité de votre avancée.</p>
+    <div class="rg-final">✦ Bonne découverte. Bon jeu. ✦</div>
+  </section>
+
+</main>
+</div>
+
+<script>
+// ── Surlignage du lien actif au scroll ──
+const links = document.querySelectorAll('.rg-nav-link');
+const sections = document.querySelectorAll('.rg-section');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      links.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector('.rg-nav-link[href="#'+e.target.id+'"]');
+      if(active) active.classList.add('active');
+    }
+  });
+}, {threshold:0.3, rootMargin:'-10% 0px -60% 0px'});
+sections.forEach(s => observer.observe(s));
+
+// ── Fermer nav mobile au clic sur lien ──
+links.forEach(l => l.addEventListener('click', () => {
+  document.getElementById('rg-nav').classList.remove('open');
+}));
+</script>
+</body>
+</html>

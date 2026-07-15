@@ -301,7 +301,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
   }
 
 </style>
-<!-- sifhr-v20260715-0612 -->
+<!-- sifhr-v20260715-0702 -->
 </head>
 <body>
 
@@ -413,6 +413,7 @@ body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-
 <!-- Barre de boutons fiche -->
 <div id="fiche-bar">
   <button id="btn-save-explicit" class="fb-btn" onclick="sauvegarderMaintenant()" title="Sauvegarder ma progression ici"><span class="fb-icon">💾</span><span class="fb-label">Sauvegarder</span></button>
+  <button class="fb-btn" onclick="openRegles()" title="Règles du jeu"><span class="fb-icon">📖</span><span class="fb-label">Règles</span></button>
   <button class="fb-btn" onclick="openDesInline()" title="Lanceur de dés"><span class="fb-icon">🎲</span><span class="fb-label">Dés</span></button>
   <button class="fb-btn" onclick="openOct()" title="Octogone"><span class="fb-icon">⬡</span><span class="fb-label">Octogone</span></button>
   <button class="fb-btn" onclick="openApt()" title="Aptitudes"><span class="fb-icon">◈</span><span class="fb-label">Aptitudes</span></button>
@@ -4247,6 +4248,17 @@ async function sauvegarderMaintenant(){
   }catch(e){
     sifhrShowNotif('⚠ Erreur de sauvegarde');
     if(btn){ btn.style.opacity='1'; btn.disabled=false; }
+  }
+}
+
+
+function openRegles(){
+  const ov=document.getElementById('regles-overlay');
+  const iframe=document.getElementById('regles-iframe');
+  ov.style.display='flex';
+  if(iframe.src==='about:blank'){
+    const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
+    iframe.src=base+'regles.html';
   }
 }
 
