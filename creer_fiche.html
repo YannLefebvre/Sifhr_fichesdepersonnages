@@ -511,7 +511,7 @@ function update(){
   const state = buildState();
   const stateJson = JSON.stringify(state).replace(/'/g,"''"); // PostgreSQL : '' pas \'
 
-  const sql = `-- Créer la fiche personnage : ${id}\nINSERT INTO fiches (id, etat, mdp)\nVALUES (\n  '${id}',\n  '${stateJson}',\n  '${pw}'\n)\nON CONFLICT (id) DO UPDATE\n  SET etat = EXCLUDED.etat,\n      mdp  = EXCLUDED.mdp;`;
+  const sql = `-- Créer la fiche personnage : ${id}\nINSERT INTO fiches (id, etat, mot_de_passe)\nVALUES (\n  '${id}',\n  '${stateJson}',\n  '${pw}'\n)\nON CONFLICT (id) DO UPDATE\n  SET etat = EXCLUDED.etat,\n      mot_de_passe = EXCLUDED.mot_de_passe;`;
 
   document.getElementById('sql-out').textContent = sql;
 

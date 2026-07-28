@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Importer des fiches — Sifhr</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#1a1208;--ink:#f5e8c8;--ink2:#d4b896;--ink3:#9a7a5a;--accent:#c8860a;--border:#4a3218;--border2:#3a2810;--section-bg:#1e1508;--panel-bg:#241a0c;--input-bg:#2a1e0e;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-height:100vh;padding:2rem 1rem 4rem;}
+.wrap{max-width:900px;margin:0 auto;}
+h1{font-family:'Cinzel',serif;color:var(--accent);font-size:1.2rem;letter-spacing:.1em;text-align:center;margin-bottom:.3rem;}
+.subtitle{text-align:center;font-style:italic;color:var(--ink3);font-size:.9rem;margin-bottom:2rem;}
+.section{background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;padding:1.2rem;margin-bottom:1.2rem;}
+.section-title{font-family:'Cinzel',serif;color:var(--accent);font-size:.75rem;letter-spacing:.08em;margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:1px solid var(--border2);}
+label{display:block;font-family:'Cinzel',serif;font-size:.62rem;color:var(--ink3);letter-spacing:.05em;margin-bottom:.2rem;margin-top:.6rem;}
+input,select{width:100%;padding:.45rem .6rem;background:var(--input-bg);border:1px solid var(--border);border-radius:4px;color:var(--ink);font-family:'Crimson Text',serif;font-size:.93rem;outline:none;}
+input:focus{border-color:var(--accent);}
+.btn{font-family:'Cinzel',serif;font-size:.75rem;padding:.5rem 1.2rem;border:1px solid var(--accent);border-radius:4px;background:var(--accent);color:#1a1208;cursor:pointer;letter-spacing:.05em;}
+.btn:hover{background:#e09a0c;}
+.btn-sec{background:none;color:var(--accent);}
+.btn-sec:hover{background:rgba(200,134,10,.1);}
+.btn-sm{font-size:.62rem;padding:.25rem .6rem;border-radius:3px;}
+.callout{border-left:3px solid var(--accent);background:rgba(200,134,10,.07);padding:.6rem .8rem;border-radius:0 5px 5px 0;font-size:.85rem;color:var(--ink2);font-style:italic;margin:.6rem 0;}
+.drop-zone{border:2px dashed var(--border);border-radius:8px;padding:2.5rem;text-align:center;cursor:pointer;transition:all .2s;}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(200,134,10,.05);}
+.drop-icon{font-size:2rem;margin-bottom:.5rem;}
+.drop-label{font-family:'Cinzel',serif;font-size:.75rem;color:var(--ink3);letter-spacing:.06em;}
+
+/* Table preview */
+.preview-wrap{overflow-x:auto;margin-top:.8rem;}
+table{width:100%;border-collapse:collapse;font-size:.8rem;}
+th{font-family:'Cinzel',serif;font-size:.58rem;color:var(--ink3);letter-spacing:.05em;padding:.4rem .5rem;background:var(--section-bg);border-bottom:1px solid var(--border);text-align:left;}
+td{padding:.35rem .5rem;border-bottom:1px solid var(--border2);color:var(--ink2);}
+tr:hover td{background:rgba(200,134,10,.04);}
+.badge{display:inline-block;padding:.1rem .35rem;border-radius:3px;font-size:.65rem;font-family:'Cinzel',serif;}
+.badge-ok{background:rgba(74,122,74,.2);color:#8aca8a;border:1px solid #4a7a4a;}
+.badge-new{background:rgba(200,134,10,.15);color:var(--accent);border:1px solid var(--border);}
+.badge-err{background:rgba(139,32,32,.2);color:#e08080;border:1px solid #8b2020;}
+
+/* SQL output */
+.output{background:var(--input-bg);border:1px solid var(--border);border-radius:4px;padding:.8rem;font-family:'Courier New',monospace;font-size:.72rem;color:var(--ink2);white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;margin-top:.6rem;}
+.copy-btn{font-family:'Cinzel',serif;font-size:.6rem;padding:.25rem .6rem;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;float:right;}
+.copy-btn:hover{color:var(--ink);border-color:var(--ink);}
+.stat{display:inline-block;margin-right:.8rem;font-size:.88rem;}
+.stat b{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Importer des fiches personnages</h1>
+<p class="subtitle">Glissez un fichier XLSX exporté depuis Sifhr pour générer le SQL d'insertion en lot.</p>
+
+<!-- Étape 1 : Options -->
+<div class="section">
+  <div class="section-title">① Options</div>
+  <label>Mot de passe par défaut pour les nouvelles fiches</label>
+  <input id="default-pw" value="sifhr" placeholder="mot de passe">
+  <p class="callout" style="margin-top:.6rem;">Chaque fiche importée utilisera ce mot de passe sauf si la colonne <em>mdp</em> est présente dans l'onglet Identité.</p>
+  <div style="margin-top:.6rem;">
+    <label style="display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;font-family:'Crimson Text',serif;font-size:.9rem;color:var(--ink2);">
+      <input type="checkbox" id="opt-overwrite" style="width:auto;"> Écraser les fiches existantes (ON CONFLICT DO UPDATE)
+    </label>
+  </div>
+</div>
+
+<!-- Étape 2 : Dépôt fichier -->
+<div class="section">
+  <div class="section-title">② Charger le fichier XLSX</div>
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <div class="drop-icon">📂</div>
+    <div class="drop-label">Glisser le fichier XLSX ici — ou cliquer pour choisir</div>
+    <div style="font-size:.75rem;color:var(--ink3);margin-top:.3rem;">Format : export Sifhr (un onglet par personnage)</div>
+  </div>
+  <input type="file" id="file-input" accept=".xlsx" style="display:none">
+</div>
+
+<!-- Étape 3 : Prévisualisation -->
+<div class="section" id="preview-section" style="display:none">
+  <div class="section-title">③ Prévisualisation — <span id="preview-count">0</span> fiche(s) détectée(s)</div>
+  <div style="margin-bottom:.6rem;" id="preview-stats"></div>
+  <div class="preview-wrap">
+    <table id="preview-table">
+      <thead><tr>
+        <th>Identifiant</th><th>Nom</th><th>Env. lié</th>
+        <th>Octogone</th><th>Aptitudes</th><th>Traits</th>
+        <th>Équip.</th><th>Dettes</th><th>Statut</th>
+      </tr></thead>
+      <tbody id="preview-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Étape 4 : SQL -->
+<div class="section" id="sql-section" style="display:none">
+  <div class="section-title">④ SQL à exécuter dans Supabase</div>
+  <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.4rem;">
+    <button class="btn btn-sm" onclick="generateSQL()">🔄 Régénérer</button>
+    <button class="copy-btn" style="float:none" onclick="copySQL()">📋 Copier tout</button>
+    <button class="btn btn-sm btn-sec" onclick="downloadSQL()">⬇ Télécharger .sql</button>
+  </div>
+  <div class="output" id="sql-out"></div>
+</div>
+
+</div>
+
+<script>
+const SECTORS = [
+  {id:'feu',num:1},{id:'bile_j',num:2},{id:'terre',num:3},{id:'bile_n',num:4},
+  {id:'eau',num:5},{id:'flegme',num:6},{id:'air',num:7},{id:'sang',num:8}
+];
+const APTITUDE_KEYS=['se_deplacer','se_mesurer','occulter','imaginer','fabriquer','devoiler','resister','ravir'];
+const APT_DISPLAY={'se_deplacer':'Se déplacer','se_mesurer':'Se mesurer','occulter':'Occulter',
+  'imaginer':'Imaginer','fabriquer':'Fabriquer','devoiler':'Dévoiler','resister':'Résister','ravir':'Ravir'};
+
+let parsedFiches = [];
+
+// ── Drag & Drop ──
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave', ()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e=>{
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const file=e.dataTransfer.files[0];
+  if(file) processFile(file);
+});
+document.getElementById('file-input').addEventListener('change', e=>{
+  if(e.target.files[0]) processFile(e.target.files[0]);
+});
+
+// ── Lire le XLSX ──
+function processFile(file){
+  dz.querySelector('.drop-label').textContent = '⏳ Lecture de ' + file.name + '…';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      // Chaque onglet = un personnage si format multi-onglets
+      // OU un seul fichier avec les onglets Identité/Octogone/etc.
+      const isMulti = wb.SheetNames.some(n=>n!=='Identité'&&n!=='Octogone'&&n!=='Aptitudes'&&n!=='Traits'&&n!=='Équipement'&&n!=='Dettes-Créances'&&n!=='Histoires-croisées'&&n!=='Confrérie');
+      
+      if(!isMulti){
+        // Format export individuel → une seule fiche
+        parsedFiches = [parseOneFicheFromWorkbook(wb)].filter(Boolean);
+      } else {
+        // Chaque onglet = un personnage (format multi)
+        parsedFiches = wb.SheetNames.map(name=>{
+          // Ignorer les onglets techniques
+          if(['README','AIDE','Config'].includes(name)) return null;
+          return parseOneFicheFromWorkbook(wb, name);
+        }).filter(Boolean);
+      }
+      
+      dz.querySelector('.drop-label').textContent = '✓ ' + file.name + ' — ' + parsedFiches.length + ' fiche(s) lue(s)';
+      renderPreview();
+      generateSQL();
+    }catch(err){
+      dz.querySelector('.drop-label').textContent = '⚠ Erreur : ' + err.message;
+      console.error(err);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function sheetToObj(ws){
+  const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+  if(!data.length) return {};
+  const headers = data[0];
+  const result = {};
+  for(let r=1;r<data.length;r++){
+    const key = String(data[r][0]||'').trim();
+    const val = data[r][1];
+    if(key) result[key] = val;
+  }
+  return result;
+}
+
+function sheetToRows(ws){
+  return XLSX.utils.sheet_to_json(ws, {defval:''});
+}
+
+function parseOneFicheFromWorkbook(wb, singleSheetName){
+  // Trouver les onglets (avec ou sans préfixe si multi)
+  const find = (name) => {
+    if(singleSheetName){
+      // Chercher des sous-onglets nommés "perso_Identité" etc.
+      const prefixed = wb.SheetNames.find(n=>n===singleSheetName+'_'+name||n===name);
+      return prefixed ? wb.Sheets[prefixed] : null;
+    }
+    return wb.Sheets[name]||null;
+  };
+
+  const wsId = find('Identité');
+  if(!wsId) return null;
+
+  const id_data = sheetToObj(wsId);
+  const ficheId = String(id_data['Identifiant']||'').trim();
+  if(!ficheId) return null;
+
+  // Octogone
+  const tokens = {}, scores = {};
+  SECTORS.forEach(s=>{ tokens[s.id]=['empty','empty','empty']; });
+  const wsOct = find('Octogone');
+  if(wsOct){
+    sheetToRows(wsOct).forEach(row=>{
+      const num=parseInt(row['Axe']); if(!num) return;
+      const sec=SECTORS.find(s=>s.num===num); if(!sec) return;
+      const w=parseInt(row['Jetons blanc'])||0;
+      const b=parseInt(row['Jetons noir'])||0;
+      const toks=['empty','empty','empty'];
+      for(let i=0;i<Math.min(w,3);i++) toks[i]='white';
+      for(let i=w;i<Math.min(w+b,3);i++) toks[i]='black';
+      tokens[sec.id]=toks;
+      scores[`${sec.id}_0`]=parseInt(row['Score vertu (0-3)'])||0;
+      scores[`${sec.id}_1`]=parseInt(row['Score vice (0-3)'])||0;
+    });
+  }
+
+  // Aptitudes
+  const aptitudes = {};
+  const wsApt = find('Aptitudes');
+  if(wsApt){
+    sheetToRows(wsApt).forEach(row=>{
+      const key=String(row['Clé']||'').trim();
+      const score=parseInt(row['Score (0-5)'])||0;
+      const ai=APTITUDE_KEYS.indexOf(key);
+      if(ai<0) return;
+      for(let si=0;si<score;si++) aptitudes[`${ai}_${si}`]=true;
+    });
+  }
+
+  // Traits
+  const traits=Array(10).fill(null).map(()=>({title:'',text:'',level:null,levelType:null,locked:false}));
+  const aptTraits={};
+  const wsTr=find('Traits');
+  let traitIdx=0;
+  if(wsTr){
+    sheetToRows(wsTr).forEach(row=>{
+      const t={title:String(row['Titre']||'').trim(),text:String(row['Description']||'').trim(),
+        level:row['Niveau']||null,levelType:row['Type']||null,locked:row['Verrouillé']==='oui'};
+      if(!t.title) return;
+      const apt=String(row['Aptitude liée']||'').trim();
+      if(apt){
+        if(!aptTraits[apt]) aptTraits[apt]=[];
+        aptTraits[apt].push(t);
+      } else if(traitIdx<10){
+        traits[traitIdx++]=t;
+      }
+    });
+  }
+
+  // Équipement / Artefacts / Prodiges
+  const equipement=Array(6).fill(null).map(()=>({title:'',text:'',bm:0,image:null}));
+  const artefacts=Array(5).fill(null).map(()=>({title:'',text:'',bm:0,image:null}));
+  const prodiges=Array(5).fill(null).map(()=>({title:'',text:'',bm:0,image:null}));
+  const wsEq=find('Équipement');
+  const counters={equipement:0,artefact:0,prodige:0};
+  const targets={equipement,artefact:artefacts,prodige:prodiges};
+  if(wsEq){
+    sheetToRows(wsEq).forEach(row=>{
+      const type=String(row['Type']||'').toLowerCase().replace('é','e');
+      const key=Object.keys(targets).find(k=>type.includes(k));
+      if(!key||!row['Titre']) return;
+      const arr=targets[key];
+      const idx=counters[key]++;
+      if(idx<arr.length) arr[idx]={title:String(row['Titre']||''),text:String(row['Description']||''),bm:parseInt(row['Bonus/Malus'])||0,image:null};
+    });
+  }
+
+  // Dettes & Créances
+  const dettes=[];
+  const wsDette=find('Dettes-Créances');
+  if(wsDette){
+    sheetToRows(wsDette).forEach(row=>{
+      const perso=String(row['Personnage']||'').trim();
+      if(!perso||perso==='—') return;
+      dettes.push({type:String(row['Type']||'').toLowerCase().includes('créance')?'creance':'dette',
+        perso,bm:parseInt(row['Valeur (bm)'])||0,text:String(row['Texte']||''),texte:String(row['Texte']||'')});
+    });
+  }
+
+  // Histoires croisées
+  const histoiresCroisees=[];
+  const wsHist=find('Histoires-croisées');
+  if(wsHist){
+    sheetToRows(wsHist).forEach(row=>{
+      const perso=String(row['Personnage']||'').trim();
+      if(!perso||perso==='—') return;
+      histoiresCroisees.push({perso,text:String(row['Récit']||''),texte:String(row['Récit']||'')});
+    });
+  }
+
+  // Confrérie
+  const confrerie=Array(4).fill(null).map(()=>({title:'',text:''}));
+  const wsConf=find('Confrérie');
+  if(wsConf){
+    sheetToRows(wsConf).forEach((row,i)=>{
+      if(i<4&&row['Titre']&&String(row['Titre']||'').trim()!=='—')
+        confrerie[i]={title:String(row['Titre']||''),text:String(row['Description']||'')};
+    });
+  }
+
+  return {
+    id: ficheId,
+    nom: String(id_data['Nom']||ficheId),
+    mdp: String(id_data['Mot de passe']||''),
+    etat: {
+      tokens, scores, aptitudes, aptTraits, traits, confrerie,
+      equipement, artefacts, prodiges, dettes, histoiresCroisees,
+      historique:{title:String(id_data['Nom']||ficheId),text:String(id_data['Historique']||'')},
+      envFiche:String(id_data['Env. lié']||''),
+      des:id_data['Dés dévoyés']||'',
+      ether:id_data['Éther']||'',
+      occultation:id_data['Occultation']||'',
+      portrait:'',carteType:'',wheelRot:0,accordion:{},
+      dice:{whites:3,reds:2,dice:[],rolled:false},
+    }
+  };
+}
+
+// ── Prévisualisation ──
+function renderPreview(){
+  document.getElementById('preview-section').style.display='';
+  document.getElementById('preview-count').textContent=parsedFiches.length;
+  const tbody=document.getElementById('preview-body');
+  tbody.innerHTML='';
+  parsedFiches.forEach(f=>{
+    const tr=document.createElement('tr');
+    // Compter les éléments
+    const nTrait=(f.etat.traits||[]).filter(t=>t.title).length
+      + Object.values(f.etat.aptTraits||{}).reduce((a,l)=>a+l.length,0);
+    const nEq=[...(f.etat.equipement||[]),...(f.etat.artefacts||[]),...(f.etat.prodiges||[])].filter(e=>e.title).length;
+    const nDette=(f.etat.dettes||[]).length;
+    const nToks=Object.values(f.etat.tokens||{}).reduce((a,t)=>a+t.filter(x=>x!=='empty').length,0);
+    const nApt=APTITUDE_KEYS.reduce((a,key,ai)=>{
+      let s=0; for(let si=0;si<6;si++) if(f.etat.aptitudes[`${ai}_${si}`]) s++;
+      return a+s;
+    },0);
+    tr.innerHTML=`
+      <td><strong>${f.id}</strong></td>
+      <td>${f.nom}</td>
+      <td>${f.etat.envFiche||'—'}</td>
+      <td>${nToks} jeton(s)</td>
+      <td>${nApt} case(s)</td>
+      <td>${nTrait} trait(s)</td>
+      <td>${nEq} objet(s)</td>
+      <td>${nDette} élément(s)</td>
+      <td><span class="badge badge-new">À importer</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Génération SQL ──
+function generateSQL(){
+  if(!parsedFiches.length) return;
+  const pw=document.getElementById('default-pw').value.trim()||'sifhr';
+  const overwrite=document.getElementById('opt-overwrite').checked;
+  const lines=[];
+  lines.push('-- Fiches Sifhr — import généré le '+new Date().toLocaleString('fr-FR'));
+  lines.push('-- '+parsedFiches.length+' fiche(s)');
+  lines.push('');
+  parsedFiches.forEach(f=>{
+    const finalPw=f.mdp||pw;
+    const etatJson=JSON.stringify(f.etat).replace(/'/g,"''");
+    if(overwrite){
+      lines.push(`INSERT INTO fiches (id, etat, mot_de_passe)`);
+      lines.push(`VALUES (`);
+      lines.push(`  '${f.id}',`);
+      lines.push(`  '${etatJson}',`);
+      lines.push(`  '${finalPw}'`);
+      lines.push(`)`);
+      lines.push(`ON CONFLICT (id) DO UPDATE`);
+      lines.push(`  SET etat = EXCLUDED.etat,`);
+      lines.push(`      mdp  = EXCLUDED.mdp;`);
+    } else {
+      lines.push(`INSERT INTO fiches (id, etat, mot_de_passe)`);
+      lines.push(`VALUES (`);
+      lines.push(`  '${f.id}',`);
+      lines.push(`  '${etatJson}',`);
+      lines.push(`  '${finalPw}'`);
+      lines.push(`)`);
+      lines.push(`ON CONFLICT (id) DO NOTHING;`);
+    }
+    lines.push('');
+  });
+  const sql=lines.join('\n');
+  document.getElementById('sql-out').textContent=sql;
+  document.getElementById('sql-section').style.display='';
+}
+
+function copySQL(){
+  navigator.clipboard.writeText(document.getElementById('sql-out').textContent);
+}
+
+function downloadSQL(){
+  const sql=document.getElementById('sql-out').textContent;
+  const blob=new Blob([sql],{type:'text/sql'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='sifhr_import_'+new Date().toISOString().slice(0,10)+'.sql';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+document.getElementById('opt-overwrite').addEventListener('change',generateSQL);
+document.getElementById('default-pw').addEventListener('input',generateSQL);
+</script>
+</body>
+</html>

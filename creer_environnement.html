@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Créer un environnement — Sifhr</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1a1208;--ink:#f5e8c8;--ink2:#d4b896;--ink3:#9a7a5a;--accent:#c8860a;--border:#4a3218;--border2:#3a2810;--section-bg:#1e1508;--panel-bg:#241a0c;--input-bg:#2a1e0e;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-height:100vh;padding:2rem 1rem 4rem;}
+.wrap{max-width:680px;margin:0 auto;}
+h1{font-family:'Cinzel',serif;color:var(--accent);font-size:1.2rem;letter-spacing:.1em;text-align:center;margin-bottom:.3rem;}
+.subtitle{text-align:center;font-style:italic;color:var(--ink3);font-size:.9rem;margin-bottom:2rem;}
+.section{background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;padding:1.2rem;margin-bottom:1.2rem;}
+.section-title{font-family:'Cinzel',serif;color:var(--accent);font-size:.75rem;letter-spacing:.08em;margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:1px solid var(--border2);}
+label{display:block;font-family:'Cinzel',serif;font-size:.62rem;color:var(--ink3);letter-spacing:.05em;margin-bottom:.2rem;margin-top:.6rem;}
+label:first-of-type{margin-top:0;}
+input,select{width:100%;padding:.45rem .6rem;background:var(--input-bg);border:1px solid var(--border);border-radius:4px;color:var(--ink);font-family:'Crimson Text',serif;font-size:.95rem;outline:none;}
+input:focus,select:focus{border-color:var(--accent);}
+.hint{font-size:.75rem;color:var(--ink3);font-style:italic;margin-top:.2rem;}
+.btn{font-family:'Cinzel',serif;font-size:.75rem;padding:.5rem 1.2rem;border:1px solid var(--accent);border-radius:4px;background:var(--accent);color:#1a1208;cursor:pointer;letter-spacing:.05em;margin-top:.8rem;width:100%;}
+.btn:hover{background:#e09a0c;}
+.btn-secondary{background:none;color:var(--accent);}
+.btn-secondary:hover{background:rgba(200,134,10,.1);}
+.output{background:var(--input-bg);border:1px solid var(--border);border-radius:4px;padding:.8rem;font-family:'Courier New',monospace;font-size:.78rem;color:var(--ink2);white-space:pre-wrap;word-break:break-all;margin-top:.6rem;max-height:220px;overflow-y:auto;}
+.copy-btn{font-family:'Cinzel',serif;font-size:.6rem;padding:.25rem .6rem;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;margin-top:.4rem;float:right;}
+.copy-btn:hover{color:var(--ink);border-color:var(--ink);}
+.url-block{margin-top:.4rem;}
+.url-link{display:block;color:var(--accent);font-size:.85rem;word-break:break-all;text-decoration:none;}
+.url-link:hover{text-decoration:underline;}
+.step{display:flex;gap:.7rem;align-items:flex-start;margin-bottom:.8rem;}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#1a1208;font-family:'Cinzel',serif;font-size:.7rem;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.step-txt{font-size:.9rem;color:var(--ink2);line-height:1.6;}
+.callout{border-left:3px solid var(--accent);background:rgba(200,134,10,.07);padding:.6rem .8rem;border-radius:0 5px 5px 0;font-size:.85rem;color:var(--ink2);font-style:italic;margin:.6rem 0;}
+.success{border-color:#4a7a4a;background:rgba(74,122,74,.08);color:#8aca8a;font-style:normal;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Créer un nouvel environnement</h1>
+  <p class="subtitle">Configurez les paramètres, puis exécutez le SQL dans Supabase.</p>
+
+  <!-- Étape 1 : Paramètres -->
+  <div class="section">
+    <div class="section-title">① Paramètres de l'environnement</div>
+
+    <label>Identifiant de l'aventure</label>
+    <input id="env-id" type="text" placeholder="env-nom-de-laventure" oninput="update()">
+    <div class="hint">Minuscules, tirets uniquement. Ex : <em>env-la-cite-perdue</em></div>
+
+    <label>Mot de passe MJ</label>
+    <input id="env-pw" type="text" placeholder="mot-de-passe-secret" oninput="update()">
+    <div class="hint">Vous en aurez besoin pour ouvrir l'environnement en mode meneur.</div>
+
+    <label>Carte associée</label>
+    <select id="env-carte" onchange="update()">
+      <option value="">Aucune (pas de carte)</option>
+      <option value="myriokephalon">Myriokephalon 1176</option>
+      <option value="damas">Damas</option>
+    </select>
+
+    <label>Titre de l'aventure (affiché dans l'interface)</label>
+    <input id="env-titre" type="text" placeholder="La Cité Perdue" oninput="update()">
+  </div>
+
+  <!-- Étape 2 : SQL Supabase -->
+  <div class="section">
+    <div class="section-title">② SQL à exécuter dans Supabase</div>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-txt">Allez sur <strong>supabase.com</strong> → votre projet → <strong>SQL Editor</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-txt">Copiez et collez le SQL ci-dessous, puis cliquez <strong>Run</strong></div>
+    </div>
+    <button class="copy-btn" onclick="copySQL()">📋 Copier</button>
+    <div class="output" id="sql-out">-- Remplissez les champs ci-dessus</div>
+  </div>
+
+  <!-- Étape 3 : URLs -->
+  <div class="section">
+    <div class="section-title">③ URLs d'accès</div>
+    <div id="urls-out">
+      <div class="callout">Remplissez les champs ci-dessus pour générer les URLs.</div>
+    </div>
+  </div>
+
+  <!-- Étape 4 : Aventure HTML -->
+  <div class="section">
+    <div class="section-title">④ Configuration dans votre aventure HTML</div>
+    <p style="font-size:.88rem;color:var(--ink2);margin-bottom:.6rem;">Dans le script de build de votre fichier aventure, utilisez ces valeurs :</p>
+    <button class="copy-btn" onclick="copyConfig()">📋 Copier</button>
+    <div class="output" id="config-out">-- Remplissez les champs ci-dessus</div>
+    <div class="callout" style="margin-top:.8rem;">
+      La fiche clone du joueur (<em>ficheBase</em>) est créée automatiquement à la première connexion — vous n'avez pas à la créer manuellement.
+    </div>
+  </div>
+
+  <!-- Récap -->
+  <div class="section">
+    <div class="section-title">⑤ Récapitulatif des fichiers</div>
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-txt"><strong>environnement.html</strong> — fichier unique, partagé par toutes les aventures. Pas à modifier.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-txt"><strong>aventure_nomaventure.html</strong> — un fichier par aventure, contient le STORY_DATA Moiki + la config env.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-txt"><strong>Supabase → table fiches</strong> — une ligne par environnement env-xxx, une ligne par joueur, une ligne par fiche clone.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const BASE = 'https://sifhr-fichesdepersonnages.vercel.app/';
+const SB   = 'qyifamxfvswcglvrzduf.supabase.co';
+
+function getId(){ return (document.getElementById('env-id').value||'').trim(); }
+function getPw(){  return (document.getElementById('env-pw').value||'').trim(); }
+function getCarte(){ return document.getElementById('env-carte').value; }
+function getTitre(){ return (document.getElementById('env-titre').value||'').trim(); }
+
+function update(){
+  const id=getId(), pw=getPw(), carte=getCarte(), titre=getTitre();
+  if(!id||!pw){ 
+    document.getElementById('sql-out').textContent='-- Remplissez l\'identifiant et le mot de passe';
+    document.getElementById('urls-out').innerHTML='<div class="callout">Remplissez les champs ci-dessus.</div>';
+    document.getElementById('config-out').textContent='-- Remplissez les champs ci-dessus';
+    return;
+  }
+
+  // SQL
+  const etat=JSON.stringify({
+    slots:{},
+    chronologie:[],
+    vv_visible:[],
+    carte:carte,
+    titre:titre||id,
+    fichePersonnages:[]
+  });
+  const sql=`-- Créer l'environnement ${id}\nINSERT INTO fiches (id, etat, mot_de_passe)\nVALUES (\n  '${id}',\n  '${etat.replace(/'/g,"\\'")}',\n  '${pw}'\n)\nON CONFLICT (id) DO UPDATE\n  SET etat = EXCLUDED.etat,\n      mot_de_passe = EXCLUDED.mot_de_passe;`;
+  document.getElementById('sql-out').textContent=sql;
+
+  // URLs
+  const envUrl=BASE+'environnement.html?fiche='+encodeURIComponent(id);
+  document.getElementById('urls-out').innerHTML=
+    '<label style="margin-top:0">URL Meneur (MJ)</label>'+
+    '<div class="url-block"><a class="url-link" href="'+envUrl+'" target="_blank">'+envUrl+'</a></div>'+
+    '<div class="hint">Connectez-vous avec le mot de passe MJ : <strong>'+pw+'</strong></div>'+
+    '<label>URL Joueur (lecture seule)</label>'+
+    '<div class="url-block"><a class="url-link" href="'+envUrl+'&player=1" target="_blank">'+envUrl+'&player=1</a></div>'+
+    '<div class="hint">Le joueur voit l\'octogone env sans pouvoir le modifier.</div>';
+
+  // Config aventure
+  const ficheBase='[id-joueur]_'+id;
+  const config=`// Dans le script de build de votre aventure :\nstory['_env'] = {\n  fiche: '${id}',\n  pw:    '${pw}',\n  carte: '${carte}'\n};\nstory['_ficheBase'] = '${ficheBase}';\n// Remplacer [id-joueur] par l'identifiant Supabase du joueur`;
+  document.getElementById('config-out').textContent=config;
+}
+
+function copySQL(){
+  navigator.clipboard.writeText(document.getElementById('sql-out').textContent);
+  flash('copy-sql');
+}
+function copyConfig(){
+  navigator.clipboard.writeText(document.getElementById('config-out').textContent);
+}
+function flash(id){
+  // visual feedback
+}
+</script>
+</body>
+</html>
