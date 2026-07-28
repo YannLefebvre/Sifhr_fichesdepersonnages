@@ -523,9 +523,19 @@ function update(){
   }
 
   const state = buildState();
-  const stateJson = JSON.stringify(state).replace(/'/g,"''"); // PostgreSQL : '' pas \'
+  const stateJson = JSON.stringify(state); // dollar-quoting gère les apostrophesL : '' pas \'
 
-  const sql = `-- Créer la fiche personnage : ${id}\nINSERT INTO fiches (id, etat, mot_de_passe)\nVALUES (\n  '${id}',\n  '${stateJson}',\n  '${pw}'\n)\nON CONFLICT (id) DO UPDATE\n  SET etat = EXCLUDED.etat,\n      mot_de_passe = EXCLUDED.mot_de_passe;`;
+  // Dollar-quoting PostgreSQL : aucun problème d'apostrophe quelle que soit la valeur
+  const sql = `-- Créer la fiche personnage : ${id}
+INSERT INTO fiches (id, etat, mot_de_passe)
+VALUES (
+  '${id.replace(/'/g,"''")}',
+  $sifhr$${stateJson.replace(/\\$sifhr\\$/g,'\\$sifhr\\$')}$sifhr$,
+  '${pw.replace(/'/g,"''")}' 
+)
+ON CONFLICT (id) DO UPDATE
+  SET etat = EXCLUDED.etat,
+      mot_de_passe = EXCLUDED.mot_de_passe;`;
 
   document.getElementById('sql-out').textContent = sql;
 
