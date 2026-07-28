@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Créer une fiche personnage — Sifhr</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1a1208;--ink:#f5e8c8;--ink2:#d4b896;--ink3:#9a7a5a;--accent:#c8860a;--border:#4a3218;--border2:#3a2810;--section-bg:#1e1508;--panel-bg:#241a0c;--input-bg:#2a1e0e;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-height:100vh;padding:2rem 1rem 4rem;}
+.wrap{max-width:720px;margin:0 auto;}
+h1{font-family:'Cinzel',serif;color:var(--accent);font-size:1.2rem;letter-spacing:.1em;text-align:center;margin-bottom:.3rem;}
+.subtitle{text-align:center;font-style:italic;color:var(--ink3);font-size:.9rem;margin-bottom:2rem;}
+.section{background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;padding:1.2rem;margin-bottom:1.2rem;}
+.section-title{font-family:'Cinzel',serif;color:var(--accent);font-size:.75rem;letter-spacing:.08em;margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:1px solid var(--border2);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;}
+@media(max-width:500px){.grid2{grid-template-columns:1fr;}}
+label{display:block;font-family:'Cinzel',serif;font-size:.62rem;color:var(--ink3);letter-spacing:.05em;margin-bottom:.2rem;margin-top:.7rem;}
+label:first-of-type{margin-top:0;}
+input,select,textarea{width:100%;padding:.45rem .6rem;background:var(--input-bg);border:1px solid var(--border);border-radius:4px;color:var(--ink);font-family:'Crimson Text',serif;font-size:.93rem;outline:none;}
+textarea{resize:vertical;min-height:64px;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+.hint{font-size:.72rem;color:var(--ink3);font-style:italic;margin-top:.15rem;}
+
+/* Octogone mini scores */
+.oct-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-top:.4rem;}
+.oct-cell{background:var(--input-bg);border:1px solid var(--border);border-radius:5px;padding:.4rem .5rem;text-align:center;}
+.oct-label{font-family:'Cinzel',serif;font-size:.55rem;color:var(--ink3);letter-spacing:.04em;display:block;margin-bottom:.2rem;}
+.oct-tokens{display:flex;gap:3px;justify-content:center;margin-bottom:.3rem;}
+.tok-btn{width:14px;height:14px;border-radius:50%;border:1px solid var(--border);cursor:pointer;background:var(--bg);}
+.tok-btn.white{background:#e8d5a0;border-color:#c8a060;}
+.tok-btn.black{background:#2a1a08;border-color:#6a4a2a;}
+.tok-btn.empty{background:var(--bg);}
+.score-row{display:flex;gap:3px;justify-content:center;}
+.score-sq{width:12px;height:12px;border:1px solid var(--border);border-radius:2px;cursor:pointer;background:var(--bg);}
+.score-sq.on0{background:#c8860a;border-color:#c8860a;}
+.score-sq.on1{background:#4a7a4a;border-color:#4a7a4a;}
+
+/* Aptitudes */
+.apt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-top:.4rem;}
+.apt-cell{background:var(--input-bg);border:1px solid var(--border);border-radius:5px;padding:.35rem .4rem;}
+.apt-name{font-family:'Cinzel',serif;font-size:.55rem;color:var(--ink3);letter-spacing:.03em;display:block;margin-bottom:.25rem;}
+.apt-squares{display:flex;gap:2px;}
+.apt-sq{width:11px;height:11px;border:1px solid var(--border);border-radius:1px;cursor:pointer;background:var(--bg);}
+.apt-sq.on{background:var(--accent);border-color:var(--accent);}
+
+/* Bibliothèque de traits */
+.trait-result-item{padding:.4rem .6rem;border-bottom:1px solid var(--border2);cursor:pointer;display:flex;align-items:flex-start;gap:.5rem;transition:background .1s;}
+.trait-result-item:hover{background:rgba(200,134,10,.08);}
+.trait-result-item:last-child{border-bottom:none;}
+.tri-nom{font-family:'Cinzel',serif;font-size:.62rem;color:var(--ink2);min-width:140px;flex-shrink:0;}
+.tri-type{font-size:.6rem;color:var(--ink3);padding:.05rem .3rem;border:1px solid var(--border2);border-radius:3px;white-space:nowrap;flex-shrink:0;}
+.tri-niv{font-size:.6rem;color:var(--accent);padding:.05rem .3rem;border:1px solid var(--border);border-radius:3px;white-space:nowrap;flex-shrink:0;}
+.tri-effet{font-size:.72rem;color:var(--ink3);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.tri-add{font-family:'Cinzel',serif;font-size:.6rem;padding:.15rem .5rem;border:1px solid var(--accent);border-radius:3px;background:none;color:var(--accent);cursor:pointer;flex-shrink:0;white-space:nowrap;}
+.tri-add:hover{background:rgba(200,134,10,.15);}
+.trait-card{background:var(--input-bg);border:1px solid var(--border);border-radius:5px;padding:.5rem .6rem;margin-bottom:.35rem;position:relative;}
+.trait-card-header{display:flex;align-items:center;gap:.4rem;margin-bottom:.3rem;flex-wrap:wrap;}
+.trait-card-nom{font-family:'Cinzel',serif;font-size:.7rem;color:var(--ink);}
+.trait-card-badges{display:flex;gap:.3rem;flex:1;flex-wrap:wrap;}
+.trait-badge{font-size:.58rem;padding:.05rem .3rem;border-radius:3px;border:1px solid var(--border2);color:var(--ink3);}
+.trait-badge-type{border-color:var(--border);}
+.trait-badge-niv{color:var(--accent);border-color:var(--border);}
+.trait-card-desc{font-size:.78rem;color:var(--ink3);font-style:italic;margin-bottom:.3rem;line-height:1.4;}
+.trait-card-row{display:grid;grid-template-columns:1fr 1fr;gap:.3rem;margin-top:.3rem;}
+.trait-remove{position:absolute;top:.4rem;right:.4rem;background:none;border:none;color:var(--ink3);cursor:pointer;font-size:.9rem;padding:0;}
+.trait-remove:hover{color:#e08080;}
+
+/* Buttons */
+.btn{font-family:'Cinzel',serif;font-size:.75rem;padding:.5rem 1.2rem;border:1px solid var(--accent);border-radius:4px;background:var(--accent);color:#1a1208;cursor:pointer;letter-spacing:.05em;margin-top:.8rem;width:100%;}
+.btn:hover{background:#e09a0c;}
+.copy-btn{font-family:'Cinzel',serif;font-size:.6rem;padding:.25rem .6rem;border:1px solid var(--border);border-radius:3px;background:none;color:var(--ink3);cursor:pointer;float:right;}
+.copy-btn:hover{color:var(--ink);border-color:var(--ink);}
+.output{background:var(--input-bg);border:1px solid var(--border);border-radius:4px;padding:.8rem;font-family:'Courier New',monospace;font-size:.72rem;color:var(--ink2);white-space:pre-wrap;word-break:break-all;margin-top:.4rem;max-height:280px;overflow-y:auto;}
+.url-link{display:block;color:var(--accent);font-size:.88rem;word-break:break-all;text-decoration:none;margin-top:.3rem;}
+.url-link:hover{text-decoration:underline;}
+.callout{border-left:3px solid var(--accent);background:rgba(200,134,10,.07);padding:.6rem .8rem;border-radius:0 5px 5px 0;font-size:.85rem;color:var(--ink2);font-style:italic;margin:.6rem 0;}
+.step{display:flex;gap:.7rem;align-items:flex-start;margin-bottom:.6rem;}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#1a1208;font-family:'Cinzel',serif;font-size:.7rem;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem;}
+.step-txt{font-size:.88rem;color:var(--ink2);line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Créer une fiche personnage</h1>
+<p class="subtitle">Configurez l'identité et les scores initiaux, puis exécutez le SQL dans Supabase.</p>
+
+<!-- Identité -->
+<div class="section">
+  <div class="section-title">① Identité du personnage</div>
+  <div class="grid2">
+    <div>
+      <label>Identifiant (clé Supabase)</label>
+      <input id="fiche-id" placeholder="prenom-nom ou pseudo" oninput="update()">
+      <div class="hint">Minuscules, tirets. Ex : <em>christophe</em>, <em>ysabeau-de-montbard</em></div>
+    </div>
+    <div>
+      <label>Mot de passe joueur</label>
+      <input id="fiche-pw" type="text" placeholder="mot-de-passe" oninput="update()">
+    </div>
+  </div>
+  <div class="grid2">
+    <div>
+      <label>Nom complet du personnage</label>
+      <input id="fiche-nom" placeholder="Christophe de Mâcon" oninput="update()">
+    </div>
+    <div>
+      <label>Environnement lié (optionnel)</label>
+      <input id="fiche-env" placeholder="env-genese_nouvel_initie" oninput="update()">
+      <div class="hint">Laissez vide si défini plus tard</div>
+    </div>
+  </div>
+  <label>Historique du personnage</label>
+  <textarea id="fiche-hist" placeholder="Biographie, motivations, passé..." oninput="update()" rows="3"></textarea>
+</div>
+
+<!-- Octogone -->
+<div class="section">
+  <div class="section-title">② Octogone — jetons et scores vertu/vice</div>
+  <div class="callout">Cliquez sur les cases pour basculer blanc ⬜ / noir ⬛ / vide. Les scores (0-3) s'activent par clic.</div>
+  <div class="oct-grid" id="oct-grid"></div>
+</div>
+
+<!-- Aptitudes -->
+<div class="section">
+  <div class="section-title">③ Aptitudes (cases cochées = niveau)</div>
+  <div class="apt-grid" id="apt-grid"></div>
+</div>
+
+<!-- Traits / Historique -->
+<div class="section">
+  <div class="section-title">④ Traits initiaux — bibliothèque de <span id="traits-count">0</span> traits</div>
+
+  <!-- Recherche -->
+  <div style="display:grid;grid-template-columns:1fr auto auto;gap:.5rem;align-items:end;margin-bottom:.6rem;">
+    <div>
+      <label style="margin-top:0">Rechercher un trait</label>
+      <input id="trait-search" placeholder="Nom, type, effet, aptitude…" oninput="loadTraitsDB().then(filterTraits)" onfocus="loadTraitsDB()">
+    </div>
+    <div>
+      <label style="margin-top:0">Type</label>
+      <select id="trait-type-filter" onchange="filterTraits()">
+        <option value="">Tous les types</option>
+      </select>
+    </div>
+    <div>
+      <label style="margin-top:0">Niveau</label>
+      <select id="trait-niveau-filter" onchange="filterTraits()">
+        <option value="">Tous</option>
+        <option value="N1">N1</option>
+        <option value="N2">N2</option>
+        <option value="N3">N3</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Résultats biblio -->
+  <div id="trait-results" style="max-height:220px;overflow-y:auto;border:1px solid var(--border2);border-radius:5px;margin-bottom:.8rem;display:none;"></div>
+
+  <!-- Traits sélectionnés -->
+  <div style="font-family:'Cinzel',serif;font-size:.62rem;color:var(--ink3);letter-spacing:.05em;margin-bottom:.3rem;">TRAITS RETENUS POUR LA FICHE</div>
+  <div id="traits-list"></div>
+  <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap;">
+    <button class="btn" style="background:none;color:var(--accent);border-color:var(--border);font-size:.68rem;padding:.3rem .7rem;" onclick="addTraitManuel()">+ Trait libre (sans bibliothèque)</button>
+  </div>
+</div>
+
+<!-- SQL -->
+<div class="section">
+  <div class="section-title">⑤ SQL à exécuter dans Supabase</div>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-txt">Supabase → votre projet → <strong>SQL Editor</strong> → New Query</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-txt">Copiez-collez le SQL ci-dessous → <strong>Run</strong></div>
+  </div>
+  <button class="copy-btn" onclick="copyText('sql-out')">📋 Copier</button>
+  <div class="output" id="sql-out">-- Remplissez les champs ci-dessus</div>
+</div>
+
+<!-- URLs -->
+<div class="section">
+  <div class="section-title">⑥ URL d'accès</div>
+  <div id="urls-out"><div class="callout">Remplissez l'identifiant et le mot de passe.</div></div>
+</div>
+
+</div>
+
+<script>
+const BASE = 'https://sifhr-fichesdepersonnages.vercel.app/';
+
+const SECTORS = [
+  {id:'feu',    label:'Feu',        vertu:'Force',      vice:'Lâcheté'},
+  {id:'bile_j', label:'Bile Jaune', vertu:'Charité',    vice:'Luxure'},
+  {id:'terre',  label:'Terre',      vertu:'Loyauté',    vice:'Félonie'},
+  {id:'bile_n', label:'Bile Noire', vertu:'Prudence',   vice:'Acédie'},
+  {id:'eau',    label:'Eau',        vertu:'Tempérance', vice:'Envie'},
+  {id:'flegme', label:'Flegme',     vertu:'Chasteté',   vice:'Avarice'},
+  {id:'air',    label:'Air',        vertu:'Foi',        vice:'Malignité'},
+  {id:'sang',   label:'Sang',       vertu:'Espérance',  vice:'Témérité'},
+];
+
+const APTITUDES = [
+  {id:'se_deplacer', label:'Se déplacer'},
+  {id:'se_mesurer',  label:'Se mesurer'},
+  {id:'occulter',    label:'Occulter'},
+  {id:'imaginer',    label:'Imaginer'},
+  {id:'fabriquer',   label:'Fabriquer'},
+  {id:'devoiler',    label:'Dévoiler'},
+  {id:'resister',    label:'Résister'},
+  {id:'ravir',       label:'Ravir'},
+];
+
+// State octogone
+const octState = {};
+SECTORS.forEach(s => {
+  octState[s.id] = { tokens: ['empty','empty','empty'], v: 0, vi: 0 };
+});
+
+// State aptitudes
+const aptState = {};
+APTITUDES.forEach(a => { aptState[a.id] = 0; });
+
+// ── Base de traits — chargée depuis traits_db.json ──
+let TRAITS_DB = [];
+let _traitsLoaded = false;
+
+async function loadTraitsDB(){
+  if(_traitsLoaded) return;
+  try{
+    const base = new URL(location.href).pathname.replace(/[^/]*$/, '');
+    const r = await fetch(base + 'traits_db.json');
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    TRAITS_DB = await r.json();
+    _traitsLoaded = true;
+    document.getElementById('traits-count').textContent = TRAITS_DB.length;
+    initTraitsDB();
+    console.log('[Sifhr] Bibliothèque chargée :', TRAITS_DB.length, 'traits');
+  }catch(e){
+    console.error('[Sifhr] Impossible de charger traits_db.json :', e);
+    document.getElementById('traits-count').textContent = '⚠ erreur de chargement';
+  }
+}
+let selectedTraits = [];
+
+// ── Build octogone grid ──
+const octGrid = document.getElementById('oct-grid');
+SECTORS.forEach(s => {
+  const cell = document.createElement('div');
+  cell.className = 'oct-cell';
+  cell.innerHTML = `<span class="oct-label">${s.label}</span>
+<div class="oct-tokens" id="tok-${s.id}"></div>
+<div style="font-family:Cinzel,serif;font-size:.5rem;color:var(--ink3);margin-bottom:.15rem;">${s.vertu}</div>
+<div class="score-row" id="vs-${s.id}"></div>
+<div style="font-family:Cinzel,serif;font-size:.5rem;color:var(--ink3);margin:.15rem 0 .1rem;">${s.vice}</div>
+<div class="score-row" id="vis-${s.id}"></div>`;
+  octGrid.appendChild(cell);
+
+  // Tokens (3 cases)
+  const tokWrap = document.getElementById('tok-'+s.id);
+  for(let i=0;i<3;i++){
+    const b = document.createElement('div');
+    b.className = 'tok-btn empty';
+    b.onclick = () => {
+      const cur = octState[s.id].tokens[i];
+      const next = cur==='empty'?'white':cur==='white'?'black':'empty';
+      octState[s.id].tokens[i] = next;
+      b.className = 'tok-btn '+next;
+      update();
+    };
+    tokWrap.appendChild(b);
+  }
+
+  // Scores vertu (3 cases)
+  const vsWrap = document.getElementById('vs-'+s.id);
+  for(let i=0;i<3;i++){
+    const sq = document.createElement('div');
+    sq.className = 'score-sq';
+    sq.onclick = () => {
+      octState[s.id].v = octState[s.id].v===i+1 ? 0 : i+1;
+      renderOctScores(s.id);
+      update();
+    };
+    vsWrap.appendChild(sq);
+  }
+
+  // Scores vice
+  const visWrap = document.getElementById('vis-'+s.id);
+  for(let i=0;i<3;i++){
+    const sq = document.createElement('div');
+    sq.className = 'score-sq';
+    sq.onclick = () => {
+      octState[s.id].vi = octState[s.id].vi===i+1 ? 0 : i+1;
+      renderOctScores(s.id);
+      update();
+    };
+    visWrap.appendChild(sq);
+  }
+});
+
+function renderOctScores(sid){
+  const v = octState[sid].v, vi = octState[sid].vi;
+  document.getElementById('vs-'+sid).querySelectorAll('.score-sq').forEach((sq,i)=>{
+    sq.className = 'score-sq' + (i<v?' on0':'');
+  });
+  document.getElementById('vis-'+sid).querySelectorAll('.score-sq').forEach((sq,i)=>{
+    sq.className = 'score-sq' + (i<vi?' on1':'');
+  });
+}
+
+// ── Build aptitudes grid ──
+const aptGrid = document.getElementById('apt-grid');
+APTITUDES.forEach(a => {
+  const cell = document.createElement('div');
+  cell.className = 'apt-cell';
+  let html = `<span class="apt-name">${a.label}</span><div class="apt-squares" id="apt-${a.id}">`;
+  for(let i=0;i<5;i++) html += `<div class="apt-sq" onclick="toggleApt('${a.id}',${i})"></div>`;
+  html += '</div>';
+  cell.innerHTML = html;
+  aptGrid.appendChild(cell);
+});
+
+function toggleApt(id, idx){
+  aptState[id] = aptState[id]===idx+1 ? 0 : idx+1;
+  document.getElementById('apt-'+id).querySelectorAll('.apt-sq').forEach((sq,i)=>{
+    sq.className = 'apt-sq' + (i<aptState[id]?' on':'');
+  });
+  update();
+}
+
+// ── Traits ──
+// ── Bibliothèque de traits ──
+function initTraitsDB(){
+  if(!TRAITS_DB.length) return;
+  document.getElementById('traits-count').textContent=TRAITS_DB.length;
+  // Peupler les types (reset d'abord)
+  const sel=document.getElementById('trait-type-filter');
+  while(sel.options.length>1) sel.remove(1);
+  const types=[...new Set(TRAITS_DB.map(t=>t.type).filter(Boolean))].sort();
+  types.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o);});
+}
+
+function filterTraits(){
+  const q=(document.getElementById('trait-search').value||'').toLowerCase().trim();
+  const typ=document.getElementById('trait-type-filter').value;
+  const niv=document.getElementById('trait-niveau-filter').value;
+  const res=document.getElementById('trait-results');
+  
+  if(!q&&!typ&&!niv){ res.style.display='none'; res.innerHTML=''; return; }
+  
+  let filtered=TRAITS_DB.filter(t=>{
+    if(typ&&t.type!==typ) return false;
+    if(niv&&!t.niveau.includes(niv)) return false;
+    if(q){
+      const hay=(t.nom+' '+t.type+' '+t.effet+' '+t.desc+' '+t.vv+' '+t.oct).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  
+  res.style.display='block';
+  if(!filtered.length){ res.innerHTML='<div style="padding:.6rem;font-size:.8rem;color:var(--ink3);font-style:italic;">Aucun résultat.</div>'; return; }
+  
+  res.innerHTML=filtered.slice(0,80).map((t,i)=>`
+    <div class="trait-result-item" onclick="addTraitFromDB(${TRAITS_DB.indexOf(t)})">
+      <span class="tri-nom">${t.nom}</span>
+      <span class="tri-type">${t.type}</span>
+      <span class="tri-niv">${t.niveau||'—'}</span>
+      <span class="tri-effet">${t.effet.slice(0,70)}</span>
+      <button class="tri-add" onclick="event.stopPropagation();addTraitFromDB(${TRAITS_DB.indexOf(t)})">+ Ajouter</button>
+    </div>`).join('');
+  if(filtered.length>80) res.innerHTML+=`<div style="padding:.4rem .6rem;font-size:.7rem;color:var(--ink3);">…et ${filtered.length-80} autres résultats. Affinez la recherche.</div>`;
+}
+
+function addTraitFromDB(idx){
+  const t=TRAITS_DB[idx];
+  selectedTraits.push({
+    title:t.nom, text:t.effet+(t.desc?'\n'+t.desc:''),
+    level:'bonus-1', apt:'', dbRef:idx,
+    _niv:t.niveau, _type:t.type, _desc:t.desc, _effet:t.effet,
+    _prereq:t.prereq, _vv:t.vv, _oct:t.oct
+  });
+  renderTraits(); update();
+}
+
+function addTraitManuel(){
+  selectedTraits.push({title:'',text:'',level:'bonus-1',apt:'',dbRef:-1});
+  renderTraits(); update();
+}
+
+function renderTraits(){
+  const wrap=document.getElementById('traits-list');
+  wrap.innerHTML='';
+  if(!selectedTraits.length){
+    wrap.innerHTML='<div style="font-size:.8rem;color:var(--ink3);font-style:italic;padding:.4rem 0;">Aucun trait sélectionné. Recherchez dans la bibliothèque ou ajoutez un trait libre.</div>';
+    return;
+  }
+  selectedTraits.forEach((t,i)=>{
+    const card=document.createElement('div');
+    card.className='trait-card';
+    const fromDB=t.dbRef>=0;
+    card.innerHTML=`
+      <button class="trait-remove" onclick="selectedTraits.splice(${i},1);renderTraits();update();">✕</button>
+      <div class="trait-card-header">
+        <span class="trait-card-nom">${fromDB?t.title:'<input value="'+t.title+'" oninput="selectedTraits['+i+'].title=this.value;update();" placeholder=\"Nom du trait\" style=\"font-family:Cinzel,serif;font-size:.7rem;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--ink);outline:none;\">'}  </span>
+        <div class="trait-card-badges">
+          ${fromDB?`<span class="trait-badge trait-badge-type">${t._type}</span><span class="trait-badge trait-badge-niv">${t._niv}</span>`:''}
+        </div>
+      </div>
+      ${fromDB&&t._effet?`<div class="trait-card-desc">${t._effet.slice(0,120)}${t._effet.length>120?'…':''}</div>`:''}
+      <div class="trait-card-row">
+        <div>
+          <label style="margin-top:0">Aptitude liée</label>
+          <select onchange="selectedTraits[${i}].apt=this.value;update();">
+            <option value="">— Aucune —</option>
+            ${APTITUDES.map(a=>`<option value="${a.id}"${t.apt===a.id?' selected':''}>${a.label}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="margin-top:0">Niveau dans la fiche</label>
+          <select onchange="selectedTraits[${i}].level=this.value;update();">
+            <option value="bonus-1"${t.level==='bonus-1'?' selected':''}>Avantage (bonus-1)</option>
+            <option value="bonus-2"${t.level==='bonus-2'?' selected':''}>Expertise (bonus-2)</option>
+            <option value="bonus-3"${t.level==='bonus-3'?' selected':''}>Maîtrise (bonus-3)</option>
+            <option value="malus-1"${t.level==='malus-1'?' selected':''}>Relance (malus-1)</option>
+            <option value="malus-2"${t.level==='malus-2'?' selected':''}>Opposition (malus-2)</option>
+            <option value="malus-3"${t.level==='malus-3'?' selected':''}>Négation (malus-3)</option>
+          </select>
+        </div>
+      </div>
+      ${!fromDB?`<div style="margin-top:.3rem"><label style="margin-top:0">Description</label><textarea oninput="selectedTraits[${i}].text=this.value;update();" rows="2" style="font-size:.8rem;">${t.text}</textarea></div>`:''}
+      ${fromDB&&t._prereq&&t._prereq!=='Aucun'?`<div style="font-size:.68rem;color:var(--ink3);margin-top:.2rem;">Prérequis : ${t._prereq}</div>`:''}`;
+    wrap.appendChild(card);
+  });
+}
+
+// ── Générer state JSON ──
+function buildState(){
+  const tokens = {}, scores = {}, aptitudes = {};
+
+  SECTORS.forEach(s => {
+    tokens[s.id] = octState[s.id].tokens;
+    // Scores : format aptIndex_squareIndex ou sectorId_0 / sectorId_1
+    for(let i=0;i<octState[s.id].v;i++)  scores[s.id+'_0_'+i] = true;
+    for(let i=0;i<octState[s.id].vi;i++) scores[s.id+'_1_'+i] = true;
+    // Format compact scores
+    scores[s.id+'_0'] = octState[s.id].v;
+    scores[s.id+'_1'] = octState[s.id].vi;
+  });
+
+  // Aptitudes : format aptKey_squareIndex
+  APTITUDES.forEach((a,ai) => {
+    for(let i=0;i<aptState[a.id];i++){
+      aptitudes[ai+'_'+i] = true;
+    }
+  });
+
+  // Traits dans aptTraits
+  const aptTraits = {};
+  const traitsList = [];
+  selectedTraits.forEach(t => {
+    if(!t.title) return;
+    const item = {title:t.title, text:t.text||t._effet||'', level:t.level, levelType:t.level, locked:false};
+    if(t.apt){
+      if(!aptTraits[t.apt]) aptTraits[t.apt] = [];
+      aptTraits[t.apt].push(item);
+    } else {
+      traitsList.push(item);
+    }
+  });
+  // Compléter les slots traits jusqu'à 10
+  while(traitsList.length < 10) traitsList.push({title:'',text:'',level:null,levelType:null,locked:false});
+
+  const hist = document.getElementById('fiche-hist').value.trim();
+  const env  = document.getElementById('fiche-env').value.trim();
+  const nom  = document.getElementById('fiche-nom').value.trim();
+
+  return {
+    tokens, scores, aptitudes, aptTraits,
+    traits: traitsList,
+    confrerie: Array(4).fill({title:'',text:''}),
+    equipement: Array(6).fill({title:'',text:'',bm:0,image:null}),
+    artefacts:  Array(5).fill({title:'',text:'',bm:0,image:null}),
+    prodiges:   Array(5).fill({title:'',text:'',bm:0,image:null}),
+    historique: {title: nom||'', text: hist},
+    histoiresCroisees: [],
+    dettes: [],
+    portrait: '',
+    des: '', ether: '', occultation: '',
+    envFiche: env,
+    carteType: '',
+    wheelRot: 0,
+    accordion: {},
+    dice: {whites:3,reds:2,dice:[],rolled:false},
+  };
+}
+
+function update(){
+  const id = (document.getElementById('fiche-id').value||'').trim();
+  const pw = (document.getElementById('fiche-pw').value||'').trim();
+  if(!id||!pw){
+    document.getElementById('sql-out').textContent='-- Remplissez l\'identifiant et le mot de passe';
+    document.getElementById('urls-out').innerHTML='<div class="callout">Remplissez les champs.</div>';
+    return;
+  }
+
+  const state = buildState();
+  const stateJson = JSON.stringify(state).replace(/'/g,"\\'");
+
+  const sql = `-- Créer la fiche personnage : ${id}\nINSERT INTO fiches (id, etat, mdp)\nVALUES (\n  '${id}',\n  '${stateJson}',\n  '${pw}'\n)\nON CONFLICT (id) DO UPDATE\n  SET etat = EXCLUDED.etat,\n      mdp  = EXCLUDED.mdp;`;
+
+  document.getElementById('sql-out').textContent = sql;
+
+  const url = BASE + 'octogone.html?fiche=' + encodeURIComponent(id);
+  document.getElementById('urls-out').innerHTML =
+    '<label style="margin-top:0">URL de la fiche</label>' +
+    '<a class="url-link" href="'+url+'" target="_blank">'+url+'</a>' +
+    '<div class="hint" style="margin-top:.3rem">Mot de passe joueur : <strong>'+pw+'</strong></div>' +
+    '<div class="hint">Pour accès MJ : ajouter <strong>&gm=1</strong> et le mot de passe MJ de votre choix</div>';
+}
+
+function copyText(id){
+  navigator.clipboard.writeText(document.getElementById(id).textContent);
+}
+</script>
+</body>
+</html>

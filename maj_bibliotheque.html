@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mettre à jour la bibliothèque — Sifhr</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#1a1208;--ink:#f5e8c8;--ink2:#d4b896;--ink3:#9a7a5a;--accent:#c8860a;--border:#4a3218;--border2:#3a2810;--panel-bg:#241a0c;--input-bg:#2a1e0e;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Crimson Text',serif;background:var(--bg);color:var(--ink);min-height:100vh;padding:2rem 1rem 4rem;}
+.wrap{max-width:720px;margin:0 auto;}
+h1{font-family:'Cinzel',serif;color:var(--accent);font-size:1.15rem;letter-spacing:.1em;text-align:center;margin-bottom:.3rem;}
+.subtitle{text-align:center;font-style:italic;color:var(--ink3);font-size:.9rem;margin-bottom:2rem;}
+.section{background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;padding:1.2rem;margin-bottom:1.2rem;}
+.section-title{font-family:'Cinzel',serif;color:var(--accent);font-size:.75rem;letter-spacing:.08em;margin-bottom:.8rem;padding-bottom:.4rem;border-bottom:1px solid var(--border2);}
+.drop-zone{border:2px dashed var(--border);border-radius:8px;padding:2.5rem;text-align:center;cursor:pointer;transition:all .2s;}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(200,134,10,.05);}
+.drop-icon{font-size:2.5rem;margin-bottom:.5rem;}
+.drop-label{font-family:'Cinzel',serif;font-size:.75rem;color:var(--ink3);letter-spacing:.06em;}
+.drop-sub{font-size:.75rem;color:var(--ink3);margin-top:.3rem;}
+.stats{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:.8rem;}
+.stat{font-size:.88rem;color:var(--ink2);}
+.stat b{color:var(--accent);font-size:1rem;}
+.btn{font-family:'Cinzel',serif;font-size:.75rem;padding:.5rem 1.2rem;border:1px solid var(--accent);border-radius:4px;background:var(--accent);color:#1a1208;cursor:pointer;letter-spacing:.05em;width:100%;}
+.btn:hover{background:#e09a0c;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-dl{background:none;color:var(--accent);}
+.btn-dl:hover{background:rgba(200,134,10,.1);}
+.callout{border-left:3px solid var(--accent);background:rgba(200,134,10,.07);padding:.6rem .8rem;border-radius:0 5px 5px 0;font-size:.85rem;color:var(--ink2);line-height:1.6;margin:.4rem 0;}
+.callout code{font-family:'Courier New',monospace;font-size:.82rem;background:rgba(0,0,0,.2);padding:.1rem .3rem;border-radius:3px;}
+.step{display:flex;gap:.7rem;align-items:flex-start;margin-bottom:.5rem;}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#1a1208;font-family:'Cinzel',serif;font-size:.7rem;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem;}
+.step-txt{font-size:.88rem;color:var(--ink2);line-height:1.6;}
+.preview{max-height:200px;overflow-y:auto;border:1px solid var(--border2);border-radius:5px;margin:.6rem 0;font-size:.78rem;}
+.preview-row{padding:.25rem .5rem;border-bottom:1px solid var(--border2);display:flex;gap:.5rem;align-items:center;}
+.preview-row:last-child{border-bottom:none;}
+.pr-nom{flex:1;color:var(--ink2);}
+.pr-type{font-size:.65rem;color:var(--ink3);padding:.05rem .3rem;border:1px solid var(--border2);border-radius:3px;}
+.pr-niv{font-size:.65rem;color:var(--accent);}
+.success{color:#8aca8a;}
+.error{color:#e08080;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Mettre à jour la bibliothèque de traits</h1>
+<p class="subtitle">Glissez votre Excel mis à jour — l'outil génère le nouveau <code>traits_db.json</code> à déployer sur Vercel.</p>
+
+<!-- Étape 1 : Déposer le fichier -->
+<div class="section">
+  <div class="section-title">① Déposer le fichier Excel</div>
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()">
+    <div class="drop-icon">📂</div>
+    <div class="drop-label">Traits_Prodiges_Artefacts_generationcomplete.xlsx</div>
+    <div class="drop-sub">Glisser ici ou cliquer pour choisir</div>
+  </div>
+  <input type="file" id="file-in" accept=".xlsx,.xls" style="display:none">
+</div>
+
+<!-- Étape 2 : Résultat -->
+<div class="section" id="result-section" style="display:none">
+  <div class="section-title">② Résultat de la lecture</div>
+  <div class="stats" id="stats"></div>
+  <div class="preview" id="preview"></div>
+  <div id="warnings" style="margin:.4rem 0;font-size:.8rem;color:#e08080;"></div>
+</div>
+
+<!-- Étape 3 : Télécharger -->
+<div class="section" id="dl-section" style="display:none">
+  <div class="section-title">③ Télécharger et déployer</div>
+  <button class="btn" id="btn-dl" onclick="downloadJSON()">⬇ Télécharger traits_db.json</button>
+  <div style="margin-top:1.2rem;">
+    <div class="step"><div class="step-num">1</div><div class="step-txt">Téléchargez <code>traits_db.json</code> ci-dessus.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-txt">Dans votre repo GitHub, remplacez <code>traits_db.json</code> par ce nouveau fichier (glisser-déposer dans l'interface GitHub ou via <code>git commit</code>).</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-txt">Vercel déploie automatiquement. La nouvelle bibliothèque est active en 1–2 minutes — sans toucher à <code>creer_fiche.html</code>.</div></div>
+    <div class="callout" style="margin-top:.8rem;">
+      ✦ Tous les outils qui utilisent <code>traits_db.json</code> sont mis à jour simultanément : <code>creer_fiche.html</code>, et tout futur outil qui s'y connectera.
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+let jsonOutput = null;
+
+// Drag & drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave', ()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer.files[0]) process(e.dataTransfer.files[0]);});
+document.getElementById('file-in').addEventListener('change', e=>{if(e.target.files[0]) process(e.target.files[0]);});
+
+function process(file){
+  dz.querySelector('.drop-label').textContent = '⏳ Lecture de ' + file.name + '…';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      
+      const traits = [];
+      const seen = new Set();
+      const warnings = [];
+
+      rows.forEach((row,i) => {
+        const nom = String(row['Nom du Trait']||'').trim();
+        if(!nom) return;
+
+        let type = String(row['Type']||'').trim();
+        const effet = String(row['Effet Mécanique']||'').trim();
+        
+        // Inférer le type si absent
+        if(!type){
+          if(effet.includes('Humeur')) type='Humeur';
+          else if(effet.includes('Vice')||effet.includes('Vertu')) type='Vice/Vertu';
+          else if(effet.includes('Affliction')) type='Affliction';
+          else type='Divers';
+        }
+        // Normaliser Manœuvre
+        if(type==='Manoeuvre (Combat)'||type==='Manœuvre (Combat)') type='Manœuvre (Combat)';
+
+        const key = nom+'|'+type;
+        if(seen.has(key)){warnings.push(`Doublon ignoré : "${nom}" (${type})`); return;}
+        seen.add(key);
+
+        traits.push({
+          nom,
+          type,
+          niveau: String(row['Niveau']||'').trim(),
+          effet,
+          desc: String(row['Description Narrative']||'').trim(),
+          prereq: String(row['Prérequis']||'').trim(),
+          duree: String(row['Durée']||'').trim(),
+          vv: String(row['Vices/Vertus associés']||'').trim(),
+          oct: String(row['Octogone']||'').trim(),
+          ether: String(row["Points d'éther/Souffle"]||'').trim(),
+        });
+      });
+
+      jsonOutput = traits;
+
+      // Stats
+      const types = [...new Set(traits.map(t=>t.type))];
+      document.getElementById('stats').innerHTML = `
+        <div class="stat">Traits : <b>${traits.length}</b></div>
+        <div class="stat">Types : <b>${types.length}</b></div>
+        <div class="stat">Doublons ignorés : <b>${warnings.length}</b></div>
+        <div class="stat">Taille JSON : <b>${Math.round(JSON.stringify(traits).length/1024)} KB</b></div>`;
+
+      // Preview (20 premiers)
+      document.getElementById('preview').innerHTML = traits.slice(0,20).map(t=>
+        `<div class="preview-row">
+          <span class="pr-nom">${t.nom}</span>
+          <span class="pr-type">${t.type}</span>
+          <span class="pr-niv">${t.niveau||'—'}</span>
+         </div>`
+      ).join('') + (traits.length>20?`<div class="preview-row" style="color:var(--ink3);font-style:italic;">…et ${traits.length-20} autres traits</div>`:'');
+
+      // Warnings
+      if(warnings.length){
+        document.getElementById('warnings').innerHTML = warnings.slice(0,5).join('<br>') + (warnings.length>5?`<br>…et ${warnings.length-5} autres`:'');
+      }
+
+      document.getElementById('result-section').style.display='';
+      document.getElementById('dl-section').style.display='';
+      dz.querySelector('.drop-label').textContent='✓ '+file.name+' — '+traits.length+' traits lus';
+
+    }catch(err){
+      dz.querySelector('.drop-label').textContent='⚠ Erreur : '+err.message;
+      console.error(err);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function downloadJSON(){
+  if(!jsonOutput) return;
+  const blob = new Blob([JSON.stringify(jsonOutput, null, 0)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='traits_db.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+</script>
+</body>
+</html>
