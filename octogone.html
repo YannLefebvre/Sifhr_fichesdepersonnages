@@ -2543,7 +2543,8 @@ async function xferClearRequest(){
   <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
   <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser à l'état d'origine</button>
   <span class="gm-bar-label" style="margin-left:.5rem;">Export</span>
-  <button class="gm-btn safe" onclick="exportFicheOct()">⬇ Exporter fiche</button>
+  <button class="gm-btn safe" onclick="exportFicheOct()">⬇ JSON</button>
+  <button class="gm-btn safe" onclick="exportFicheXLSX()" title="Exporter la fiche en tableur Excel">⬇ XLSX</button>
   <label class="gm-btn" style="cursor:pointer;background:var(--input-bg);">
     ⬆ Importer
     <input type="file" accept=".json" style="display:none" onchange="importerFicheOct(this)">
@@ -11152,6 +11153,145 @@ function applyPlayerReadOnly(){
     panel.querySelectorAll('.acc-lock-btn').forEach(btn=>{ btn.style.display='none'; });
     panel.querySelectorAll('.acc-bib-btn').forEach(btn=>{ btn.style.display='none'; });
   });
+}
+
+
+// ── Export XLSX (SheetJS) ──
+async function exportFicheXLSX(){
+  const msg=document.getElementById('save-msg');
+  msg.textContent='Préparation XLSX…'; msg.className='save-info';
+  try{
+    // Charger SheetJS si pas encore là
+    if(typeof XLSX==='undefined'){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    const wb = XLSX.utils.book_new();
+    const ws_data = [];
+
+    // ── Onglet 1 : Identité ──
+    const ws1 = [];
+    ws1.push(['Champ','Valeur']);
+    ws1.push(['Identifiant', FICHE_ID]);
+    ws1.push(['Nom', state.historique?.title||FICHE_ID]);
+    ws1.push(['Historique', state.historique?.text||'']);
+    ws1.push(['Env. lié', state.envFiche||'']);
+    ws1.push(['Dés dévoyés', state.des||0]);
+    ws1.push(['Éther', state.ether||0]);
+    ws1.push(['Occultation', state.occultation||'']);
+    const wsId = XLSX.utils.aoa_to_sheet(ws1);
+    wsId['!cols']=[{wch:20},{wch:60}];
+    XLSX.utils.book_append_sheet(wb, wsId, 'Identité');
+
+    // ── Onglet 2 : Octogone ──
+    const ws2 = [['Axe','Label','Jetons blanc','Jetons noir','Score vertu (0-3)','Vertu','Score vice (0-3)','Vice']];
+    SECTORS.forEach(sec=>{
+      const toks = state.tokens[sec.id]||['empty','empty','empty'];
+      const w=toks.filter(t=>t==='white').length;
+      const b=toks.filter(t=>t==='black').length;
+      const sv=parseInt(state.scores[`${sec.id}_0`])||0;
+      const svi=parseInt(state.scores[`${sec.id}_1`])||0;
+      ws2.push([sec.num, sec.label, w, b, sv, sec.sub1, svi, sec.sub2]);
+    });
+    const wsOct = XLSX.utils.aoa_to_sheet(ws2);
+    wsOct['!cols']=[{wch:5},{wch:12},{wch:12},{wch:12},{wch:16},{wch:12},{wch:16},{wch:12}];
+    XLSX.utils.book_append_sheet(wb, wsOct, 'Octogone');
+
+    // ── Onglet 3 : Aptitudes ──
+    const ws3 = [['Aptitude','Clé','Score (0-5)']];
+    const APT_LABELS={'se_deplacer':'Se déplacer','se_mesurer':'Se mesurer','occulter':'Occulter',
+      'imaginer':'Imaginer','fabriquer':'Fabriquer','devoiler':'Dévoiler','resister':'Résister','ravir':'Ravir'};
+    APTITUDE_KEYS.forEach((key,ai)=>{
+      let score=0;
+      for(let si=0;si<6;si++) if(state.aptitudes[`${ai}_${si}`]) score++;
+      ws3.push([APT_LABELS[key]||key, key, score]);
+    });
+    const wsApt = XLSX.utils.aoa_to_sheet(ws3);
+    wsApt['!cols']=[{wch:16},{wch:16},{wch:12}];
+    XLSX.utils.book_append_sheet(wb, wsApt, 'Aptitudes');
+
+    // ── Onglet 4 : Traits ──
+    const ws4 = [['N°','Titre','Niveau','Type','Aptitude liée','Description','Verrouillé']];
+    (state.traits||[]).forEach((t,i)=>{
+      if(!t.title) return;
+      ws4.push([i+1, t.title, t.level||'', t.levelType||'', '', t.text||'', t.locked?'oui':'non']);
+    });
+    // Traits d'aptitude
+    Object.entries(state.aptTraits||{}).forEach(([aptKey,tlist])=>{
+      (tlist||[]).forEach((t,i)=>{
+        if(!t.title) return;
+        ws4.push(['', t.title, t.level||'', t.levelType||'', aptKey, t.text||'', t.locked?'oui':'non']);
+      });
+    });
+    const wsTr = XLSX.utils.aoa_to_sheet(ws4);
+    wsTr['!cols']=[{wch:4},{wch:24},{wch:12},{wch:12},{wch:16},{wch:50},{wch:10}];
+    XLSX.utils.book_append_sheet(wb, wsTr, 'Traits');
+
+    // ── Onglet 5 : Équipement ──
+    const ws5 = [['N°','Type','Titre','Description','Bonus/Malus']];
+    const sections=[
+      {key:'equipement',label:'Équipement'},
+      {key:'artefacts',label:'Artefact'},
+      {key:'prodiges',label:'Prodige'},
+    ];
+    sections.forEach(({key,label})=>{
+      (state[key]||[]).forEach((item,i)=>{
+        if(!item.title) return;
+        ws5.push([i+1, label, item.title, item.text||'', item.bm||0]);
+      });
+    });
+    const wsEq = XLSX.utils.aoa_to_sheet(ws5);
+    wsEq['!cols']=[{wch:4},{wch:12},{wch:24},{wch:50},{wch:10}];
+    XLSX.utils.book_append_sheet(wb, wsEq, 'Équipement');
+
+    // ── Onglet 6 : Dettes & Créances ──
+    const ws6 = [['Type','Personnage','Valeur (bm)','Texte']];
+    (state.dettes||[]).forEach(d=>{
+      if(!d.perso) return;
+      ws6.push([d.type==='creance'?'Créance':'Dette', d.perso, d.bm||0, d.text||d.texte||'']);
+    });
+    if(ws6.length===1) ws6.push(['—','—','—','Aucune dette ni créance']);
+    const wsDette = XLSX.utils.aoa_to_sheet(ws6);
+    wsDette['!cols']=[{wch:10},{wch:20},{wch:10},{wch:60}];
+    XLSX.utils.book_append_sheet(wb, wsDette, 'Dettes-Créances');
+
+    // ── Onglet 7 : Histoires croisées ──
+    const ws7 = [['Personnage','Récit']];
+    (state.histoiresCroisees||[]).forEach(h=>{
+      if(!h.perso&&!h.text) return;
+      ws7.push([h.perso||'', h.text||h.texte||'']);
+    });
+    if(ws7.length===1) ws7.push(['—','Aucune histoire croisée']);
+    const wsHist = XLSX.utils.aoa_to_sheet(ws7);
+    wsHist['!cols']=[{wch:24},{wch:80}];
+    XLSX.utils.book_append_sheet(wb, wsHist, 'Histoires-croisées');
+
+    // ── Onglet 8 : Confrérie ──
+    const ws8 = [['N°','Titre','Description']];
+    (state.confrerie||[]).forEach((c,i)=>{
+      if(!c.title) return;
+      ws8.push([i+1, c.title, c.text||'']);
+    });
+    if(ws8.length===1) ws8.push(['—','—','Aucune confrérie']);
+    const wsConf = XLSX.utils.aoa_to_sheet(ws8);
+    wsConf['!cols']=[{wch:4},{wch:24},{wch:60}];
+    XLSX.utils.book_append_sheet(wb, wsConf, 'Confrérie');
+
+    // ── Télécharger ──
+    const dateStr = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `sifhr_fiche_${FICHE_ID}_${dateStr}.xlsx`);
+    msg.textContent=`✓ ${FICHE_ID}.xlsx exporté`;
+    msg.className='save-info saved';
+  }catch(e){
+    msg.textContent='Erreur XLSX : '+e.message;
+    console.error(e);
+  }
+  setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },3000);
 }
 
 </script>
