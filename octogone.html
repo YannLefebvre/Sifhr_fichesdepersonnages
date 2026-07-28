@@ -2191,7 +2191,7 @@ async function xferClearRequest(){
 
 
 </script>
-<!-- sifhr-v20260728-0735 -->
+<!-- sifhr-v20260728-0749 -->
 </head>
 <body>
 
@@ -3760,6 +3760,34 @@ function buildTraitAccItem(panel, idx){
     }
   });
   body.appendChild(textArea); body.appendChild(rendered);
+  // ── Bouton Bibliothèque dans le corps de l'item (GM seulement) ──
+  if(isGM !== false){
+    const bibRow=document.createElement('div');
+    bibRow.style.cssText='padding:.3rem .5rem;border-top:1px solid var(--border2);margin-top:.2rem;';
+    const bibBtn2=document.createElement('button');
+    bibBtn2.textContent='📚 Bibliothèque de traits';
+    bibBtn2.className='apt-subtrait-add-btn';
+    bibBtn2.style.cssText='font-size:.65rem;padding:.25rem .6rem;';
+    bibBtn2.addEventListener('click',()=>{
+      loadOctTraitsDB().then(()=>{
+        BibTraits.open((trait)=>{
+          state.traits[idx]={
+            title:trait.nom,
+            text:trait.descriptif,
+            level:null,levelType:null,locked:false
+          };
+          saveState();
+          // Rafraîchir le panneau traits
+          const tp=document.getElementById('traits-inner');
+          tp.innerHTML='';
+          for(let ti=0;ti<NUM_TRAITS;ti++) buildTraitAccItem(tp,ti);
+        });
+      });
+    });
+    bibRow.appendChild(bibBtn2);
+    body.appendChild(bibRow);
+  }
+
   item.appendChild(body);
 
   lockBtn.addEventListener('click',()=>{
@@ -3786,34 +3814,6 @@ function buildTraitAccItem(panel, idx){
   textArea.addEventListener('input', saveItem);
 
   
-  // ── Bouton Bibliothèque (GM seulement) ──
-  if(isGM !== false){
-    const bibRow=document.createElement('div');
-    bibRow.style.cssText='padding:.2rem .5rem;border-top:1px solid var(--border2);';
-    const bibBtn2=document.createElement('button');
-    bibBtn2.textContent='📚 Ajouter depuis la bibliothèque';
-    bibBtn2.className='apt-subtrait-add-btn';
-    bibBtn2.addEventListener('click',()=>{
-      loadOctTraitsDB().then(()=>{
-        BibTraits.open((trait)=>{
-          const emptyIdx=state.traits.findIndex(t=>!t.title&&!t.text);
-          const target=emptyIdx!==-1?emptyIdx:idx;
-          state.traits[target]={
-            title:trait.nom,
-            text:trait.descriptif,
-            level:null,levelType:null,locked:false
-          };
-          saveState();
-          const tp=document.getElementById('traits-inner');
-          tp.innerHTML='';
-          for(let ti=0;ti<NUM_TRAITS;ti++) buildTraitAccItem(tp,ti);
-        });
-      });
-    });
-    bibRow.appendChild(bibBtn2);
-    panel.appendChild(bibRow);
-  }
-
 panel.appendChild(item);
   item._levelRow=levelRow;
   return {titleInp, textArea, rendered, body, toggle, autoResize,
