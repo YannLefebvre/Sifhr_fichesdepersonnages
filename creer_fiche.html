@@ -137,11 +137,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);}
   <div style="display:grid;grid-template-columns:1fr auto auto;gap:.5rem;align-items:end;margin-bottom:.6rem;">
     <div>
       <label style="margin-top:0">Rechercher un trait</label>
-      <input id="trait-search" placeholder="Nom, type, effet, aptitude…" oninput="loadTraitsDB().then(filterTraits)" onfocus="loadTraitsDB()">
+      <input id="trait-search" placeholder="Nom, type, effet, aptitude…" oninput="filterTraits()" onfocus="loadTraitsDB()">
     </div>
     <div>
       <label style="margin-top:0">Type</label>
-      <select id="trait-type-filter" onchange="filterTraits()">
+      <select id="trait-type-filter" onchange="filterTraits()" onfocus="loadTraitsDB()">
         <option value="">Tous les types</option>
       </select>
     </div>
@@ -344,36 +344,50 @@ function initTraitsDB(){
   types.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o);});
 }
 
-function filterTraits(){
+async function filterTraits(){
+  // S'assurer que la DB est chargée avant de filtrer
+  if(!_traitsLoaded) await loadTraitsDB();
+  if(!TRAITS_DB.length) return;
+
   const q=(document.getElementById('trait-search').value||'').toLowerCase().trim();
   const typ=document.getElementById('trait-type-filter').value;
   const niv=document.getElementById('trait-niveau-filter').value;
   const res=document.getElementById('trait-results');
-  
-  if(!q&&!typ&&!niv){ res.style.display='none'; res.innerHTML=''; return; }
-  
+
+  // Masquer uniquement si aucun critère ET champ texte vide
+  if(!q && !typ && !niv){
+    res.style.display='none'; res.innerHTML='';
+    return;
+  }
+
   let filtered=TRAITS_DB.filter(t=>{
-    if(typ&&t.type!==typ) return false;
-    if(niv&&!t.niveau.includes(niv)) return false;
+    if(typ && t.type!==typ) return false;
+    if(niv && !t.niveau.includes(niv)) return false;
     if(q){
       const hay=(t.nom+' '+t.type+' '+t.effet+' '+t.desc+' '+t.vv+' '+t.oct).toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
   });
-  
+
   res.style.display='block';
-  if(!filtered.length){ res.innerHTML='<div style="padding:.6rem;font-size:.8rem;color:var(--ink3);font-style:italic;">Aucun résultat.</div>'; return; }
-  
-  res.innerHTML=filtered.slice(0,80).map((t,i)=>`
-    <div class="trait-result-item" onclick="addTraitFromDB(${TRAITS_DB.indexOf(t)})">
+  if(!filtered.length){
+    res.innerHTML='<div style="padding:.6rem;font-size:.8rem;color:var(--ink3);font-style:italic;">Aucun résultat pour ces critères.</div>';
+    return;
+  }
+
+  // Construire les indices une fois pour éviter indexOf() dans la boucle
+  res.innerHTML=filtered.slice(0,100).map(t=>{
+    const idx=TRAITS_DB.indexOf(t);
+    return `<div class="trait-result-item" onclick="addTraitFromDB(${idx})">
       <span class="tri-nom">${t.nom}</span>
-      <span class="tri-type">${t.type}</span>
+      <span class="tri-type">${t.type||'—'}</span>
       <span class="tri-niv">${t.niveau||'—'}</span>
-      <span class="tri-effet">${t.effet.slice(0,70)}</span>
-      <button class="tri-add" onclick="event.stopPropagation();addTraitFromDB(${TRAITS_DB.indexOf(t)})">+ Ajouter</button>
-    </div>`).join('');
-  if(filtered.length>80) res.innerHTML+=`<div style="padding:.4rem .6rem;font-size:.7rem;color:var(--ink3);">…et ${filtered.length-80} autres résultats. Affinez la recherche.</div>`;
+      <span class="tri-effet">${(t.effet||'').slice(0,70)}</span>
+      <button class="tri-add" onclick="event.stopPropagation();addTraitFromDB(${idx})">+ Ajouter</button>
+    </div>`;
+  }).join('');
+  if(filtered.length>100) res.innerHTML+=`<div style="padding:.4rem .6rem;font-size:.7rem;color:var(--ink3);">…et ${filtered.length-100} autres résultats. Affinez la recherche.</div>`;
 }
 
 function addTraitFromDB(idx){
@@ -522,6 +536,8 @@ function update(){
     '<div class="hint" style="margin-top:.3rem">Mot de passe joueur : <strong>'+pw+'</strong></div>' +
     '<div class="hint">Pour accès MJ : ajouter <strong>&gm=1</strong> et le mot de passe MJ de votre choix</div>';
 }
+
+loadTraitsDB(); // charge la bibliothèque au démarrage
 
 function copyText(id){
   navigator.clipboard.writeText(document.getElementById(id).textContent);
