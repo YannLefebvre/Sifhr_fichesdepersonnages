@@ -1,6 +1,6 @@
 {
-  "version": "1.0",
-  "genere_le": "2026-07-29",
+  "version": "1.1",
+  "genere_le": "2026-07-30",
   "source": "Traits_Prodiges_Artefacts_generationcomplete (Feuille1 + onglets v2/v3/v4) + Sifhr_combats_v2",
   "familles": {
     "dague": {
@@ -158,6 +158,8 @@
       "niveau": "N1–N3",
       "effet": "N1 : +1 Dé en Se Mesurer. N3 : Ignore 1 point d’armure.",
       "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Feu : 1",
       "source": "Épées damassées."
     },
     {
@@ -173,6 +175,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Résister contre les projectiles et les coups de taille.",
       "prerequis": "Résister N1",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 1",
       "source": "Boucliers mamelouks."
     },
     {
@@ -188,6 +192,8 @@
       "niveau": "N2–N3",
       "effet": "N2 : +1 Dé en Se Mesurer à distance. N3 : Portée augmentée de 50%.",
       "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Patience +1",
+      "octogone": "Air : 1",
       "source": "Arc des steppes."
     },
     {
@@ -203,6 +209,8 @@
       "niveau": "N3",
       "effet": "Ignore 1 point de Résister chez la cible (poison). Nécessite 1 point d’éther pour préparer les flèches.",
       "prerequis": "Fabriquer N2, Malignité N1",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Noire : 1",
       "source": "Poisons des Assassins."
     },
     {
@@ -218,6 +226,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer et peut trancher les tissus sans résistance.",
       "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Témérité +1",
+      "octogone": "Feu : 1",
       "source": "Sabres ottomans."
     },
     {
@@ -233,6 +243,8 @@
       "niveau": "N3",
       "effet": "Ignore 2 points d’armure, mais -1 Dé à l’attaque suivante.",
       "prerequis": "Se Mesurer N3, Force N2",
+      "vicesVertus": "Brutalité +1",
+      "octogone": "Feu : 2",
       "source": "Masses des chevaliers."
     },
     {
@@ -248,6 +260,8 @@
       "niveau": "N1–N2",
       "effet": "N1 : +1 Dé en Se Mesurer pour les attaques sournoises. N2 : Peut être cachée sans pénalité.",
       "prerequis": "Occulter N1",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Jaune : 1",
       "source": "Dagues des Assassins."
     },
     {
@@ -263,6 +277,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer en charge, mais -1 Dé si utilisée à pied.",
       "prerequis": "Se Déplacer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Feu : 1",
       "source": "Lances des nomades."
     },
     {
@@ -278,6 +294,8 @@
       "niveau": "N3",
       "effet": "+2 Dés en Se Mesurer, mais nécessite deux mains et -1 Dé en Se Déplacer.",
       "prerequis": "Se Mesurer N3, Force N2",
+      "vicesVertus": "Courage +1",
+      "octogone": "Feu : 2",
       "source": "Épées des chevaliers."
     },
     {
@@ -293,6 +311,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Résister contre les flèches et +1 en Se Déplacer pour les charges.",
       "prerequis": "Se Déplacer N1",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 1",
       "source": "Boucliers des Croisés."
     },
     {
@@ -308,6 +328,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer et peut briser les boucliers.",
       "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Brutalité +1",
+      "octogone": "Feu : 1",
       "source": "Haches des Varègues."
     },
     {
@@ -323,6 +345,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer pour désarmer ou distraire.",
       "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Jaune : 1",
       "source": "Techniques équestres."
     },
     {
@@ -338,6 +362,8 @@
       "niveau": "N1",
       "effet": "Peut tirer en mouvement (pas de malus en Se Déplacer).",
       "prerequis": "Se Déplacer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Air : 1",
       "source": "Arc des nomades."
     },
     {
@@ -353,6 +379,8 @@
       "niveau": "N1–N2",
       "effet": "N1 : +1 Dé en Se Mesurer en espace restreint. N2 : Peut être utilisée avec un bouclier.",
       "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Agilité +1",
+      "octogone": "Feu : 1",
       "source": "Épées d'Espagne musulmane."
     },
     {
@@ -368,6 +396,8 @@
       "niveau": "N1",
       "effet": "+1 Dé en Résister contre les coups de taille.",
       "prerequis": "Résister N1",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 1",
       "source": "Boucliers persans."
     },
     {
@@ -383,6 +413,8 @@
       "niveau": "N2–N3",
       "effet": "N2 : +1 Dé en Se Mesurer en charge. N3 : Peut percer les armures légères.",
       "prerequis": "Se Déplacer N2",
+      "vicesVertus": "Courage +1",
+      "octogone": "Feu : 1",
       "source": "Lances des chevaliers."
     },
     {
@@ -398,6 +430,8 @@
       "niveau": "N3",
       "effet": "+2 Dés en Se Mesurer, mais risque de se blesser (1 point de dégâts si échec critique).",
       "prerequis": "Se Mesurer N3",
+      "vicesVertus": "Témérité +1",
+      "octogone": "Feu : 2",
       "source": "Épées des assassins."
     },
     {
@@ -413,6 +447,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer et peut briser les boucliers légers.",
       "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Brutalité +1",
+      "octogone": "Feu : 1",
       "source": "Haches des milices."
     },
     {
@@ -428,6 +464,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Résister contre les flèches et +1 en Se Déplacer pour les charges.",
       "prerequis": "Se Déplacer N1",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 1",
       "source": "Boucliers des fantassins."
     },
     {
@@ -443,6 +481,8 @@
       "niveau": "N3",
       "effet": "Ignore 1 point d’armure et +1 Dé en Se Mesurer.",
       "prerequis": "Se Mesurer N3",
+      "vicesVertus": "Précision +1",
+      "octogone": "Feu : 1",
       "source": "Légendes des forgerons."
     },
     {
@@ -458,6 +498,8 @@
       "niveau": "N3",
       "effet": "Portée augmentée de 100% et +1 Dé en Se Mesurer à longue distance.",
       "prerequis": "Se Mesurer N3",
+      "vicesVertus": "Précision +1",
+      "octogone": "Air : 1",
       "source": "Arc des archers anglais."
     },
     {
@@ -473,6 +515,8 @@
       "niveau": "N3",
       "effet": "Ignore 2 points de Résister (poison). Nécessite 2 points d’éther pour préparer le poison.",
       "prerequis": "Fabriquer N2, Malignité N1",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Noire : 1",
       "source": "Poisons des Hashashin."
     },
     {
@@ -488,6 +532,8 @@
       "niveau": "N3",
       "effet": "+2 Dés en Résister contre les projectiles, mais -1 Dé en Se Déplacer.",
       "prerequis": "Résister N2",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 2",
       "source": "Boucliers des archers."
     },
     {
@@ -503,6 +549,8 @@
       "niveau": "N1",
       "effet": "+1 Dé en Se Mesurer en combat rapproché.",
       "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Feu : 1",
       "source": "Épées des Croisés."
     },
     {
@@ -518,6 +566,8 @@
       "niveau": "N3",
       "effet": "+2 Dés en Se Mesurer contre les armures, mais -1 Dé à l’attaque suivante.",
       "prerequis": "Se Mesurer N3, Force N2",
+      "vicesVertus": "Brutalité +1",
+      "octogone": "Feu : 2",
       "source": "Haches des chevaliers."
     },
     {
@@ -533,6 +583,8 @@
       "niveau": "N1",
       "effet": "+1 Dé en Résister contre les coups de taille.",
       "prerequis": "Résister N1",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 1",
       "source": "Boucliers d'Al-Andalus."
     },
     {
@@ -548,6 +600,8 @@
       "niveau": "N2",
       "effet": "Peut tirer en mouvement sans malus.",
       "prerequis": "Se Déplacer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Air : 1",
       "source": "Arc des nomades mongols."
     },
     {
@@ -563,6 +617,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer et peut trancher les tissus sans résistance.",
       "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Brutalité +1",
+      "octogone": "Feu : 1",
       "source": "Épées nord-africaines."
     },
     {
@@ -578,6 +634,8 @@
       "niveau": "N1",
       "effet": "+1 Dé en Se Mesurer en formation serrée.",
       "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Feu : 1",
       "source": "Lances des milices."
     },
     {
@@ -593,6 +651,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Résister contre les flèches et +1 en Se Déplacer pour les charges.",
       "prerequis": "Se Déplacer N1",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 1",
       "source": "Boucliers des Croisés."
     },
     {
@@ -608,6 +668,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer et peut trancher les tissus sans résistance.",
       "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Feu : 1",
       "source": "Sabres ottomans."
     },
     {
@@ -623,6 +685,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer à distance et portée augmentée de 25%.",
       "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Précision +1",
+      "octogone": "Air : 1",
       "source": "Arc des archers syriens."
     },
     {
@@ -638,6 +702,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer pour les attaques sournoises et ignore 1 point d’armure.",
       "prerequis": "Occulter N1, Se Mesurer N1",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Jaune : 1",
       "source": "Dagues des Assassins."
     },
     {
@@ -653,6 +719,8 @@
       "niveau": "N1",
       "effet": "+1 Dé en Résister contre les coups de taille.",
       "prerequis": "Résister N1",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 1",
       "source": "Boucliers turcs."
     },
     {
@@ -668,6 +736,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer en charge et peut désarçonner.",
       "prerequis": "Se Déplacer N2",
+      "vicesVertus": "Courage +1",
+      "octogone": "Feu : 1",
       "source": "Lances des nomades."
     },
     {
@@ -683,6 +753,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Se Mesurer et peut briser les boucliers légers.",
       "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Brutalité +1",
+      "octogone": "Feu : 1",
       "source": "Haches des guerriers persans."
     },
     {
@@ -698,6 +770,8 @@
       "niveau": "N2",
       "effet": "+1 Dé en Résister contre les flèches et +1 en Se Déplacer pour les charges.",
       "prerequis": "Se Déplacer N1",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 1",
       "source": "Boucliers des Mamelouks."
     },
     {
@@ -713,6 +787,8 @@
       "niveau": "N1",
       "effet": "+1 Dé en Se Mesurer en combat rapproché.",
       "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Feu : 1",
       "source": "Épées de Byzance."
     },
     {
@@ -728,6 +804,8 @@
       "niveau": "N3",
       "effet": "Portée augmentée de 100% et +1 Dé en Se Mesurer à longue distance.",
       "prerequis": "Se Mesurer N3",
+      "vicesVertus": "Précision +1",
+      "octogone": "Air : 1",
       "source": "Arc des archers croisés."
     },
     {
@@ -743,6 +821,8 @@
       "niveau": "N3",
       "effet": "Ignore 2 points de Résister (poison). Nécessite 2 points d’éther pour préparer le poison.",
       "prerequis": "Fabriquer N2, Malignité N1",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Noire : 1",
       "source": "Poisons des Assassins."
     },
     {
@@ -758,6 +838,8 @@
       "niveau": "N2",
       "effet": "+2 Dés en Résister contre les projectiles, mais -1 Dé en Se Déplacer.",
       "prerequis": "Résister N2",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 2",
       "source": "Boucliers des Croisés."
     },
     {
@@ -773,6 +855,8 @@
       "niveau": "N3",
       "effet": "+2 Dés en Se Mesurer en charge et peut percer les armures légères.",
       "prerequis": "Se Déplacer N2",
+      "vicesVertus": "Courage +1",
+      "octogone": "Feu : 1",
       "source": "Lances des chevaliers."
     },
     {
@@ -788,6 +872,8 @@
       "niveau": "N3",
       "effet": "+2 Dés en Se Mesurer contre les armures, mais -1 Dé à l’attaque suivante.",
       "prerequis": "Se Mesurer N3, Force N2",
+      "vicesVertus": "Brutalité +1",
+      "octogone": "Feu : 2",
       "source": "Haches des Vikings."
     },
     {
@@ -803,6 +889,8 @@
       "niveau": "N1",
       "effet": "+1 Dé en Résister contre les coups de taille et +1 en Ravir pour intimider.",
       "prerequis": "Résister N1, Foi N1",
+      "vicesVertus": "Foi +1",
+      "octogone": "Terre : 1",
       "source": "Boucliers des mystiques."
     },
     {
@@ -818,6 +906,8 @@
       "niveau": "N2",
       "effet": "Peut tirer en mouvement sans malus.",
       "prerequis": "Se Déplacer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": null,
       "source": null
     },
     {
@@ -829,6 +919,8 @@
       "niveau": "N2",
       "effet": "Réduit de 2 les dégâts de Taille (T), de 1 seulement contre les flèches et carreaux (voir règle armure vs tir).",
       "prerequis": "Résister N1",
+      "vicesVertus": "Endurance +1",
+      "octogone": "Terre : 1",
       "source": "Zouache, «L'armement entre Orient et Occident au VIe/XIIe siècle», AnIsl 41, 2007.",
       "nouveau": true
     },
@@ -841,6 +933,8 @@
       "niveau": "N1",
       "effet": "Réduit de 1 les dégâts contondants (C), aucun effet contre Taille (T) ou Perforant (P).",
       "prerequis": "Aucun",
+      "vicesVertus": "Endurance +1",
+      "octogone": "Terre : 1",
       "source": "Zouache, «Corps en guerre au Proche-Orient», AnIsl 48.1, 2014.",
       "nouveau": true
     },
@@ -853,6 +947,8 @@
       "niveau": "N1",
       "effet": "Ajoute la protection du casque porté à la nuque et à la gorge ; sans lui, tout effet Physique visant la tête touchée sans casque est aggravé d'un niveau.",
       "prerequis": "Aucun",
+      "vicesVertus": "Prudence +1",
+      "octogone": "Terre : 1",
       "source": "Zouache, «L'armement entre Orient et Occident», AnIsl 41, 2007.",
       "nouveau": true
     },
@@ -865,6 +961,8 @@
       "niveau": "N1",
       "effet": "Réduit d'un niveau la gravité d'un effet Amputation obtenu contre un membre protégé (un Physique N3 devient un Physique N2 classique au lieu d'une Amputation), au prix d'un malus permanent -1 en Se Déplacer.",
       "prerequis": "Aucun",
+      "vicesVertus": "Prudence +1",
+      "octogone": "Terre : 1",
       "source": "Nicolle & McBride, Saladin and the Saracens, Osprey MAA 171, 1986.",
       "nouveau": true
     }
