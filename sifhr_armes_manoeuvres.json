@@ -1,0 +1,1354 @@
+{
+  "version": "1.0",
+  "genere_le": "2026-07-29",
+  "source": "Traits_Prodiges_Artefacts_generationcomplete (Feuille1 + onglets v2/v3/v4) + Sifhr_combats_v2",
+  "familles": {
+    "dague": {
+      "label": "Armes courtes et dagues",
+      "c": 0,
+      "t": 1,
+      "p": 2
+    },
+    "epee": {
+      "label": "Épées (droites et courbes)",
+      "c": 1,
+      "t": 2,
+      "p": 1
+    },
+    "epee2m": {
+      "label": "Épées à deux mains et armes lourdes",
+      "c": 2,
+      "t": 2,
+      "p": 1
+    },
+    "hast": {
+      "label": "Armes d'hast et lances",
+      "c": 1,
+      "t": 1,
+      "p": 3
+    },
+    "contondant": {
+      "label": "Armes contondantes",
+      "c": 3,
+      "t": 1,
+      "p": 0
+    },
+    "distance": {
+      "label": "Armes à distance",
+      "c": 0,
+      "t": 0,
+      "p": 3
+    },
+    "bouclier": {
+      "label": "Bouclier et défense passive",
+      "c": null,
+      "t": null,
+      "p": null
+    },
+    "mains_nues": {
+      "label": "Mains nues et pugilat",
+      "c": 1,
+      "t": 0,
+      "p": 0
+    }
+  },
+  "armes": [
+    {
+      "id": "dague",
+      "nom": "Famille générique — Armes courtes et dagues",
+      "famille": "dague",
+      "familleLabel": "Armes courtes et dagues",
+      "ctp": {
+        "c": 0,
+        "t": 1,
+        "p": 2
+      },
+      "generique": true
+    },
+    {
+      "id": "epee",
+      "nom": "Famille générique — Épées (droites et courbes)",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "generique": true
+    },
+    {
+      "id": "epee2m",
+      "nom": "Famille générique — Épées à deux mains et armes lourdes",
+      "famille": "epee2m",
+      "familleLabel": "Épées à deux mains et armes lourdes",
+      "ctp": {
+        "c": 2,
+        "t": 2,
+        "p": 1
+      },
+      "generique": true
+    },
+    {
+      "id": "hast",
+      "nom": "Famille générique — Armes d'hast et lances",
+      "famille": "hast",
+      "familleLabel": "Armes d'hast et lances",
+      "ctp": {
+        "c": 1,
+        "t": 1,
+        "p": 3
+      },
+      "generique": true
+    },
+    {
+      "id": "contondant",
+      "nom": "Famille générique — Armes contondantes",
+      "famille": "contondant",
+      "familleLabel": "Armes contondantes",
+      "ctp": {
+        "c": 3,
+        "t": 1,
+        "p": 0
+      },
+      "generique": true
+    },
+    {
+      "id": "distance",
+      "nom": "Famille générique — Armes à distance",
+      "famille": "distance",
+      "familleLabel": "Armes à distance",
+      "ctp": {
+        "c": 0,
+        "t": 0,
+        "p": 3
+      },
+      "generique": true
+    },
+    {
+      "id": "bouclier",
+      "nom": "Famille générique — Bouclier et défense passive",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": null,
+      "generique": true
+    },
+    {
+      "id": "mains_nues",
+      "nom": "Famille générique — Mains nues et pugilat",
+      "famille": "mains_nues",
+      "familleLabel": "Mains nues et pugilat",
+      "ctp": {
+        "c": 1,
+        "t": 0,
+        "p": 0
+      },
+      "generique": true
+    },
+    {
+      "id": "lame_du_croissant",
+      "nom": "Lame du croissant",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "niveau": "N1–N3",
+      "effet": "N1 : +1 Dé en Se Mesurer. N3 : Ignore 1 point d’armure.",
+      "prerequis": "Se Mesurer N1",
+      "source": "Épées damassées."
+    },
+    {
+      "id": "bouclier_de_damas",
+      "nom": "Bouclier de Damas",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Résister contre les projectiles et les coups de taille.",
+      "prerequis": "Résister N1",
+      "source": "Boucliers mamelouks."
+    },
+    {
+      "id": "arc_composite_turc",
+      "nom": "Arc composite turc",
+      "famille": "distance",
+      "familleLabel": "Armes à distance",
+      "ctp": {
+        "c": 0,
+        "t": 0,
+        "p": 3
+      },
+      "niveau": "N2–N3",
+      "effet": "N2 : +1 Dé en Se Mesurer à distance. N3 : Portée augmentée de 50%.",
+      "prerequis": "Se Mesurer N2",
+      "source": "Arc des steppes."
+    },
+    {
+      "id": "fl_ches_empoisonn_es",
+      "nom": "Flèches empoisonnées",
+      "famille": "distance",
+      "familleLabel": "Armes à distance",
+      "ctp": {
+        "c": 0,
+        "t": 0,
+        "p": 3
+      },
+      "niveau": "N3",
+      "effet": "Ignore 1 point de Résister chez la cible (poison). Nécessite 1 point d’éther pour préparer les flèches.",
+      "prerequis": "Fabriquer N2, Malignité N1",
+      "source": "Poisons des Assassins."
+    },
+    {
+      "id": "cimeterre_ottoman",
+      "nom": "Cimeterre ottoman",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer et peut trancher les tissus sans résistance.",
+      "prerequis": "Se Mesurer N1",
+      "source": "Sabres ottomans."
+    },
+    {
+      "id": "masse_d_armes_franque",
+      "nom": "Masse d’armes franque",
+      "famille": "contondant",
+      "familleLabel": "Armes contondantes",
+      "ctp": {
+        "c": 3,
+        "t": 1,
+        "p": 0
+      },
+      "niveau": "N3",
+      "effet": "Ignore 2 points d’armure, mais -1 Dé à l’attaque suivante.",
+      "prerequis": "Se Mesurer N3, Force N2",
+      "source": "Masses des chevaliers."
+    },
+    {
+      "id": "dague_du_d_sert",
+      "nom": "Dague du désert",
+      "famille": "dague",
+      "familleLabel": "Armes courtes et dagues",
+      "ctp": {
+        "c": 0,
+        "t": 1,
+        "p": 2
+      },
+      "niveau": "N1–N2",
+      "effet": "N1 : +1 Dé en Se Mesurer pour les attaques sournoises. N2 : Peut être cachée sans pénalité.",
+      "prerequis": "Occulter N1",
+      "source": "Dagues des Assassins."
+    },
+    {
+      "id": "lance_des_steppes",
+      "nom": "Lance des steppes",
+      "famille": "hast",
+      "familleLabel": "Armes d'hast et lances",
+      "ctp": {
+        "c": 1,
+        "t": 1,
+        "p": 3
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer en charge, mais -1 Dé si utilisée à pied.",
+      "prerequis": "Se Déplacer N1",
+      "source": "Lances des nomades."
+    },
+    {
+      "id": "p_e_deux_mains",
+      "nom": "Épée à deux mains",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "niveau": "N3",
+      "effet": "+2 Dés en Se Mesurer, mais nécessite deux mains et -1 Dé en Se Déplacer.",
+      "prerequis": "Se Mesurer N3, Force N2",
+      "source": "Épées des chevaliers."
+    },
+    {
+      "id": "bouclier_kite",
+      "nom": "Bouclier kite",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Résister contre les flèches et +1 en Se Déplacer pour les charges.",
+      "prerequis": "Se Déplacer N1",
+      "source": "Boucliers des Croisés."
+    },
+    {
+      "id": "hache_de_guerre_viking",
+      "nom": "Hache de guerre viking",
+      "famille": "contondant",
+      "familleLabel": "Armes contondantes",
+      "ctp": {
+        "c": 3,
+        "t": 1,
+        "p": 0
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer et peut briser les boucliers.",
+      "prerequis": "Se Mesurer N2",
+      "source": "Haches des Varègues."
+    },
+    {
+      "id": "fouet_al_rum",
+      "nom": "Fouet al-rum",
+      "famille": "dague",
+      "familleLabel": "Armes courtes et dagues",
+      "ctp": {
+        "c": 0,
+        "t": 1,
+        "p": 2
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer pour désarmer ou distraire.",
+      "prerequis": "Se Mesurer N1",
+      "source": "Techniques équestres."
+    },
+    {
+      "id": "arc_court_b_douin",
+      "nom": "Arc court bédouin",
+      "famille": "distance",
+      "familleLabel": "Armes à distance",
+      "ctp": {
+        "c": 0,
+        "t": 0,
+        "p": 3
+      },
+      "niveau": "N1",
+      "effet": "Peut tirer en mouvement (pas de malus en Se Déplacer).",
+      "prerequis": "Se Déplacer N1",
+      "source": "Arc des nomades."
+    },
+    {
+      "id": "p_e_courte_andalouse",
+      "nom": "Épée courte andalouse",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "niveau": "N1–N2",
+      "effet": "N1 : +1 Dé en Se Mesurer en espace restreint. N2 : Peut être utilisée avec un bouclier.",
+      "prerequis": "Se Mesurer N1",
+      "source": "Épées d'Espagne musulmane."
+    },
+    {
+      "id": "bouclier_rond_persan",
+      "nom": "Bouclier rond persan",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N1",
+      "effet": "+1 Dé en Résister contre les coups de taille.",
+      "prerequis": "Résister N1",
+      "source": "Boucliers persans."
+    },
+    {
+      "id": "lance_de_cavalerie",
+      "nom": "Lance de cavalerie",
+      "famille": "hast",
+      "familleLabel": "Armes d'hast et lances",
+      "ctp": {
+        "c": 1,
+        "t": 1,
+        "p": 3
+      },
+      "niveau": "N2–N3",
+      "effet": "N2 : +1 Dé en Se Mesurer en charge. N3 : Peut percer les armures légères.",
+      "prerequis": "Se Déplacer N2",
+      "source": "Lances des chevaliers."
+    },
+    {
+      "id": "cimeterre_double_tranchant",
+      "nom": "Cimeterre à double tranchant",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "niveau": "N3",
+      "effet": "+2 Dés en Se Mesurer, mais risque de se blesser (1 point de dégâts si échec critique).",
+      "prerequis": "Se Mesurer N3",
+      "source": "Épées des assassins."
+    },
+    {
+      "id": "hache_de_guerre_arabe",
+      "nom": "Hache de guerre arabe",
+      "famille": "contondant",
+      "familleLabel": "Armes contondantes",
+      "ctp": {
+        "c": 3,
+        "t": 1,
+        "p": 0
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer et peut briser les boucliers légers.",
+      "prerequis": "Se Mesurer N2",
+      "source": "Haches des milices."
+    },
+    {
+      "id": "bouclier_triangulaire",
+      "nom": "Bouclier triangulaire",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Résister contre les flèches et +1 en Se Déplacer pour les charges.",
+      "prerequis": "Se Déplacer N1",
+      "source": "Boucliers des fantassins."
+    },
+    {
+      "id": "p_e_de_damas",
+      "nom": "Épée de Damas",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "niveau": "N3",
+      "effet": "Ignore 1 point d’armure et +1 Dé en Se Mesurer.",
+      "prerequis": "Se Mesurer N3",
+      "source": "Légendes des forgerons."
+    },
+    {
+      "id": "arc_long_anglais",
+      "nom": "Arc long anglais",
+      "famille": "distance",
+      "familleLabel": "Armes à distance",
+      "ctp": {
+        "c": 0,
+        "t": 0,
+        "p": 3
+      },
+      "niveau": "N3",
+      "effet": "Portée augmentée de 100% et +1 Dé en Se Mesurer à longue distance.",
+      "prerequis": "Se Mesurer N3",
+      "source": "Arc des archers anglais."
+    },
+    {
+      "id": "dague_empoisonn_e",
+      "nom": "Dague empoisonnée",
+      "famille": "dague",
+      "familleLabel": "Armes courtes et dagues",
+      "ctp": {
+        "c": 0,
+        "t": 1,
+        "p": 2
+      },
+      "niveau": "N3",
+      "effet": "Ignore 2 points de Résister (poison). Nécessite 2 points d’éther pour préparer le poison.",
+      "prerequis": "Fabriquer N2, Malignité N1",
+      "source": "Poisons des Hashashin."
+    },
+    {
+      "id": "bouclier_pavois",
+      "nom": "Bouclier pavois",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N3",
+      "effet": "+2 Dés en Résister contre les projectiles, mais -1 Dé en Se Déplacer.",
+      "prerequis": "Résister N2",
+      "source": "Boucliers des archers."
+    },
+    {
+      "id": "p_e_courte_franque",
+      "nom": "Épée courte franque",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "niveau": "N1",
+      "effet": "+1 Dé en Se Mesurer en combat rapproché.",
+      "prerequis": "Se Mesurer N1",
+      "source": "Épées des Croisés."
+    },
+    {
+      "id": "hache_d_armes",
+      "nom": "Hache d’armes",
+      "famille": "contondant",
+      "familleLabel": "Armes contondantes",
+      "ctp": {
+        "c": 3,
+        "t": 1,
+        "p": 0
+      },
+      "niveau": "N3",
+      "effet": "+2 Dés en Se Mesurer contre les armures, mais -1 Dé à l’attaque suivante.",
+      "prerequis": "Se Mesurer N3, Force N2",
+      "source": "Haches des chevaliers."
+    },
+    {
+      "id": "bouclier_rond_andalou",
+      "nom": "Bouclier rond andalou",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N1",
+      "effet": "+1 Dé en Résister contre les coups de taille.",
+      "prerequis": "Résister N1",
+      "source": "Boucliers d'Al-Andalus."
+    },
+    {
+      "id": "arc_court_mongole",
+      "nom": "Arc court mongole",
+      "famille": "distance",
+      "familleLabel": "Armes à distance",
+      "ctp": {
+        "c": 0,
+        "t": 0,
+        "p": 3
+      },
+      "niveau": "N2",
+      "effet": "Peut tirer en mouvement sans malus.",
+      "prerequis": "Se Déplacer N1",
+      "source": "Arc des nomades mongols."
+    },
+    {
+      "id": "p_e_large_berb_re",
+      "nom": "Épée large berbère",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer et peut trancher les tissus sans résistance.",
+      "prerequis": "Se Mesurer N2",
+      "source": "Épées nord-africaines."
+    },
+    {
+      "id": "lance_courte",
+      "nom": "Lance courte",
+      "famille": "hast",
+      "familleLabel": "Armes d'hast et lances",
+      "ctp": {
+        "c": 1,
+        "t": 1,
+        "p": 3
+      },
+      "niveau": "N1",
+      "effet": "+1 Dé en Se Mesurer en formation serrée.",
+      "prerequis": "Se Mesurer N1",
+      "source": "Lances des milices."
+    },
+    {
+      "id": "bouclier_kite_crois",
+      "nom": "Bouclier kite croisé",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Résister contre les flèches et +1 en Se Déplacer pour les charges.",
+      "prerequis": "Se Déplacer N1",
+      "source": "Boucliers des Croisés."
+    },
+    {
+      "id": "cimeterre_ottoman",
+      "nom": "Cimeterre ottoman",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer et peut trancher les tissus sans résistance.",
+      "prerequis": "Se Mesurer N1",
+      "source": "Sabres ottomans."
+    },
+    {
+      "id": "arc_composite_syrien",
+      "nom": "Arc composite syrien",
+      "famille": "distance",
+      "familleLabel": "Armes à distance",
+      "ctp": {
+        "c": 0,
+        "t": 0,
+        "p": 3
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer à distance et portée augmentée de 25%.",
+      "prerequis": "Se Mesurer N2",
+      "source": "Arc des archers syriens."
+    },
+    {
+      "id": "dague_de_damas",
+      "nom": "Dague de Damas",
+      "famille": "dague",
+      "familleLabel": "Armes courtes et dagues",
+      "ctp": {
+        "c": 0,
+        "t": 1,
+        "p": 2
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer pour les attaques sournoises et ignore 1 point d’armure.",
+      "prerequis": "Occulter N1, Se Mesurer N1",
+      "source": "Dagues des Assassins."
+    },
+    {
+      "id": "bouclier_rond_turc",
+      "nom": "Bouclier rond turc",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N1",
+      "effet": "+1 Dé en Résister contre les coups de taille.",
+      "prerequis": "Résister N1",
+      "source": "Boucliers turcs."
+    },
+    {
+      "id": "lance_des_steppes",
+      "nom": "Lance des steppes",
+      "famille": "hast",
+      "familleLabel": "Armes d'hast et lances",
+      "ctp": {
+        "c": 1,
+        "t": 1,
+        "p": 3
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer en charge et peut désarçonner.",
+      "prerequis": "Se Déplacer N2",
+      "source": "Lances des nomades."
+    },
+    {
+      "id": "hache_de_guerre_persane",
+      "nom": "Hache de guerre persane",
+      "famille": "contondant",
+      "familleLabel": "Armes contondantes",
+      "ctp": {
+        "c": 3,
+        "t": 1,
+        "p": 0
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer et peut briser les boucliers légers.",
+      "prerequis": "Se Mesurer N2",
+      "source": "Haches des guerriers persans."
+    },
+    {
+      "id": "bouclier_kite_mamelouk",
+      "nom": "Bouclier kite mamelouk",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N2",
+      "effet": "+1 Dé en Résister contre les flèches et +1 en Se Déplacer pour les charges.",
+      "prerequis": "Se Déplacer N1",
+      "source": "Boucliers des Mamelouks."
+    },
+    {
+      "id": "p_e_courte_byzantine",
+      "nom": "Épée courte byzantine",
+      "famille": "epee",
+      "familleLabel": "Épées (droites et courbes)",
+      "ctp": {
+        "c": 1,
+        "t": 2,
+        "p": 1
+      },
+      "niveau": "N1",
+      "effet": "+1 Dé en Se Mesurer en combat rapproché.",
+      "prerequis": "Se Mesurer N1",
+      "source": "Épées de Byzance."
+    },
+    {
+      "id": "arc_long_crois",
+      "nom": "Arc long croisé",
+      "famille": "distance",
+      "familleLabel": "Armes à distance",
+      "ctp": {
+        "c": 0,
+        "t": 0,
+        "p": 3
+      },
+      "niveau": "N3",
+      "effet": "Portée augmentée de 100% et +1 Dé en Se Mesurer à longue distance.",
+      "prerequis": "Se Mesurer N3",
+      "source": "Arc des archers croisés."
+    },
+    {
+      "id": "dague_des_hashashin",
+      "nom": "Dague des Hashashin",
+      "famille": "dague",
+      "familleLabel": "Armes courtes et dagues",
+      "ctp": {
+        "c": 0,
+        "t": 1,
+        "p": 2
+      },
+      "niveau": "N3",
+      "effet": "Ignore 2 points de Résister (poison). Nécessite 2 points d’éther pour préparer le poison.",
+      "prerequis": "Fabriquer N2, Malignité N1",
+      "source": "Poisons des Assassins."
+    },
+    {
+      "id": "bouclier_des_crois_s",
+      "nom": "Bouclier des croisés",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N2",
+      "effet": "+2 Dés en Résister contre les projectiles, mais -1 Dé en Se Déplacer.",
+      "prerequis": "Résister N2",
+      "source": "Boucliers des Croisés."
+    },
+    {
+      "id": "lance_des_chevaliers",
+      "nom": "Lance des chevaliers",
+      "famille": "hast",
+      "familleLabel": "Armes d'hast et lances",
+      "ctp": {
+        "c": 1,
+        "t": 1,
+        "p": 3
+      },
+      "niveau": "N3",
+      "effet": "+2 Dés en Se Mesurer en charge et peut percer les armures légères.",
+      "prerequis": "Se Déplacer N2",
+      "source": "Lances des chevaliers."
+    },
+    {
+      "id": "hache_des_var_gues",
+      "nom": "Hache des Varègues",
+      "famille": "contondant",
+      "familleLabel": "Armes contondantes",
+      "ctp": {
+        "c": 3,
+        "t": 1,
+        "p": 0
+      },
+      "niveau": "N3",
+      "effet": "+2 Dés en Se Mesurer contre les armures, mais -1 Dé à l’attaque suivante.",
+      "prerequis": "Se Mesurer N3, Force N2",
+      "source": "Haches des Vikings."
+    },
+    {
+      "id": "bouclier_des_derviches",
+      "nom": "Bouclier des derviches",
+      "famille": "bouclier",
+      "familleLabel": "Bouclier et défense passive",
+      "ctp": {
+        "c": null,
+        "t": null,
+        "p": null
+      },
+      "niveau": "N1",
+      "effet": "+1 Dé en Résister contre les coups de taille et +1 en Ravir pour intimider.",
+      "prerequis": "Résister N1, Foi N1",
+      "source": "Boucliers des mystiques."
+    },
+    {
+      "id": "arc_des_steppes",
+      "nom": "Arc des steppes",
+      "famille": "distance",
+      "familleLabel": "Armes à distance",
+      "ctp": {
+        "c": 0,
+        "t": 0,
+        "p": 3
+      },
+      "niveau": "N2",
+      "effet": "Peut tirer en mouvement sans malus.",
+      "prerequis": "Se Déplacer N1",
+      "source": null
+    },
+    {
+      "id": "haubert_normand",
+      "nom": "Haubert normand",
+      "famille": "armure",
+      "familleLabel": "Armure (Corps)",
+      "ctp": null,
+      "niveau": "N2",
+      "effet": "Réduit de 2 les dégâts de Taille (T), de 1 seulement contre les flèches et carreaux (voir règle armure vs tir).",
+      "prerequis": "Résister N1",
+      "source": "Zouache, «L'armement entre Orient et Occident au VIe/XIIe siècle», AnIsl 41, 2007.",
+      "nouveau": true
+    },
+    {
+      "id": "gambison_de_sergent",
+      "nom": "Gambison de sergent",
+      "famille": "armure",
+      "familleLabel": "Armure (Corps)",
+      "ctp": null,
+      "niveau": "N1",
+      "effet": "Réduit de 1 les dégâts contondants (C), aucun effet contre Taille (T) ou Perforant (P).",
+      "prerequis": "Aucun",
+      "source": "Zouache, «Corps en guerre au Proche-Orient», AnIsl 48.1, 2014.",
+      "nouveau": true
+    },
+    {
+      "id": "camail_mi_far",
+      "nom": "Camail (miġfar)",
+      "famille": "armure",
+      "familleLabel": "Armure (Casque, accessoire)",
+      "ctp": null,
+      "niveau": "N1",
+      "effet": "Ajoute la protection du casque porté à la nuque et à la gorge ; sans lui, tout effet Physique visant la tête touchée sans casque est aggravé d'un niveau.",
+      "prerequis": "Aucun",
+      "source": "Zouache, «L'armement entre Orient et Occident», AnIsl 41, 2007.",
+      "nouveau": true
+    },
+    {
+      "id": "brassards_et_jambi_res_kaff",
+      "nom": "Brassards et jambières (kaff)",
+      "famille": "armure",
+      "familleLabel": "Armure (Membres)",
+      "ctp": null,
+      "niveau": "N1",
+      "effet": "Réduit d'un niveau la gravité d'un effet Amputation obtenu contre un membre protégé (un Physique N3 devient un Physique N2 classique au lieu d'une Amputation), au prix d'un malus permanent -1 en Se Déplacer.",
+      "prerequis": "Aucun",
+      "source": "Nicolle & McBride, Saladin and the Saracens, Osprey MAA 171, 1986.",
+      "nouveau": true
+    }
+  ],
+  "manoeuvres": [
+    {
+      "id": "frappe_du_serpent",
+      "nom": "Frappe du serpent",
+      "niveau": "N2",
+      "effet": "Bonus de surprise si l'adversaire sous-estime vos capacités martiales.",
+      "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Jaune : 1",
+      "source": "Techniques des Assassins."
+    },
+    {
+      "id": "lancer_puissant",
+      "nom": "Lancer puissant",
+      "niveau": "N1–N3",
+      "effet": "Bonus aux jets de projectile à distance.",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Feu : 1",
+      "source": "Archers turcs."
+    },
+    {
+      "id": "tir_cibl",
+      "nom": "Tir ciblé",
+      "niveau": "N2",
+      "effet": "Ignore les malus de distance pour une cible précise.",
+      "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Précision +1",
+      "octogone": "Air : 1",
+      "source": "Tireurs d'élite."
+    },
+    {
+      "id": "parade_et_riposte",
+      "nom": "Parade et riposte",
+      "niveau": "N2",
+      "effet": "Après une parade réussie, contre-attaque avec bonus.",
+      "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Réflexes +1",
+      "octogone": "Feu : 1",
+      "source": "Maîtres d'armes."
+    },
+    {
+      "id": "attaque_sournoise",
+      "nom": "Attaque sournoise",
+      "niveau": "N2",
+      "effet": "Bonus si la cible est distraite ou non préparée.",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Jaune : 1",
+      "source": "Techniques des Hashashin."
+    },
+    {
+      "id": "d_sarmement",
+      "nom": "Désarmement",
+      "niveau": "N2",
+      "effet": "Sur une réussite, l'adversaire perd son arme pour 1 round.",
+      "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Précision +1",
+      "octogone": "Terre : 1",
+      "source": "Arts martiaux persans."
+    },
+    {
+      "id": "frappe_du_serpent",
+      "nom": "Frappe du serpent",
+      "niveau": "N2",
+      "effet": "Bonus de surprise si l'adversaire sous-estime vos capacités.",
+      "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Jaune : 1 (stratégie)",
+      "source": "Inspiré des techniques des Assassins."
+    },
+    {
+      "id": "frappe_du_lion",
+      "nom": "Frappe du lion",
+      "niveau": "N2",
+      "effet": "+2 Dés en Se Mesurer pour une attaque unique, mais -1 Dé à la prochaine action.",
+      "prerequis": "Se Mesurer N2, Feu N1",
+      "vicesVertus": "Témérité +1",
+      "octogone": "Feu : 1",
+      "source": "Techniques des guerriers arabes."
+    },
+    {
+      "id": "danse_du_sabre",
+      "nom": "Danse du sabre",
+      "niveau": "N3",
+      "effet": "Permet d’esquiver une attaque puis de riposter avec +1 Dé.",
+      "prerequis": "Se Mesurer N3, Agilité N2",
+      "vicesVertus": "Grâce +1",
+      "octogone": "Air : 1",
+      "source": "Maîtres d'armes égyptiens."
+    },
+    {
+      "id": "charge_du_d_sert",
+      "nom": "Charge du désert",
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer pour chaque allié participant à la charge (max 3).",
+      "prerequis": "Se Déplacer N2, Feu N1",
+      "vicesVertus": "Courage +1",
+      "octogone": "Feu : 1",
+      "source": "Tactiques des cavaliers arabes."
+    },
+    {
+      "id": "lancer_de_javelot",
+      "nom": "Lancer de javelot",
+      "niveau": "N1",
+      "effet": "+1 Dé en Se Mesurer pour les attaques à distance (portée courte).",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Feu : 1",
+      "source": "Javelots des tribus arabes."
+    },
+    {
+      "id": "parade_et_riposte",
+      "nom": "Parade et riposte",
+      "niveau": "N2",
+      "effet": "Si une parade réussit, contre-attaque avec +1 Dé.",
+      "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Réflexes +1",
+      "octogone": "Feu : 1",
+      "source": "Escrime médiévale."
+    },
+    {
+      "id": "coup_de_bouclier",
+      "nom": "Coup de bouclier",
+      "niveau": "N1",
+      "effet": "+1 Dé en Se Mesurer si le bouclier est utilisé offensivement.",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Force +1",
+      "octogone": "Terre : 1",
+      "source": "Boucliers des hoplites."
+    },
+    {
+      "id": "feinte_mortelle",
+      "nom": "Feinte mortelle",
+      "niveau": "N3",
+      "effet": "Si la feinte réussit, l’adversaire perd son prochain tour.",
+      "prerequis": "Se Mesurer N3, Ruse N2",
+      "vicesVertus": "Malignité +1",
+      "octogone": "Bile Jaune : 1",
+      "source": "Techniques des Hashashin."
+    },
+    {
+      "id": "manoeuvre_du_scorpion",
+      "nom": "Manoeuvre du scorpion",
+      "niveau": "N3",
+      "effet": "Si l’ennemi est déséquilibré, +2 Dés en Se Mesurer pour une attaque.",
+      "prerequis": "Se Mesurer N3, Agilité N2",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Jaune : 1",
+      "source": "Techniques des voleurs."
+    },
+    {
+      "id": "manoeuvre_du_vent",
+      "nom": "Manoeuvre du vent",
+      "niveau": "N2",
+      "effet": "Permet de se déplacer de 2 cases supplémentaires avant une attaque.",
+      "prerequis": "Se Déplacer N2, Air N1",
+      "vicesVertus": "Agilité +1",
+      "octogone": "Air : 1",
+      "source": "Techniques des danseurs-guerriers."
+    },
+    {
+      "id": "lancer_de_hache",
+      "nom": "Lancer de hache",
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Mesurer pour les attaques à distance avec une hache.",
+      "prerequis": "Se Mesurer N2",
+      "vicesVertus": "Brutalité +1",
+      "octogone": "Feu : 1",
+      "source": "Techniques des Vikings."
+    },
+    {
+      "id": "manoeuvre_du_serpent",
+      "nom": "Manoeuvre du serpent",
+      "niveau": "N3",
+      "effet": "Permet d’esquiver une attaque puis de contre-attaquer avec +2 Dés.",
+      "prerequis": "Se Mesurer N3, Agilité N2",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Bile Jaune : 1",
+      "source": "Techniques des voleurs."
+    },
+    {
+      "id": "manoeuvre_du_faucon",
+      "nom": "Manoeuvre du faucon",
+      "niveau": "N2",
+      "effet": "Permet de sauter par-dessus un ennemi et de l’attaquer par derrière (+1 Dé).",
+      "prerequis": "Se Déplacer N2, Agilité N1",
+      "vicesVertus": "Témérité +1",
+      "octogone": "Feu : 1",
+      "source": "Techniques des cavaliers."
+    },
+    {
+      "id": "manoeuvre_du_scorpion_mortel",
+      "nom": "Manoeuvre du scorpion mortel",
+      "niveau": "N3",
+      "effet": "Si l’ennemi est à terre, +3 Dés en Se Mesurer pour une attaque.",
+      "prerequis": "Se Mesurer N3, Ruse N2",
+      "vicesVertus": "Malignité +1",
+      "octogone": "Bile Noire : 1",
+      "source": "Techniques des Hashashin."
+    },
+    {
+      "id": "manoeuvre_du_tourbillon",
+      "nom": "Manoeuvre du tourbillon",
+      "niveau": "N3",
+      "effet": "Permet d’attaquer tous les ennemis adjacents avec -1 Dé.",
+      "prerequis": "Se Mesurer N3, Feu N2",
+      "vicesVertus": "Courage +1",
+      "octogone": "Feu : 1",
+      "source": "Techniques des derviches."
+    },
+    {
+      "id": "manoeuvre_de_la_vague",
+      "nom": "Manoeuvre de la vague",
+      "niveau": "N2",
+      "effet": "Permet d’esquiver une attaque puis de riposter avec +1 Dé.",
+      "prerequis": "Se Déplacer N2, Eau N1",
+      "vicesVertus": "Agilité +1",
+      "octogone": "Eau : 1",
+      "source": "Techniques des pirates."
+    },
+    {
+      "id": "manoeuvre_du_serpent_venimeux",
+      "nom": "Manoeuvre du serpent venimeux",
+      "niveau": "N3",
+      "effet": "Si l’ennemi est empoisonné, +2 Dés en Se Mesurer.",
+      "prerequis": "Se Mesurer N3, Ruse N2",
+      "vicesVertus": "Malignité +1",
+      "octogone": "Bile Noire : 1",
+      "source": "Techniques des empoisonneurs."
+    },
+    {
+      "id": "manoeuvre_du_faucon_plongeant",
+      "nom": "Manoeuvre du faucon plongeant",
+      "niveau": "N2",
+      "effet": "Permet de sauter depuis une hauteur et d’attaquer avec +2 Dés.",
+      "prerequis": "Se Déplacer N2, Feu N1",
+      "vicesVertus": "Témérité +1",
+      "octogone": "Feu : 1",
+      "source": "Techniques des cavaliers."
+    },
+    {
+      "id": "manoeuvre_du_scorpion_noir",
+      "nom": "Manoeuvre du scorpion noir",
+      "niveau": "N3",
+      "effet": "Si l’ennemi est déséquilibré, +3 Dés en Se Mesurer pour une attaque mortelle.",
+      "prerequis": "Se Mesurer N3, Ruse N2",
+      "vicesVertus": "Malignité +1",
+      "octogone": "Bile Noire : 1",
+      "source": "Techniques des Hashashin."
+    },
+    {
+      "id": "manoeuvre_du_vent_du_d_sert",
+      "nom": "Manoeuvre du vent du désert",
+      "niveau": "N2",
+      "effet": "Permet de se déplacer de 3 cases avant une attaque.",
+      "prerequis": "Se Déplacer N2, Air N1",
+      "vicesVertus": "Agilité +1",
+      "octogone": "Air : 1",
+      "source": "Techniques des cavaliers."
+    },
+    {
+      "id": "garde_basse_arme_courte",
+      "nom": "Garde basse (arme courte)",
+      "niveau": "N1",
+      "effet": "Bonus défensif : +1 Dé en Résister tant qu'on n'attaque pas soi-même ce round.",
+      "prerequis": "Occulter N1",
+      "vicesVertus": "Prudence +1",
+      "octogone": "Eau : 1",
+      "source": "Escrime de dague médiévale.",
+      "nouveau": true
+    },
+    {
+      "id": "ventrer_dague_n3",
+      "nom": "Éventrer (dague, N3)",
+      "niveau": "N3",
+      "effet": "Sur marge ≥3, la cible subit un effet Physique et un Saignement (voir blessures) en plus de l'effet normal.",
+      "prerequis": "Occulter N2, Se Mesurer N2",
+      "vicesVertus": "Malignité +1",
+      "octogone": "Bile Jaune : 1",
+      "source": "Techniques d'estafilade des Hashashin.",
+      "nouveau": true
+    },
+    {
+      "id": "fente_d_ouverture_p_e",
+      "nom": "Fente d'ouverture (épée)",
+      "niveau": "N1",
+      "effet": "+1 Dé en Se Mesurer si le personnage a l'engagement lors du premier assaut.",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Courage +1",
+      "octogone": "Feu : 1",
+      "source": "Traités d'escrime médiévale (fiore).",
+      "nouveau": true
+    },
+    {
+      "id": "croisement_de_lames",
+      "nom": "Croisement de lames",
+      "niveau": "N1",
+      "effet": "Épreuve en Résister (5,6) : sur réussite, contraint l'adversaire à une relance sur sa prochaine attaque.",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Prudence +1",
+      "octogone": "Eau : 1",
+      "source": "Escrime allemande (Kunst des Fechtens).",
+      "nouveau": true
+    },
+    {
+      "id": "fauchant_de_hallebarde",
+      "nom": "Fauchant de hallebarde",
+      "niveau": "N1",
+      "effet": "+1 Dé en Se Mesurer contre un adversaire à pied non monté, mais -1 Dé en Occulter (arme encombrante).",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Force +1",
+      "octogone": "Terre : 1",
+      "source": "Piquiers et hallebardiers mamelouks.",
+      "nouveau": true
+    },
+    {
+      "id": "charge_en_formation_hast",
+      "nom": "Charge en formation (hast)",
+      "niveau": "N2",
+      "effet": "+1 Dé en Se Déplacer par allié en formation serrée (max 3), Manoeuvre collective.",
+      "prerequis": "Se Déplacer N2, Imaginer N1",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 1",
+      "source": "Tactiques d'infanterie croisée et mamelouke.",
+      "nouveau": true
+    },
+    {
+      "id": "coup_d_estourbi_masse_marteau_n1",
+      "nom": "Coup d'estourbi (masse/marteau, N1)",
+      "niveau": "N1",
+      "effet": "+1 Dé en Se Mesurer contre une cible en armure lourde (Résister ≥N2).",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Force +1",
+      "octogone": "Terre : 1",
+      "source": "Marteaux d'armes des chevaliers.",
+      "nouveau": true
+    },
+    {
+      "id": "encoche_rapide_arc_n1",
+      "nom": "Encoche rapide (arc, N1)",
+      "niveau": "N1",
+      "effet": "Permet de tirer deux fois dans le même assaut avec -1 Dé sur chaque tir.",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Précision +1",
+      "octogone": "Air : 1",
+      "source": "Archers turcomans.",
+      "nouveau": true
+    },
+    {
+      "id": "tir_mont_sans_vis_e_arc_n2",
+      "nom": "Tir monté sans visée (arc, N2)",
+      "niveau": "N2",
+      "effet": "Permet de tirer en Se Déplacer sans malus si la cible est à portée courte.",
+      "prerequis": "Se Déplacer N2, Se Mesurer N1",
+      "vicesVertus": "Agilité +1",
+      "octogone": "Air : 1",
+      "source": "Tir parthe des archers montés.",
+      "nouveau": true
+    },
+    {
+      "id": "mur_de_boucliers",
+      "nom": "Mur de boucliers",
+      "niveau": "N2",
+      "effet": "Manoeuvre collective : +1 Dé en Résister par allié adjacent partageant la formation (max 3).",
+      "prerequis": "Résister N2, Imaginer N1",
+      "vicesVertus": "Loyauté +1",
+      "octogone": "Terre : 1",
+      "source": "Testudo antique et formations croisées.",
+      "nouveau": true
+    },
+    {
+      "id": "bousculade_bouclier_n1",
+      "nom": "Bousculade (bouclier, N1)",
+      "niveau": "N1",
+      "effet": "Sur réussite en Se Mesurer, l'adversaire perd l'engagement sans subir d'autre effet.",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Prudence +1",
+      "octogone": "Terre : 1",
+      "source": "Boucliers mamelouks et normands.",
+      "nouveau": true
+    },
+    {
+      "id": "cl_et_projection_pugilat_n1",
+      "nom": "Clé et projection (pugilat, N1)",
+      "niveau": "N1",
+      "effet": "Sur réussite en Se Mesurer, l'adversaire est mis à terre (Chute, voir Sifhr_combats) sans dégât.",
+      "prerequis": "Se Mesurer N1",
+      "vicesVertus": "Prudence +1",
+      "octogone": "Terre : 1",
+      "source": "Lutte et pugilat médiéval.",
+      "nouveau": true
+    },
+    {
+      "id": "tranglement_pugilat_n3",
+      "nom": "Étranglement (pugilat, N3)",
+      "niveau": "N3",
+      "effet": "Nécessite d'avoir mis l'adversaire à terre au préalable. Sur réussite, la cible est Incapable (voir effets) au prochain assaut.",
+      "prerequis": "Se Mesurer N2, Résister N1",
+      "vicesVertus": "Malignité +1 (si létal)",
+      "octogone": "Bile Noire : 1",
+      "source": "Techniques de close-combat.",
+      "nouveau": true
+    },
+    {
+      "id": "lire_l_ouverture_transversal_n1",
+      "nom": "Lire l'ouverture (transversal, N1)",
+      "niveau": "N1",
+      "effet": "Épreuve de Dévoiler (3,4) : sur réussite, le prochain jet de Se Mesurer contre cette cible bénéficie d'une Expertise.",
+      "prerequis": "Dévoiler N1",
+      "vicesVertus": "Prudence +1",
+      "octogone": "Air : 1",
+      "source": "Traités d'escrime : la lecture de l'adversaire.",
+      "nouveau": true
+    },
+    {
+      "id": "rompre_le_combat_transversal_n1",
+      "nom": "Rompre le combat (transversal, N1)",
+      "niveau": "N1",
+      "effet": "Épreuve de Se Déplacer (5,6) en opposition à l'engagement adverse : sur réussite, on quitte le combat sans subir d'attaque d'opportunité.",
+      "prerequis": "Se Déplacer N1",
+      "vicesVertus": "Prudence +1",
+      "octogone": "Eau : 1",
+      "source": "Manuels tactiques de repli en bon ordre.",
+      "nouveau": true
+    },
+    {
+      "id": "cri_de_guerre_transversal_n2",
+      "nom": "Cri de guerre (transversal, N2)",
+      "niveau": "N2",
+      "effet": "Épreuve de Ravir (1,2) contre la Résister de l'adversaire : sur réussite, il subit Harcelé 1 (voir effets).",
+      "prerequis": "Ravir N1",
+      "vicesVertus": "Foi +1 (si religieux)",
+      "octogone": "Bile Jaune : 1",
+      "source": "Cris de bataille et takbir des armées croisées.",
+      "nouveau": true
+    },
+    {
+      "id": "feinte_de_reddition_transversal_n2",
+      "nom": "Feinte de reddition (transversal, N2)",
+      "niveau": "N2",
+      "effet": "Épreuve d'Occulter (7,8) : sur réussite, l'adversaire baisse sa garde (perd son bonus d'Etat/Environnement au prochain assaut).",
+      "prerequis": "Occulter N2, Malignité N1",
+      "vicesVertus": "Malignité +1",
+      "octogone": "Bile Jaune : 1",
+      "source": "Ruses de guerre décrites par les chroniqueurs arabes.",
+      "nouveau": true
+    },
+    {
+      "id": "coordonner_l_embuscade_transversal_n2",
+      "nom": "Coordonner l'embuscade (transversal, N2)",
+      "niveau": "N2",
+      "effet": "Manoeuvre collective : épreuve d'Imaginer (3,4) du meneur du groupe ; sur réussite, tous les alliés ont l'engagement au premier assaut.",
+      "prerequis": "Imaginer N2",
+      "vicesVertus": "Ruse +1",
+      "octogone": "Terre : 1",
+      "source": "Tactiques bédouines de raid.",
+      "nouveau": true
+    },
+    {
+      "id": "arme_de_fortune_transversal_n1",
+      "nom": "Arme de fortune (transversal, N1)",
+      "niveau": "N1",
+      "effet": "Épreuve de Fabriquer (3,4) : sur réussite, un objet du décor (chaise, torche, chaîne) devient une arme improvisée avec un profil équivalent à Mains nues +1.",
+      "prerequis": "Fabriquer N1",
+      "vicesVertus": "Prudence +1",
+      "octogone": "Terre : 1",
+      "source": "Combat improvisé, topos des récits picaresques.",
+      "nouveau": true
+    },
+    {
+      "id": "tir_au_guide_majra_nawak",
+      "nom": "Tir au guide (majra/nawak)",
+      "niveau": "N3",
+      "effet": "Ignore 1 point d'armure supplémentaire sur un tir réussi, mais la portée est réduite de moitié (tir à courte distance uniquement).",
+      "prerequis": "Se Mesurer N3 (arc)",
+      "vicesVertus": "Précision +1",
+      "octogone": "Air : 1",
+      "source": "Nicolle & McBride, Saladin and the Saracens, Osprey MAA 171, 1986 (majra/nawak turcs et saljuqides).",
+      "nouveau": true
+    }
+  ]
+}
