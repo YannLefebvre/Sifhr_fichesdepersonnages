@@ -359,7 +359,9 @@
     btn.title = 'Mode Combat';
     // z-index volontairement très élevé et position en !important-like (via cssText complet)
     // pour ne jamais être masqué par un autre élément fixe de la fiche.
-    btn.style.cssText = 'position:fixed !important;bottom:14px !important;left:14px !important;'
+    // Empilé au-dessus de #dice-fab (qui occupe déjà bottom:1.2rem/left:1.2rem,
+    // 52px de haut), pour ne jamais le superposer.
+    btn.style.cssText = 'position:fixed !important;bottom:82px !important;left:14px !important;'
       +'z-index:99999 !important;width:52px;height:52px;border-radius:50%;border:2px solid #fff;'
       +'background:#8b2020;color:#fff;font-size:1.3rem;cursor:pointer;'
       +'box-shadow:0 2px 10px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;';
