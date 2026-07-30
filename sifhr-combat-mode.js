@@ -63,35 +63,258 @@
     return SEGMENT_TO_COUPLE[seg] !== undefined ? seg : null;
   }
 
-  // Liste combinée des actions de combat : les manœuvres génériques ET les armes
-  // nommées du tableur (Dague de Damas, Cimeterre ottoman…), qui sont elles-mêmes
-  // des actions à part entière avec un effet mécanique par niveau.
+  // ── 1bis. Collection personnelle de manœuvres (state.manoeuvresCombat) ──
+  function ensureManoeuvresState(){
+    // `state` est déclaré avec `let` au premier niveau d'octogone.html : il est
+    // accessible comme identifiant partagé entre <script> de la page, MAIS PAS
+    // via window.state (les déclarations let/const top-level n'atterrissent pas
+    // sur window). D'où la vérification par typeof plutôt que window.state.
+    if(typeof state==='undefined' || !state) return [];
+    if(!Array.isArray(state.manoeuvresCombat)) state.manoeuvresCombat = [];
+    return state.manoeuvresCombat;
+  }
+  function nouvelIdManoeuvre(){
+    return 'm_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  }
+
+  // Actions disponibles pour CE personnage = sa collection personnelle uniquement
+  // (et non plus l'intégralité du catalogue partagé).
   function getActions(){
-    const armesActionnables = (CATALOGUE.armes||[]).filter(a=>!a.generique && a.effet);
-    return [...armesActionnables.map(a=>({...a, _typeAction:'arme'})),
-            ...(CATALOGUE.manoeuvres||[]).map(m=>({...m, _typeAction:'manoeuvre'}))];
+    return ensureManoeuvresState().map(m=>({...m, _typeAction:'perso'}));
+  }
+
+  // ── 1ter. Éditeur de la collection personnelle (panneau de fiche) ──
+  function installerPanneauEditeur(){
+    const hote = document.querySelector('.lower-wide');
+    if(!hote){ setTimeout(installerPanneauEditeur, 500); return; }
+    let wrap = document.getElementById('combat-editeur-wrap');
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.className = 'panel';
+      wrap.innerHTML = `
+        <div class="panel-title" id="combat-editeur-title" data-target="combat-editeur-panel">Manœuvres de combat</div>
+        <div class="panel-body collapsed" id="combat-editeur-panel">
+          <div class="panel-body-inner" id="combat-editeur-wrap"></div>
+        </div>`;
+      hote.appendChild(wrap);
+      const titleEl = document.getElementById('combat-editeur-title');
+      titleEl.classList.add('collapsed');
+      titleEl.addEventListener('click', ()=>{
+        if(typeof toggleAccordion==='function') toggleAccordion(titleEl);
+      });
+      wrap = document.getElementById('combat-editeur-wrap');
+    }
+    renderListeManoeuvres(wrap);
+  }
+
+  function renderListeManoeuvres(wrap){
+    const liste = ensureManoeuvresState();
+    let html = `<div style="display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap;">
+      <button id="combat-nouvelle-btn" class="combat-editor-btn" style="${btnStyle('#8b2020')}">+ Nouvelle manœuvre</button>
+      <button id="combat-biblio-btn" class="combat-editor-btn" style="${btnStyle('#185FA5')}">📚 Depuis la bibliothèque</button>
+    </div>`;
+    if(!liste.length){
+      html += `<div style="font-size:.82rem;font-style:italic;color:var(--ink3,#666);">Aucune manœuvre pour l'instant.</div>`;
+    } else {
+      html += liste.map(m=>`
+        <div class="combat-man-card" data-id="${m.id}" style="border:1px solid var(--border,#b8a88a);border-radius:6px;padding:.5rem .7rem;margin-bottom:.4rem;background:var(--input-bg,#faf7f0);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-family:'Cinzel',serif;font-size:.82rem;">${m.nom}</strong>
+            <span>
+              <button class="combat-edit-btn" data-id="${m.id}" style="${btnStyle('#7a5200',true)}">✎</button>
+              <button class="combat-del-btn" data-id="${m.id}" style="${btnStyle('#8b2020',true)}">🗑</button>
+            </span>
+          </div>
+          <div style="font-size:.78rem;color:var(--ink3,#666);margin-top:.2rem;">
+            ${m.aptitude?(APT_LABELS[m.aptitude]||m.aptitude)+' N'+(m.niveauRequis||0):'Aucune Aptitude requise'}
+            ${m.segmentOctogone?' · Segment '+m.segmentOctogone:''}
+            ${m.armeAssociee?' · Arme : '+m.armeAssociee:(m.nonArme?' · Sans arme':'')}
+          </div>
+          ${m.effet?`<div style="font-size:.8rem;margin-top:.3rem;">${m.effet}</div>`:''}
+        </div>`).join('');
+    }
+    html += `<div id="combat-form-zone"></div>`;
+    wrap.innerHTML = html;
+    document.getElementById('combat-nouvelle-btn').addEventListener('click', ()=>ouvrirFormulaire(null));
+    document.getElementById('combat-biblio-btn').addEventListener('click', ouvrirBibliotheque);
+    wrap.querySelectorAll('.combat-edit-btn').forEach(b=>b.addEventListener('click',()=>ouvrirFormulaire(b.dataset.id)));
+    wrap.querySelectorAll('.combat-del-btn').forEach(b=>b.addEventListener('click',()=>supprimerManoeuvre(b.dataset.id)));
+  }
+
+  function btnStyle(color, small){
+    return `font-family:'Cinzel',serif;font-size:${small?'.68rem':'.72rem'};padding:${small?'2px 7px':'5px 12px'};`
+      +`border-radius:5px;border:1px solid ${color};background:${color};color:#fff;cursor:pointer;`;
+  }
+
+  function supprimerManoeuvre(id){
+    if(!confirm('Supprimer cette manœuvre de votre collection ?')) return;
+    const liste = ensureManoeuvresState();
+    const idx = liste.findIndex(m=>m.id===id);
+    if(idx!==-1) liste.splice(idx,1);
+    if(typeof saveState==='function') saveState();
+    installerPanneauEditeur();
+    rafraichirGrilleCombatSiOuverte();
+  }
+
+  function ouvrirFormulaire(id, prefill){
+    const zone = document.getElementById('combat-form-zone');
+    if(!zone) return;
+    const existant = id ? ensureManoeuvresState().find(m=>m.id===id) : null;
+    const data = existant || prefill || {nom:'',aptitude:'',niveauRequis:0,segmentOctogone:'',armeAssociee:'',nonArme:false,effet:'',notes:'',ctp:null};
+    const aptOptions = ['<option value="">— Aucune —</option>']
+      .concat(APTITUDE_KEYS.map(k=>`<option value="${k}" ${data.aptitude===k?'selected':''}>${APT_LABELS[k]}</option>`)).join('');
+    const segOptions = ['<option value="">— Aucun —</option>']
+      .concat(SECTORS.map(s=>`<option value="${s.id}" ${data.segmentOctogone===s.id?'selected':''}>${s.label}</option>`)).join('');
+    zone.innerHTML = `
+      <div style="border:2px solid #8b2020;border-radius:7px;padding:.7rem;margin-top:.5rem;background:#fff8f0;">
+        <div style="font-family:'Cinzel',serif;font-size:.78rem;color:#8b2020;margin-bottom:.5rem;">${existant?'Modifier':'Nouvelle'} manœuvre</div>
+        <input type="text" id="cf-nom" placeholder="Nom de la manœuvre" value="${(data.nom||'').replace(/"/g,'&quot;')}" style="width:100%;margin-bottom:.4rem;padding:.3rem;">
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.4rem;">
+          <select id="cf-apt" style="flex:1;">${aptOptions}</select>
+          <input type="number" id="cf-niveau" min="0" max="6" value="${data.niveauRequis||0}" style="width:70px;" title="Niveau d'Aptitude requis">
+          <select id="cf-segment" style="flex:1;">${segOptions}</select>
+        </div>
+        <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem;flex-wrap:wrap;">
+          <input type="text" id="cf-arme" placeholder="Arme associée (facultatif)" value="${(data.armeAssociee||'').replace(/"/g,'&quot;')}" style="flex:1;padding:.3rem;" ${data.nonArme?'disabled':''}>
+          <label style="font-size:.75rem;"><input type="checkbox" id="cf-nonarme" ${data.nonArme?'checked':''}> Sans arme</label>
+        </div>
+        <textarea id="cf-effet" placeholder="Effet (par palier si pertinent)" style="width:100%;min-height:50px;margin-bottom:.4rem;padding:.3rem;">${data.effet||''}</textarea>
+        <textarea id="cf-notes" placeholder="Notes / source (facultatif)" style="width:100%;min-height:34px;margin-bottom:.4rem;padding:.3rem;">${data.notes||''}</textarea>
+        <div style="display:flex;gap:.5rem;">
+          <button id="cf-save" style="${btnStyle('#1a4a2a')}">Enregistrer</button>
+          <button id="cf-cancel" style="${btnStyle('#6b5d4f')}">Annuler</button>
+        </div>
+      </div>`;
+    document.getElementById('cf-nonarme').addEventListener('change', e=>{
+      document.getElementById('cf-arme').disabled = e.target.checked;
+    });
+    document.getElementById('cf-cancel').addEventListener('click', ()=>{ zone.innerHTML=''; });
+    document.getElementById('cf-save').addEventListener('click', ()=>{
+      const nom = document.getElementById('cf-nom').value.trim();
+      if(!nom){ alert('Le nom est obligatoire.'); return; }
+      const entry = {
+        id: existant ? existant.id : nouvelIdManoeuvre(),
+        nom,
+        aptitude: document.getElementById('cf-apt').value || '',
+        niveauRequis: parseInt(document.getElementById('cf-niveau').value)||0,
+        segmentOctogone: document.getElementById('cf-segment').value || '',
+        armeAssociee: document.getElementById('cf-arme').value.trim(),
+        nonArme: document.getElementById('cf-nonarme').checked,
+        effet: document.getElementById('cf-effet').value.trim(),
+        notes: document.getElementById('cf-notes').value.trim(),
+        ctp: data.ctp || null,
+      };
+      const liste = ensureManoeuvresState();
+      const idx = liste.findIndex(m=>m.id===entry.id);
+      if(idx!==-1) liste[idx]=entry; else liste.push(entry);
+      if(typeof saveState==='function') saveState();
+      installerPanneauEditeur();
+      rafraichirGrilleCombatSiOuverte();
+    });
+  }
+
+  function ouvrirBibliotheque(){
+    (async()=>{
+      await chargerCatalogue();
+      const armesActionnables = (CATALOGUE.armes||[]).filter(a=>!a.generique && a.effet).map(a=>({...a,_source:'arme'}));
+      const manoeuvresBib = (CATALOGUE.manoeuvres||[]).map(m=>({...m,_source:'manoeuvre'}));
+      const tout = [...armesActionnables, ...manoeuvresBib];
+      const zone = document.getElementById('combat-form-zone');
+      if(!zone) return;
+      zone.innerHTML = `<div style="border:2px solid #185FA5;border-radius:7px;padding:.6rem;margin-top:.5rem;background:#f0f6fc;max-height:260px;overflow-y:auto;">
+        <input type="text" id="cf-search" placeholder="Rechercher…" style="width:100%;margin-bottom:.4rem;padding:.3rem;">
+        <div id="cf-biblio-list"></div>
+        <button id="cf-biblio-cancel" style="${btnStyle('#6b5d4f')};margin-top:.4rem;">Fermer</button>
+      </div>`;
+      const renderList=(filtre)=>{
+        const f=(filtre||'').toLowerCase();
+        const filtres = tout.filter(x=>x.nom.toLowerCase().includes(f));
+        document.getElementById('cf-biblio-list').innerHTML = filtres.slice(0,40).map(x=>
+          `<div class="cf-biblio-item" data-nom="${x.nom.replace(/"/g,'&quot;')}" style="padding:.3rem .4rem;cursor:pointer;border-bottom:1px dashed #ccc;font-size:.8rem;">
+            ${x.nom} <span style="color:#888;font-size:.72rem;">(${x.niveau||'?'})</span>
+          </div>`).join('') || '<div style="font-size:.78rem;color:#888;">Aucun résultat.</div>';
+        document.querySelectorAll('.cf-biblio-item').forEach(el=>{
+          el.addEventListener('click', ()=>{
+            const item = tout.find(x=>x.nom===el.dataset.nom);
+            if(!item) return;
+            const pr = parsePrerequis(item.prerequis);
+            const seg = parseOctogoneSegment(item.octogone);
+            const secId = seg ? (SECTORS.find(s=>s.label.toLowerCase()===seg)||{}).id : '';
+            ouvrirFormulaire(null, {
+              nom:item.nom, aptitude: pr?pr.aptKey:'', niveauRequis: pr?pr.niveau:0,
+              segmentOctogone: secId||'', armeAssociee: item._source==='arme'?item.nom:'',
+              nonArme:false, effet:item.effet||'', notes:item.source||'', ctp:item.ctp||null
+            });
+          });
+        });
+      };
+      renderList('');
+      document.getElementById('cf-search').addEventListener('input', e=>renderList(e.target.value));
+      document.getElementById('cf-biblio-cancel').addEventListener('click', ()=>{ zone.innerHTML=''; });
+    })();
+  }
+
+  function rafraichirGrilleCombatSiOuverte(){
+    if(document.getElementById('combat-manoeuvres-panel')) injecterPanneauManoeuvres();
+  }
+
+  // ── 1quater. Restauration après connexion (applyRemoteState ne connaît pas ce champ) ──
+  function installerHookLogin(){
+    if(typeof window.doLogin !== 'function'){ setTimeout(installerHookLogin,500); return; }
+    if(window.doLogin.__sifhrWrapped) return;
+    const original = window.doLogin;
+    const wrapped = async function(tryGM){
+      await original(tryGM);
+      try{ await restaurerManoeuvresPersonnelles(); }
+      catch(e){ console.error('[sifhr-combat-mode] restauration manœuvres a échoué :', e); }
+    };
+    wrapped.__sifhrWrapped = true;
+    window.doLogin = wrapped;
+  }
+
+  async function restaurerManoeuvresPersonnelles(){
+    if(typeof authenticated!=='undefined' && !authenticated) return;
+    try{
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const d = await r.json();
+      const saved = d[0]?.etat?.manoeuvresCombat;
+      if(Array.isArray(saved)) state.manoeuvresCombat = saved;
+    }catch(e){ console.error('[sifhr-combat-mode] fetch manœuvres', e); }
+    // Ne pas écraser un formulaire en cours de remplissage (course possible si la
+    // restauration réseau se termine pendant que le joueur saisit une manœuvre).
+    const formZone = document.getElementById('combat-form-zone');
+    if(formZone && formZone.innerHTML.trim()){
+      console.log('[sifhr-combat-mode] restauration : formulaire ouvert, ré-affichage différé.');
+      return;
+    }
+    installerPanneauEditeur();
   }
 
   // ── 2. Éligibilité d'une action par rapport au personnage local ──
+  // Les entrées personnelles ont un schéma structuré (aptitude, niveauRequis,
+  // segmentOctogone, armeAssociee, nonArme, ctp) — plus besoin de parser du texte.
   function evaluerManoeuvre(m){
     const raison = [];
     let bloque = false, limite = false;
 
-    const pr = parsePrerequis(m.prerequis);
-    if(pr){
-      const ai = APTITUDE_KEYS.indexOf(pr.aptKey);
+    if(m.aptitude){
+      const ai = APTITUDE_KEYS.indexOf(m.aptitude);
       const score = ai>=0 ? aptitudeScore(ai) : 0;
-      if(score < pr.niveau){
+      const niveauRequis = m.niveauRequis||0;
+      if(score < niveauRequis){
         bloque = true;
-        raison.push(`${APT_LABELS[pr.aptKey]||pr.aptKey} N${pr.niveau} requis (actuel N${score})`);
+        raison.push(`${APT_LABELS[m.aptitude]||m.aptitude} N${niveauRequis} requis (actuel N${score})`);
       }
     }
 
     // Segment octogone associé : s'il est saturé et majoritairement dévoyé, la manœuvre est limitée (pas bloquée)
-    const seg = parseOctogoneSegment(m.octogone);
-    if(seg){
-      const sec = SECTORS.find(s=>s.label.toLowerCase()===seg || s.id===seg.replace(' ','_'));
+    let coupleIdx = null;
+    if(m.segmentOctogone){
+      const sec = SECTORS.find(s=>s.id===m.segmentOctogone);
       if(sec){
+        coupleIdx = SEGMENT_TO_COUPLE[sec.label.toLowerCase()];
+        if(coupleIdx===undefined) coupleIdx=null;
         const tokens = state.tokens[sec.id]||[];
         const w = tokens.filter(t=>t==='white').length;
         const b = tokens.filter(t=>t==='black').length;
@@ -102,24 +325,20 @@
       }
     }
 
-    // Arme correspondante dans l'équipement
+    // Arme associée dans l'équipement (sauf manœuvre explicitement déclarée sans arme)
     let armeTrouvee = null;
-    const equip = (state.equipement||[]).filter(e=>e && e.title);
-    if(m._typeAction==='arme'){
-      // L'action EST l'arme : vérifier qu'elle figure dans l'équipement du personnage.
-      armeTrouvee = equip.find(e=>e.title.toLowerCase().includes(m.nom.toLowerCase())
-        || m.nom.toLowerCase().includes(e.title.toLowerCase()));
+    if(!m.nonArme && m.armeAssociee){
+      const equip = (state.equipement||[]).filter(e=>e && e.title);
+      armeTrouvee = equip.find(e=>e.title.toLowerCase().includes(m.armeAssociee.toLowerCase())
+        || m.armeAssociee.toLowerCase().includes(e.title.toLowerCase()));
       if(!armeTrouvee){
         limite = true;
-        raison.push(`« ${m.nom} » non trouvée dans l'Équipement — vérifier avant utilisation`);
+        raison.push(`« ${m.armeAssociee} » non trouvée dans l'Équipement — vérifier avant utilisation`);
       }
-    } else {
-      // Manœuvre générique : recherche approximative si son nom cite une arme précise
-      const nomLower = m.nom.toLowerCase();
-      armeTrouvee = equip.find(e=>nomLower.includes(e.title.toLowerCase())) || null;
     }
+    if(!raison.length && !bloque && !limite) raison.push('Disponible');
 
-    return {bloque, limite, raison, aptKey: pr?.aptKey, coupleIdx: seg!=null?SEGMENT_TO_COUPLE[seg]:null, armeTrouvee, action:m};
+    return {bloque, limite, raison, aptKey: m.aptitude||null, coupleIdx, armeTrouvee, action:m};
   }
 
   // ── 3. UI : bouton flottant dédié + injection dans l'overlay des dés existant ──
@@ -174,8 +393,14 @@
         +'background:rgba(139,32,32,.04);';
       hote.parentNode.insertBefore(panel, hote);
     }
-    const titre = `<div style="font-family:Cinzel,serif;font-size:.7rem;color:#8b2020;letter-spacing:.05em;margin-bottom:.4rem;">⚔ MANŒUVRES ET ARMES DE COMBAT DISPONIBLES</div>`;
-    const boutons = getActions().map(m=>{
+    const actions = getActions();
+    const titre = `<div style="font-family:Cinzel,serif;font-size:.7rem;color:#8b2020;letter-spacing:.05em;margin-bottom:.4rem;">⚔ MES MANŒUVRES DE COMBAT</div>`;
+    if(!actions.length){
+      panel.innerHTML = titre + `<div style="font-size:.78rem;font-style:italic;color:var(--ink3,#666);">`
+        +`Aucune manœuvre dans votre collection. Ouvrez le panneau « Manœuvres de combat » de la fiche pour en créer.</div>`;
+      return;
+    }
+    const boutons = actions.map(m=>{
       const ev = evaluerManoeuvre(m);
       const style = ev.bloque
         ? 'opacity:.35;cursor:not-allowed;background:#ddd;color:#888;'
@@ -228,16 +453,9 @@
 
   function bonusArmeActive(){
     if(!_manoeuvreActive) return 0;
-    const m = _manoeuvreActive.m;
-    // Cas 1 : l'action choisie EST une arme du catalogue (a son propre profil C/T/P)
-    let arme = (m._typeAction==='arme') ? m : null;
-    // Cas 2 : manœuvre générique dont une arme correspondante a été identifiée dans l'équipement
-    if(!arme && _manoeuvreActive.ev.armeTrouvee){
-      arme = (CATALOGUE.armes||[]).find(a=>
-        _manoeuvreActive.ev.armeTrouvee.title.toLowerCase().includes(a.nom.toLowerCase()));
-    }
-    if(!arme || !arme.ctp) return 0;
-    const {c,t,p}=arme.ctp;
+    const ctp = _manoeuvreActive.m.ctp;
+    if(!ctp) return 0;
+    const {c,t,p}=ctp;
     return Math.round(((c||0)+(t||0)+(p||0))/2);
   }
 
@@ -401,7 +619,10 @@
   // ── 6. Amorçage ──
   function init(){
     console.log('[sifhr-combat-mode] init() démarré, document.readyState=', document.readyState);
+    try{ ensureManoeuvresState(); } catch(e){ console.error('[sifhr-combat-mode] ensureManoeuvresState a échoué :', e); }
     try{ installerBoutonCombat(); } catch(e){ console.error('[sifhr-combat-mode] installerBoutonCombat a échoué :', e); }
+    try{ installerPanneauEditeur(); } catch(e){ console.error('[sifhr-combat-mode] installerPanneauEditeur a échoué :', e); }
+    try{ installerHookLogin(); } catch(e){ console.error('[sifhr-combat-mode] installerHookLogin a échoué :', e); }
     try{ installerHookDuel(); } catch(e){ console.error('[sifhr-combat-mode] installerHookDuel a échoué :', e); }
     try{ pollerEffetsEntrants(); } catch(e){ console.error('[sifhr-combat-mode] pollerEffetsEntrants a échoué :', e); }
     try{ chargerCatalogue(); } catch(e){ console.error('[sifhr-combat-mode] chargerCatalogue a échoué :', e); }
