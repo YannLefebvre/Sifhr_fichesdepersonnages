@@ -66,6 +66,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);}
 .trait-card-row{display:grid;grid-template-columns:1fr 1fr;gap:.3rem;margin-top:.3rem;}
 .trait-remove{position:absolute;top:.4rem;right:.4rem;background:none;border:none;color:var(--ink3);cursor:pointer;font-size:.9rem;padding:0;}
 .trait-remove:hover{color:#e08080;}
+#import-zone:hover{border-color:var(--accent);background:rgba(200,134,10,.04);}
+#import-zone.loaded{border-color:#4a7a4a;background:rgba(74,122,74,.05);}
 
 /* Buttons */
 .btn{font-family:'Cinzel',serif;font-size:.75rem;padding:.5rem 1.2rem;border:1px solid var(--accent);border-radius:4px;background:var(--accent);color:#1a1208;cursor:pointer;letter-spacing:.05em;margin-top:.8rem;width:100%;}
@@ -90,6 +92,20 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);}
 <!-- Identité -->
 <div class="section">
   <div class="section-title">① Identité du personnage</div>
+
+  <!-- Import fiche existante -->
+  <div id="import-zone" style="border:1px dashed var(--border);border-radius:6px;padding:.8rem;margin-bottom:1rem;text-align:center;cursor:pointer;transition:all .2s;"
+    onclick="document.getElementById('import-file').click()"
+    ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+    ondragleave="this.style.borderColor='var(--border)'"
+    ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleImportDrop(event)">
+    <span style="font-family:'Cinzel',serif;font-size:.65rem;color:var(--ink3);letter-spacing:.05em;">
+      ⬆ Charger une fiche existante — JSON ou XLSX (base à modifier)
+    </span>
+    <span id="import-status" style="display:block;font-size:.72rem;color:var(--ink3);font-style:italic;margin-top:.2rem;"></span>
+  </div>
+  <input type="file" id="import-file" accept=".json,.xlsx" style="display:none"
+    onchange="handleImportFile(this.files[0])">
   <div class="grid2">
     <div>
       <label>Identifiant (clé Supabase)</label>
@@ -303,11 +319,14 @@ SECTORS.forEach(s => {
 });
 
 function renderOctScores(sid){
-  const v = octState[sid].v, vi = octState[sid].vi;
-  document.getElementById('vs-'+sid).querySelectorAll('.score-sq').forEach((sq,i)=>{
+  if(!octState[sid]) return;
+  const v = octState[sid].v||0, vi = octState[sid].vi||0;
+  const vsEl=document.getElementById('vs-'+sid);
+  const visEl=document.getElementById('vis-'+sid);
+  if(vsEl) vsEl.querySelectorAll('.score-sq').forEach((sq,i)=>{
     sq.className = 'score-sq' + (i<v?' on0':'');
   });
-  document.getElementById('vis-'+sid).querySelectorAll('.score-sq').forEach((sq,i)=>{
+  if(visEl) visEl.querySelectorAll('.score-sq').forEach((sq,i)=>{
     sq.className = 'score-sq' + (i<vi?' on1':'');
   });
 }
@@ -548,6 +567,243 @@ ON CONFLICT (id) DO UPDATE
 }
 
 loadTraitsDB(); // charge la bibliothèque au démarrage
+
+// ══════════════════════════════════════════════
+// IMPORT FICHE EXISTANTE
+// ══════════════════════════════════════════════
+
+function handleImportDrop(e){
+  const file=e.dataTransfer.files[0];
+  if(file) handleImportFile(file);
+}
+
+function handleImportFile(file){
+  if(!file) return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const status=document.getElementById('import-status');
+  status.textContent='⏳ Lecture de '+file.name+'…';
+
+  if(ext==='json'){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const data=JSON.parse(e.target.result);
+        // Format export octogone.html v2 : {type, fiche:{id, nom, etat, ...}}
+        // Format legacy : {id, etat, ...} ou directement l'etat
+        let etat, nom, id;
+        if(data.fiche && data.fiche.etat){
+          // Format v2 (sifhr_fiche_xxx.json)
+          etat=data.fiche.etat;
+          nom=data.fiche.nom||etat.historique?.title||data.fiche.id||'';
+          id=data.fiche.id||'';
+        } else if(data.etat){
+          // Format legacy {id, etat}
+          etat=data.etat;
+          nom=etat.historique?.title||data.id||'';
+          id=data.id||'';
+        } else {
+          // etat direct
+          etat=data;
+          nom=etat.historique?.title||'';
+          id='';
+        }
+        loadFromEtat(etat, nom, id);
+        status.textContent='✓ '+file.name+' chargé — modifier puis sauvegarder sous un nouvel id';
+        document.getElementById('import-zone').classList.add('loaded');
+      }catch(err){
+        status.textContent='⚠ Erreur JSON : '+err.message;
+      }
+    };
+    reader.readAsText(file);
+  } else if(ext==='xlsx'){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        if(typeof XLSX==='undefined') throw new Error('SheetJS non disponible');
+        const wb=XLSX.read(e.target.result,{type:'binary'});
+        const etat=parseXLSXToEtat(wb);
+        const nom=etat.historique?.title||'';
+        loadFromEtat(etat, nom, '');
+        status.textContent='✓ '+file.name+' chargé — modifier puis sauvegarder';
+        document.getElementById('import-zone').classList.add('loaded');
+      }catch(err){
+        status.textContent='⚠ Erreur XLSX : '+err.message;
+        console.error(err);
+      }
+    };
+    reader.readAsBinaryString(file);
+    // Charger SheetJS si besoin
+    if(typeof XLSX==='undefined'){
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=()=>handleImportFile(file);
+      document.head.appendChild(s);
+      return;
+    }
+  }
+}
+
+// ── Parser XLSX export Sifhr (format multi-onglets) ──
+function parseXLSXToEtat(wb){
+  // Redéfinir localement pour garantir l'accès
+  const _SECTORS=['feu','bile_j','terre','bile_n','eau','flegme','air','sang'];
+  const _APT_KEYS=['se_deplacer','se_mesurer','occulter','imaginer','fabriquer','devoiler','resister','ravir'];
+  const getWS=name=>wb.Sheets[wb.SheetNames.find(n=>n===name)||''];
+  const toObj=ws=>{
+    if(!ws) return {};
+    const d=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    const r={};
+    d.slice(1).forEach(row=>{const k=String(row[0]||'').trim();if(k) r[k]=row[1];});
+    return r;
+  };
+  const toRows=ws=>ws?XLSX.utils.sheet_to_json(ws,{defval:''}):[];
+
+  const id_data=toObj(getWS('Identité'));
+
+  // Octogone
+  const tokens={};const scores={};
+  SECTORS.forEach(s=>{tokens[s]=['empty','empty','empty'];});
+  toRows(getWS('Octogone')).forEach(row=>{
+    const num=parseInt(row['Axe']);if(!num)return;
+    const sec=_SECTORS.find((_,i)=>i+1===num);if(!sec)return;
+    const w=parseInt(row['Jetons blanc'])||0,b=parseInt(row['Jetons noir'])||0;
+    const toks=['empty','empty','empty'];
+    for(let i=0;i<Math.min(w,3);i++) toks[i]='white';
+    for(let i=w;i<Math.min(w+b,3);i++) toks[i]='black';
+    tokens[sec]=toks;
+    scores[`${sec}_0`]=parseInt(row['Score vertu (0-3)'] || 0) || 0;
+    scores[`${sec}_1`]=parseInt(row['Score vice (0-3)'] || 0) || 0;
+  });
+
+  // Aptitudes
+  const aptitudes={};
+  toRows(getWS('Aptitudes')).forEach(row=>{
+    const key=String(row['Clé']||'').trim();
+    const score=parseInt(row['Score (0-5)'] || 0) || 0;
+    const ai=_APT_KEYS.indexOf(key);
+    if(ai<0)return;
+    for(let si=0;si<score;si++) aptitudes[`${ai}_${si}`]=true;
+  });
+
+  // Traits
+  const traits=Array(10).fill(null).map(()=>({title:'',text:'',level:null,levelType:null,locked:false}));
+  const aptTraits={};
+  let ti=0;
+  toRows(getWS('Traits')).forEach(row=>{
+    const t={title:String(row['Titre']||'').trim(),text:String(row['Description']||'').trim(),
+      level:row['Niveau']||null,levelType:row['Type']||null,locked:row['Verrouillé']==='oui'};
+    if(!t.title)return;
+    const apt=String(row['Aptitude liée']||'').trim();
+    if(apt){if(!aptTraits[apt])aptTraits[apt]=[];aptTraits[apt].push(t);}
+    else if(ti<10) traits[ti++]=t;
+  });
+
+  // Équipement
+  const equipement=Array(6).fill(null).map(()=>({title:'',text:'',bm:0,image:null}));
+  const artefacts=Array(5).fill(null).map(()=>({title:'',text:'',bm:0,image:null}));
+  const prodiges=Array(5).fill(null).map(()=>({title:'',text:'',bm:0,image:null}));
+  const counters={Équipement:0,Artefact:0,Prodige:0};
+  toRows(getWS('Équipement')).forEach(row=>{
+    const type=String(row['Type']||'');
+    const item={title:String(row['Titre']||''),text:String(row['Description']||''),bm:parseInt(row['Bonus/Malus'])||0,image:null};
+    if(!item.title)return;
+    if(type==='Équipement'&&counters.Équipement<6) equipement[counters.Équipement++]=item;
+    else if(type==='Artefact'&&counters.Artefact<5) artefacts[counters.Artefact++]=item;
+    else if(type==='Prodige'&&counters.Prodige<5) prodiges[counters.Prodige++]=item;
+  });
+
+  // Dettes
+  const dettes=[];
+  toRows(getWS('Dettes-Créances')).forEach(row=>{
+    const perso=String(row['Personnage']||'').trim();
+    if(!perso||perso==='—')return;
+    dettes.push({type:String(row['Type']||'').toLowerCase().includes('créance')?'creance':'dette',
+      perso,bm:parseInt(row['Valeur (bm)'])||0,text:String(row['Texte']||''),texte:String(row['Texte']||'')});
+  });
+
+  // Histoires croisées
+  const histoiresCroisees=[];
+  toRows(getWS('Histoires-croisées')).forEach(row=>{
+    const perso=String(row['Personnage']||'').trim();
+    if(!perso||perso==='—')return;
+    histoiresCroisees.push({perso,text:String(row['Récit']||''),texte:String(row['Récit']||'')});
+  });
+
+  return {
+    tokens,scores,aptitudes,aptTraits,traits,
+    equipement,artefacts,prodiges,dettes,histoiresCroisees,
+    historique:{title:String(id_data['Nom']||''),text:String(id_data['Historique']||'')},
+    envFiche:String(id_data['Env. lié']||''),
+    des:id_data['Dés dévoyés']||'',ether:id_data['Éther']||'',occultation:id_data['Occultation']||'',
+    portrait:'',carteType:'',wheelRot:0,accordion:{},
+    dice:{whites:3,reds:2,dice:[],rolled:false},
+  };
+}
+
+// ── Peupler tous les widgets depuis un etat ──
+function loadFromEtat(etat, nom, id){
+  // Identité
+  if(id) document.getElementById('fiche-id').value=id;
+  if(nom) document.getElementById('fiche-nom').value=nom;
+  if(etat.historique?.text) document.getElementById('fiche-hist').value=etat.historique.text;
+  if(etat.envFiche) document.getElementById('fiche-env').value=etat.envFiche;
+
+  // Octogone — jetons (s est un objet {id, label, vertu, vice})
+  SECTORS.forEach(s=>{
+    const sid=s.id; // extraire l'id de l'objet secteur
+    const rawToks=etat.tokens?.[sid];
+    const toks=Array.isArray(rawToks)?rawToks:['empty','empty','empty'];
+    const sv=parseInt(etat.scores?.[`${sid}_0`])||0;
+    const svi=parseInt(etat.scores?.[`${sid}_1`])||0;
+    octState[sid]={tokens:[...toks],v:sv,vi:svi};
+    const tokWrap=document.getElementById('tok-'+sid);
+    if(tokWrap) tokWrap.querySelectorAll('.tok-btn').forEach((b,idx)=>{
+      b.className='tok-btn '+(toks[idx]||'empty');
+    });
+    renderOctScores(sid);
+  });
+
+  // Aptitudes
+  APTITUDE_KEYS.forEach((key,ai)=>{
+    let score=0;
+    if(etat.aptitudes){
+      // Format {0_0:true, 0_1:true,...} (standard)
+      for(let si=0;si<6;si++){
+        if(etat.aptitudes[`${ai}_${si}`]||etat.aptitudes[`${key}_${si}`]) score=si+1;
+      }
+    }
+    aptState[key]=score;
+    const grid=document.getElementById('apt-'+key);
+    if(grid) grid.querySelectorAll('.apt-sq').forEach((sq,idx)=>{
+      sq.className='apt-sq'+(idx<score?' on':'');
+    });
+  });
+
+  // Traits
+  selectedTraits=[];
+  // Traits généraux (state.traits)
+  (etat.traits||[]).forEach(t=>{
+    if(!t.title) return;
+    selectedTraits.push({title:t.title,text:t.text||'',level:t.level||'bonus-1',apt:'',dbRef:-1,
+      _niv:'',_type:'',_desc:'',_effet:t.text||''});
+  });
+  // Traits liés aux aptitudes (aptTraits)
+  Object.entries(etat.aptTraits||{}).forEach(([aptKey,list])=>{
+    (list||[]).forEach(t=>{
+      if(!t.title) return;
+      selectedTraits.push({title:t.title,text:t.text||'',level:t.level||'bonus-1',apt:aptKey,dbRef:-1,
+        _niv:'',_type:'',_desc:'',_effet:t.text||''});
+    });
+  });
+  renderTraits();
+
+  // Confrérie — premier slot si renseigné
+  const conf=(etat.confrerie||[])[0];
+  if(conf?.title) document.getElementById('fiche-nom').placeholder=conf.title;
+
+  update();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 
 function copyText(id){
   navigator.clipboard.writeText(document.getElementById(id).textContent);
