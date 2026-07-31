@@ -10,23 +10,23 @@
    (original appelé en premier, notre résolution ensuite).
 
    Installation : <script src="sifhr-combat-mode.js"></script>
-   juste avant </body>, + sifhr_armes_manoeuvres.json dans le
+   juste avant </body>, + sifhr_combat_data.json dans le
    même dossier.
    ============================================================ */
 (function(){
   'use strict';
   console.log('[sifhr-combat-mode] script chargé et exécuté ✓');
 
-  // ── 1. Catalogue ──
+  // ── 1. Catalogue (Phase 1 : export complet des 5 onglets de Combat.xlsx) ──
   let CATALOGUE = null;
   async function chargerCatalogue(){
     if(CATALOGUE) return CATALOGUE;
     try{
-      const r = await fetch(getBaseUrl()+'sifhr_armes_manoeuvres.json');
+      const r = await fetch(getBaseUrl()+'sifhr_combat_data.json');
       CATALOGUE = await r.json();
     }catch(e){
       console.error('[combat-mode] catalogue non chargé', e);
-      CATALOGUE = {armes:[], manoeuvres:[]};
+      CATALOGUE = {traits:[], equipement:[], manoeuvres:[], octogoneRestrictions:[], effets:[]};
     }
     return CATALOGUE;
   }
@@ -129,6 +129,7 @@
             ${m.aptitude?(APT_LABELS[m.aptitude]||m.aptitude)+' N'+(m.niveauRequis||0):'Aucune Aptitude requise'}
             ${m.segmentOctogone?' · Segment '+m.segmentOctogone:''}
             ${m.armeAssociee?' · Arme : '+m.armeAssociee:(m.nonArme?' · Sans arme':'')}
+            ${m.viceVertuIndicatif?' · <em>'+m.viceVertuIndicatif+'</em>':''}
           </div>
           ${m.effet?`<div style="font-size:.8rem;margin-top:.3rem;">${m.effet}</div>`:''}
         </div>`).join('');
@@ -160,7 +161,7 @@
     const zone = document.getElementById('combat-form-zone');
     if(!zone) return;
     const existant = id ? ensureManoeuvresState().find(m=>m.id===id) : null;
-    const data = existant || prefill || {nom:'',aptitude:'',niveauRequis:0,segmentOctogone:'',armeAssociee:'',nonArme:false,effet:'',notes:'',ctp:null};
+    const data = existant || prefill || {nom:'',aptitude:'',niveauRequis:0,segmentOctogone:'',armeAssociee:'',nonArme:false,effet:'',notes:'',ctp:null,plafondAllies:null,viceVertuIndicatif:''};
     const aptOptions = ['<option value="">— Aucune —</option>']
       .concat(APTITUDE_KEYS.map(k=>`<option value="${k}" ${data.aptitude===k?'selected':''}>${APT_LABELS[k]}</option>`)).join('');
     const segOptions = ['<option value="">— Aucun —</option>']
@@ -179,6 +180,14 @@
           <label style="font-size:.75rem;"><input type="checkbox" id="cf-nonarme" ${data.nonArme?'checked':''}> Sans arme</label>
         </div>
         <textarea id="cf-effet" placeholder="Effet (par palier si pertinent)" style="width:100%;min-height:50px;margin-bottom:.4rem;padding:.3rem;">${data.effet||''}</textarea>
+        <div style="margin-bottom:.4rem;">
+          <label style="font-size:.75rem;">Manœuvre collective — plafond d'alliés (vide = non collective) :
+            <input type="number" id="cf-plafond-allies" min="0" max="12" value="${data.plafondAllies!=null?data.plafondAllies:''}" style="width:55px;">
+          </label>
+        </div>
+        <div style="margin-bottom:.4rem;">
+          <input type="text" id="cf-vicevertu" placeholder="Vice/Vertu indicatif (ex. Malignité N1) — non bloquant" value="${(data.viceVertuIndicatif||'').replace(/"/g,'&quot;')}" style="width:100%;padding:.3rem;">
+        </div>
         <textarea id="cf-notes" placeholder="Notes / source (facultatif)" style="width:100%;min-height:34px;margin-bottom:.4rem;padding:.3rem;">${data.notes||''}</textarea>
         <div style="display:flex;gap:.5rem;">
           <button id="cf-save" style="${btnStyle('#1a4a2a')}">Enregistrer</button>
@@ -202,7 +211,9 @@
         nonArme: document.getElementById('cf-nonarme').checked,
         effet: document.getElementById('cf-effet').value.trim(),
         notes: document.getElementById('cf-notes').value.trim(),
+        viceVertuIndicatif: document.getElementById('cf-vicevertu').value.trim(),
         ctp: data.ctp || null,
+        plafondAllies: document.getElementById('cf-plafond-allies').value!=='' ? parseInt(document.getElementById('cf-plafond-allies').value) : null,
       };
       const liste = ensureManoeuvresState();
       const idx = liste.findIndex(m=>m.id===entry.id);
@@ -216,7 +227,11 @@
   function ouvrirBibliotheque(){
     (async()=>{
       await chargerCatalogue();
-      const armesActionnables = (CATALOGUE.armes||[]).filter(a=>!a.generique && a.effet).map(a=>({...a,_source:'arme'}));
+      // Phase 1 : Equipement_v2 remplace l'ancien "armes actionnables" ; on ne propose
+      // ici que les armes (pas les armures, qui ne sont pas des actions cliquables).
+      const armesActionnables = (CATALOGUE.equipement||[])
+        .filter(a=>a.effet && a.type && a.type.startsWith('Arme'))
+        .map(a=>({...a,_source:'arme'}));
       const manoeuvresBib = (CATALOGUE.manoeuvres||[]).map(m=>({...m,_source:'manoeuvre'}));
       const tout = [...armesActionnables, ...manoeuvresBib];
       const zone = document.getElementById('combat-form-zone');
@@ -230,12 +245,12 @@
         const f=(filtre||'').toLowerCase();
         const filtres = tout.filter(x=>x.nom.toLowerCase().includes(f));
         document.getElementById('cf-biblio-list').innerHTML = filtres.slice(0,40).map(x=>
-          `<div class="cf-biblio-item" data-nom="${x.nom.replace(/"/g,'&quot;')}" style="padding:.3rem .4rem;cursor:pointer;border-bottom:1px dashed #ccc;font-size:.8rem;">
+          `<div class="cf-biblio-item" data-id="${x.id}" style="padding:.3rem .4rem;cursor:pointer;border-bottom:1px dashed #ccc;font-size:.8rem;">
             ${x.nom} <span style="color:#888;font-size:.72rem;">(${x.niveau||'?'})</span>
           </div>`).join('') || '<div style="font-size:.78rem;color:#888;">Aucun résultat.</div>';
         document.querySelectorAll('.cf-biblio-item').forEach(el=>{
           el.addEventListener('click', ()=>{
-            const item = tout.find(x=>x.nom===el.dataset.nom);
+            const item = tout.find(x=>x.id===el.dataset.id);
             if(!item) return;
             const pr = parsePrerequis(item.prerequis);
             const seg = parseOctogoneSegment(item.octogone);
@@ -294,6 +309,129 @@
   // ── 2. Éligibilité d'une action par rapport au personnage local ──
   // Les entrées personnelles ont un schéma structuré (aptitude, niveauRequis,
   // segmentOctogone, armeAssociee, nonArme, ctp) — plus besoin de parser du texte.
+  // ── Phase 2 : arme en main et changement d'arme ─────────────────────
+  let _armeEnMain = null;              // {id, nom} — persistée dans state.armeEnMain
+  let _penaliteChangementArme = false; // levée au prochain lancer de dés
+
+  function nomsCorrespondent(a, b){
+    if(!a || !b) return false;
+    a = a.toLowerCase(); b = b.toLowerCase();
+    return a.includes(b) || b.includes(a);
+  }
+
+  function extraireBonusDe(effetTexte){
+    if(!effetTexte) return 0;
+    const m = String(effetTexte).match(/\+(\d)\s*D[ée]s?/i);
+    return m ? parseInt(m[1]) : 0;
+  }
+
+  function restaurerArmeEnMain(){
+    if(state.armeEnMain && state.armeEnMain.nom) _armeEnMain = state.armeEnMain;
+  }
+
+  function armesPossedees(){
+    const equip = (state.equipement||[]).filter(e=>e && e.title);
+    if(!CATALOGUE || !CATALOGUE.equipement) return equip.map(e=>({id:e.title, nom:e.title}));
+    // Croiser avec le catalogue pour ne garder que les vraies armes (pas les armures)
+    return equip
+      .map(e=>{
+        const c = CATALOGUE.equipement.find(x=>nomsCorrespondent(x.nom, e.title));
+        return c && c.type && c.type.startsWith('Arme') ? c : null;
+      })
+      .filter(Boolean);
+  }
+
+  function equiperArme(item, viaChangement){
+    _armeEnMain = { id:item.id, nom:item.nom };
+    state.armeEnMain = _armeEnMain;
+    if(typeof saveState==='function') saveState();
+    if(viaChangement){
+      _penaliteChangementArme = true;
+    }
+    injecterPanneauManoeuvres();
+    injecterPanneauArme();
+  }
+
+  function injecterPanneauArme(){
+    const hote = document.getElementById('apt-btn-grid');
+    if(!hote) return;
+    let panel = document.getElementById('combat-arme-panel');
+    if(!panel){
+      panel = document.createElement('div');
+      panel.id = 'combat-arme-panel';
+      panel.style.cssText = 'margin-bottom:.6rem;padding:.5rem .6rem;border:1px solid #7a5200;border-radius:6px;'
+        +'background:rgba(122,82,0,.05);';
+      hote.parentNode.insertBefore(panel, hote);
+    }
+    const armes = armesPossedees();
+    let html = `<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5200;letter-spacing:.05em;margin-bottom:.4rem;">🗡 ARME EN MAIN</div>`;
+    if(!armes.length){
+      html += `<div style="font-size:.78rem;font-style:italic;color:var(--ink3,#666);">Aucune arme identifiée dans l'Équipement.</div>`;
+    } else {
+      html += `<div style="font-size:.82rem;margin-bottom:.4rem;">${_armeEnMain ? '<strong>'+_armeEnMain.nom+'</strong>' : '<em>Aucune arme sélectionnée</em>'}`
+        + (_penaliteChangementArme?' <span style="color:#8b2020;">— changement en cours, manœuvres offensives bloquées ce round</span>':'')
+        + `</div>`;
+      html += armes.map(a=>{
+        const actif = _armeEnMain && _armeEnMain.id===a.id;
+        return `<button class="combat-arme-btn" data-id="${a.id}" ${actif?'disabled':''}
+          style="font-family:'Crimson Text',serif;font-size:.76rem;padding:3px 8px;margin:2px;border-radius:5px;
+          border:1px solid #7a5200;background:${actif?'#7a5200':'#fff'};color:${actif?'#fff':'#7a5200'};
+          cursor:${actif?'default':'pointer'};">${a.nom}</button>`;
+      }).join('');
+    }
+    panel.innerHTML = html;
+    panel.querySelectorAll('.combat-arme-btn:not([disabled])').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const item = armes.find(a=>a.id===b.dataset.id);
+        if(!item) return;
+        const dejaEquipee = !!_armeEnMain;
+        if(dejaEquipee && !confirm(`Changer pour « ${item.nom} » ? Cela fait perdre l'avantage offensif de cet assaut (manœuvres offensives bloquées jusqu'au prochain lancer).`)) return;
+        equiperArme(item, dejaEquipee);
+      });
+    });
+  }
+
+  // ── Phase 4 : filtrage par état général de l'octogone (Octogone_Restrictions_v2) ──
+  // Contrairement à la simple vérification du segment propre à la manœuvre (ci-dessous,
+  // conservée), on regarde ici les 8 segments du personnage et on croise avec la table
+  // de référence : une saturation dévoyée limite certaines catégories de manœuvres même
+  // si leur propre segment associé n'a rien à voir avec l'axe saturé.
+  function evaluerAxesOctogone(aptKey){
+    const limitePar = [], favorisePar = [];
+    if(!aptKey || !CATALOGUE || !CATALOGUE.octogoneRestrictions) return {limitePar, favorisePar};
+    const label = APT_LABELS[aptKey] || aptKey;
+    SECTORS.forEach(sec=>{
+      const tokens = state.tokens[sec.id]||[];
+      const w = tokens.filter(t=>t==='white').length;
+      const b = tokens.filter(t=>t==='black').length;
+      if(w+b<3) return; // pas saturé, rien à signaler
+      const pur = w>b;
+      const row = CATALOGUE.octogoneRestrictions.find(r=>
+        r.element.toLowerCase().includes(sec.label.toLowerCase())
+        && r.etatSaturation.toLowerCase().startsWith(pur?'majoritairement pur':'majoritairement dévoyé'));
+      if(!row) return;
+      const texte = pur ? row.favorisees : row.limitees;
+      if(texte && texte!=='-' && texte.toLowerCase().includes(label.toLowerCase())){
+        if(pur) favorisePar.push(`${row.element} saturé pur : ${row.effetSuggere}`);
+        else limitePar.push(`${row.element} saturé dévoyé (${row.etatSaturation.match(/\((.+)\)/)?.[1]||''}) — ${row.limitees}`);
+      }
+    });
+    return {limitePar, favorisePar};
+  }
+
+  // Fatigue générale : au-delà d'un certain nombre de dés dévoyés, les manœuvres
+  // physiquement exigeantes (Se Mesurer, Se Déplacer de niveau élevé) sont fragilisées.
+  const SEUIL_FATIGUE = 3;
+  function evaluerFatigue(m){
+    if(m.aptitude!=='se_mesurer' && m.aptitude!=='se_deplacer') return null;
+    if((m.niveauRequis||0) < 2) return null;
+    try{
+      const reds = dS().reds || 0;
+      if(reds >= SEUIL_FATIGUE) return `${reds} dés dévoyés — fatigue générale, épreuve physique fragilisée`;
+    }catch(e){}
+    return null;
+  }
+
   function evaluerManoeuvre(m){
     const raison = [];
     let bloque = false, limite = false;
@@ -307,6 +445,17 @@
         raison.push(`${APT_LABELS[m.aptitude]||m.aptitude} N${niveauRequis} requis (actuel N${score})`);
       }
     }
+
+    // Phase 4a : état général de l'octogone (les 8 segments, pas seulement celui de la manœuvre)
+    if(m.aptitude){
+      const {limitePar, favorisePar} = evaluerAxesOctogone(m.aptitude);
+      if(limitePar.length){ limite = true; raison.push(...limitePar); }
+      favorisePar.forEach(f=>raison.push(`✓ Favorisé — ${f}`));
+    }
+
+    // Phase 4b : fatigue (dés dévoyés en surnombre)
+    const fatigue = evaluerFatigue(m);
+    if(fatigue){ limite = true; raison.push(fatigue); }
 
     // Segment octogone associé : s'il est saturé et majoritairement dévoyé, la manœuvre est limitée (pas bloquée)
     let coupleIdx = null;
@@ -334,7 +483,18 @@
       if(!armeTrouvee){
         limite = true;
         raison.push(`« ${m.armeAssociee} » non trouvée dans l'Équipement — vérifier avant utilisation`);
+      } else if(_armeEnMain && !nomsCorrespondent(m.armeAssociee, _armeEnMain.nom)){
+        // Phase 2 : l'arme en main prime — une manœuvre liée à une AUTRE arme est bloquée,
+        // pas juste limitée, sans quoi le choix d'arme n'a plus d'enjeu réel.
+        bloque = true;
+        raison.push(`Nécessite « ${m.armeAssociee} » en main (arme actuelle : ${_armeEnMain.nom})`);
       }
+    }
+
+    // Pénalité de changement d'arme : manœuvres offensives indisponibles pour cet assaut
+    if(_penaliteChangementArme && m.aptitude!=='resister' && m.aptitude!=='se_deplacer'){
+      bloque = true;
+      raison.push(`Changement d'arme en cours — manœuvre offensive indisponible ce round`);
     }
     if(!raison.length && !bloque && !limite) raison.push('Disponible');
 
@@ -372,16 +532,178 @@
 
   async function ouvrirModeCombat(){
     await chargerCatalogue();
+    restaurerArmeEnMain();
     if(typeof openDice==='function') openDice();
-    // Laisser le temps à l'écran de rôle / l'app de s'afficher, puis injecter notre panneau
+    // Laisser le temps à l'écran de rôle / l'app de s'afficher, puis injecter nos panneaux
     let tries=0;
     const tryInject=()=>{
       tries++;
       const app=document.getElementById('dice-app');
-      if(app && app.style.display!=='none'){ injecterPanneauManoeuvres(); return; }
+      if(app && app.style.display!=='none'){
+        injecterPanneauArme();
+        injecterPanneauManoeuvres();
+        injecterPanneauSession();
+        return;
+      }
       if(tries<20) setTimeout(tryInject,300);
     };
     tryInject();
+  }
+
+  // ── Phase 3 : session de combat multi-participants ──────────────────
+  // Stockée sur la fiche d'ENVIRONNEMENT partagée (state.envFiche), pas sur
+  // chaque fiche individuelle : une seule source de vérité pour tout le monde.
+  function getEnvId(){
+    if(typeof getEnvFicheId==='function'){ const v=getEnvFicheId(); if(v) return v; }
+    return (state.envFiche && state.envFiche.trim()) ? state.envFiche.trim() : null;
+  }
+
+  async function fetchEnvEtat(envId){
+    try{
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const d = await r.json();
+      return d[0]?.etat || {};
+    }catch(e){ console.error('[sifhr-combat-mode] fetchEnvEtat', e); return {}; }
+  }
+
+  // Lecture-modification-écriture : on relit l'état courant de l'env, on applique
+  // le mutateur sur combatSession, puis on réécrit — évite d'écraser ce que
+  // d'autres participants viennent de changer entre-temps.
+  async function ecrireCombatSession(mutator){
+    const envId = getEnvId();
+    if(!envId){ console.warn('[sifhr-combat-mode] pas de fiche environnement définie (state.envFiche).'); return null; }
+    const etat = await fetchEnvEtat(envId);
+    const session = etat.combatSession || { actif:false, assautNum:1, participants:{}, historique:[] };
+    mutator(session);
+    etat.combatSession = session;
+    try{
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+        method:'POST',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+        body: JSON.stringify({id:envId, etat})
+      });
+    }catch(e){ console.error('[sifhr-combat-mode] ecrireCombatSession', e); }
+    return session;
+  }
+
+  async function rejoindreCombat(){
+    await ecrireCombatSession(session=>{
+      session.actif = true;
+      session.participants = session.participants || {};
+      session.participants[FICHE_ID] = { participe:true, resolu:false, nom:FICHE_ID };
+    });
+    injecterPanneauSession();
+  }
+  async function quitterCombat(){
+    await ecrireCombatSession(session=>{
+      if(session.participants) delete session.participants[FICHE_ID];
+    });
+    injecterPanneauSession();
+  }
+  async function assautSuivant(){
+    await ecrireCombatSession(session=>{
+      session.assautNum = (session.assautNum||1) + 1;
+      Object.values(session.participants||{}).forEach(p=>p.resolu=false);
+      session.historique = session.historique || [];
+      session.historique.push({assaut: session.assautNum-1, ts: Date.now()});
+    });
+    injecterPanneauSession();
+  }
+  async function terminerCombat(){
+    if(!confirm('Terminer la session de combat pour tout le monde ?')) return;
+    await ecrireCombatSession(session=>{ session.actif=false; });
+    injecterPanneauSession();
+  }
+  async function marquerResolu(){
+    const envId = getEnvId();
+    if(!envId) return;
+    const etat = await fetchEnvEtat(envId);
+    const session = etat.combatSession;
+    if(!session || !session.actif || !session.participants || !session.participants[FICHE_ID]) return;
+    await ecrireCombatSession(s=>{
+      if(s.participants && s.participants[FICHE_ID]) s.participants[FICHE_ID].resolu = true;
+    });
+    injecterPanneauSession();
+  }
+
+  function choisirCible(id){
+    if(typeof dSetDuelTarget==='function') dSetDuelTarget(id);
+    injecterPanneauSession();
+  }
+
+  async function injecterPanneauSession(){
+    const hote = document.getElementById('apt-btn-grid');
+    if(!hote) return;
+    let panel = document.getElementById('combat-session-panel');
+    if(!panel){
+      panel = document.createElement('div');
+      panel.id = 'combat-session-panel';
+      panel.style.cssText = 'margin-bottom:.6rem;padding:.5rem .6rem;border:1px solid #185FA5;border-radius:6px;'
+        +'background:rgba(24,95,165,.05);';
+      hote.parentNode.insertBefore(panel, hote);
+    }
+    const envId = getEnvId();
+    if(!envId){
+      panel.innerHTML = `<div style="font-family:Cinzel,serif;font-size:.7rem;color:#185FA5;">⚔ SESSION DE COMBAT</div>
+        <div style="font-size:.78rem;font-style:italic;color:var(--ink3,#666);">Aucune fiche d'environnement définie — la session multi-participants a besoin d'une fiche d'environnement partagée (voir en haut de la fiche).</div>`;
+      return;
+    }
+    const etat = await fetchEnvEtat(envId);
+    const session = etat.combatSession || { actif:false, participants:{} };
+    const participants = session.participants || {};
+    const moi = participants[FICHE_ID];
+
+    let html = `<div style="font-family:Cinzel,serif;font-size:.7rem;color:#185FA5;letter-spacing:.05em;margin-bottom:.4rem;">⚔ SESSION DE COMBAT ${session.actif?('— Assaut '+(session.assautNum||1)):'(inactive)'}</div>`;
+
+    if(!moi){
+      html += `<button id="combat-rejoindre-btn" style="${btnStyle('#185FA5')}">Rejoindre le combat</button>`;
+    } else {
+      html += `<button id="combat-quitter-btn" style="${btnStyle('#6b5d4f')}">Quitter le combat</button> `;
+      html += `<button id="combat-assaut-suivant-btn" style="${btnStyle('#185FA5')}">Assaut suivant →</button> `;
+      html += `<button id="combat-terminer-btn" style="${btnStyle('#8b2020')}">Terminer</button>`;
+
+      const roster = Object.entries(participants).filter(([id])=>id!==FICHE_ID);
+      html += `<div style="margin-top:.5rem;font-size:.78rem;">`;
+      html += `<div style="font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3,#666);margin-bottom:.3rem;">PARTICIPANTS</div>`;
+      html += `<div>${moi.resolu?'✅':'⏳'} ${FICHE_ID} (vous)</div>`;
+      roster.forEach(([id,p])=>{
+        html += `<div>${p.resolu?'✅':'⏳'} ${id} <button class="combat-cible-btn" data-id="${id}" style="${btnStyle('#8b2020',true)}">Cibler</button></div>`;
+      });
+      html += `</div>`;
+    }
+    panel.innerHTML = html;
+
+    const rb = document.getElementById('combat-rejoindre-btn'); if(rb) rb.addEventListener('click', rejoindreCombat);
+    const qb = document.getElementById('combat-quitter-btn'); if(qb) qb.addEventListener('click', quitterCombat);
+    const ab = document.getElementById('combat-assaut-suivant-btn'); if(ab) ab.addEventListener('click', assautSuivant);
+    const tb = document.getElementById('combat-terminer-btn'); if(tb) tb.addEventListener('click', terminerCombat);
+    panel.querySelectorAll('.combat-cible-btn').forEach(b=>b.addEventListener('click', ()=>choisirCible(b.dataset.id)));
+  }
+
+  // Rafraîchissement périodique du panneau (pour voir en direct qui a résolu son assaut)
+  function demarrerRafraichissementSession(){
+    setInterval(()=>{
+      if(document.getElementById('combat-session-panel')) injecterPanneauSession();
+    }, 4000);
+  }
+
+  // Marquer "résolu" dès que ce joueur lance ses dés, si une session est active
+  function installerHookRollResolu(){
+    if(typeof window.dRollDice !== 'function'){ setTimeout(installerHookRollResolu,500); return; }
+    if(window.dRollDice.__sifhrCombatWrapped) return;
+    const original = window.dRollDice;
+    const wrapped = function(...args){
+      const r = original.apply(this,args);
+      try{ marquerResolu(); }catch(e){}
+      if(_penaliteChangementArme){
+        _penaliteChangementArme = false;
+        try{ injecterPanneauArme(); injecterPanneauManoeuvres(); }catch(e){}
+      }
+      return r;
+    };
+    wrapped.__sifhrCombatWrapped = true;
+    window.dRollDice = wrapped;
   }
 
   function injecterPanneauManoeuvres(){
@@ -449,16 +771,37 @@
     const btn=document.querySelector(`.combat-man-btn[data-id="${id}"]`);
     if(btn) btn.style.outline='2px solid #1a4a2a';
     const info=document.getElementById('combat-man-choisie');
-    if(info) info.textContent = `Manœuvre retenue : ${m.nom}`
+    let infoTxt = `Manœuvre retenue : ${m.nom}`
       + (ev.armeTrouvee?` — arme : ${ev.armeTrouvee.title}`:' — aucune arme identifiée automatiquement (vérifier).');
+
+    // Manœuvre collective : demander combien d'alliés participent (plafonné par manœuvre)
+    _manoeuvreActive.alliesDeclares = 0;
+    if(m.plafondAllies!=null && m.plafondAllies>0){
+      const n = prompt(`Manœuvre collective — combien d'alliés participent (max ${m.plafondAllies}) ?`, '0');
+      const val = Math.max(0, Math.min(m.plafondAllies, parseInt(n)||0));
+      _manoeuvreActive.alliesDeclares = val;
+      infoTxt += ` — ${val} allié(s) déclaré(s)`;
+    }
+    if(info) info.textContent = infoTxt;
   }
 
   function bonusArmeActive(){
     if(!_manoeuvreActive) return 0;
     const ctp = _manoeuvreActive.m.ctp;
-    if(!ctp) return 0;
-    const {c,t,p}=ctp;
-    return Math.round(((c||0)+(t||0)+(p||0))/2);
+    let bonus = 0;
+    if(ctp){
+      const {c,t,p}=ctp;
+      bonus += Math.round(((c||0)+(t||0)+(p||0))/2);
+    } else if(_armeEnMain && CATALOGUE && CATALOGUE.equipement){
+      // Phase 2 : à défaut de profil C/T/P sur la manœuvre elle-même, on tire un
+      // bonus simple du texte de l'arme en main (ex. "+1 Dé", "+2 Dés").
+      const item = CATALOGUE.equipement.find(x=>x.id===_armeEnMain.id);
+      if(item) bonus += extraireBonusDe(item.effet);
+    }
+    // Bonus collectif simplifié : +1 par allié déclaré (voir Phase 3 — à affiner
+    // quand Manoeuvres_Combat_v2 précisera le montant exact du bonus par manœuvre).
+    bonus += _manoeuvreActive.alliesDeclares || 0;
+    return bonus;
   }
 
   // ── 4. Table de résolution (identique à la version précédente) ──
@@ -502,6 +845,8 @@
     if(palier) afficherPanneauResolution(palier, margeFinale, advId, cumulTout, palierAdv);
   }
 
+  const PALIER_TO_NIVEAU = {benin:'N1', moyen:'N2', grave:'N3'};
+
   function afficherPanneauResolution(palier, marge, advId, cumulTout, palierAdv){
     const effets=EFFETS_COMBAT[palier];
     let panel=document.getElementById('combat-resolution-panel');
@@ -518,6 +863,14 @@
       {key:'trait', label:`Trait de blessure niveau ${effets.traitLevel} (${effets.traitDuree})`},
       {key:'jetons', label:`${effets.jetons} jeton(s) dévoyé(s) dans l'octogone de ${advId}`},
     ];
+    // Phase 5 : effets nommés d'Effet_v2 correspondant au palier atteint, en options
+    // supplémentaires (non cochées par défaut, pour ne pas surcharger les canaux génériques).
+    const niveau = PALIER_TO_NIVEAU[palier];
+    const effetsNommesPerdant = (CATALOGUE && CATALOGUE.effets ? CATALOGUE.effets : [])
+      .filter(e=>e.niveau===niveau && e.cible==='perdant');
+    const effetsNommesGagnant = (CATALOGUE && CATALOGUE.effets ? CATALOGUE.effets : [])
+      .filter(e=>e.niveau===niveau && e.cible==='gagnant');
+
     let html=`<div style="font-family:Cinzel,serif;font-size:.72rem;color:#8b2020;margin-bottom:.4rem;">`
       +`⚔ RÉSOLUTION — ${_manoeuvreActive.m.nom} — marge ${marge>=0?'+':''}${marge}, palier ${effets.label}</div>`;
     canaux.forEach(ca=>{
@@ -525,21 +878,49 @@
       html+=`<label style="display:block;margin:.25rem 0;cursor:pointer;">`
         +`<input type="checkbox" class="combat-canal-cb" data-canal="${ca.key}" ${checked}> ${ca.label}</label>`;
     });
+    if(effetsNommesPerdant.length){
+      html += `<div style="font-family:Cinzel,serif;font-size:.65rem;color:#7a5200;margin-top:.4rem;">EFFETS NOMMÉS DISPONIBLES POUR ${advId} (facultatif, en plus)</div>`;
+      effetsNommesPerdant.forEach(e=>{
+        html += `<label style="display:block;margin:.2rem 0;cursor:pointer;font-size:.8rem;">`
+          + `<input type="checkbox" class="combat-effet-nomme-cb" data-id="${e.id}"> ${e.nom.trim()} — ${e.effet}</label>`;
+      });
+    }
     if(palierAdv){
       html+=`<div style="margin-top:.4rem;font-style:italic;color:#8b2020;">Échec critique adverse : 1 jeton supplémentaire dévoyé automatiquement (palier ${palierAdv}).</div>`;
     }
     html+=`<button id="combat-envoyer-effets-btn" style="margin-top:.5rem;font-family:Cinzel,serif;font-size:.72rem;`
       +`padding:5px 12px;border:1px solid #8b2020;border-radius:5px;background:#8b2020;color:#fff;cursor:pointer;">`
       +`Envoyer les effets à ${advId}</button>`;
+    if(effetsNommesGagnant.length){
+      html += `<div style="font-family:Cinzel,serif;font-size:.65rem;color:#1a4a2a;margin-top:.6rem;">POUR VOUS-MÊME (${effets.label})</div>`;
+      effetsNommesGagnant.forEach(e=>{
+        html += `<button class="combat-effet-soi-btn" data-id="${e.id}" style="${btnStyle('#1a4a2a',true)};display:block;margin:.2rem 0;text-align:left;">`
+          + `+ ${e.nom.trim()} — ${e.effet}</button>`;
+      });
+    }
     panel.innerHTML=html;
     document.getElementById('combat-envoyer-effets-btn').addEventListener('click', ()=>{
       const choix=Array.from(panel.querySelectorAll('.combat-canal-cb')).filter(cb=>cb.checked).map(cb=>cb.dataset.canal);
-      envoyerEffetsCombat(advId, palier, choix, palierAdv);
+      const effetsNommesChoisis = Array.from(panel.querySelectorAll('.combat-effet-nomme-cb')).filter(cb=>cb.checked)
+        .map(cb=>effetsNommesPerdant.find(e=>e.id===cb.dataset.id)).filter(Boolean);
+      envoyerEffetsCombat(advId, palier, choix, palierAdv, effetsNommesChoisis);
       panel.innerHTML += `<div style="margin-top:.4rem;color:#1a4a2a;">✓ Effets envoyés — en attente de confirmation par ${advId}.</div>`;
+    });
+    panel.querySelectorAll('.combat-effet-soi-btn').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const e = effetsNommesGagnant.find(x=>x.id===b.dataset.id);
+        if(!e) return;
+        const emptyIdx=state.traits.findIndex(t=>!t.title&&!t.text);
+        const entry={title:e.nom.trim(), text:e.effet, level:parseInt((e.niveau||'N1').replace('N','')), levelType:'bonus', locked:false};
+        if(emptyIdx!==-1) state.traits[emptyIdx]=entry; else state.traits.push(entry);
+        if(typeof renderTraits==='function') renderTraits();
+        if(typeof saveState==='function') saveState();
+        b.disabled = true; b.style.opacity='.4'; b.textContent = '✓ ' + b.textContent;
+      });
     });
   }
 
-  async function envoyerEffetsCombat(targetId, palier, canaux, palierAdv){
+  async function envoyerEffetsCombat(targetId, palier, canaux, palierAdv, effetsNommes){
     const effets=EFFETS_COMBAT[palier];
     try{
       const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(targetId)}&select=etat`,
@@ -549,7 +930,9 @@
       targetEtat._combatEffectRequest={
         from:FICHE_ID, palier,
         effets:{des:effets.des, traitLevel:effets.traitLevel, traitDuree:effets.traitDuree, jetons:effets.jetons},
-        canaux, palierAdv: palierAdv||null, ts:Date.now()
+        canaux, palierAdv: palierAdv||null,
+        effetsNommes: (effetsNommes||[]).map(e=>({id:e.id, nom:e.nom.trim(), effet:e.effet, niveau:e.niveau})),
+        ts:Date.now()
       };
       await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
         method:'POST',
@@ -578,8 +961,10 @@
       trait:`un Trait de blessure niveau ${effets.traitLevel} (${effets.traitDuree})`,
       jetons:`${effets.jetons} jeton(s) dévoyé(s) dans l'octogone`
     }[c])).join(', ');
+    const txtNommes = (req.effetsNommes||[]).map(e=>e.nom).join(', ');
     box.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.75rem;color:#8b2020;margin-bottom:.4rem;">⚔ ${req.from} vous inflige les effets d'un combat (palier ${req.palier})</div>`
-      +`<div style="margin-bottom:.6rem;">${txt||'(aucun canal sélectionné)'}</div>`
+      +`<div style="margin-bottom:.4rem;">${txt||'(aucun canal générique sélectionné)'}</div>`
+      +(txtNommes?`<div style="margin-bottom:.6rem;font-style:italic;">+ ${txtNommes}</div>`:'')
       +`<button id="combat-accept-btn" style="font-family:Cinzel,serif;font-size:.72rem;padding:4px 10px;margin-right:.5rem;border:1px solid #1a4a2a;border-radius:5px;background:#1a4a2a;color:#fff;cursor:pointer;">Accepter</button>`
       +`<button id="combat-refuse-btn" style="font-family:Cinzel,serif;font-size:.72rem;padding:4px 10px;border:1px solid #b8a88a;border-radius:5px;background:none;cursor:pointer;">Refuser</button>`;
     document.getElementById('combat-accept-btn').addEventListener('click', ()=>appliquerEffetsCombat(req,true));
@@ -600,6 +985,12 @@
         }
         if(canal==='jetons'){ for(let i=0;i<effets.jetons;i++) addToken('terre','black'); }
       });
+      (req.effetsNommes||[]).forEach(e=>{
+        const emptyIdx=state.traits.findIndex(t=>!t.title&&!t.text);
+        const entry={title:e.nom, text:e.effet+` (infligé par ${req.from})`, level:parseInt((e.niveau||'N1').replace('N','')), levelType:'malus', locked:false};
+        if(emptyIdx!==-1) state.traits[emptyIdx]=entry; else state.traits.push(entry);
+      });
+      if((req.effetsNommes||[]).length && typeof renderTraits==='function') renderTraits();
       if(req.palierAdv){ addToken('feu','black'); }
       if(typeof saveState==='function') saveState();
     }
@@ -627,6 +1018,8 @@
     try{ installerHookLogin(); } catch(e){ console.error('[sifhr-combat-mode] installerHookLogin a échoué :', e); }
     try{ installerHookDuel(); } catch(e){ console.error('[sifhr-combat-mode] installerHookDuel a échoué :', e); }
     try{ pollerEffetsEntrants(); } catch(e){ console.error('[sifhr-combat-mode] pollerEffetsEntrants a échoué :', e); }
+    try{ installerHookRollResolu(); } catch(e){ console.error('[sifhr-combat-mode] installerHookRollResolu a échoué :', e); }
+    try{ demarrerRafraichissementSession(); } catch(e){ console.error('[sifhr-combat-mode] demarrerRafraichissementSession a échoué :', e); }
     try{ chargerCatalogue(); } catch(e){ console.error('[sifhr-combat-mode] chargerCatalogue a échoué :', e); }
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
