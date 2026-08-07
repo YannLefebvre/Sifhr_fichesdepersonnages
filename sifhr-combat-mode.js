@@ -692,14 +692,32 @@
       tries++;
       const app=document.getElementById('dice-app');
       if(app && app.style.display!=='none'){
+        // Ordre d'affichage voulu : Session en premier, puis Équipement, puis Manœuvres.
+        injecterPanneauSession();
         injecterPanneauArme();
         injecterPanneauManoeuvres();
-        injecterPanneauSession();
+        masquerSectionsObsoletes();
         return;
       }
       if(tries<20) setTimeout(tryInject,300);
     };
     tryInject();
+  }
+
+  // Le duel et la collaboration natifs sont désormais couverts par la Session de
+  // combat (ciblage par assaut) : ces deux blocs d'origine deviennent redondants
+  // en Mode Combat, on les masque plutôt que de les dupliquer.
+  function masquerSectionsObsoletes(){
+    ['dice-duel-setup','dice-collab-setup'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.style.display = 'none';
+    });
+  }
+  function reafficherSectionsObsoletes(){
+    ['dice-duel-setup','dice-collab-setup'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.style.display = '';
+    });
   }
 
   // ── Phase 3 : session de combat multi-participants ──────────────────
@@ -766,6 +784,31 @@
     });
     injecterPanneauSession();
   }
+  // Reproduit l'essentiel de dResetAll() (bannière de verrouillage, dés, bonus/malus,
+  // dés spéciaux) SANS la confirmation bloquante — pour un déverrouillage automatique
+  // au changement d'assaut plutôt qu'un « nouvelle partie » manuel.
+  function deverrouillerLanceurPourNouvelAssaut(){
+    try{
+      if(typeof dUnlockLauncherFinal==='function') dUnlockLauncherFinal();
+      const s = dS();
+      s.rolled=false; s.dice=[];
+      s.bonusMalus={bonus:{1:0,2:0,3:0},malus:{1:0,2:0,3:0}};
+      s.specialDice={};
+      s.oppositionDice=[];
+      s.relanceDice=[];
+      s.negationDice=[];
+      s.firstRollSnapshot=null;
+      s.successVal1=null; s.successVal2=null;
+    }catch(e){ console.error('[sifhr-combat-mode] deverrouillerLanceurPourNouvelAssaut (état dés)', e); }
+    try{ if(typeof ProdigeSystem!=='undefined') ProdigeSystem._fired=false; }catch(e){}
+    try{ _pneumaExtractedDice = []; _pneumaSelectedCount = 0;
+      const dpneumaList=document.getElementById('dpneuma-extracted-list');
+      if(dpneumaList){ dpneumaList.style.display='none'; dpneumaList.innerHTML=''; }
+    }catch(e){}
+    try{ if(typeof dRenderDice==='function') dRenderDice(false); }catch(e){}
+    try{ if(typeof dRenderSuccessUnified==='function') dRenderSuccessUnified(); }catch(e){}
+  }
+
   async function assautSuivant(){
     await ecrireCombatSession(session=>{
       session.assautNum = (session.assautNum||1) + 1;
@@ -773,6 +816,7 @@
       session.historique = session.historique || [];
       session.historique.push({assaut: session.assautNum-1, ts: Date.now()});
     });
+    deverrouillerLanceurPourNouvelAssaut();
     injecterPanneauSession();
   }
   async function terminerCombat(){
@@ -841,6 +885,27 @@
         <button id="combat-ajout-allie-btn" style="${btnStyle('#1a4a2a', true)}">+ Allié</button>
         <button id="combat-ajout-adversaire-btn" style="${btnStyle('#8b2020', true)}">+ Adversaire</button>
       </div>`;
+
+      // Historique assaut par assaut : qui l'emporte, marge, palier, effets appliqués —
+      // ou égalité, pour comprendre ce qui s'est passé sans avoir dû suivre en direct.
+      const historique = (session.historique || []).filter(h=>h && h.moi && h.adversaire && h.manoeuvre);
+      if(historique.length){
+        html += `<div style="margin-top:.6rem;border-top:1px dashed #185FA5;padding-top:.4rem;">
+          <div style="font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3,#666);margin-bottom:.3rem;">HISTORIQUE</div>`;
+        historique.slice().reverse().forEach(h=>{
+          let ligne;
+          if(h.type==='victoire'){
+            ligne = `<strong>${h.moi}</strong> l'emporte sur ${h.adversaire} (${h.manoeuvre}, marge ${h.marge>=0?'+':''}${h.marge}, ${h.palier})`
+              + (h.effets && h.effets.length ? ` — ${h.effets.join(', ')}` : '');
+          } else if(h.type==='egalite'){
+            ligne = `Égalité entre ${h.moi} et ${h.adversaire} (${h.manoeuvre}, marge ${h.marge})`;
+          } else {
+            ligne = `${h.moi} contre ${h.adversaire} (${h.manoeuvre}) — marge insuffisante pour un effet`;
+          }
+          html += `<div style="font-size:.72rem;margin-bottom:.25rem;">Assaut ${h.assaut} — ${ligne}</div>`;
+        });
+        html += `</div>`;
+      }
     }
     panel.innerHTML = html;
 
@@ -1045,7 +1110,7 @@
   }
 
   function dResoudreCombat(myResult, advResult, advId){
-    if(!myResult || !advResult || !_manoeuvreActive) return; // pas de manœuvre = pas de résolution automatique
+    if(!myResult || !advResult || !_manoeuvreActive || !_manoeuvreActive.m || !advId) return; // appel incomplet = pas de résolution
     const margeA = myResult.verdict==='echec_critique' ? -(myResult.oppositions||0) : (myResult.reussites||0);
     const margeB = advResult.verdict==='echec_critique' ? -(advResult.oppositions||0) : (advResult.reussites||0);
     const margeFinale = (margeA + bonusArmeActive()) - margeB;
@@ -1059,7 +1124,27 @@
     const advEchecCritique = advResult.verdict==='echec_critique';
     const palierAdv = advEchecCritique ? palierDeMarge(Math.abs(advResult.oppositions||0)) : null;
 
-    if(palier) afficherPanneauResolution(palier, margeFinale, advId, cumulTout, palierAdv);
+    if(palier){
+      afficherPanneauResolution(palier, margeFinale, advId, cumulTout, palierAdv);
+    } else if(FICHE_ID && advId && _manoeuvreActive.m.nom){
+      enregistrerHistorique({
+        type: margeFinale===0 ? 'egalite' : 'sans-effet',
+        moi: FICHE_ID, adversaire: advId, marge: margeFinale,
+        manoeuvre: _manoeuvreActive.m.nom,
+      });
+    }
+  }
+
+  // Ajoute une entrée à l'historique partagé de la session (visible de tous les
+  // participants) — appelé aussi bien pour une égalité que pour une victoire nette.
+  async function enregistrerHistorique(entree){
+    await ecrireCombatSession(session=>{
+      session.historique = session.historique || [];
+      entree.assaut = session.assautNum || 1;
+      entree.ts = Date.now();
+      session.historique.push(entree);
+    });
+    injecterPanneauSession();
   }
 
   const PALIER_TO_NIVEAU = {benin:'N1', moyen:'N2', grave:'N3'};
@@ -1169,11 +1254,24 @@
       }
     });
 
-    document.getElementById('combat-envoyer-effets-btn').addEventListener('click', ()=>{
+    document.getElementById('combat-envoyer-effets-btn').addEventListener('click', async ()=>{
+      const btnEnvoi = document.getElementById('combat-envoyer-effets-btn');
+      btnEnvoi.disabled = true; btnEnvoi.textContent = 'Envoi en cours…';
       const choix=Array.from(panel.querySelectorAll('.combat-canal-cb')).filter(cb=>cb.checked).map(cb=>cb.dataset.canal);
       const effetsNommesChoisis = Array.from(panel.querySelectorAll('.combat-effet-nomme-cb')).filter(cb=>cb.checked)
         .map(cb=>[...effetsNommesPerdant,...effetsLiesManoeuvre].find(e=>e.id===cb.dataset.id)).filter(Boolean);
-      envoyerEffetsCombat(advId, palier, choix, palierAdv, effetsNommesChoisis, _octogoneCustomAEnvoyer);
+      // Séquentiel et attendu : deux écritures asynchrones sur la même session partagée
+      // qui se chevauchent peuvent s'écraser l'une l'autre (condition de course constatée
+      // en test) si on ne les attend pas l'une après l'autre.
+      await envoyerEffetsCombat(advId, palier, choix, palierAdv, effetsNommesChoisis, _octogoneCustomAEnvoyer);
+      await enregistrerHistorique({
+        type: 'victoire',
+        moi: FICHE_ID, adversaire: advId, marge, palier: effets.label,
+        manoeuvre: _manoeuvreActive.m.nom,
+        effets: [...choix.map(c=>c==='des'?`+${effets.des} dés dévoyés`:`Trait niveau ${effets.traitLevel}`),
+          ..._octogoneCustomAEnvoyer?[`${_octogoneCustomAEnvoyer.quantite} jeton(s) ${_octogoneCustomAEnvoyer.polarite}`]:[],
+          ...effetsNommesChoisis.map(e=>e.nom.trim())],
+      });
       _octogoneCustomAEnvoyer = null;
       panel.innerHTML += `<div style="margin-top:.4rem;color:#1a4a2a;">✓ Effets envoyés — en attente de confirmation par ${advId}.</div>`;
     });
