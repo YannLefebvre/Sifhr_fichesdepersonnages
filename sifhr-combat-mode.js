@@ -489,7 +489,7 @@
     if(m.aptitude!=='se_mesurer' && m.aptitude!=='se_deplacer') return null;
     if((m.niveauRequis||0) < 2) return null;
     try{
-      const reds = dS().reds || 0;
+      const reds = compterDesDevoyesPrecis() || dS().reds || 0;
       if(reds >= SEUIL_FATIGUE) return `${reds} dés dévoyés — fatigue générale, épreuve physique fragilisée`;
     }catch(e){}
     return null;
@@ -511,6 +511,25 @@
     if(f && f.startsWith('apt_')) return APT_LABELS[f.slice(4)] || f;
     return FACTEUR_LABELS_COMBAT[f] || f;
   }
+  // Correction locale : le compteur natif de « dés dévoyés » (getPersonnageVal('des_devoyes'))
+  // confond deux usages distincts de la propriété d.locked — un dé réellement dévoyé
+  // (color==='black_token') et un dé simplement « fixé » après résolution manuelle
+  // (dé de maîtrise/expertise, ou un résultat de 10 qui exige toujours une résolution
+  // manuelle). Ces derniers ne sont pas des dés dévoyés et ne doivent pas compter comme tels.
+  function compterDesDevoyesPrecis(){
+    try{
+      const s = dS();
+      const dice = Array.isArray(s.dice) ? s.dice : ((s.dice && s.dice.dice) || []);
+      const special = s.specialDice || {};
+      return dice.filter((d,i)=>{
+        if(d.color==='black_token') return true;
+        if(!d.locked) return false;
+        if(special[i]==='maitrise' || special[i]==='expertise') return false;
+        if(d.value===10) return false;
+        return true;
+      }).length;
+    }catch(e){ return 0; }
+  }
   function lireValeurFacteur(facteur){
     if(!facteur) return 0;
     if(facteur.startsWith('apt_')){
@@ -518,6 +537,7 @@
       return ai>=0 ? aptitudeScore(ai) : 0;
     }
     if(facteur==='arme_en_main') return _armeEnMain ? 1 : 0;
+    if(facteur==='des_devoyes') return compterDesDevoyesPrecis();
     if(typeof getPersonnageVal==='function'){
       try{ const v = getPersonnageVal(facteur); return (typeof v==='number') ? v : 0; }catch(e){ return 0; }
     }
@@ -708,11 +728,77 @@
   // combat (ciblage par assaut) : ces deux blocs d'origine deviennent redondants
   // en Mode Combat, on les masque plutôt que de les dupliquer.
   function masquerSectionsObsoletes(){
-    ['dice-duel-setup','dice-collab-setup'].forEach(id=>{
+    ['dice-duel-setup','dice-collab-setup','dice-group-btn','dice-group-waiting'].forEach(id=>{
       const el = document.getElementById(id);
       if(el) el.style.display = 'none';
     });
+    // « ① Aptitude et trait utilisés » + la grille d'Aptitude native : entièrement
+    // redondants en Mode Combat, l'Aptitude étant déterminée automatiquement par la
+    // manœuvre choisie. On masque le libellé et la ligne, pas les Traits mobilisables
+    // (toujours utiles) ni la grille elle-même (gardée en secours, juste discrète).
+    try{
+      const grid = document.getElementById('apt-btn-grid');
+      if(grid){
+        const setupCard = grid.closest('#dice-setup');
+        if(setupCard){
+          const label = setupCard.querySelector('.dice-step-label');
+          const pickerRow = setupCard.querySelector('.apt-picker-row');
+          if(label) label.style.display='none';
+          if(pickerRow) pickerRow.style.display='none';
+        }
+        grid.style.display='none';
+      }
+    }catch(e){}
+    // Bandeau visuel pour la Pneuma manquant nativement (contrairement à Prouesse/Prodige) —
+    // injecté une seule fois.
+    if(!document.getElementById('combat-pneuma-style')){
+      const style = document.createElement('style');
+      style.id = 'combat-pneuma-style';
+      style.textContent = `#dpneuma-row{display:flex;align-items:center;gap:.5rem;margin:.3rem 0 .3rem;
+        padding:.4rem .6rem;background:#f7f0e0;border-radius:6px;border:1px solid #c8860a;}`;
+      document.head.appendChild(style);
+    }
+    ajouterInfosEtatsMobilisables();
   }
+
+  // Ajoute une description en clair sur chaque « état mobilisable » (actuellement
+  // seulement un nom + un badge de code, peu clair sans connaître la mécanique).
+  const DESC_ETAT_EFFET = {
+    relance: "Force une relance de toutes les valeurs de réussite obtenues à ce tour.",
+    avantage: "Ajoute immédiatement un dé blanc supplémentaire au lancer.",
+    opposition: "Des dés sont fixés en opposition — ils comptent contre la réussite.",
+    expertise: "Un dé spécial dont la valeur peut être choisie après le lancer.",
+    negation_prochain: "Annule les valeurs de réussite obtenues au prochain lancer.",
+    des_bloques_axe12: "Les dés rouges sont bloqués sur les valeurs 1 ou 2, non modifiables.",
+    des_non_modifiables: "Les dés de ce lancer ne peuvent plus être changés ou relancés.",
+    hc: "Histoires croisées : un autre personnage est narrativement impliqué dans ce tirage.",
+    pas_de_jetons_externes: "Aucun jeton ne peut être reçu d'un autre personnage ce tour.",
+  };
+  function ajouterInfosEtatsMobilisables(){
+    try{
+      const container = document.getElementById('detats-mobilisables');
+      if(!container) return;
+      container.querySelectorAll('div').forEach(row=>{
+        if(row.querySelector('.combat-etat-info')) return;
+        const label = row.querySelector('label');
+        if(!label) return;
+        const badge = row.querySelector('span');
+        if(!badge) return;
+        const key = Object.keys(ETAT_EFFET_LABEL||{}).find(k=>(ETAT_EFFET_LABEL[k]||'').includes(badge.textContent.replace(/^[▲▼⚠]\s*/,'').trim())
+          || badge.textContent.includes(ETAT_EFFET_LABEL[k]));
+        const desc = key ? DESC_ETAT_EFFET[key] : null;
+        if(!desc) return;
+        const info = document.createElement('span');
+        info.className='combat-etat-info';
+        info.textContent='?';
+        info.title=desc;
+        info.style.cssText='width:14px;height:14px;border-radius:50%;background:#7a5200;color:#fff;'
+          +'font-size:.6rem;display:inline-flex;align-items:center;justify-content:center;cursor:help;margin-left:.2rem;';
+        row.appendChild(info);
+      });
+    }catch(e){}
+  }
+
   function reafficherSectionsObsoletes(){
     ['dice-duel-setup','dice-collab-setup'].forEach(id=>{
       const el = document.getElementById(id);
@@ -820,8 +906,18 @@
     injecterPanneauSession();
   }
   async function terminerCombat(){
-    if(!confirm('Terminer la session de combat pour tout le monde ?')) return;
-    await ecrireCombatSession(session=>{ session.actif=false; });
+    if(!confirm('Terminer la session de combat pour tout le monde ? La liste des participants sera vidée.')) return;
+    await ecrireCombatSession(session=>{
+      session.actif=false;
+      session.participants={}; // repart à zéro — sans ça, le même groupe revenait systématiquement
+      session.assautNum=1;
+    });
+    injecterPanneauSession();
+  }
+  async function retirerParticipant(id){
+    await ecrireCombatSession(session=>{
+      if(session.participants) delete session.participants[id];
+    });
     injecterPanneauSession();
   }
   async function marquerResolu(){
@@ -877,7 +973,7 @@
       html += `<div style="font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3,#666);margin-bottom:.3rem;">PARTICIPANTS</div>`;
       html += `<div>${moi.resolu?'✅':'⏳'} ${FICHE_ID} (vous)${moi.camp?' <span style="opacity:.6;">['+moi.camp+']</span>':''}</div>`;
       roster.forEach(([id,p])=>{
-        html += `<div>${p.resolu?'✅':'⏳'} ${id}${p.camp?' <span style="opacity:.6;">['+p.camp+']</span>':''} <button class="combat-cible-btn" data-id="${id}" style="${btnStyle('#8b2020',true)}">Cibler</button></div>`;
+        html += `<div>${p.resolu?'✅':'⏳'} ${id}${p.camp?' <span style="opacity:.6;">['+p.camp+']</span>':''} <button class="combat-cible-btn" data-id="${id}" style="${btnStyle('#8b2020',true)}">Cibler</button> <button class="combat-retirer-btn" data-id="${id}" style="${btnStyle('#6b5d4f',true)}">Retirer</button></div>`;
       });
       html += `</div>`;
       html += `<div style="margin-top:.5rem;display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;">
@@ -918,6 +1014,9 @@
     const ab = document.getElementById('combat-assaut-suivant-btn'); if(ab) ab.addEventListener('click', assautSuivant);
     const tb = document.getElementById('combat-terminer-btn'); if(tb) tb.addEventListener('click', terminerCombat);
     panel.querySelectorAll('.combat-cible-btn').forEach(b=>b.addEventListener('click', ()=>choisirCible(b.dataset.id)));
+    panel.querySelectorAll('.combat-retirer-btn').forEach(b=>b.addEventListener('click', ()=>{
+      if(confirm(`Retirer ${b.dataset.id} de la session de combat ?`)) retirerParticipant(b.dataset.id);
+    }));
   }
 
   // Rafraîchissement périodique du panneau (pour voir en direct qui a résolu son assaut)
@@ -928,6 +1027,19 @@
   }
 
   // Marquer "résolu" dès que ce joueur lance ses dés, si une session est active
+  function installerHookEtatsMobilisables(){
+    if(typeof window.renderEtatsMobilisables !== 'function'){ setTimeout(installerHookEtatsMobilisables,500); return; }
+    if(window.renderEtatsMobilisables.__sifhrCombatWrapped) return;
+    const original = window.renderEtatsMobilisables;
+    const wrapped = function(...args){
+      const r = original.apply(this,args);
+      try{ ajouterInfosEtatsMobilisables(); }catch(e){}
+      return r;
+    };
+    wrapped.__sifhrCombatWrapped = true;
+    window.renderEtatsMobilisables = wrapped;
+  }
+
   function installerHookRollResolu(){
     if(typeof window.dRollDice !== 'function'){ setTimeout(installerHookRollResolu,500); return; }
     if(window.dRollDice.__sifhrCombatWrapped) return;
@@ -1395,6 +1507,7 @@
     try{ installerHookDuel(); } catch(e){ console.error('[sifhr-combat-mode] installerHookDuel a échoué :', e); }
     try{ pollerEffetsEntrants(); } catch(e){ console.error('[sifhr-combat-mode] pollerEffetsEntrants a échoué :', e); }
     try{ installerHookRollResolu(); } catch(e){ console.error('[sifhr-combat-mode] installerHookRollResolu a échoué :', e); }
+    try{ installerHookEtatsMobilisables(); } catch(e){ console.error('[sifhr-combat-mode] installerHookEtatsMobilisables a échoué :', e); }
     try{ demarrerRafraichissementSession(); } catch(e){ console.error('[sifhr-combat-mode] demarrerRafraichissementSession a échoué :', e); }
     try{ chargerCatalogue(); } catch(e){ console.error('[sifhr-combat-mode] chargerCatalogue a échoué :', e); }
   }
