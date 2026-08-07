@@ -332,13 +332,29 @@
   function armesPossedees(){
     const equip = (state.equipement||[]).filter(e=>e && e.title);
     if(!CATALOGUE || !CATALOGUE.equipement) return equip.map(e=>({id:e.title, nom:e.title}));
-    // Croiser avec le catalogue pour ne garder que les vraies armes (pas les armures)
     return equip
       .map(e=>{
         const c = CATALOGUE.equipement.find(x=>nomsCorrespondent(x.nom, e.title));
         return c && c.type && c.type.startsWith('Arme') ? c : null;
       })
       .filter(Boolean);
+  }
+  function armuresPossedees(){
+    const equip = (state.equipement||[]).filter(e=>e && e.title);
+    if(!CATALOGUE || !CATALOGUE.equipement) return [];
+    return equip
+      .map(e=>{
+        const c = CATALOGUE.equipement.find(x=>nomsCorrespondent(x.nom, e.title));
+        return c && c.type && c.type.startsWith('Armure') ? c : null;
+      })
+      .filter(Boolean);
+  }
+  // Armes du catalogue partagé que le personnage NE possède PAS — pour simuler
+  // le ramassage d'une arme sur le champ de bataille (narratif : le meneur valide).
+  function bibliothequeArmes(){
+    if(!CATALOGUE || !CATALOGUE.equipement) return [];
+    const possedeesIds = new Set(armesPossedees().map(a=>a.id));
+    return CATALOGUE.equipement.filter(a=>a.type && a.type.startsWith('Arme') && !possedeesIds.has(a.id));
   }
 
   function equiperArme(item, viaChangement){
@@ -352,6 +368,16 @@
     injecterPanneauArme();
   }
 
+  function ramasserArme(item){
+    const idx = state.equipement.findIndex(e=>!e || !e.title);
+    const entry = {title:item.nom, text:'Ramassée sur le champ de bataille.', bm:0, image:null, locked:false};
+    if(idx!==-1) state.equipement[idx] = entry; else state.equipement.push(entry);
+    if(typeof saveState==='function') saveState();
+    if(typeof renderEquipement==='function') renderEquipement();
+    equiperArme(item, !!_armeEnMain);
+  }
+
+  let _ongletEquipement = 'inventaire'; // 'inventaire' | 'bibliotheque'
   function injecterPanneauArme(){
     const hote = document.getElementById('apt-btn-grid');
     if(!hote) return;
@@ -364,22 +390,49 @@
       hote.parentNode.insertBefore(panel, hote);
     }
     const armes = armesPossedees();
-    let html = `<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5200;letter-spacing:.05em;margin-bottom:.4rem;">🗡 ARME EN MAIN</div>`;
-    if(!armes.length){
-      html += `<div style="font-size:.78rem;font-style:italic;color:var(--ink3,#666);">Aucune arme identifiée dans l'Équipement.</div>`;
-    } else {
-      html += `<div style="font-size:.82rem;margin-bottom:.4rem;">${_armeEnMain ? '<strong>'+_armeEnMain.nom+'</strong>' : '<em>Aucune arme sélectionnée</em>'}`
+    const armures = armuresPossedees();
+    const onglets = `<div style="display:flex;gap:.3rem;margin-bottom:.4rem;">
+      <button class="combat-onglet-eq" data-onglet="inventaire" style="${btnStyle(_ongletEquipement==='inventaire'?'#7a5200':'#b8a88a', true)}">Mon équipement</button>
+      <button class="combat-onglet-eq" data-onglet="bibliotheque" style="${btnStyle(_ongletEquipement==='bibliotheque'?'#7a5200':'#b8a88a', true)}">Bibliothèque du champ de bataille</button>
+    </div>`;
+    let html = `<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5200;letter-spacing:.05em;margin-bottom:.4rem;">🗡 ÉQUIPEMENT</div>` + onglets;
+
+    if(_ongletEquipement==='inventaire'){
+      html += `<div style="font-size:.82rem;margin-bottom:.4rem;">Arme en main : ${_armeEnMain ? '<strong>'+_armeEnMain.nom+'</strong>' : '<em>Aucune</em>'}`
         + (_penaliteChangementArme?' <span style="color:#8b2020;">— changement en cours, manœuvres offensives bloquées ce round</span>':'')
         + `</div>`;
-      html += armes.map(a=>{
-        const actif = _armeEnMain && _armeEnMain.id===a.id;
-        return `<button class="combat-arme-btn" data-id="${a.id}" ${actif?'disabled':''}
+      if(!armes.length){
+        html += `<div style="font-size:.78rem;font-style:italic;color:var(--ink3,#666);">Aucune arme identifiée dans l'Équipement.</div>`;
+      } else {
+        html += armes.map(a=>{
+          const actif = _armeEnMain && _armeEnMain.id===a.id;
+          return `<button class="combat-arme-btn" data-id="${a.id}" ${actif?'disabled':''}
+            style="font-family:'Crimson Text',serif;font-size:.76rem;padding:3px 8px;margin:2px;border-radius:5px;
+            border:1px solid #7a5200;background:${actif?'#7a5200':'#fff'};color:${actif?'#fff':'#7a5200'};
+            cursor:${actif?'default':'pointer'};">${a.nom}</button>`;
+        }).join('');
+      }
+      if(armures.length){
+        html += `<div style="font-size:.7rem;color:var(--ink3,#666);margin-top:.5rem;">Armures portées : ${armures.map(a=>a.nom).join(', ')}</div>`;
+      }
+    } else {
+      const dispo = bibliothequeArmes();
+      html += `<div class="hint" style="font-size:.72rem;font-style:italic;color:var(--ink3,#666);margin-bottom:.4rem;">`
+        + `Armes présentes dans le catalogue partagé mais absentes de votre Équipement — à n'utiliser que si le contexte narratif permet de s'en emparer (arme au sol, adversaire désarmé...).</div>`;
+      if(!dispo.length){
+        html += `<div style="font-size:.78rem;font-style:italic;">Rien de plus à proposer — vous possédez déjà toutes les armes du catalogue.</div>`;
+      } else {
+        html += dispo.map(a=>`<button class="combat-ramasser-btn" data-id="${a.id}"
           style="font-family:'Crimson Text',serif;font-size:.76rem;padding:3px 8px;margin:2px;border-radius:5px;
-          border:1px solid #7a5200;background:${actif?'#7a5200':'#fff'};color:${actif?'#fff':'#7a5200'};
-          cursor:${actif?'default':'pointer'};">${a.nom}</button>`;
-      }).join('');
+          border:1px solid #185FA5;background:#fff;color:#185FA5;cursor:pointer;">+ ${a.nom}</button>`).join('');
+      }
     }
     panel.innerHTML = html;
+
+    panel.querySelectorAll('.combat-onglet-eq').forEach(b=>b.addEventListener('click', ()=>{
+      _ongletEquipement = b.dataset.onglet;
+      injecterPanneauArme();
+    }));
     panel.querySelectorAll('.combat-arme-btn:not([disabled])').forEach(b=>{
       b.addEventListener('click', ()=>{
         const item = armes.find(a=>a.id===b.dataset.id);
@@ -387,6 +440,16 @@
         const dejaEquipee = !!_armeEnMain;
         if(dejaEquipee && !confirm(`Changer pour « ${item.nom} » ? Cela fait perdre l'avantage offensif de cet assaut (manœuvres offensives bloquées jusqu'au prochain lancer).`)) return;
         equiperArme(item, dejaEquipee);
+      });
+    });
+    panel.querySelectorAll('.combat-ramasser-btn').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const item = bibliothequeArmes().find(a=>a.id===b.dataset.id);
+        if(!item) return;
+        if(!confirm(`Ramasser « ${item.nom} » ? À valider avec le meneur selon le contexte de la scène.`)) return;
+        ramasserArme(item);
+        _ongletEquipement = 'inventaire';
+        injecterPanneauArme();
       });
     });
   }
@@ -430,6 +493,87 @@
       if(reds >= SEUIL_FATIGUE) return `${reds} dés dévoyés — fatigue générale, épreuve physique fragilisée`;
     }catch(e){}
     return null;
+  }
+
+  // ── Moteur de conditions structurées (Conditions Bonus/Malus, produit par l'éditeur de manœuvres) ──
+  const FACTEUR_LABELS_COMBAT = {
+    feu_force:'Force',feu_envie:'Envie',bile_j_charite:'Charité',bile_j_luxure:'Luxure',
+    terre_loyaute:'Loyauté',terre_malignite:'Malignité',bile_n_prudence:'Prudence',bile_n_acedie:'Acédie',
+    eau_temperance:'Tempérance',eau_lachete:'Lâcheté',flegme_chastete:'Chasteté',flegme_avarice:'Avarice',
+    air_foi:'Foi',air_felonie:'Félonie',sang_esperance:'Espérance',sang_temerite:'Témérité',
+    feu_b:'Feu ○',feu_n:'Feu ●',bile_j_b:'Bile Jaune ○',bile_j_n:'Bile Jaune ●',
+    terre_b:'Terre ○',terre_n:'Terre ●',bile_n_b:'Bile Noire ○',bile_n_n:'Bile Noire ●',
+    eau_b:'Eau ○',eau_n:'Eau ●',flegme_b:'Flegme ○',flegme_n:'Flegme ●',
+    air_b:'Air ○',air_n:'Air ●',sang_b:'Sang ○',sang_n:'Sang ●',
+    des_devoyes:'Dés dévoyés', arme_en_main:'Arme en main',
+  };
+  function labelFacteurCombat(f){
+    if(f && f.startsWith('apt_')) return APT_LABELS[f.slice(4)] || f;
+    return FACTEUR_LABELS_COMBAT[f] || f;
+  }
+  function lireValeurFacteur(facteur){
+    if(!facteur) return 0;
+    if(facteur.startsWith('apt_')){
+      const ai = APTITUDE_KEYS.indexOf(facteur.slice(4));
+      return ai>=0 ? aptitudeScore(ai) : 0;
+    }
+    if(facteur==='arme_en_main') return _armeEnMain ? 1 : 0;
+    if(typeof getPersonnageVal==='function'){
+      try{ const v = getPersonnageVal(facteur); return (typeof v==='number') ? v : 0; }catch(e){ return 0; }
+    }
+    return 0;
+  }
+  function parseManConditions(str){
+    if(!str) return [];
+    return String(str).split(';').map(s=>s.trim()).filter(Boolean).map(part=>{
+      const [facteur,code,seuil] = part.split('|');
+      return {facteur:facteur||'', code:code||'', seuil:seuil!==undefined?seuil:''};
+    });
+  }
+  // Résultat : {bloque, blocRaison, netLevel(-3..3), details[], prochaines[]}
+  // `prochaines` liste les conditions Bonus non déclenchées, triées par écart croissant,
+  // pour répondre à « qu'est-ce qu'il me manque pour le palier suivant ? ».
+  function evaluerConditionsBonusMalus(m){
+    const conds = parseManConditions(m.conditions);
+    let bloque=false, blocRaison=null, netLevel=0;
+    const details=[], prochaines=[];
+    conds.forEach(c=>{
+      let val, atteint;
+      if(c.facteur==='trait'){
+        val = (state.traits||[]).some(t=>t.title && t.title.toLowerCase().includes(String(c.seuil).toLowerCase())) ? 1 : 0;
+        atteint = val>=1;
+      } else {
+        val = lireValeurFacteur(c.facteur);
+        atteint = val >= parseFloat(c.seuil);
+      }
+      if(c.code==='R'){
+        if(!atteint){
+          bloque = true;
+          blocRaison = c.facteur==='trait'
+            ? `Nécessite le Trait « ${c.seuil} »`
+            : `${labelFacteurCombat(c.facteur)} insuffisant (${val} / ${c.seuil} requis)`;
+        }
+      } else if(c.code){
+        const niveau = parseInt(c.code.slice(1))||1;
+        const signe = c.code[0]==='B' ? 1 : -1;
+        if(atteint){
+          netLevel += signe*niveau;
+          details.push(`${signe>0?'+':''}${signe*niveau} — ${labelFacteurCombat(c.facteur)}`);
+        } else if(signe>0 && c.facteur!=='trait'){
+          prochaines.push({facteur:c.facteur, label:labelFacteurCombat(c.facteur), manque:(parseFloat(c.seuil)-val), seuil:c.seuil, val, niveau});
+        }
+      }
+    });
+    netLevel = Math.max(-3, Math.min(3, netLevel));
+    prochaines.sort((a,b)=>a.manque-b.manque);
+    return {bloque, blocRaison, netLevel, details, prochaines};
+  }
+  // Applique réellement le palier net au lanceur natif (dbmClick) — appelé juste après
+  // dSelectAptitude (qui réinitialise les dés), pour ne jamais cumuler avec une sélection précédente.
+  function appliquerBonusMalusNatif(netLevel){
+    if(!netLevel || typeof dbmClick!=='function') return;
+    if(netLevel>0) dbmClick('bonus', netLevel);
+    else dbmClick('malus', -netLevel);
   }
 
   function evaluerManoeuvre(m){
@@ -496,9 +640,17 @@
       bloque = true;
       raison.push(`Changement d'arme en cours — manœuvre offensive indisponible ce round`);
     }
+
+    // Moteur de conditions structurées (produit par l'éditeur de manœuvres) : niveau
+    // net de bonus/malus, et verrou dur supplémentaire si une condition Rédhibitoire échoue.
+    const cbm = evaluerConditionsBonusMalus(m);
+    if(cbm.bloque){ bloque = true; raison.push(cbm.blocRaison); }
+    if(cbm.details.length) raison.push(...cbm.details);
+
     if(!raison.length && !bloque && !limite) raison.push('Disponible');
 
-    return {bloque, limite, raison, aptKey: m.aptitude||null, coupleIdx, armeTrouvee, action:m};
+    return {bloque, limite, raison, aptKey: m.aptitude||null, coupleIdx, armeTrouvee, action:m,
+      netLevel: cbm.netLevel, prochaines: cbm.prochaines};
   }
 
   // ── 3. UI : bouton flottant dédié + injection dans l'overlay des dés existant ──
@@ -595,6 +747,19 @@
     });
     injecterPanneauSession();
   }
+  // Ajoute un allié ou un adversaire supplémentaire à la session, à tout moment
+  // (y compris en cours d'assaut) — joueur ou meneur, comme convenu.
+  async function ajouterParticipantManuel(camp){
+    const input = document.getElementById('combat-ajout-id');
+    const id = input ? input.value.trim() : '';
+    if(!id){ alert('Indique un identifiant de fiche.'); return; }
+    await ecrireCombatSession(session=>{
+      session.actif = true;
+      session.participants = session.participants || {};
+      session.participants[id] = { participe:true, resolu:false, nom:id, camp };
+    });
+    injecterPanneauSession();
+  }
   async function quitterCombat(){
     await ecrireCombatSession(session=>{
       if(session.participants) delete session.participants[FICHE_ID];
@@ -666,16 +831,25 @@
       const roster = Object.entries(participants).filter(([id])=>id!==FICHE_ID);
       html += `<div style="margin-top:.5rem;font-size:.78rem;">`;
       html += `<div style="font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3,#666);margin-bottom:.3rem;">PARTICIPANTS</div>`;
-      html += `<div>${moi.resolu?'✅':'⏳'} ${FICHE_ID} (vous)</div>`;
+      html += `<div>${moi.resolu?'✅':'⏳'} ${FICHE_ID} (vous)${moi.camp?' <span style="opacity:.6;">['+moi.camp+']</span>':''}</div>`;
       roster.forEach(([id,p])=>{
-        html += `<div>${p.resolu?'✅':'⏳'} ${id} <button class="combat-cible-btn" data-id="${id}" style="${btnStyle('#8b2020',true)}">Cibler</button></div>`;
+        html += `<div>${p.resolu?'✅':'⏳'} ${id}${p.camp?' <span style="opacity:.6;">['+p.camp+']</span>':''} <button class="combat-cible-btn" data-id="${id}" style="${btnStyle('#8b2020',true)}">Cibler</button></div>`;
       });
       html += `</div>`;
+      html += `<div style="margin-top:.5rem;display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;">
+        <input type="text" id="combat-ajout-id" placeholder="Identifiant de fiche (allié ou adversaire)" style="font-size:.78rem;padding:.25rem .4rem;flex:1;min-width:140px;">
+        <button id="combat-ajout-allie-btn" style="${btnStyle('#1a4a2a', true)}">+ Allié</button>
+        <button id="combat-ajout-adversaire-btn" style="${btnStyle('#8b2020', true)}">+ Adversaire</button>
+      </div>`;
     }
     panel.innerHTML = html;
 
     const rb = document.getElementById('combat-rejoindre-btn'); if(rb) rb.addEventListener('click', rejoindreCombat);
     const qb = document.getElementById('combat-quitter-btn'); if(qb) qb.addEventListener('click', quitterCombat);
+    const ajA = document.getElementById('combat-ajout-allie-btn');
+    if(ajA) ajA.addEventListener('click', ()=>ajouterParticipantManuel('allie'));
+    const ajE = document.getElementById('combat-ajout-adversaire-btn');
+    if(ajE) ajE.addEventListener('click', ()=>ajouterParticipantManuel('adversaire'));
     const ab = document.getElementById('combat-assaut-suivant-btn'); if(ab) ab.addEventListener('click', assautSuivant);
     const tb = document.getElementById('combat-terminer-btn'); if(tb) tb.addEventListener('click', terminerCombat);
     panel.querySelectorAll('.combat-cible-btn').forEach(b=>b.addEventListener('click', ()=>choisirCible(b.dataset.id)));
@@ -706,6 +880,17 @@
     window.dRollDice = wrapped;
   }
 
+  // Palette : impossible (gris) → malus 3/2/1 (rouges dégradés) → neutre (crème) → bonus 1/2/3 (verts dégradés)
+  const PALETTE_NIVEAU = {
+    '-3':{bg:'#7a1f1f',fg:'#fff',label:'Malus III — Négation'},
+    '-2':{bg:'#a8412f',fg:'#fff',label:'Malus II — Opposition'},
+    '-1':{bg:'#d97f5c',fg:'#fff',label:'Malus I — Relance'},
+    '0':{bg:'#fdfaf3',fg:'#1a1510',label:'Neutre'},
+    '1':{bg:'#a8c890',fg:'#1a1510',label:'Bonus I — Avantage'},
+    '2':{bg:'#6fa050',fg:'#fff',label:'Bonus II — Expertise'},
+    '3':{bg:'#3d6b28',fg:'#fff',label:'Bonus III — Maîtrise'},
+  };
+
   function injecterPanneauManoeuvres(){
     let panel = document.getElementById('combat-manoeuvres-panel');
     const hote = document.getElementById('apt-btn-grid');
@@ -724,24 +909,54 @@
         +`Aucune manœuvre dans votre collection. Ouvrez le panneau « Manœuvres de combat » de la fiche pour en créer.</div>`;
       return;
     }
-    const boutons = actions.map(m=>{
+    const grille = actions.map(m=>{
       const ev = evaluerManoeuvre(m);
-      const style = ev.bloque
-        ? 'opacity:.35;cursor:not-allowed;background:#ddd;color:#888;'
-        : ev.limite
-          ? 'background:#fff3e0;border-color:#c8860a;color:#7a5200;'
-          : 'background:#fdfaf3;border-color:#8b2020;color:#1a1510;';
-      return `<button class="combat-man-btn" data-id="${m.id}" ${ev.bloque?'disabled':''}
-        title="${ev.raison.join(' · ').replace(/"/g,'&quot;')}"
-        style="font-family:'Crimson Text',serif;font-size:.78rem;padding:4px 9px;margin:2px;border-radius:5px;
-        border:1px solid var(--border,#b8a88a);${style}cursor:${ev.bloque?'not-allowed':'pointer'};">
-        ${m.nom}${ev.limite?' ⚠':''}
+      const pal = PALETTE_NIVEAU[String(ev.bloque?0:ev.netLevel)] || PALETTE_NIVEAU['0'];
+      const styleBloque = ev.bloque ? 'opacity:.4;background:#ccc !important;color:#666 !important;' : '';
+      return `<button class="combat-man-btn" data-id="${m.id}" data-bloque="${ev.bloque?'1':'0'}"
+        style="font-family:'Crimson Text',serif;font-size:.78rem;padding:5px 10px;margin:2px;border-radius:5px;
+        border:1px solid rgba(0,0,0,.25);background:${pal.bg};color:${pal.fg};${styleBloque}
+        cursor:${ev.bloque?'not-allowed':'pointer'};position:relative;">
+        ${m.nom}
       </button>`;
     }).join('');
-    panel.innerHTML = titre + boutons + `<div id="combat-man-choisie" style="margin-top:.4rem;font-size:.75rem;font-style:italic;color:#1a4a2a;"></div>`;
-    panel.querySelectorAll('.combat-man-btn:not([disabled])').forEach(b=>{
-      b.addEventListener('click', ()=>choisirManoeuvre(b.dataset.id));
+    panel.innerHTML = titre + `<div style="display:flex;flex-wrap:wrap;">${grille}</div>`
+      + `<div id="combat-man-detail" style="margin-top:.5rem;"></div>`
+      + `<div id="combat-man-choisie" style="margin-top:.4rem;font-size:.75rem;font-style:italic;color:#1a4a2a;"></div>`;
+    panel.querySelectorAll('.combat-man-btn').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        if(b.dataset.bloque==='1'){ afficherDetailManoeuvre(b.dataset.id); return; }
+        choisirManoeuvre(b.dataset.id);
+        afficherDetailManoeuvre(b.dataset.id);
+      });
     });
+  }
+
+  // Détail au clic : palier actuel, raisons, et ce qu'il manque pour le palier supérieur.
+  function afficherDetailManoeuvre(id){
+    const m = getActions().find(a=>a.id===id);
+    if(!m) return;
+    const ev = evaluerManoeuvre(m);
+    const host = document.getElementById('combat-man-detail');
+    if(!host) return;
+    const pal = PALETTE_NIVEAU[String(ev.bloque?0:ev.netLevel)] || PALETTE_NIVEAU['0'];
+    let html = `<div style="border:1px solid rgba(0,0,0,.15);border-radius:6px;padding:.5rem .7rem;background:#fff;">
+      <div style="font-family:Cinzel,serif;font-size:.72rem;color:${pal.bg};margin-bottom:.3rem;">
+        ${m.nom} — ${ev.bloque?'Impossible':pal.label}</div>`;
+    if(ev.bloque){
+      html += `<div style="font-size:.78rem;">${ev.raison.filter(r=>r!=='Disponible').join(' · ')}</div>`;
+    } else {
+      if(ev.details && ev.details.length) html += `<div style="font-size:.78rem;">Facteurs actifs : ${ev.details.join(', ')}</div>`;
+      if(ev.prochaines && ev.prochaines.length){
+        const p = ev.prochaines[0];
+        html += `<div style="font-size:.78rem;margin-top:.3rem;color:#7a5200;">Pour un bonus supplémentaire (niveau ${p.niveau}) : `
+          + `${p.label} doit atteindre ${p.seuil} (actuellement ${p.val}, il manque ${p.manque}).</div>`;
+      } else if(ev.netLevel<3){
+        html += `<div style="font-size:.78rem;margin-top:.3rem;color:var(--ink3,#666);">Aucune condition de bonus supplémentaire connue pour cette manœuvre.</div>`;
+      }
+    }
+    html += `</div>`;
+    host.innerHTML = html;
   }
 
   let _manoeuvreActive = null;
@@ -751,11 +966,13 @@
     const ev = evaluerManoeuvre(m);
     _manoeuvreActive = {m, ev};
 
-    // 1. Aptitude — pilote le VRAI sélecteur existant
+    // 1. Aptitude — pilote le VRAI sélecteur existant (réinitialise aussi les dés,
+    //    donc c'est le bon moment pour appliquer le palier net sans risque de cumul)
     if(ev.aptKey && typeof dSelectAptitude==='function'){
       const ai = APTITUDE_KEYS.indexOf(ev.aptKey);
       dSelectAptitude(ev.aptKey, aptitudeScore(ai));
     }
+    appliquerBonusMalusNatif(ev.netLevel);
 
     // 2. Couple de valeurs — pré-rempli, modifiable ensuite normalement par le joueur
     if(ev.coupleIdx!=null){
@@ -771,7 +988,7 @@
     const btn=document.querySelector(`.combat-man-btn[data-id="${id}"]`);
     if(btn) btn.style.outline='2px solid #1a4a2a';
     const info=document.getElementById('combat-man-choisie');
-    let infoTxt = `Manœuvre retenue : ${m.nom}`
+    let infoTxt = `Manœuvre retenue : ${m.nom} — ${(PALETTE_NIVEAU[String(ev.netLevel)]||PALETTE_NIVEAU['0']).label}`
       + (ev.armeTrouvee?` — arme : ${ev.armeTrouvee.title}`:' — aucune arme identifiée automatiquement (vérifier).');
 
     // Manœuvre collective : demander combien d'alliés participent (plafonné par manœuvre)
@@ -847,7 +1064,7 @@
 
   const PALIER_TO_NIVEAU = {benin:'N1', moyen:'N2', grave:'N3'};
 
-  function afficherPanneauResolution(palier, marge, advId, cumulTout, palierAdv){
+  async function afficherPanneauResolution(palier, marge, advId, cumulTout, palierAdv){
     const effets=EFFETS_COMBAT[palier];
     let panel=document.getElementById('combat-resolution-panel');
     if(!panel){
@@ -858,18 +1075,32 @@
       const box=document.getElementById('dfb-content')||document.getElementById('duel-feedback-box');
       (box||document.body).appendChild(panel);
     }
+    panel.innerHTML = '<div style="font-style:italic;color:var(--ink3,#666);">Résolution en cours…</div>';
+
+    // Vue sur les dés dévoyés actuels de l'adversaire (dernier état connu, pas nécessairement
+    // en direct s'il n'a pas encore sauvegardé son lancer en cours).
+    let advRedsActuels = '?';
+    try{
+      const advEtat = await fetchEnvEtat(advId);
+      if(advEtat && advEtat.dice){
+        advRedsActuels = (advEtat.dice.dice||[]).filter(d=>d.color==='black_token'||d.locked).length;
+      }
+    }catch(e){}
+
     const canaux=[
-      {key:'des', label:`Dés dévoyés (${effets.des}) imposés au prochain lancer de ${advId}`},
+      {key:'des', label:`Dés dévoyés : ${advId} en a actuellement ${advRedsActuels} (dernier état connu) — en imposer ${effets.des} de plus au prochain lancer`},
       {key:'trait', label:`Trait de blessure niveau ${effets.traitLevel} (${effets.traitDuree})`},
-      {key:'jetons', label:`${effets.jetons} jeton(s) dévoyé(s) dans l'octogone de ${advId}`},
     ];
-    // Phase 5 : effets nommés d'Effet_v2 correspondant au palier atteint, en options
-    // supplémentaires (non cochées par défaut, pour ne pas surcharger les canaux génériques).
     const niveau = PALIER_TO_NIVEAU[palier];
     const effetsNommesPerdant = (CATALOGUE && CATALOGUE.effets ? CATALOGUE.effets : [])
       .filter(e=>e.niveau===niveau && e.cible==='perdant');
     const effetsNommesGagnant = (CATALOGUE && CATALOGUE.effets ? CATALOGUE.effets : [])
       .filter(e=>e.niveau===niveau && e.cible==='gagnant');
+    // Effets liés spécifiquement à la manœuvre utilisée (si l'éditeur en a associé)
+    const effetsLiesManoeuvre = (_manoeuvreActive && _manoeuvreActive.m.effetsAssocies)
+      ? String(_manoeuvreActive.m.effetsAssocies).split(',').map(s=>s.trim()).filter(Boolean)
+        .map(id=>(CATALOGUE.effets||[]).find(e=>e.id===id)).filter(Boolean)
+      : [];
 
     let html=`<div style="font-family:Cinzel,serif;font-size:.72rem;color:#8b2020;margin-bottom:.4rem;">`
       +`⚔ RÉSOLUTION — ${_manoeuvreActive.m.nom} — marge ${marge>=0?'+':''}${marge}, palier ${effets.label}</div>`;
@@ -878,11 +1109,33 @@
       html+=`<label style="display:block;margin:.25rem 0;cursor:pointer;">`
         +`<input type="checkbox" class="combat-canal-cb" data-canal="${ca.key}" ${checked}> ${ca.label}</label>`;
     });
+
+    // Ciblage de l'octogone : soi ou l'adversaire, segment, polarité, quantité.
+    const segOptions = SECTORS.map(s=>`<option value="${s.id}">${s.label}</option>`).join('');
+    html += `<div style="margin-top:.4rem;padding:.4rem;border:1px dashed #8b2020;border-radius:5px;">
+      <div style="font-size:.72rem;font-family:Cinzel,serif;color:#8b2020;margin-bottom:.3rem;">JETONS D'OCTOGONE</div>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;">
+        <select id="oct-cible"><option value="adversaire">Octogone de ${advId}</option><option value="soi">Mon propre octogone</option></select>
+        <select id="oct-segment">${segOptions}</select>
+        <select id="oct-polarite"><option value="devoye" selected>Dévoyé (noir)</option><option value="pur">Pur (blanc)</option></select>
+        <input type="number" id="oct-quantite" value="${effets.jetons}" min="1" max="3" style="width:50px;">
+        <button id="oct-appliquer-btn" style="${btnStyle('#8b2020', true)}">Appliquer</button>
+      </div>
+      <div id="oct-statut" style="font-size:.72rem;margin-top:.3rem;"></div>
+    </div>`;
+
     if(effetsNommesPerdant.length){
       html += `<div style="font-family:Cinzel,serif;font-size:.65rem;color:#7a5200;margin-top:.4rem;">EFFETS NOMMÉS DISPONIBLES POUR ${advId} (facultatif, en plus)</div>`;
       effetsNommesPerdant.forEach(e=>{
         html += `<label style="display:block;margin:.2rem 0;cursor:pointer;font-size:.8rem;">`
           + `<input type="checkbox" class="combat-effet-nomme-cb" data-id="${e.id}"> ${e.nom.trim()} — ${e.effet}</label>`;
+      });
+    }
+    if(effetsLiesManoeuvre.length){
+      html += `<div style="font-family:Cinzel,serif;font-size:.65rem;color:#185FA5;margin-top:.4rem;">EFFETS LIÉS À « ${_manoeuvreActive.m.nom} »</div>`;
+      effetsLiesManoeuvre.forEach(e=>{
+        html += `<label style="display:block;margin:.2rem 0;cursor:pointer;font-size:.8rem;">`
+          + `<input type="checkbox" class="combat-effet-nomme-cb" data-id="${e.id}"> ${e.nom.trim()} (${e.niveau}, ${e.cible}) — ${e.effet}</label>`;
       });
     }
     if(palierAdv){
@@ -899,11 +1152,29 @@
       });
     }
     panel.innerHTML=html;
+
+    document.getElementById('oct-appliquer-btn').addEventListener('click', async ()=>{
+      const cible = document.getElementById('oct-cible').value;
+      const segment = document.getElementById('oct-segment').value;
+      const polarite = document.getElementById('oct-polarite').value;
+      const quantite = parseInt(document.getElementById('oct-quantite').value)||1;
+      const statut = document.getElementById('oct-statut');
+      if(cible==='soi'){
+        for(let i=0;i<quantite;i++) addToken(segment, polarite==='pur'?'white':'black');
+        if(typeof saveState==='function') saveState();
+        statut.innerHTML = `<span style="color:#1a4a2a;">✓ Appliqué à votre propre octogone.</span>`;
+      } else {
+        _octogoneCustomAEnvoyer = {segment, polarite, quantite};
+        statut.innerHTML = `<span style="color:#1a4a2a;">✓ Prêt à envoyer avec les autres effets (bouton « Envoyer les effets »).</span>`;
+      }
+    });
+
     document.getElementById('combat-envoyer-effets-btn').addEventListener('click', ()=>{
       const choix=Array.from(panel.querySelectorAll('.combat-canal-cb')).filter(cb=>cb.checked).map(cb=>cb.dataset.canal);
       const effetsNommesChoisis = Array.from(panel.querySelectorAll('.combat-effet-nomme-cb')).filter(cb=>cb.checked)
-        .map(cb=>effetsNommesPerdant.find(e=>e.id===cb.dataset.id)).filter(Boolean);
-      envoyerEffetsCombat(advId, palier, choix, palierAdv, effetsNommesChoisis);
+        .map(cb=>[...effetsNommesPerdant,...effetsLiesManoeuvre].find(e=>e.id===cb.dataset.id)).filter(Boolean);
+      envoyerEffetsCombat(advId, palier, choix, palierAdv, effetsNommesChoisis, _octogoneCustomAEnvoyer);
+      _octogoneCustomAEnvoyer = null;
       panel.innerHTML += `<div style="margin-top:.4rem;color:#1a4a2a;">✓ Effets envoyés — en attente de confirmation par ${advId}.</div>`;
     });
     panel.querySelectorAll('.combat-effet-soi-btn').forEach(b=>{
@@ -919,8 +1190,9 @@
       });
     });
   }
+  let _octogoneCustomAEnvoyer = null;
 
-  async function envoyerEffetsCombat(targetId, palier, canaux, palierAdv, effetsNommes){
+  async function envoyerEffetsCombat(targetId, palier, canaux, palierAdv, effetsNommes, octogoneCustom){
     const effets=EFFETS_COMBAT[palier];
     try{
       const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(targetId)}&select=etat`,
@@ -932,6 +1204,7 @@
         effets:{des:effets.des, traitLevel:effets.traitLevel, traitDuree:effets.traitDuree, jetons:effets.jetons},
         canaux, palierAdv: palierAdv||null,
         effetsNommes: (effetsNommes||[]).map(e=>({id:e.id, nom:e.nom.trim(), effet:e.effet, niveau:e.niveau})),
+        octogoneCustom: octogoneCustom||null,
         ts:Date.now()
       };
       await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
@@ -959,11 +1232,13 @@
     const txt=req.canaux.map(c=>({
       des:`${effets.des} dé(s) dévoyé(s) au prochain lancer`,
       trait:`un Trait de blessure niveau ${effets.traitLevel} (${effets.traitDuree})`,
-      jetons:`${effets.jetons} jeton(s) dévoyé(s) dans l'octogone`
-    }[c])).join(', ');
+    }[c])).filter(Boolean).join(', ');
     const txtNommes = (req.effetsNommes||[]).map(e=>e.nom).join(', ');
+    const txtOctogone = req.octogoneCustom
+      ? `${req.octogoneCustom.quantite} jeton(s) ${req.octogoneCustom.polarite==='pur'?'pur(s)':'dévoyé(s)'} sur ${SECTORS.find(s=>s.id===req.octogoneCustom.segment)?.label||req.octogoneCustom.segment}`
+      : '';
     box.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.75rem;color:#8b2020;margin-bottom:.4rem;">⚔ ${req.from} vous inflige les effets d'un combat (palier ${req.palier})</div>`
-      +`<div style="margin-bottom:.4rem;">${txt||'(aucun canal générique sélectionné)'}</div>`
+      +`<div style="margin-bottom:.4rem;">${[txt,txtOctogone].filter(Boolean).join(' · ')||'(aucun canal générique sélectionné)'}</div>`
       +(txtNommes?`<div style="margin-bottom:.6rem;font-style:italic;">+ ${txtNommes}</div>`:'')
       +`<button id="combat-accept-btn" style="font-family:Cinzel,serif;font-size:.72rem;padding:4px 10px;margin-right:.5rem;border:1px solid #1a4a2a;border-radius:5px;background:#1a4a2a;color:#fff;cursor:pointer;">Accepter</button>`
       +`<button id="combat-refuse-btn" style="font-family:Cinzel,serif;font-size:.72rem;padding:4px 10px;border:1px solid #b8a88a;border-radius:5px;background:none;cursor:pointer;">Refuser</button>`;
@@ -983,8 +1258,11 @@
           if(emptyIdx!==-1) state.traits[emptyIdx]=entry; else state.traits.push(entry);
           if(typeof renderTraits==='function') renderTraits();
         }
-        if(canal==='jetons'){ for(let i=0;i<effets.jetons;i++) addToken('terre','black'); }
       });
+      if(req.octogoneCustom){
+        const {segment, polarite, quantite} = req.octogoneCustom;
+        for(let i=0;i<(quantite||1);i++) addToken(segment, polarite==='pur'?'white':'black');
+      }
       (req.effetsNommes||[]).forEach(e=>{
         const emptyIdx=state.traits.findIndex(t=>!t.title&&!t.text);
         const entry={title:e.nom, text:e.effet+` (infligé par ${req.from})`, level:parseInt((e.niveau||'N1').replace('N','')), levelType:'malus', locked:false};
