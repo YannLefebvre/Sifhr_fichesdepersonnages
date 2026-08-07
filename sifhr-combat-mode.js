@@ -18,6 +18,141 @@
   console.log('[sifhr-combat-mode] script chargé et exécuté ✓');
 
   // ── 1. Catalogue (Phase 1 : export complet des 5 onglets de Combat.xlsx) ──
+  // ── Banque de textes narratifs (variations, pour éviter la monotonie) ──
+  // Format volontairement simple : une liste de gabarits par catégorie, {nom} comme
+  // seule variable. Complétable par le meneur (voir NARRATIF.perso pour surcharger/
+  // étendre depuis la console, en attendant un éditeur dédié) — les descriptions des
+  // manœuvres et des effets peuvent aussi enrichir cette banque au fil du temps.
+  const NARRATIF = {
+    engagement: [
+      "{nom} a l'initiative du combat, étant le plus déterminé.",
+      "{nom} bondit le premier, résolu à ne laisser aucun répit à son adversaire.",
+      "{nom} s'avance sans hésiter, décidé à imposer le rythme de l'assaut.",
+    ],
+    armeEnMain: [
+      "{nom} brandit {arme}.",
+      "{nom} porte la main à {arme} et la dégage d'un geste sûr.",
+      "{nom} lève {arme}, prêt à en découdre.",
+    ],
+    armeChangement: [
+      "{nom} délaisse son arme pour saisir {arme}.",
+      "{nom} jette un regard à sa lame défaillante et se rue sur {arme}.",
+    ],
+    // Par polarité dominante d'axe saturé — voir choixNarratifOctogone()
+    octogone: {
+      'colere': [
+        "{nom} se trouve dans un état d'excitation très important.",
+        "{nom} laisse percer une colère qui menace de tout emporter.",
+        "{nom} serre les mâchoires, à peine capable de contenir sa fureur.",
+      ],
+      'melancolie': [
+        "{nom} semble alourdi, comme drainé de toute ardeur.",
+        "{nom} peine à masquer un profond abattement.",
+      ],
+      'panique': [
+        "{nom} laisse transparaître une inquiétude qu'il peine à dissimuler.",
+        "{nom} jette des regards inquiets, cherchant une issue.",
+      ],
+      'confusion': [
+        "{nom} semble ailleurs, comme égaré dans ses propres pensées.",
+        "{nom} hésite un instant, comme frappé d'un doute soudain.",
+      ],
+      'calme': [
+        "{nom} affiche une maîtrise de soi remarquable.",
+        "{nom} respire avec calme, en pleine possession de ses moyens.",
+      ],
+    },
+    manoeuvre: {
+      'Défense': [
+        "{nom} se met en garde et semble vouloir attendre son adversaire.",
+        "{nom} recule d'un pas, jaugeant la distance avant de se figer, prêt à parer.",
+      ],
+      'Attaque': [
+        "{nom} s'élance sans plus attendre.",
+        "{nom} fond sur son adversaire avec une détermination farouche.",
+      ],
+      'Déplacement': [
+        "{nom} se déplace avec vivacité, cherchant l'angle favorable.",
+        "{nom} esquisse un pas de côté, prêt à surprendre.",
+      ],
+      'Soutien': [
+        "{nom} appelle ses compagnons à se resserrer autour de lui.",
+        "{nom} coordonne son geste avec ceux qui l'entourent.",
+      ],
+      'Discrétion': [
+        "{nom} se fait plus discret, cherchant la faille.",
+        "{nom} dissimule son intention derrière un geste anodin.",
+      ],
+      '': [
+        "{nom} engage son geste avec assurance.",
+      ],
+    },
+    trait: [
+      "{nom} compte manifestement sur {trait} pour remporter le combat.",
+      "{nom} puise dans {trait}, dont il maîtrise chaque nuance.",
+    ],
+    prouesse: [
+      "{nom} semble déterminé et puise dans toutes ses réserves pour remporter le combat.",
+      "{nom} rassemble ses forces pour un geste au-delà du commun.",
+    ],
+    prodige: [
+      "{nom} laisse la pneuma affluer en lui, quitte à en payer le prix.",
+      "{nom} s'en remet à des forces qui le dépassent.",
+    ],
+    pneuma: [
+      "{nom} puise dans le souffle du lieu même où il se tient.",
+      "{nom} sollicite la pneuma environnante pour affûter son geste.",
+    ],
+  };
+
+  function piocher(liste){
+    if(!liste || !liste.length) return '';
+    return liste[Math.floor(Math.random()*liste.length)];
+  }
+  function texteNarratif(categorie, vars){
+    vars = vars||{};
+    let liste;
+    if(categorie==='octogone') liste = NARRATIF.octogone[vars.polarite]||[];
+    else if(categorie==='manoeuvre') liste = NARRATIF.manoeuvre[vars.categorie]||NARRATIF.manoeuvre[''];
+    else liste = NARRATIF[categorie]||[];
+    let txt = piocher(liste);
+    Object.entries(vars).forEach(([k,v])=>{ txt = txt.replaceAll(`{${k}}`, v||''); });
+    return txt;
+  }
+  // Traduit la polarité dominante d'un segment saturé en une des 5 familles narratives.
+  const AXE_POLARITE_NARRATIVE = {
+    'feu':'colere','bile_j':'colere', 'terre':'melancolie','bile_n':'melancolie',
+    'eau':'panique','flegme':'panique', 'air':'confusion','sang':'confusion',
+  };
+  function choixNarratifOctogone(nom){
+    try{
+      let pireSegment=null, pireEcart=-1;
+      SECTORS.forEach(sec=>{
+        const tokens = state.tokens[sec.id]||[];
+        const w = tokens.filter(t=>t==='white').length;
+        const b = tokens.filter(t=>t==='black').length;
+        if(w+b<3) return;
+        const dominant = b>w ? AXE_POLARITE_NARRATIVE[sec.id] : 'calme';
+        const ecart = Math.abs(w-b);
+        if(ecart>pireEcart){ pireEcart=ecart; pireSegment=dominant; }
+      });
+      if(!pireSegment) return null;
+      return texteNarratif('octogone', {nom, polarite:pireSegment});
+    }catch(e){ return null; }
+  }
+
+  // Ajoute une ligne au journal narratif PARTAGÉ (visible par tous les participants,
+  // pas seulement soi) — c'est tout l'intérêt : « ces informations peuvent être
+  // communiquées à l'adversaire ».
+  async function ajouterJournalNarratif(texte){
+    if(!texte) return;
+    await ecrireCombatSession(session=>{
+      session.journalNarratif = session.journalNarratif || [];
+      session.journalNarratif.push({texte, de:FICHE_ID, ts:Date.now(), assaut:session.assautNum||1});
+    });
+    injecterPanneauSession();
+  }
+
   let CATALOGUE = null;
   async function chargerCatalogue(){
     if(CATALOGUE) return CATALOGUE;
@@ -366,6 +501,7 @@
     }
     injecterPanneauManoeuvres();
     injecterPanneauArme();
+    ajouterJournalNarratif(texteNarratif(viaChangement?'armeChangement':'armeEnMain', {nom:FICHE_ID, arme:item.nom}));
   }
 
   function ramasserArme(item){
@@ -378,6 +514,25 @@
   }
 
   let _ongletEquipement = 'inventaire'; // 'inventaire' | 'bibliotheque'
+  let _detailsTechniquesOuverts = false;
+
+  // Résumé technique replié par défaut (point 6) : saturations réelles et dés dévoyés,
+  // pour qui veut vérifier le détail sans que ça encombre la lecture du récit.
+  function resumeSaturationsTechnique(){
+    try{
+      const lignes = [];
+      SECTORS.forEach(sec=>{
+        const tokens = state.tokens[sec.id]||[];
+        const w = tokens.filter(t=>t==='white').length;
+        const b = tokens.filter(t=>t==='black').length;
+        if(w+b>=2) lignes.push(`${sec.label} : ${w} pur / ${b} dévoyé`);
+      });
+      const reds = compterDesDevoyesPrecis();
+      let txt = lignes.length ? lignes.join(' · ') : 'Aucun segment notablement chargé.';
+      txt += ` — Dés dévoyés actuels : ${reds}`;
+      return txt;
+    }catch(e){ return ''; }
+  }
   function injecterPanneauArme(){
     const hote = document.getElementById('apt-btn-grid');
     if(!hote) return;
@@ -968,6 +1123,24 @@
       html += `<button id="combat-assaut-suivant-btn" style="${btnStyle('#185FA5')}">Assaut suivant →</button> `;
       html += `<button id="combat-terminer-btn" style="${btnStyle('#8b2020')}">Terminer</button>`;
 
+      // Récit du combat — la partie qui doit sauter aux yeux ; les détails mécaniques
+      // (saturations, dés) restent disponibles mais repliés par défaut (point 6).
+      const journal = session.journalNarratif || [];
+      if(journal.length){
+        html += `<div style="margin-top:.6rem;padding:.5rem .6rem;background:#fdfaf3;border:1px solid #c8a86a;border-radius:6px;">
+          <div style="font-family:Cinzel,serif;font-size:.65rem;color:#7a5200;margin-bottom:.3rem;">📜 RÉCIT</div>`;
+        journal.slice(-8).forEach(j=>{
+          html += `<div style="font-family:'Crimson Text',serif;font-style:italic;font-size:.82rem;margin-bottom:.25rem;">${j.texte}</div>`;
+        });
+        html += `</div>`;
+      }
+      html += `<div style="margin-top:.3rem;">
+        <button id="combat-toggle-details-btn" style="${btnStyle('#6b5d4f',true)}">${_detailsTechniquesOuverts?'▼':'▶'} Détails techniques</button>
+        <div id="combat-details-techniques" style="display:${_detailsTechniquesOuverts?'block':'none'};margin-top:.3rem;font-size:.75rem;color:var(--ink3,#666);">
+          ${resumeSaturationsTechnique()}
+        </div>
+      </div>`;
+
       const roster = Object.entries(participants).filter(([id])=>id!==FICHE_ID);
       html += `<div style="margin-top:.5rem;font-size:.78rem;">`;
       html += `<div style="font-family:Cinzel,serif;font-size:.65rem;color:var(--ink3,#666);margin-bottom:.3rem;">PARTICIPANTS</div>`;
@@ -1017,6 +1190,11 @@
     panel.querySelectorAll('.combat-retirer-btn').forEach(b=>b.addEventListener('click', ()=>{
       if(confirm(`Retirer ${b.dataset.id} de la session de combat ?`)) retirerParticipant(b.dataset.id);
     }));
+    const dtb = document.getElementById('combat-toggle-details-btn');
+    if(dtb) dtb.addEventListener('click', ()=>{
+      _detailsTechniquesOuverts = !_detailsTechniquesOuverts;
+      injecterPanneauSession();
+    });
   }
 
   // Rafraîchissement périodique du panneau (pour voir en direct qui a résolu son assaut)
@@ -1027,6 +1205,35 @@
   }
 
   // Marquer "résolu" dès que ce joueur lance ses dés, si une session est active
+  function installerHookTraitEngage(){
+    if(typeof window._activateTrait !== 'function'){ setTimeout(installerHookTraitEngage,500); return; }
+    if(window._activateTrait.__sifhrCombatWrapped) return;
+    const original = window._activateTrait;
+    const wrapped = function(trait){
+      const r = original.apply(this, arguments);
+      try{
+        if(_manoeuvreActive) ajouterJournalNarratif(texteNarratif('trait', {nom:FICHE_ID, trait:trait?.title||'un Trait engagé'}));
+      }catch(e){}
+      return r;
+    };
+    wrapped.__sifhrCombatWrapped = true;
+    window._activateTrait = wrapped;
+  }
+
+  function installerHookProuesseProdigePneuma(){
+    const pr = document.getElementById('dprouesse-toggle');
+    const pd = document.getElementById('dprodige-toggle');
+    const pn = document.getElementById('dpneuma-toggle');
+    if(!pr || !pd || !pn){ setTimeout(installerHookProuesseProdigePneuma,500); return; }
+    if(pr.dataset.sifhrHooked) return;
+    [[pr,'prouesse'],[pd,'prodige'],[pn,'pneuma']].forEach(([el,cat])=>{
+      el.dataset.sifhrHooked='1';
+      el.addEventListener('change', ()=>{
+        if(el.checked && _manoeuvreActive) ajouterJournalNarratif(texteNarratif(cat, {nom:FICHE_ID}));
+      });
+    });
+  }
+
   function installerHookEtatsMobilisables(){
     if(typeof window.renderEtatsMobilisables !== 'function'){ setTimeout(installerHookEtatsMobilisables,500); return; }
     if(window.renderEtatsMobilisables.__sifhrCombatWrapped) return;
@@ -1137,7 +1344,7 @@
   }
 
   let _manoeuvreActive = null;
-  function choisirManoeuvre(id){
+  async function choisirManoeuvre(id){
     const m = getActions().find(x=>x.id===id);
     if(!m) return;
     const ev = evaluerManoeuvre(m);
@@ -1177,6 +1384,14 @@
       infoTxt += ` — ${val} allié(s) déclaré(s)`;
     }
     if(info) info.textContent = infoTxt;
+
+    // Textes narratifs partagés : état de l'octogone, puis type de manœuvre engagée.
+    // Textes narratifs partagés : état de l'octogone, puis type de manœuvre engagée.
+    // Séquentiel et attendu, comme pour l'historique — deux écritures concurrentes sur
+    // la même session partagée s'écrasent l'une l'autre sinon (constaté en test).
+    const texteOctogone = choixNarratifOctogone(FICHE_ID);
+    if(texteOctogone) await ajouterJournalNarratif(texteOctogone);
+    await ajouterJournalNarratif(texteNarratif('manoeuvre', {nom:FICHE_ID, categorie:m.categorie}));
   }
 
   function bonusArmeActive(){
@@ -1508,6 +1723,8 @@
     try{ pollerEffetsEntrants(); } catch(e){ console.error('[sifhr-combat-mode] pollerEffetsEntrants a échoué :', e); }
     try{ installerHookRollResolu(); } catch(e){ console.error('[sifhr-combat-mode] installerHookRollResolu a échoué :', e); }
     try{ installerHookEtatsMobilisables(); } catch(e){ console.error('[sifhr-combat-mode] installerHookEtatsMobilisables a échoué :', e); }
+    try{ installerHookTraitEngage(); } catch(e){ console.error('[sifhr-combat-mode] installerHookTraitEngage a échoué :', e); }
+    try{ installerHookProuesseProdigePneuma(); } catch(e){ console.error('[sifhr-combat-mode] installerHookProuesseProdigePneuma a échoué :', e); }
     try{ demarrerRafraichissementSession(); } catch(e){ console.error('[sifhr-combat-mode] demarrerRafraichissementSession a échoué :', e); }
     try{ chargerCatalogue(); } catch(e){ console.error('[sifhr-combat-mode] chargerCatalogue a échoué :', e); }
   }
