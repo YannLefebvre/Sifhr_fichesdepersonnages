@@ -212,10 +212,41 @@
     return 'm_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   }
 
-  // Actions disponibles pour CE personnage = sa collection personnelle uniquement
-  // (et non plus l'intégralité du catalogue partagé).
+  // Manœuvres de base : disponibles à tout personnage dès le début, sans qu'il ait
+  // besoin de les ajouter lui-même à sa collection. Reprises des 5 manœuvres N0
+  // déjà présentes dans Manoeuvres_Combat_v2 (description narrative conservée),
+  // avec une Aptitude et une Catégorie tactique assignées puisque le tableur ne les
+  // précisait pas encore pour ce palier.
+  const MANOEUVRES_BASE = [
+    {id:'base_coup_puissant', nom:'Coup puissant', aptitude:'se_mesurer', niveauRequis:0,
+     segmentOctogone:'', armeAssociee:'', nonArme:true, plafondAllies:null, conditions:'',
+     categorie:'Attaque', effetsAssocies:'',
+     effet:"Frappe puissamment pour briser la défense et infliger des blessures, au risque de cruelles contre-attaques."},
+    {id:'base_coup_rapide', nom:'Coup rapide', aptitude:'se_mesurer', niveauRequis:0,
+     segmentOctogone:'', armeAssociee:'', nonArme:true, plafondAllies:null, conditions:'',
+     categorie:'Attaque', effetsAssocies:'',
+     effet:"Porte de petits coups peu puissants mais déstabilisants pour l'adversaire."},
+    {id:'base_coup_precis', nom:'Coup précis', aptitude:'devoiler', niveauRequis:0,
+     segmentOctogone:'', armeAssociee:'', nonArme:true, plafondAllies:null, conditions:'',
+     categorie:'Attaque', effetsAssocies:'',
+     effet:"Attend que l'adversaire se découvre, puis frappe aux défauts d'armure ou aux points vitaux."},
+    {id:'base_garder_distance', nom:'Garder la distance', aptitude:'se_deplacer', niveauRequis:0,
+     segmentOctogone:'', armeAssociee:'', nonArme:true, plafondAllies:null, conditions:'',
+     categorie:'Deplacement', effetsAssocies:'',
+     effet:"Préserve une distance avec l'adversaire, pour éviter ses coups et le harceler des siens."},
+    {id:'base_garder_equilibre', nom:"Garder l'équilibre", aptitude:'resister', niveauRequis:0,
+     segmentOctogone:'', armeAssociee:'', nonArme:true, plafondAllies:null, conditions:'',
+     categorie:'Défense', effetsAssocies:'',
+     effet:"Préserve son équilibre et ses armes, pour éviter plus facilement certains effets de combat."},
+  ];
+
+  // Actions disponibles pour CE personnage = les manœuvres de base (toujours là) plus
+  // sa collection personnelle.
   function getActions(){
-    return ensureManoeuvresState().map(m=>({...m, _typeAction:'perso'}));
+    return [
+      ...MANOEUVRES_BASE.map(m=>({...m, _typeAction:'base'})),
+      ...ensureManoeuvresState().map(m=>({...m, _typeAction:'perso'})),
+    ];
   }
 
   // ── 1ter. Éditeur de la collection personnelle (panneau de fiche) ──
@@ -998,6 +1029,21 @@
     return session;
   }
 
+  // Engagement : verrouillage souple. Public (visible de tous), librement pris ou
+  // cédé — rien n'empêche mécaniquement de déclarer une manœuvre sans l'avoir, mais
+  // la résolution rappelle la règle : si les deux attaquent, c'est l'engagement qui
+  // mène l'assaut, l'autre est contraint à la défense (voir Sifhr_combats).
+  async function prendreEngagement(){
+    await ecrireCombatSession(session=>{ session.engagement = FICHE_ID; });
+    injecterPanneauSession();
+    ajouterJournalNarratif(texteNarratif('engagement', {nom:FICHE_ID}));
+  }
+  async function cederEngagement(id){
+    await ecrireCombatSession(session=>{ session.engagement = id||null; });
+    injecterPanneauSession();
+    if(id) ajouterJournalNarratif(texteNarratif('engagement', {nom:id}));
+  }
+
   async function rejoindreCombat(){
     await ecrireCombatSession(session=>{
       session.actif = true;
@@ -1116,6 +1162,15 @@
 
     let html = `<div style="font-family:Cinzel,serif;font-size:.7rem;color:#185FA5;letter-spacing:.05em;margin-bottom:.4rem;">⚔ SESSION DE COMBAT ${session.actif?('— Assaut '+(session.assautNum||1)):'(inactive)'}</div>`;
 
+    if(moi){
+      const eng = session.engagement;
+      html += `<div style="margin:.3rem 0;font-size:.82rem;">⚔ Engagement : `
+        + (eng ? `<strong>${eng}${eng===FICHE_ID?' (vous)':''}</strong>` : '<em>Indéterminé</em>')
+        + (eng===FICHE_ID ? ` <button id="combat-ceder-engagement-btn" style="${btnStyle('#6b5d4f',true)}">Céder</button>` : '')
+        + (eng!==FICHE_ID ? ` <button id="combat-prendre-engagement-btn" style="${btnStyle('#185FA5',true)}">${eng?'Reprendre':'Prendre'} l'engagement</button>` : '')
+        + `</div>`;
+    }
+
     if(!moi){
       html += `<button id="combat-rejoindre-btn" style="${btnStyle('#185FA5')}">Rejoindre le combat</button>`;
     } else {
@@ -1195,6 +1250,10 @@
       _detailsTechniquesOuverts = !_detailsTechniquesOuverts;
       injecterPanneauSession();
     });
+    const peb = document.getElementById('combat-prendre-engagement-btn');
+    if(peb) peb.addEventListener('click', prendreEngagement);
+    const ceb = document.getElementById('combat-ceder-engagement-btn');
+    if(ceb) ceb.addEventListener('click', ()=>cederEngagement(null));
   }
 
   // Rafraîchissement périodique du panneau (pour voir en direct qui a résolu son assaut)
@@ -1499,6 +1558,23 @@
       }
     }catch(e){}
 
+    // Note consultative sur l'engagement (verrouillage souple : rien n'est bloqué,
+    // juste rappelé). Si le vainqueur attaquait sans avoir l'engagement, un bouton
+    // permet de le prendre puisque l'échange vient de tourner en sa faveur.
+    let noteEngagement = '';
+    try{
+      const envId = getEnvId();
+      if(envId){
+        const envEtat = await fetchEnvEtat(envId);
+        const eng = envEtat?.combatSession?.engagement;
+        if(eng && eng!==FICHE_ID && _manoeuvreActive.m.categorie==='Attaque'){
+          noteEngagement = `<div style="margin:.3rem 0;padding:.3rem .5rem;background:#fff3e0;border-left:3px solid #c8860a;font-size:.78rem;">`
+            + `Rappel : ${eng} a l'engagement — en toute rigueur, votre attaque ne peut vraiment aboutir tant qu'il n'échoue pas (à interpréter avec le meneur). `
+            + `<button id="combat-prendre-engagement-resolution-btn" style="${btnStyle('#185FA5',true)};margin-top:.3rem;">Prendre l'engagement (vous venez de l'emporter)</button></div>`;
+        }
+      }
+    }catch(e){}
+
     const canaux=[
       {key:'des', label:`Dés dévoyés : ${advId} en a actuellement ${advRedsActuels} (dernier état connu) — en imposer ${effets.des} de plus au prochain lancer`},
       {key:'trait', label:`Trait de blessure niveau ${effets.traitLevel} (${effets.traitDuree})`},
@@ -1515,7 +1591,8 @@
       : [];
 
     let html=`<div style="font-family:Cinzel,serif;font-size:.72rem;color:#8b2020;margin-bottom:.4rem;">`
-      +`⚔ RÉSOLUTION — ${_manoeuvreActive.m.nom} — marge ${marge>=0?'+':''}${marge}, palier ${effets.label}</div>`;
+      +`⚔ RÉSOLUTION — ${_manoeuvreActive.m.nom} — marge ${marge>=0?'+':''}${marge}, palier ${effets.label}</div>`
+      + noteEngagement;
     canaux.forEach(ca=>{
       const checked = cumulTout ? 'checked' : (ca.key==='des'?'checked':'');
       html+=`<label style="display:block;margin:.25rem 0;cursor:pointer;">`
@@ -1564,6 +1641,8 @@
       });
     }
     panel.innerHTML=html;
+    const preb = document.getElementById('combat-prendre-engagement-resolution-btn');
+    if(preb) preb.addEventListener('click', async ()=>{ await prendreEngagement(); preb.disabled=true; preb.textContent='✓ Engagement pris'; });
 
     document.getElementById('oct-appliquer-btn').addEventListener('click', async ()=>{
       const cible = document.getElementById('oct-cible').value;
