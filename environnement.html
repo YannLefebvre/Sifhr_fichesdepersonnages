@@ -4,65 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Octogone — Environnement</title>
-<!-- Panneau galerie (MJ) -->
-<div id="galerie-panel">
-  <div id="galerie-header">
-    <h3>🖼 Galerie</h3>
-    <button onclick="galerieToggle()" style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:1rem;">✕</button>
-  </div>
-  <input id="galerie-search" type="text" placeholder="Rechercher…" oninput="galerieRender()">
-  <div style="padding:.3rem .7rem;border-bottom:1px solid var(--border2);flex-shrink:0;display:flex;gap:.4rem;">
-    <button class="galerie-add-btn" onclick="galerieToggleForm()">+ Ajouter une image</button>
-    <label class="galerie-add-btn secondary" style="cursor:pointer;">
-      📁 Upload
-      <input type="file" accept="image/*" multiple style="display:none" onchange="galerieUpload(this)">
-    </label>
-  </div>
-  <!-- Formulaire d'ajout par URL -->
-  <div id="galerie-add-form">
-    <div class="galerie-add-row">
-      <input class="galerie-add-inp" type="text" id="galerie-inp-url" placeholder="URL de l'image…">
-    </div>
-    <div class="galerie-add-row">
-      <input class="galerie-add-inp" type="text" id="galerie-inp-titre" placeholder="Titre…">
-      <select class="galerie-add-inp" id="galerie-inp-rev" style="flex:0 0 auto;width:auto;">
-        <option value="aucun">Caché</option>
-        <option value="tous">Tous</option>
-      </select>
-    </div>
-    <div class="galerie-add-row">
-      <button class="galerie-add-btn" onclick="galerieAdd()">💾 Ajouter</button>
-      <button class="galerie-add-btn secondary" onclick="galerieToggleForm()">Annuler</button>
-    </div>
-  </div>
-  <div id="galerie-scroll"></div>
-</div>
-
-<!-- Lightbox -->
-<div id="galerie-lightbox" onclick="galerieLightboxClose()">
-  <img id="galerie-lightbox-img" src="" alt="">
-  <div id="galerie-lightbox-titre"></div>
-</div>
-
-<!-- Panneau images reçues (joueurs) -->
-<div id="galerie-recues">
-  <div id="galerie-recues-box">
-    <div style="display:flex;align-items:center;margin-bottom:.5rem;">
-      <span style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--accent);flex:1;">🖼 Images reçues</span>
-      <button onclick="document.getElementById('galerie-recues').classList.remove('open')"
-        style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:1.1rem;">✕</button>
-    </div>
-    <div id="galerie-recues-grid"></div>
-  </div>
-</div>
-
-<!-- Notification image poussée -->
-<div id="galerie-notif" onclick="galerieNotifClick()">
-  <img id="galerie-notif-thumb" src="" alt="">
-  <div id="galerie-notif-titre"></div>
-  <div id="galerie-notif-msg">Cliquez pour voir l'image</div>
-</div>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
 /* ══════════════════════════════════════════════
@@ -1060,7 +1001,7 @@ async function gmReset(){
     background:none; color:#185FA5; cursor:pointer; }
 
   /* ── Panneau personnages liés (onglet vertical) ── */
-  #perso-lies-tab-wrap { position:fixed; right:0; top:30vh;
+  #perso-lies-tab-wrap { position:fixed; right:0; top:52vh;
     z-index:280; display:none; }
   #perso-lies-tab-btn { writing-mode:vertical-rl; font-family:'Cinzel',serif;
     font-size:.68rem; letter-spacing:.08em; padding:.6rem .35rem;
@@ -1078,123 +1019,6 @@ async function gmReset(){
     padding-bottom:.3rem; }
   #perso-lies-panel .panel-title-bar span { font-family:'Cinzel',serif;
     font-size:.78rem; color:#5a3a8a; flex:1; letter-spacing:.06em; }
-
-  /* ── Sélecteur de lieux ── */
-  #lieu-selector { background:var(--section-bg); border:1px solid var(--accent);
-    border-radius:8px; padding:.6rem .8rem; margin-bottom:1rem; }
-  .lieu-selector-header { display:flex; align-items:center; gap:.5rem;
-    margin-bottom:.5rem; }
-  .lieu-selector-title { font-family:'Cinzel',serif; font-size:.8rem;
-    color:var(--accent); letter-spacing:.07em; flex:1; }
-  .lieu-tabs { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.4rem; }
-  .lieu-tab { font-family:'Cinzel',serif; font-size:.7rem; padding:4px 12px;
-    border:1px solid var(--border); border-radius:4px; background:var(--input-bg);
-    color:var(--ink2); cursor:pointer; transition:all .15s; }
-  .lieu-tab:hover { border-color:var(--accent); color:var(--accent); }
-  .lieu-tab.active { background:var(--accent); color:#1a1208; border-color:var(--accent); }
-  .lieu-tab-edit { font-size:.65rem; opacity:.6; margin-left:.2rem; cursor:pointer; }
-  .lieu-tab-edit:hover { opacity:1; }
-  .lieu-add-btn { font-family:'Cinzel',serif; font-size:.68rem; padding:3px 10px;
-    border:1px dashed var(--border); border-radius:4px; background:none;
-    color:var(--ink3); cursor:pointer; }
-  .lieu-add-btn:hover { border-color:var(--accent); color:var(--accent); }
-  /* Historique des lieux pour joueurs */
-  #lieu-historique { margin-top:.5rem; border-top:1px solid var(--border2);
-    padding-top:.4rem; }
-  .lieu-hist-title { font-family:'Cinzel',serif; font-size:.65rem;
-    color:var(--ink3); letter-spacing:.06em; margin-bottom:.3rem; }
-  .lieu-hist-item { display:flex; align-items:center; gap:.4rem; padding:.2rem 0; }
-  .lieu-hist-nom { font-family:'Cinzel',serif; font-size:.7rem; color:var(--ink2); flex:1; }
-  .lieu-hist-btn { font-family:'Cinzel',serif; font-size:.6rem; padding:1px 7px;
-    border:1px solid var(--border); border-radius:3px; background:none;
-    color:var(--ink3); cursor:pointer; }
-  .lieu-hist-btn:hover { border-color:var(--accent); color:var(--accent); }
-
-  /* ── Galerie d'images ── */
-  #galerie-panel { position:fixed; right:0; top:0; bottom:0; width:360px;
-    background:var(--bg); border-left:1px solid var(--accent);
-    box-shadow:-4px 0 18px rgba(0,0,0,.3); z-index:279;
-    display:none; flex-direction:column; overflow:hidden; }
-  #galerie-panel.open { display:flex; }
-  #galerie-header { display:flex; align-items:center; gap:.4rem;
-    padding:.5rem .7rem; background:rgba(26,18,8,.9);
-    border-bottom:1px solid var(--border); flex-shrink:0; }
-  #galerie-header h3 { font-family:'Cinzel',serif; font-size:.8rem;
-    color:var(--accent); flex:1; letter-spacing:.07em; margin:0; }
-  #galerie-search { width:calc(100% - 1.4rem); margin:.4rem .7rem;
-    padding:.3rem .5rem; background:var(--input-bg); border:1px solid var(--border);
-    border-radius:3px; font-family:'Crimson Text',serif; font-size:.85rem;
-    color:var(--ink); outline:none; flex-shrink:0; box-sizing:border-box; }
-  #galerie-search:focus { border-color:var(--accent); }
-  #galerie-add-form { padding:.4rem .7rem; border-bottom:1px solid var(--border2);
-    flex-shrink:0; display:none; }
-  #galerie-add-form.open { display:block; }
-  .galerie-add-row { display:flex; gap:.3rem; margin-bottom:.3rem; align-items:center; }
-  .galerie-add-inp { flex:1; padding:.3rem .5rem; background:var(--input-bg);
-    border:1px solid var(--border); border-radius:3px;
-    font-family:'Crimson Text',serif; font-size:.82rem; color:var(--ink); }
-  .galerie-add-inp:focus { border-color:var(--accent); outline:none; }
-  .galerie-add-btn { font-family:'Cinzel',serif; font-size:.65rem; padding:3px 9px;
-    border:1px solid var(--accent); border-radius:3px; background:var(--accent);
-    color:#1a1208; cursor:pointer; white-space:nowrap; }
-  .galerie-add-btn.secondary { background:none; color:var(--accent); }
-  #galerie-scroll { flex:1; overflow-y:auto; padding:.4rem .5rem; }
-  .galerie-card { border:1px solid var(--border2); border-radius:6px;
-    margin-bottom:.5rem; overflow:hidden; }
-  .galerie-thumb { width:100%; height:120px; object-fit:cover;
-    display:block; cursor:pointer; background:var(--input-bg); }
-  .galerie-thumb-placeholder { width:100%; height:80px; display:flex;
-    align-items:center; justify-content:center;
-    background:var(--input-bg); color:var(--ink3);
-    font-size:2rem; cursor:pointer; }
-  .galerie-card-body { padding:.4rem .5rem; }
-  .galerie-card-titre { font-family:'Cinzel',serif; font-size:.72rem;
-    color:var(--ink2); margin-bottom:.3rem; }
-  .galerie-card-rev { font-family:'Cinzel',serif; font-size:.58rem;
-    padding:1px 6px; border-radius:8px; display:inline-block; margin-bottom:.3rem; }
-  .galerie-card-rev.tous { background:#1a4a2a; color:#a0d0a0; }
-  .galerie-card-rev.aucun { background:#3a2020; color:#c08080; }
-  .galerie-card-rev.partiel { background:#3a3a10; color:#c0c060; }
-  .galerie-card-actions { display:flex; gap:.3rem; flex-wrap:wrap; }
-  .galerie-act { font-family:'Cinzel',serif; font-size:.6rem; padding:2px 7px;
-    border:1px solid var(--border); border-radius:3px; background:none;
-    color:var(--ink3); cursor:pointer; }
-  .galerie-act:hover { border-color:var(--accent); color:var(--accent); }
-  .galerie-act.primary { background:var(--accent); color:#1a1208; border-color:var(--accent); }
-  .galerie-act.danger { color:#c06050; border-color:#7a3a2a; }
-  /* Lightbox */
-  #galerie-lightbox { display:none; position:fixed; inset:0;
-    background:rgba(0,0,0,.92); align-items:center; justify-content:center;
-    z-index:600; cursor:zoom-out; }
-  #galerie-lightbox.open { display:flex; }
-  #galerie-lightbox img { max-width:92vw; max-height:90vh;
-    border-radius:4px; box-shadow:0 4px 40px rgba(0,0,0,.8); }
-  #galerie-lightbox-titre { position:fixed; bottom:1.5rem; left:50%;
-    transform:translateX(-50%); font-family:'Cinzel',serif; font-size:.85rem;
-    color:#f5f0e8; text-shadow:0 2px 8px rgba(0,0,0,.9);
-    letter-spacing:.06em; pointer-events:none; }
-  /* Panneau images reçues (joueurs) */
-  #galerie-recues { display:none; position:fixed; inset:0;
-    background:rgba(0,0,0,.92); align-items:flex-start; justify-content:center;
-    z-index:550; padding-top:3rem; }
-  #galerie-recues.open { display:flex; }
-  #galerie-recues-box { background:var(--bg); border-radius:8px;
-    padding:1rem 1.2rem; width:min(700px,94vw); max-height:85vh;
-    overflow-y:auto; }
-  #galerie-recues-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
-    gap:.6rem; margin-top:.6rem; }
-  .galerie-recue-thumb { width:100%; aspect-ratio:4/3; object-fit:cover;
-    border-radius:4px; cursor:pointer; border:1px solid var(--border2); }
-  /* Notification image poussée */
-  #galerie-notif { display:none; position:fixed; bottom:1rem; right:1rem;
-    background:var(--section-bg); border:1px solid var(--accent); border-radius:8px;
-    padding:.6rem .9rem; z-index:580; max-width:260px;
-    box-shadow:0 4px 18px rgba(0,0,0,.4); cursor:pointer; }
-  #galerie-notif.open { display:block; }
-  #galerie-notif-thumb { width:60px; height:45px; object-fit:cover;
-    border-radius:3px; float:left; margin-right:.5rem; }
-  #galerie-notif-titre { font-family:'Cinzel',serif; font-size:.72rem; color:var(--accent); }
-  #galerie-notif-msg { font-family:'Crimson Text',serif; font-size:.8rem; color:var(--ink3); }
 </style>
 </head>
 <body>
@@ -1218,6 +1042,8 @@ async function gmReset(){
 
 
 <!-- Panneau 9 agrégés (MJ only) -->
+<div id="nine-panel">
+  <div class="nine-panel-title">⚡ Total des 9 recueillis</div>
   <div class="nine-count-row">
     <span class="nine-count-val" id="nine-count-val">0</span>
     <span class="nine-threshold" id="nine-threshold-label">/ seuil : ?</span>
@@ -1297,19 +1123,6 @@ async function gmReset(){
     <span class="rot-val" id="rot-display">0°</span>
   </div>
 
-<!-- ── Sélecteur de lieux ── -->
-<div id="lieu-selector">
-  <div class="lieu-selector-header">
-    <span class="lieu-selector-title">🏛 Lieux du scénario</span>
-    <button class="lieu-add-btn gm-only-zone" onclick="lieuAjouter()" style="display:none;">+ Nouveau lieu</button>
-  </div>
-  <div class="lieu-tabs" id="lieu-tabs"></div>
-  <div id="lieu-historique" style="display:none;">
-    <div class="lieu-hist-title">Historique des lieux visités</div>
-    <div id="lieu-hist-list"></div>
-  </div>
-</div>
-
   <div class="oct-wrap">
     <svg id="oct" viewBox="-130 -130 560 560" xmlns="http://www.w3.org/2000/svg">
       <g id="roue"></g>
@@ -1317,17 +1130,15 @@ async function gmReset(){
     </svg>
   </div>
 
-    <div class="dyn-log-list" id="dyn-log-list">
+  <!-- Dynamique de l'environnement -->
+  <!-- Panneau Dynamique (visible à tous, filtré par niveau) -->
+<div id="dynamique-panel">
+  <div class="dyn-panel-title">
+    <span>Dynamique de l'environnement</span>
+  </div>
+  <div class="dyn-log-list" id="dyn-log-list">
     <div class="dyn-empty">Aucune modification enregistrée.</div>
   </div>
-</div>
-
-  <div id="nine-panel">
-  <div class="nine-panel-title">⚡ Total des 9 recueillis</div>
-  <div class="nine-count-display">
-    <span id="nine-count-text">0 / seuil : ?</span>
-  </div>
-  <div class="nine-fiches-detail" id="nine-fiches-detail"></div>
 </div>
 
   <!-- Pneumatographie -->
@@ -1397,12 +1208,6 @@ async function gmReset(){
     </div>
   </div>
 
-<div id="dynamique-panel">
-  <div class="dyn-panel-title">
-    <span>Dynamique de l'environnement</span>
-  </div>
-
-
   <!-- Barre éther/occultation -->
   <div class="des-row">
     <span class="des-label">Éther</span>
@@ -1419,7 +1224,21 @@ async function gmReset(){
       <div id="pneumato-panel-body"></div>
     </div>
   </div>
-  
+  <div class="gm-bar" id="gm-bar" style="display:none;">
+  <span class="gm-bar-label">MJ</span>
+  <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
+  <button class="gm-btn safe" onclick="gmSyncEnvFiche()" title="Écrit l'id de cette fiche env dans la fiche de chaque joueur lié">🔗 Sync fiche env → joueurs</button>
+  <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser à l'état d'origine</button>
+  <button class="gm-btn danger" onclick="gmResetFull()">🗑 Réinitialisation complète</button>
+  <span class="gm-bar-label" style="margin-left:.6rem;">Sauvegardes</span>
+  <button class="gm-btn safe" onclick="exportEnvComplet()">⬇ Exporter environnement</button>
+  <button class="gm-btn safe" onclick="exportFichesSeparees()">⬇ Exporter fiches</button>
+  <label class="gm-btn" style="cursor:pointer;background:var(--input-bg);">
+    ⬆ Importer
+    <input type="file" accept=".json" style="display:none" onchange="importerSauvegarde(this)">
+  </label>
+</div>
+<p class="save-info" id="save-msg">Synchronisation en cours…</p>
 
 <!-- ══════════════════════════════════════════
      FRISE CHRONOLOGIQUE ISLAMIQUE
@@ -1454,17 +1273,6 @@ async function gmReset(){
       <span style="font-family:'Cinzel',serif;font-size:.68rem;color:#8a6a20;">h</span>
     </div>
     <div class="chrono-config-row" style="gap:.4rem;margin-top:.3rem;">
-      <!-- Type de carte -->
-      <div class="chrono-config-row" style="margin-top:.5rem;border-top:1px solid #e8d5a0;padding-top:.5rem;">
-        <span class="chrono-config-label">🗺 Carte liée :</span>
-        <select id="cfg-carte-type" class="chrono-inp"
-          style="flex:1;font-family:'Cinzel',serif;font-size:.72rem;"
-          onchange="configSaveCarte()">
-          <option value="">Damas (défaut)</option>
-          <option value="damas">Damas</option>
-          <option value="myriokephalon">Myriokephalon 1176</option>
-        </select>
-      </div>
       <button class="chrono-btn" onclick="chronoSaveConfig()">💾 Enregistrer</button>
       <button class="chrono-btn secondary" onclick="chronoAvancerJour(1)">+1 Jour →</button>
       <button class="chrono-btn secondary" onclick="chronoAvancerJour(7)">+7 Jours →</button>
@@ -1701,7 +1509,6 @@ let authenticated=false;
 let isGM=false;
 let playerId='joueur';
 let applyingRemote=false;
-let _stateLoaded=false; // bloque saveState avant chargement Supabase
 
 const AXE_LABELS = {
   feu:'Feu', bile_j:'Bile Jaune', terre:'Terre', bile_n:'Bile Noire',
@@ -1748,72 +1555,19 @@ function laneColorKey(tokens){
   return 'none';
 }
 
-// ── Lieu par défaut (champs migrés dans state.lieux) ──
-const _LIEU_DEFAULT_KEY = 'lieu_001';
-const _LIEU_DEFAULT_PNEUMATO = {valeurs:0,polarite:0,
-  direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
-  dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},
-  zonesRevealed:{valeurs:false,polarite:false,direction:false,dynamique:false}};
-
 let state={
-  // Champs globaux (partagés entre tous les lieux)
-  axisNotes:{},
-  fichePersonnages:[],
-  dynamiqueLog:[],
-  nineCount:0,
-  nineThreshold:3,
-  wheelRot:0,
-  // Lieux
-  lieux:{},       // {lieu_key: {nom, tokens, scores, pneumato, dynamiqueLog, nineCount, nineThreshold}}
-  lieuActif: _LIEU_DEFAULT_KEY,
-  lieuHistorique: [], // [{key, nom, ts}] — historique pour les joueurs
-  // Rétrocompat : tokens/scores/pneumato à la racine = alias vers le lieu actif
-  // (géré par lieuState())
+  tokens:{},scores:{},
+  axisNotes:{}, // {sectorId: {gm:{text,locked,revealed}, players:{text,locked}}}
+  pneumato:{valeurs:0,polarite:0,direction:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},dynamique:{1:{text:'',active:false,locked:false},2:{text:'',active:false,locked:false},3:{text:'',active:false,locked:false}},zonesRevealed:{valeurs:false,polarite:false,direction:false,dynamique:false}},ether:'',occultation:'',
+  wheelRot:0
 };
-
-// ── Couche d'abstraction : accéder au lieu actif ──
-function lieuState(){
-  const key = state.lieuActif || _LIEU_DEFAULT_KEY;
-  if(!state.lieux[key]) lieuInit(key, 'Lieu '+Object.keys(state.lieux).length);
-  return state.lieux[key];
-}
-function lieuInit(key, nom){
-  const SECTORS_ENV=['feu','bile_j','terre','bile_n','eau','flegme','air','sang'];
-  const tokens={}, scores={};
-  SECTORS_ENV.forEach(s=>{
-    tokens[s]=['empty','empty','empty'];
-    scores[s+'_0']=0; scores[s+'_1']=0;
-  });
-  state.lieux[key]={
-    nom: nom||'Nouveau lieu',
-    tokens, scores,
-    pneumato: JSON.parse(JSON.stringify(_LIEU_DEFAULT_PNEUMATO)),
-    dynamiqueLog: [],
-    nineCount: 0,
-    nineThreshold: Math.floor(Math.random()*4)+3,
-  };
-  return state.lieux[key];
-}
-
-// Getters de rétrocompat (les fonctions existantes utilisent state.tokens etc.)
-Object.defineProperty(state, 'tokens', {get(){ return lieuState().tokens; }, set(v){ lieuState().tokens=v; }, configurable:true, enumerable:false});
-Object.defineProperty(state, 'scores', {get(){ return lieuState().scores; }, set(v){ lieuState().scores=v; }, configurable:true, enumerable:false});
-Object.defineProperty(state, 'pneumato', {get(){ return lieuState().pneumato; }, set(v){ lieuState().pneumato=v; }, configurable:true, enumerable:false});
-Object.defineProperty(state, 'nineCount', {get(){ return lieuState().nineCount; }, set(v){ lieuState().nineCount=v; }, configurable:true, enumerable:false});
-Object.defineProperty(state, 'nineThreshold', {get(){ return lieuState().nineThreshold; }, set(v){ lieuState().nineThreshold=v; }, configurable:true, enumerable:false});
-
-// Assurer un lieu par défaut
-if(!state.lieux||Object.keys(state.lieux).length===0) lieuInit(_LIEU_DEFAULT_KEY,'Lieu principal');
-if(!state.lieuActif) state.lieuActif=_LIEU_DEFAULT_KEY;
-
 SECTORS.forEach(s=>{
-  if(!lieuState().tokens[s.id]) lieuState().tokens[s.id]=['empty','empty','empty'];
-  if(!state.axisNotes[s.id]) state.axisNotes[s.id]={gm:{text:'',locked:false,revealed:false},players:{text:'',locked:false}};
+  state.tokens[s.id]=['empty','empty','empty'];
+  state.axisNotes[s.id]={gm:{text:'',locked:false,revealed:false},players:{text:'',locked:false}};
 });
 
-// Extensions de state globales
+// Extensions de state (après que state soit défini)
 if(!state.dynamiqueLog) state.dynamiqueLog=[];
-if(!state.lieuHistorique) state.lieuHistorique=[];
 if(!state.fichePersonnages) state.fichePersonnages=[];
 if(state.nineCount===undefined) state.nineCount=0;
 if(!state.nineThreshold) state.nineThreshold=Math.floor(Math.random()*4)+3;
@@ -2335,25 +2089,12 @@ function markdownToHtml(text){ if(typeof marked==='undefined') return text.repla
 // ── Sauvegarde ──
 let saveTimer=null;
 function saveState(){
-  if(applyingRemote||!authenticated||!_stateLoaded) return;
+  if(applyingRemote||!authenticated) return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     const msg=document.getElementById('save-msg');
     try{
       const stateCopy=JSON.parse(JSON.stringify(state));
-      // Protéger les champs critiques absents : merger avec Supabase avant upsert
-      const CHAMPS_CRITIQUES=['bibliotheque_ideaux','chronologie','fichePersonnages','carte',
-        'lieux','lieuHistorique','galerie','slots','hypotheses','couleurs','positions'];
-      const manquants=CHAMPS_CRITIQUES.filter(k=>!stateCopy[k]||
-        (typeof stateCopy[k]==='object'&&!Array.isArray(stateCopy[k])&&Object.keys(stateCopy[k]).length===0));
-      if(manquants.length>0){
-        try{
-          const current=await SB.get(FICHE_ID);
-          if(current?.etat){
-            manquants.forEach(k=>{ if(current.etat[k]!==undefined) stateCopy[k]=current.etat[k]; });
-          }
-        }catch(e){}
-      }
       const ok=await SB.upsert(FICHE_ID,stateCopy);
       if(ok){msg.textContent='Sauvegardé ✓';msg.className='save-info saved';setTimeout(()=>{msg.textContent='Synchronisation active';msg.className='save-info';},2000);}
       else{msg.textContent='Erreur de sauvegarde';msg.className='save-info error';}
@@ -2366,26 +2107,8 @@ function applyRemoteState(saved){
   applyingRemote=true;
   try{
     // 1. Mettre à jour les données d'état SANS toucher au rendu encore
-    // Migration ancien format → lieux
-    if(saved.tokens && !saved.lieux){
-      Object.entries(saved.tokens).forEach(([sid,arr])=>{ lieuState().tokens[sid]=arr; });
-    }
-    if(saved.scores && !saved.lieux) lieuState().scores=saved.scores;
-    // Nouveau format : lieux
-    if(saved.lieux) state.lieux={...state.lieux,...saved.lieux};
-    if(saved.lieuActif!==undefined){
-      const prev=state.lieuActif;
-      state.lieuActif=saved.lieuActif;
-      if(prev&&prev!==saved.lieuActif&&state.lieux[prev]){
-        if(!state.lieuHistorique) state.lieuHistorique=[];
-        if(!state.lieuHistorique.find(h=>h.key===prev)){
-          state.lieuHistorique.unshift({key:prev,nom:state.lieux[prev].nom,ts:Date.now()});
-          state.lieuHistorique=state.lieuHistorique.slice(0,10);
-        }
-      }
-    }
-    if(saved.lieuHistorique) state.lieuHistorique=saved.lieuHistorique;
-    if(saved.scores && !saved.lieux) lieuState().scores=saved.scores; // déjà géré mais sécurité
+    if(saved.tokens) Object.entries(saved.tokens).forEach(([sid,arr])=>{ state.tokens[sid]=arr; });
+    if(saved.scores) state.scores=saved.scores;
     if(saved.pneumato!==undefined&&saved.pneumato!==null){
       if(typeof saved.pneumato==='object'&&!Array.isArray(saved.pneumato)){
         state.pneumato=saved.pneumato;
@@ -2420,10 +2143,6 @@ function applyRemoteState(saved){
       state.chronologie=saved.chronologie;
       if(typeof chronoRender==='function') chronoRender();
     }
-    if(saved.carte!==undefined){
-      state.carte=saved.carte;
-      if(typeof configLoadCarte==='function') configLoadCarte();
-    }
     if(saved.fichePersonnages!==undefined){ state.fichePersonnages=saved.fichePersonnages; if(isGM) renderFichesPersoList(); }
     if(saved.nineCount!==undefined){ state.nineCount=saved.nineCount; }
     if(saved.nineThreshold!==undefined){ state.nineThreshold=saved.nineThreshold; }
@@ -2432,12 +2151,6 @@ function applyRemoteState(saved){
   }catch(e){console.error('applyRemoteState',e);}
   applyingRemote=false;
   if(typeof renderSegmentColors==='function') renderSegmentColors();
-  // Mettre à jour le panneau routines MJ quand fichePersonnages est chargé
-  if(isGM && typeof chronoRenderRoutinesMJ==='function') chronoRenderRoutinesMJ();
-  // Détecter image poussée
-  if(saved._galeriePush&&typeof checkIncomingGaleriePush==='function') checkIncomingGaleriePush(saved);
-  if(saved.galerie!==undefined) state.galerie=saved.galerie;
-  if(saved.galerieRecues!==undefined) state.galerieRecues={...state.galerieRecues,...saved.galerieRecues};
 }
 
 // ── Realtime ──
@@ -2488,27 +2201,19 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
         // xfer-fab et carte-env-fab retirés (accès depuis octogone.html uniquement)
         if(tryGM){
           document.getElementById('gm-bar').style.display='flex';
-          window._mjPw = pw;
+          window._mjPw = pw; // stocker pour navigation fiches
+          document.getElementById('chrono-tab-wrap').style.display='block';
+          document.getElementById('bib-tab-wrap').style.display='block';
+          document.getElementById('mj-fiches-nav').style.display='block';
+          document.getElementById('perso-lies-tab-wrap').style.display='block';
+          mjRenderNavList();
           document.getElementById('btn-occultation-gm').style.display='flex';
           document.querySelectorAll('.gm-only-zone').forEach(el=>el.classList.add('gm-visible'));
           document.getElementById('nine-panel').style.display='block';
+          document.getElementById('fiches-liees-row').style.display='block';
+          // Restaurer fiches liées dans l'input
           renderFichesPersoList();
           pollNines();
-          // Onglets latéraux MJ
-          ['mj-fiches-nav','galerie-tab-wrap','perso-lies-tab-wrap'].forEach(id=>{
-            const el=document.getElementById(id);
-            if(el) el.style.display='block';
-          });
-          // Octogones idéaux directement dans la page
-          const bibSec=document.getElementById('bib-ideaux-section');
-          if(bibSec){ bibSec.style.display='block'; setTimeout(bibIdeauxInit, 600); }
-          mjRenderNavList();
-          // lieuRenderTabs appelé après applyRemoteState
-          // Chronologie directement dans la page
-          const chronoSec=document.getElementById('chrono-section');
-          if(chronoSec) chronoSec.style.display='block';
-          setTimeout(chronoInit, 400);
-          setTimeout(bibIdeauxInit, 600);
         }
         // Charger d'abord l'état Supabase, PUIS initialiser l'UI
         if(row.etat&&Object.keys(row.etat).length>0){
@@ -2517,11 +2222,12 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           pneuInit();
           pneuRenderButtons();
         }
-        _stateLoaded=true; // autoriser saveState maintenant
-        // Maintenant que l'état est chargé, afficher les lieux et les fiches
-        if(isGM){ lieuRenderTabs(); renderFichesPersoList(); }
         startRealtime();
-        setTimeout(startMjDiceObservation, 500);
+        setTimeout(startMjDiceObservation, 500); // observer les lancers des joueurs
+        setTimeout(bibIdeauxInit, 600); // bibliothèque octogones idéaux
+        // Chronologie
+        document.getElementById('chrono-section').style.display='block';
+        setTimeout(chronoInit, 400);
         // Routines joueur si identifié
         if(!tryGM){
           // Afficher la frise et les routines pour tous les joueurs
@@ -3180,10 +2886,7 @@ async function pushVisibilitesToFiche(ficheId, pw, otherId, niveau){
 let _ninesPollTimer=null;
 async function pollNines(){
   if(!isGM) return;
-  // fichePersonnages peut contenir des objets {id,...} ou des strings — normaliser
-  const fiches = (state.fichePersonnages||[]).map(p=>
-    typeof p==='string' ? p : (p.id||p)
-  ).filter(id=>typeof id==='string'&&id.length>0);
+  const fiches = state.fichePersonnages||[];
   if(!fiches.length){
     document.getElementById('nine-count-val').textContent='0';
     document.getElementById('nine-threshold-label').textContent='/ seuil : '+(state.nineThreshold||'?');
@@ -3228,6 +2931,19 @@ async function pollNines(){
       // Vérifier si le seuil est atteint
       checkNineThreshold(total);
     }
+
+    // Resynchroniser la file d'événements partagée (au cas où elle aurait été
+    // modifiée depuis le Mode Combat d'un autre onglet/appareil).
+    try{
+      const rq=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,{headers:SB.headers});
+      const dq=await rq.json();
+      const queuePartagee=dq[0]?.etat?._evtQueuePartagee;
+      if(Array.isArray(queuePartagee)){
+        EVT_AUTO_QUEUE.length=0;
+        queuePartagee.forEach(e=>EVT_AUTO_QUEUE.push(e));
+        renderEvtQueue();
+      }
+    }catch(e){}
   }catch(e){}
 
   clearTimeout(_ninesPollTimer);
@@ -3256,6 +2972,23 @@ function checkNineThreshold(total){
 // ── Générateur automatique d'événements ──
 const EVT_AUTO_QUEUE=[];
 
+// Persistance partagée de la file d'événements automatiques (initialement en mémoire
+// seulement) — pour qu'elle reste visible et actionnable depuis d'autres pages, en
+// particulier le Mode Combat d'octogone.html, sans devoir garder cet onglet ouvert.
+async function persisterQueuePartagee(){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,{headers:SB.headers});
+    const d=await r.json();
+    const etat=d[0]?.etat||{};
+    etat._evtQueuePartagee=EVT_AUTO_QUEUE;
+    await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+      method:'POST',
+      headers:{...SB.headers,'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({id:FICHE_ID, etat})
+    });
+  }catch(e){ console.error('[persisterQueuePartagee]', e); }
+}
+
 async function generateAutoEvent(poids){
   // Choisir un axe majoritaire de l'octogone d'environnement
   let bestAxe=null, bestCount=0;
@@ -3282,6 +3015,7 @@ async function generateAutoEvent(poids){
   const evt={id:'auto_'+Date.now(), text, axe:AXES_NUMS[bestAxe]||1, poids, pol, ts:Date.now()};
   EVT_AUTO_QUEUE.push(evt);
   renderEvtQueue();
+  persisterQueuePartagee();
 }
 
 function renderEvtQueue(){
@@ -3326,11 +3060,13 @@ async function acceptAutoEvt(idx){
   }catch(e){}
   EVT_AUTO_QUEUE.splice(idx,1);
   renderEvtQueue();
+  persisterQueuePartagee();
 }
 
 function refuseAutoEvt(idx){
   EVT_AUTO_QUEUE.splice(idx,1);
   renderEvtQueue();
+  persisterQueuePartagee();
 }
 
 </script>
@@ -3365,9 +3101,24 @@ function closeDuel(){
 
 </script>
 
+<!-- Onglet vertical Chronologie (gauche, au-dessus de Fiches) -->
+<div id="chrono-tab-wrap" style="position:fixed;right:0;top:28vh;z-index:280;display:none;">
+  <button id="chrono-fab" onclick="chronoToggle()"
+    style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
+    letter-spacing:.08em;padding:.6rem .35rem;background:#c8860a;color:#fff8e8;
+    border:none;border-radius:6px 0 0 6px;cursor:pointer;
+    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">☽ Chronologie</button>
+</div>
 
-
-
+<!-- Onglet vertical Octogones idéaux -->
+<div id="bib-tab-wrap" style="position:fixed;right:0;top:38vh;z-index:280;display:none;">
+  <button id="bib-ideaux-fab" onclick="toggleBibIdeaux()"
+    style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
+    letter-spacing:.08em;padding:.6rem .35rem;background:#1a4a2a;color:#f5f0e8;
+    border:none;border-radius:6px 0 0 6px;cursor:pointer;
+    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">📚 Oct.
+Idéaux</button>
+</div>
 
 <!-- Panneau MJ observateur de lancers -->
 <div id="mj-obs-overlay"></div>
@@ -3625,22 +3376,9 @@ function startMjDiceObservation(){
   </div>
 </div>
 
-<!-- Onglet vertical Galerie -->
-<div id="galerie-tab-wrap" style="position:fixed;right:0;top:42vh;z-index:280;display:none;">
-  <button id="galerie-tab-btn" onclick="galerieToggle()"
-    style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
-    letter-spacing:.08em;padding:.6rem .35rem;background:#4a2a6a;color:#f5f0e8;
-    border:none;border-radius:6px 0 0 6px;cursor:pointer;
-    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">🖼 Galerie</button>
-</div>
-
 <!-- Onglet vertical Personnages liés -->
 <div id="perso-lies-tab-wrap">
-  <button id="perso-lies-tab-btn" onclick="togglePersoLiesPanel()"
-    style="writing-mode:vertical-rl;font-family:'Cinzel',serif;font-size:.68rem;
-    letter-spacing:.08em;padding:.6rem .35rem;background:#5a3a8a;color:#f5f0e8;
-    border:none;border-radius:6px 0 0 6px;cursor:pointer;
-    box-shadow:-2px 2px 8px rgba(0,0,0,.25);">🧑 PJ/PNJ</button>
+  <button id="perso-lies-tab-btn" onclick="togglePersoLiesPanel()">🧑 Personnages liés</button>
 </div>
 
 <!-- Panneau personnages liés (glissant) -->
@@ -3733,7 +3471,13 @@ const BIB_GROUP_LABELS = {
 
 let _bibCurrentElement = null; // nom de l'élément en cours d'édition
 
-
+function chronoToggle(){
+  const sec=document.getElementById('chrono-section');
+  if(!sec) return;
+  const isOpen=sec.style.display!=='none'&&sec.style.display!=='';
+  sec.style.display=isOpen?'none':'block';
+  if(!isOpen) setTimeout(()=>sec.scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
 
 function toggleBibIdeaux(){
   const sec=document.getElementById('bib-ideaux-section');
@@ -4086,410 +3830,6 @@ async function _syncChronologieVersJoueurs(){
   }
 }
 
-
-// ══════════════════════════════════════════════
-//   GESTION DES LIEUX
-// ══════════════════════════════════════════════
-
-function lieuRenderTabs(){
-  const tabs=document.getElementById('lieu-tabs');
-  if(!tabs) return;
-  tabs.innerHTML='';
-  const lieux=state.lieux||{};
-  const keys=Object.keys(lieux);
-
-  keys.forEach(key=>{
-    const l=lieux[key];
-    const tab=document.createElement('div');
-    tab.className='lieu-tab'+(key===state.lieuActif?' active':'');
-    tab.title=l.nom;
-
-    const nameSpan=document.createElement('span');
-    nameSpan.textContent=l.nom;
-    tab.appendChild(nameSpan);
-
-    if(isGM){
-      const editSpan=document.createElement('span');
-      editSpan.className='lieu-tab-edit';
-      editSpan.textContent='✏';
-      editSpan.title='Renommer';
-      editSpan.addEventListener('click',(e)=>{
-        e.stopPropagation();
-        lieuRenommer(key);
-      });
-      tab.appendChild(editSpan);
-    }
-
-    tab.addEventListener('click',()=>{
-      if(key!==state.lieuActif) lieuBasculer(key);
-    });
-    tabs.appendChild(tab);
-  });
-
-  // Bouton + nouveau lieu (MJ)
-  const addBtn=document.querySelector('.lieu-add-btn');
-  if(addBtn) addBtn.style.display=isGM?'':'none';
-
-  // Historique pour les joueurs
-  lieuRenderHistorique();
-}
-
-async function lieuBasculer(key){
-  if(!state.lieux[key]) return;
-  state.lieuActif=key;
-  // Mettre à jour l'historique
-  if(!state.lieuHistorique) state.lieuHistorique=[];
-  await saveState();
-  lieuRenderTabs();
-  // Redessiner l'octogone avec les données du nouveau lieu
-  renderAll();
-}
-
-function lieuAjouter(){
-  const nom=prompt('Nom du nouveau lieu :','Nouveau lieu');
-  if(!nom) return;
-  const key='lieu_'+Date.now();
-  lieuInit(key, nom.trim());
-  state.lieuActif=key;
-  saveState();
-  lieuRenderTabs();
-  renderAll();
-}
-
-function lieuRenommer(key){
-  const ancien=state.lieux[key]?.nom||key;
-  const nouveau=prompt('Renommer ce lieu :', ancien);
-  if(!nouveau||nouveau===ancien) return;
-  state.lieux[key].nom=nouveau.trim();
-  saveState();
-  lieuRenderTabs();
-}
-
-function lieuRenderHistorique(){
-  const wrap=document.getElementById('lieu-historique');
-  const list=document.getElementById('lieu-hist-list');
-  if(!wrap||!list) return;
-  const hist=state.lieuHistorique||[];
-  if(!hist.length||isGM){ wrap.style.display='none'; return; }
-  wrap.style.display='block';
-  list.innerHTML='';
-  hist.forEach(h=>{
-    const item=document.createElement('div'); item.className='lieu-hist-item';
-    const nom=document.createElement('span'); nom.className='lieu-hist-nom';
-    nom.textContent=h.nom||h.key;
-    const btn=document.createElement('button'); btn.className='lieu-hist-btn';
-    btn.textContent='Consulter';
-    btn.addEventListener('click',()=>lieuConsulterHistorique(h.key));
-    item.appendChild(nom); item.appendChild(btn);
-    list.appendChild(item);
-  });
-}
-
-// Joueur : consulter un lieu précédent en lecture seule
-function lieuConsulterHistorique(key){
-  if(!state.lieux[key]){ alert('Ce lieu n\'est plus disponible.'); return; }
-  const old=state.lieuActif;
-  state.lieuActif=key;
-  renderAll();
-  // Afficher un bandeau "lecture seule"
-
-}
-
-function renderAll(){
-  // Redessiner tout l'octogone avec les données du lieu actif
-  const lieu=lieuState();
-  // 1. Tokens et lanes
-  SECTORS.forEach(s=>{
-    const toks=lieu.tokens[s.id]||['empty','empty','empty'];
-    toks.forEach((_,i)=>renderToken(s.id,i));
-    updateSectorLane(s.id);
-  });
-  // 2. Scores
-  if(lieu.scores){
-    Object.entries(lieu.scores).forEach(([key,val])=>{
-      const parts=key.split('_');
-      const sid=parts.slice(0,-1).join('_');
-      const qi=parts[parts.length-1];
-      const t=document.querySelector(`#sq-${sid}-${qi} text`);
-      if(t) t.textContent=val;
-    });
-  }
-  // 3. Rebuild labels (vertus/vices + ghost tokens)
-  if(typeof rebuildLabels==='function') rebuildLabels();
-  // 4. Pneumato
-  if(typeof pneuInit==='function') pneuInit();
-  if(typeof pneuRenderButtons==='function') pneuRenderButtons();
-  if(typeof pneuRenderPlayerView==='function') pneuRenderPlayerView();
-  // 5. Dynamique log
-  if(typeof renderDynamiqueLog==='function') renderDynamiqueLog();
-  // 6. Segment colors
-  if(typeof renderSegmentColors==='function') renderSegmentColors();
-  // 7. Tabs
-  lieuRenderTabs();
-}
-
-
-// ══════════════════════════════════════════════
-//   GALERIE D'IMAGES
-// ══════════════════════════════════════════════
-
-function galerieToggle(){
-  document.getElementById('galerie-panel').classList.toggle('open');
-  if(document.getElementById('galerie-panel').classList.contains('open')) galerieRender();
-}
-
-function galerieToggleForm(){
-  document.getElementById('galerie-add-form').classList.toggle('open');
-}
-
-// ── Ajouter une image par URL ──
-async function galerieAdd(){
-  const url=document.getElementById('galerie-inp-url').value.trim();
-  const titre=document.getElementById('galerie-inp-titre').value.trim();
-  const revele=document.getElementById('galerie-inp-rev').value;
-  if(!url){ alert('Renseignez une URL.'); return; }
-  const key='img_'+Date.now();
-  if(!state.galerie) state.galerie={};
-  state.galerie[key]={ titre:titre||'Image', url, tags:[], revele_a:revele, ts:Date.now() };
-  document.getElementById('galerie-inp-url').value='';
-  document.getElementById('galerie-inp-titre').value='';
-  await saveState();
-  galerieRender();
-  galerieToggleForm();
-}
-
-// ── Upload fichier local (base64) ──
-async function galerieUpload(input){
-  const files=Array.from(input.files);
-  if(!files.length) return;
-  if(!state.galerie) state.galerie={};
-  for(const file of files){
-    const b64=await new Promise((res,rej)=>{
-      const r=new FileReader();
-      r.onload=()=>res(r.result);
-      r.onerror=rej;
-      r.readAsDataURL(file);
-    });
-    // Avertir si trop grande (>500KB)
-    if(file.size>512000){
-      if(!confirm(`${file.name} est > 500 KB (${Math.round(file.size/1024)} KB). Cela peut alourdir la sauvegarde. Continuer ?`)) continue;
-    }
-    const key='img_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-    state.galerie[key]={ titre:file.name.replace(/\.[^.]+$/,''), url:b64, tags:[], revele_a:'aucun', ts:Date.now() };
-  }
-  await saveState();
-  galerieRender();
-  input.value='';
-}
-
-// ── Rendre la galerie ──
-function galerieRender(){
-  const scroll=document.getElementById('galerie-scroll');
-  if(!scroll) return;
-  const q=(document.getElementById('galerie-search')?.value||'').toLowerCase();
-  const galerie=state.galerie||{};
-  const keys=Object.keys(galerie)
-    .filter(k=>!q||(galerie[k].titre||'').toLowerCase().includes(q))
-    .sort((a,b)=>(galerie[b].ts||0)-(galerie[a].ts||0));
-  if(!keys.length){
-    scroll.innerHTML='<div style="font-size:.78rem;color:var(--ink3);font-style:italic;padding:.5rem;">Aucune image.</div>';
-    return;
-  }
-  scroll.innerHTML='';
-  keys.forEach(key=>{
-    const img=galerie[key];
-    const rev=img.revele_a||'aucun';
-    const revClass=rev==='tous'?'tous':rev==='aucun'?'aucun':'partiel';
-    const revLabel=rev==='tous'?'Tous':rev==='aucun'?'Caché':'Partiel';
-    const card=document.createElement('div'); card.className='galerie-card';
-
-    // Thumbnail
-    const thumbWrap=document.createElement('div');
-    if(img.url){
-      const th=document.createElement('img');
-      th.className='galerie-thumb'; th.src=img.url; th.alt=img.titre||'';
-      th.loading='lazy';
-      th.addEventListener('click',()=>galerieLightbox(img.url, img.titre));
-      th.onerror=()=>{ th.style.display='none'; placeholder.style.display='flex'; };
-      const placeholder=document.createElement('div');
-      placeholder.className='galerie-thumb-placeholder'; placeholder.textContent='🖼';
-      placeholder.style.display='none';
-      placeholder.addEventListener('click',()=>galerieLightbox(img.url, img.titre));
-      thumbWrap.appendChild(th); thumbWrap.appendChild(placeholder);
-    } else {
-      const ph=document.createElement('div');
-      ph.className='galerie-thumb-placeholder'; ph.textContent='🖼';
-      thumbWrap.appendChild(ph);
-    }
-    card.appendChild(thumbWrap);
-
-    // Corps
-    const body=document.createElement('div'); body.className='galerie-card-body';
-    body.innerHTML=`<div class="galerie-card-titre">${img.titre||'(sans titre)'}</div>
-      <span class="galerie-card-rev ${revClass}">${revLabel}</span>`;
-
-    // Actions
-    const acts=document.createElement('div'); acts.className='galerie-card-actions';
-    acts.style.marginTop='.3rem';
-
-    // Pousser vers joueurs
-    const btnPush=document.createElement('button'); btnPush.className='galerie-act primary';
-    btnPush.textContent='▶ Pousser'; btnPush.title='Envoyer cette image aux joueurs';
-    btnPush.addEventListener('click',()=>galeriePushSelector(key));
-    acts.appendChild(btnPush);
-
-    // Modifier visibilité
-    const btnRev=document.createElement('button'); btnRev.className='galerie-act';
-    btnRev.textContent='👁 Visibilité';
-    btnRev.addEventListener('click',()=>galerieEditVisibilite(key, card));
-    acts.appendChild(btnRev);
-
-    // Supprimer
-    const btnDel=document.createElement('button'); btnDel.className='galerie-act danger';
-    btnDel.textContent='🗑';
-    btnDel.addEventListener('click',async()=>{
-      if(!confirm('Supprimer cette image ?')) return;
-      delete state.galerie[key];
-      await saveState(); galerieRender();
-    });
-    acts.appendChild(btnDel);
-
-    body.appendChild(acts);
-    card.appendChild(body);
-    scroll.appendChild(card);
-  });
-}
-
-// ── Modifier la visibilité d'une image ──
-async function galerieEditVisibilite(key, card){
-  const img=state.galerie[key]; if(!img) return;
-  const fp=state.fichePersonnages||[];
-  const ids=fp.map(p=>typeof p==='string'?p:p.id);
-  const options=['aucun','tous',...ids];
-  const current=img.revele_a||'aucun';
-  const choix=prompt(
-    `Visibilité pour "${img.titre||key}" :\n` +
-    `Options : aucun | tous | id1,id2,...\n` +
-    `Joueurs disponibles : ${ids.join(', ')}\n\nValeur actuelle : ${current}`,
-    current
-  );
-  if(choix===null) return;
-  state.galerie[key].revele_a=choix.trim();
-  await saveState(); galerieRender();
-}
-
-// ── Pousser une image vers les joueurs ──
-async function galeriePushSelector(key){
-  const img=state.galerie[key]; if(!img) return;
-  const fp=state.fichePersonnages||[];
-  const ids=fp.map(p=>typeof p==='string'?p:p.id);
-  const cibles=prompt(
-    `Pousser "${img.titre||key}" vers :\n` +
-    `Joueurs disponibles : ${ids.join(', ')}\n` +
-    `Entrez : tous | aucun | id1,id2,...`,
-    img.revele_a||'tous'
-  );
-  if(cibles===null) return;
-  const ciblesStr=cibles.trim();
-  const ciblesIds=ciblesStr==='tous'?ids:
-    ciblesStr==='aucun'?[]:
-    ciblesStr.split(',').map(s=>s.trim()).filter(Boolean);
-  if(!ciblesIds.length){ alert('Aucun joueur sélectionné.'); return; }
-  await galeriePush(key, ciblesIds);
-}
-
-async function galeriePush(key, ciblesIds){
-  const img=state.galerie[key]; if(!img) return;
-  let ok=0;
-  for(const ficheId of ciblesIds){
-    try{
-      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}&select=etat`,
-        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-      const d=await r.json();
-      const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
-      if(!etat.galerieRecues) etat.galerieRecues={};
-      etat.galerieRecues[key]={...img, pushedAt:Date.now()};
-      // Notification push
-      etat._galeriePush={key, titre:img.titre, url:img.url, ts:Date.now()};
-      await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}`,{
-        method:'PATCH',
-        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
-          'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({etat})
-      });
-      ok++;
-    }catch(e){}
-  }
-  const msg=document.getElementById('save-msg');
-  msg.textContent=`✓ Image poussée vers ${ok} joueur(s)`;
-  msg.className='save-info saved';
-  setTimeout(()=>{ msg.textContent='Synchronisation active'; msg.className='save-info'; },3000);
-}
-
-// ── Lightbox ──
-function galerieLightbox(url, titre){
-  document.getElementById('galerie-lightbox-img').src=url;
-  document.getElementById('galerie-lightbox-titre').textContent=titre||'';
-  document.getElementById('galerie-lightbox').classList.add('open');
-}
-function galerieLightboxClose(){
-  document.getElementById('galerie-lightbox').classList.remove('open');
-}
-
-// ── Notification d'image reçue (côté joueur) ──
-let _galerieNotifTimer=null;
-function galerieShowNotif(key, titre, url){
-  const notif=document.getElementById('galerie-notif'); if(!notif) return;
-  document.getElementById('galerie-notif-thumb').src=url||'';
-  document.getElementById('galerie-notif-titre').textContent=titre||'Nouvelle image';
-  notif.dataset.key=key;
-  notif.classList.add('open');
-  clearTimeout(_galerieNotifTimer);
-  _galerieNotifTimer=setTimeout(()=>notif.classList.remove('open'),8000);
-}
-function galerieNotifClick(){
-  const notif=document.getElementById('galerie-notif');
-  notif.classList.remove('open');
-  galerieOpenRecues();
-}
-
-// ── Panneau images reçues (joueurs) ──
-function galerieOpenRecues(){
-  const grid=document.getElementById('galerie-recues-grid');
-  if(!grid) return;
-  const recues=state.galerieRecues||{};
-  const keys=Object.keys(recues).sort((a,b)=>(recues[b].pushedAt||0)-(recues[a].pushedAt||0));
-  grid.innerHTML='';
-  if(!keys.length){
-    grid.innerHTML='<div style="font-size:.8rem;color:var(--ink3);font-style:italic;">Aucune image reçue.</div>';
-  } else {
-    keys.forEach(k=>{
-      const img=recues[k];
-      const th=document.createElement('img');
-      th.className='galerie-recue-thumb'; th.src=img.url||''; th.alt=img.titre||'';
-      th.loading='lazy'; th.title=img.titre||'';
-      th.addEventListener('click',()=>{
-        galerieLightbox(img.url, img.titre);
-      });
-      grid.appendChild(th);
-    });
-  }
-  document.getElementById('galerie-recues').classList.add('open');
-}
-
-// ── Détecter une image poussée dans applyRemoteState ──
-function checkIncomingGaleriePush(saved){
-  const push=saved._galeriePush;
-  if(!push||!push.ts) return;
-  // Éviter les doublons
-  if(window._lastGaleriePushTs===push.ts) return;
-  window._lastGaleriePushTs=push.ts;
-  // Copier dans galerieRecues
-  if(!state.galerieRecues) state.galerieRecues={};
-  state.galerieRecues[push.key]={...state.galerieRecues[push.key],...push, pushedAt:push.ts};
-  galerieShowNotif(push.key, push.titre, push.url);
-}
-
 // ── Synchroniser la fiche env sur toutes les fiches joueurs liées ──
 async function gmSyncEnvFiche(){
   const fp=state.fichePersonnages||[];
@@ -4658,16 +3998,6 @@ async function bibOctSave(){
 
 // ── Mini SVG octogone ──
 const BIB_CX=150, BIB_CY=150, BIB_OUTER=110, BIB_INNER=18, BIB_RINGS=6;
-const BIB_AXES = [
-  {id:'feu',    label:'Feu',     angle:0},
-  {id:'bile_j', label:'BileJ',   angle:45},
-  {id:'terre',  label:'Terre',   angle:90},
-  {id:'bile_n', label:'BileN',   angle:135},
-  {id:'eau',    label:'Eau',     angle:180},
-  {id:'flegme', label:'Flegme',  angle:225},
-  {id:'air',    label:'Air',     angle:270},
-  {id:'sang',   label:'Sang',    angle:315},
-];
 
 function bibPolar(r,deg){
   const a=(deg-90)*Math.PI/180;
@@ -4878,26 +4208,6 @@ async function chronoSaveConfig(){
   state.chronologie.dateCourante=cur||debut;
   await saveState();
   chronoRender();
-}
-
-// ── Configuration type de carte ──
-function configSaveCarte(){
-  const sel = document.getElementById('cfg-carte-type');
-  if(!sel) return;
-  state.carte = sel.value || '';
-  saveState();
-  const label = sel.options[sel.selectedIndex]?.text || sel.value || 'Damas';
-  if(typeof showToast === 'function') showToast('🗺 Carte : '+label);
-}
-
-function configLoadCarte(){
-  const sel = document.getElementById('cfg-carte-type');
-  if(!sel) return;
-  const val = state.carte || '';
-  // Sélectionner l'option correspondante
-  for(let i=0;i<sel.options.length;i++){
-    if(sel.options[i].value === val){ sel.selectedIndex=i; break; }
-  }
 }
 
 async function chronoAvancerJour(n){
@@ -5674,22 +4984,5 @@ function chronoInit(){
 }
 
 </script>
-
-<!-- Barre MJ (bas de page) -->
-<div class="gm-bar" id="gm-bar" style="display:none;">
-  <span class="gm-bar-label">MJ</span>
-  <button class="gm-btn safe" onclick="gmSaveOrigin()">💾 Sauvegarder comme état d'origine</button>
-  <button class="gm-btn safe" onclick="gmSyncEnvFiche()" title="Écrit l'id de cette fiche env dans la fiche de chaque joueur lié">🔗 Sync fiche env → joueurs</button>
-  <button class="gm-btn danger" onclick="gmReset()">↺ Réinitialiser à l'état d'origine</button>
-  <button class="gm-btn danger" onclick="gmResetFull()">🗑 Réinitialisation complète</button>
-  <span class="gm-bar-label" style="margin-left:.6rem;">Sauvegardes</span>
-  <button class="gm-btn safe" onclick="exportEnvComplet()">⬇ Exporter environnement</button>
-  <button class="gm-btn safe" onclick="exportFichesSeparees()">⬇ Exporter fiches</button>
-  <label class="gm-btn" style="cursor:pointer;background:var(--input-bg);">
-    ⬆ Importer
-    <input type="file" accept=".json" style="display:none" onchange="importerSauvegarde(this)">
-  </label>
-</div>
-<p class="save-info" id="save-msg">Synchronisation en cours…</p>
 </body>
 </html>
