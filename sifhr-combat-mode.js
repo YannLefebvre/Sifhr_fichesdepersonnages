@@ -1210,6 +1210,19 @@
         <button id="combat-ajout-adversaire-btn" style="${btnStyle('#8b2020', true)}">+ Adversaire</button>
       </div>`;
 
+      // Événements impromptus (générés par environnement.html à partir des « 9 »,
+      // désormais partagés) — visibles et actionnables sans quitter le combat.
+      if(_evtQueueCache.length){
+        html += `<div style="margin-top:.6rem;padding:.5rem .6rem;background:#f0f6fc;border:1px solid #185FA5;border-radius:6px;">
+          <div style="font-family:Cinzel,serif;font-size:.65rem;color:#185FA5;margin-bottom:.3rem;">⚡ ÉVÉNEMENT IMPROMPTU</div>`;
+        _evtQueueCache.forEach((evt,idx)=>{
+          html += `<div style="font-size:.8rem;margin-bottom:.3rem;">${evt.text} <span style="opacity:.6;font-size:.7rem;">(poids ${evt.poids})</span><br>
+            <button class="combat-evt-accepter-btn" data-idx="${idx}" style="${btnStyle('#1a4a2a',true)}">✓ Accepter</button>
+            <button class="combat-evt-refuser-btn" data-idx="${idx}" style="${btnStyle('#6b5d4f',true)}">✕ Ignorer</button></div>`;
+        });
+        html += `</div>`;
+      }
+
       // Historique assaut par assaut : qui l'emporte, marge, palier, effets appliqués —
       // ou égalité, pour comprendre ce qui s'est passé sans avoir dû suivre en direct.
       const historique = (session.historique || []).filter(h=>h && h.moi && h.adversaire && h.manoeuvre);
@@ -1254,6 +1267,8 @@
     if(peb) peb.addEventListener('click', prendreEngagement);
     const ceb = document.getElementById('combat-ceder-engagement-btn');
     if(ceb) ceb.addEventListener('click', ()=>cederEngagement(null));
+    panel.querySelectorAll('.combat-evt-accepter-btn').forEach(b=>b.addEventListener('click', ()=>accepterEvenementImpromptu(parseInt(b.dataset.idx))));
+    panel.querySelectorAll('.combat-evt-refuser-btn').forEach(b=>b.addEventListener('click', ()=>refuserEvenementImpromptu(parseInt(b.dataset.idx))));
   }
 
   // Rafraîchissement périodique du panneau (pour voir en direct qui a résolu son assaut)
@@ -1791,6 +1806,54 @@
     setTimeout(pollerEffetsEntrants,5000);
   }
 
+  // File d'événements impromptus (générée par environnement.html à partir des « 9 »
+  // accumulés, désormais partagée) — simplement affichée et actionnable ici, sans
+  // dupliquer la logique de « dévoilement dans la carte » propre à cette autre page.
+  let _evtQueueCache = [];
+  async function pollerEvenementsImpromptus(){
+    try{
+      const envId = getEnvId();
+      if(envId){
+        const envEtat = await fetchEnvEtat(envId);
+        const queue = envEtat?._evtQueuePartagee;
+        if(Array.isArray(queue)) _evtQueueCache = queue;
+      }
+    }catch(e){}
+    if(document.getElementById('combat-session-panel')) injecterPanneauSession();
+    setTimeout(pollerEvenementsImpromptus, 8000);
+  }
+  async function ecrireEvtQueuePartagee(nouvelleQueue){
+    const envId = getEnvId();
+    if(!envId) return;
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(envId)}&select=etat`,
+        {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+      const d=await r.json();
+      const etat=d[0]?.etat||{};
+      etat._evtQueuePartagee=nouvelleQueue;
+      await fetch(`${SUPABASE_URL}/rest/v1/fiches`,{
+        method:'POST',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({id:envId, etat})
+      });
+    }catch(e){ console.error('[sifhr-combat-mode] ecrireEvtQueuePartagee', e); }
+  }
+  async function accepterEvenementImpromptu(idx){
+    const evt = _evtQueueCache[idx];
+    if(!evt) return;
+    await ajouterJournalNarratif(`⚡ Un événement impromptu survient : ${evt.text}`);
+    const nouvelleQueue = _evtQueueCache.filter((_,i)=>i!==idx);
+    _evtQueueCache = nouvelleQueue;
+    await ecrireEvtQueuePartagee(nouvelleQueue);
+    injecterPanneauSession();
+  }
+  async function refuserEvenementImpromptu(idx){
+    const nouvelleQueue = _evtQueueCache.filter((_,i)=>i!==idx);
+    _evtQueueCache = nouvelleQueue;
+    await ecrireEvtQueuePartagee(nouvelleQueue);
+    injecterPanneauSession();
+  }
+
   // ── 6. Amorçage ──
   function init(){
     console.log('[sifhr-combat-mode] init() démarré, document.readyState=', document.readyState);
@@ -1800,6 +1863,7 @@
     try{ installerHookLogin(); } catch(e){ console.error('[sifhr-combat-mode] installerHookLogin a échoué :', e); }
     try{ installerHookDuel(); } catch(e){ console.error('[sifhr-combat-mode] installerHookDuel a échoué :', e); }
     try{ pollerEffetsEntrants(); } catch(e){ console.error('[sifhr-combat-mode] pollerEffetsEntrants a échoué :', e); }
+    try{ pollerEvenementsImpromptus(); } catch(e){ console.error('[sifhr-combat-mode] pollerEvenementsImpromptus a échoué :', e); }
     try{ installerHookRollResolu(); } catch(e){ console.error('[sifhr-combat-mode] installerHookRollResolu a échoué :', e); }
     try{ installerHookEtatsMobilisables(); } catch(e){ console.error('[sifhr-combat-mode] installerHookEtatsMobilisables a échoué :', e); }
     try{ installerHookTraitEngage(); } catch(e){ console.error('[sifhr-combat-mode] installerHookTraitEngage a échoué :', e); }
