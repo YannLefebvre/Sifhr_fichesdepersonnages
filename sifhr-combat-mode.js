@@ -232,7 +232,7 @@
      effet:"Attend que l'adversaire se découvre, puis frappe aux défauts d'armure ou aux points vitaux."},
     {id:'base_garder_distance', nom:'Garder la distance', aptitude:'se_deplacer', niveauRequis:0,
      segmentOctogone:'', armeAssociee:'', nonArme:true, plafondAllies:null, conditions:'',
-     categorie:'Deplacement', effetsAssocies:'',
+     categorie:'Déplacement', effetsAssocies:'',
      effet:"Préserve une distance avec l'adversaire, pour éviter ses coups et le harceler des siens."},
     {id:'base_garder_equilibre', nom:"Garder l'équilibre", aptitude:'resister', niveauRequis:0,
      segmentOctogone:'', armeAssociee:'', nonArme:true, plafondAllies:null, conditions:'',
@@ -693,6 +693,19 @@
     air_b:'Air ○',air_n:'Air ●',sang_b:'Sang ○',sang_n:'Sang ●',
     des_devoyes:'Dés dévoyés', arme_en_main:'Arme en main',
   };
+  // Le catalogue (sifhr_combat_data.json) ne porte que le Type brut du tableur
+  // (« Arme (Dague) »...), pas une famille normalisée — on la dérive ici, avec la
+  // même convention que celle utilisée lors des exports précédents.
+  const TYPE_VERS_FAMILLE = {
+    'Arme (Dague)':'dague', 'Arme (Fouet)':'dague',
+    'Arme (Épée)':'epee', 'Arme (Épée courbe)':'epee',
+    'Arme (Lance)':'hast',
+    'Arme (Hache)':'contondant', 'Arme (Contondante)':'contondant',
+    'Arme (Arc)':'distance', 'Arme (Projectile)':'distance',
+    'Armure (Bouclier)':'bouclier',
+  };
+  function familleDeType(type){ return TYPE_VERS_FAMILLE[type] || null; }
+
   function labelFacteurCombat(f){
     if(f && f.startsWith('apt_')) return APT_LABELS[f.slice(4)] || f;
     return FACTEUR_LABELS_COMBAT[f] || f;
@@ -748,6 +761,10 @@
       if(c.facteur==='trait'){
         val = (state.traits||[]).some(t=>t.title && t.title.toLowerCase().includes(String(c.seuil).toLowerCase())) ? 1 : 0;
         atteint = val>=1;
+      } else if(c.facteur==='famille_arme'){
+        val = (_armeEnMain && CATALOGUE && CATALOGUE.equipement
+          && familleDeType((CATALOGUE.equipement.find(x=>x.id===_armeEnMain.id)||{}).type)===c.seuil) ? 1 : 0;
+        atteint = val>=1;
       } else {
         val = lireValeurFacteur(c.facteur);
         atteint = val >= parseFloat(c.seuil);
@@ -755,9 +772,16 @@
       if(c.code==='R'){
         if(!atteint){
           bloque = true;
-          blocRaison = c.facteur==='trait'
-            ? `Nécessite le Trait « ${c.seuil} »`
+          blocRaison = c.facteur==='trait' ? `Nécessite le Trait « ${c.seuil} »`
+            : c.facteur==='famille_arme' ? `Nécessite une arme de la famille « ${c.seuil} » en main`
             : `${labelFacteurCombat(c.facteur)} insuffisant (${val} / ${c.seuil} requis)`;
+        }
+      } else if(c.code==='RX'){
+        // Rédhibitoire par excès : bloqué si le seuil est ATTEINT (trop de X), pas l'inverse.
+        if(atteint){
+          bloque = true;
+          blocRaison = c.facteur==='famille_arme' ? `Impossible avec une arme de la famille « ${c.seuil} » en main`
+            : `${labelFacteurCombat(c.facteur)} excessif (${val} ≥ ${c.seuil})`;
         }
       } else if(c.code){
         const niveau = parseInt(c.code.slice(1))||1;
@@ -765,7 +789,7 @@
         if(atteint){
           netLevel += signe*niveau;
           details.push(`${signe>0?'+':''}${signe*niveau} — ${labelFacteurCombat(c.facteur)}`);
-        } else if(signe>0 && c.facteur!=='trait'){
+        } else if(signe>0 && c.facteur!=='trait' && c.facteur!=='famille_arme'){
           prochaines.push({facteur:c.facteur, label:labelFacteurCombat(c.facteur), manque:(parseFloat(c.seuil)-val), seuil:c.seuil, val, niveau});
         }
       }
@@ -1497,6 +1521,45 @@
   function palierDeMarge(m){ if(m<=0) return null; if(m===1) return 'benin'; if(m<=4) return 'moyen'; return 'grave'; }
   function monterPalier(p,c){ let i=ORDRE.indexOf(p); if(i<0)i=0; i=Math.min(i+c,ORDRE.length-1); return ORDRE[i]; }
 
+  // Matrice d'interaction Catégorie × Catégorie — révélée au même moment que les dés,
+  // puisqu'elle repose sur la catégorie de CHACUN, connue seulement à ce moment-là
+  // (voir installerHookSaveDuelResult). {moi, adv} = modificateur net appliqué à
+  // chacun ; valeurs par défaut raisonnables, à ajuster librement ici.
+  const MATRICE_CATEGORIES = {
+    'Attaque':      {'Attaque':{moi:0,adv:0}, 'Défense':{moi:0,adv:1}, 'Déplacement':{moi:-1,adv:0}, 'Soutien':{moi:1,adv:0}, 'Discrétion':{moi:1,adv:0}},
+    'Défense':      {'Attaque':{moi:1,adv:0}, 'Défense':{moi:0,adv:0}, 'Déplacement':{moi:0,adv:0},  'Soutien':{moi:0,adv:0}, 'Discrétion':{moi:0,adv:1}},
+    'Déplacement':  {'Attaque':{moi:0,adv:-1},'Défense':{moi:0,adv:0}, 'Déplacement':{moi:0,adv:0},  'Soutien':{moi:0,adv:0}, 'Discrétion':{moi:0,adv:0}},
+    'Soutien':      {'Attaque':{moi:0,adv:1}, 'Défense':{moi:0,adv:0}, 'Déplacement':{moi:0,adv:0},  'Soutien':{moi:1,adv:1}, 'Discrétion':{moi:0,adv:0}},
+    'Discrétion':   {'Attaque':{moi:0,adv:1}, 'Défense':{moi:1,adv:0}, 'Déplacement':{moi:0,adv:0},  'Soutien':{moi:0,adv:0}, 'Discrétion':{moi:0,adv:0}},
+  };
+  function modificateurCategories(catMoi, catAdv){
+    if(!catMoi || !catAdv) return 0;
+    const ligne = MATRICE_CATEGORIES[catMoi];
+    if(!ligne || !ligne[catAdv]) return 0;
+    return ligne[catAdv].moi||0;
+  }
+
+  // Attache la catégorie de la manœuvre choisie au résultat de duel natif, au moment
+  // exact où il est sauvegardé (donc révélé à l'adversaire en même temps que le jet
+  // lui-même — pas avant, conformément au verrouillage souple).
+  function installerHookSaveDuelResult(){
+    if(typeof window.dSaveDuelResult !== 'function'){ setTimeout(installerHookSaveDuelResult,500); return; }
+    if(window.dSaveDuelResult.__sifhrCombatWrapped) return;
+    const original = window.dSaveDuelResult;
+    const wrapped = async function(...args){
+      const r = await original.apply(this,args);
+      try{
+        if(_manoeuvreActive && state.duelResult){
+          state.duelResult.categorie = _manoeuvreActive.m.categorie || null;
+          if(typeof saveState==='function') saveState();
+        }
+      }catch(e){}
+      return r;
+    };
+    wrapped.__sifhrCombatWrapped = true;
+    window.dSaveDuelResult = wrapped;
+  }
+
   function installerHookDuel(){
     if(typeof window.dShowAdversaireResult !== 'function'){ setTimeout(installerHookDuel,500); return; }
     if(window.dShowAdversaireResult.__sifhrCombatWrapped) return;
@@ -1514,7 +1577,8 @@
     if(!myResult || !advResult || !_manoeuvreActive || !_manoeuvreActive.m || !advId) return; // appel incomplet = pas de résolution
     const margeA = myResult.verdict==='echec_critique' ? -(myResult.oppositions||0) : (myResult.reussites||0);
     const margeB = advResult.verdict==='echec_critique' ? -(advResult.oppositions||0) : (advResult.reussites||0);
-    const margeFinale = (margeA + bonusArmeActive()) - margeB;
+    const modifCategorie = modificateurCategories(_manoeuvreActive.m.categorie, advResult.categorie);
+    const margeFinale = (margeA + bonusArmeActive() + modifCategorie) - margeB;
     let palier = palierDeMarge(margeFinale);
     let cumulTout=false;
     const prouesse = !!document.querySelector('.dsuccess-opposition.prouesse');
@@ -1526,7 +1590,7 @@
     const palierAdv = advEchecCritique ? palierDeMarge(Math.abs(advResult.oppositions||0)) : null;
 
     if(palier){
-      afficherPanneauResolution(palier, margeFinale, advId, cumulTout, palierAdv);
+      afficherPanneauResolution(palier, margeFinale, advId, cumulTout, palierAdv, modifCategorie, _manoeuvreActive.m.categorie, advResult.categorie);
     } else if(FICHE_ID && advId && _manoeuvreActive.m.nom){
       enregistrerHistorique({
         type: margeFinale===0 ? 'egalite' : 'sans-effet',
@@ -1550,7 +1614,7 @@
 
   const PALIER_TO_NIVEAU = {benin:'N1', moyen:'N2', grave:'N3'};
 
-  async function afficherPanneauResolution(palier, marge, advId, cumulTout, palierAdv){
+  async function afficherPanneauResolution(palier, marge, advId, cumulTout, palierAdv, modifCategorie, catMoi, catAdv){
     const effets=EFFETS_COMBAT[palier];
     let panel=document.getElementById('combat-resolution-panel');
     if(!panel){
@@ -1599,14 +1663,24 @@
       .filter(e=>e.niveau===niveau && e.cible==='perdant');
     const effetsNommesGagnant = (CATALOGUE && CATALOGUE.effets ? CATALOGUE.effets : [])
       .filter(e=>e.niveau===niveau && e.cible==='gagnant');
-    // Effets liés spécifiquement à la manœuvre utilisée (si l'éditeur en a associé)
+    // Effets liés spécifiquement à la manœuvre utilisée (si l'éditeur en a associé),
+    // avec leur poids (rare/probable/quasi certain) — les plus probables sont
+    // pré-cochés, cohérent avec « un coup puissant a plus de chances de donner tel effet ».
+    const POIDS_LABEL = {1:'rare', 2:'probable', 3:'quasi certain'};
     const effetsLiesManoeuvre = (_manoeuvreActive && _manoeuvreActive.m.effetsAssocies)
       ? String(_manoeuvreActive.m.effetsAssocies).split(',').map(s=>s.trim()).filter(Boolean)
-        .map(id=>(CATALOGUE.effets||[]).find(e=>e.id===id)).filter(Boolean)
+        .map(part=>{
+          const [id,poids] = part.split(':');
+          const e = (CATALOGUE.effets||[]).find(x=>x.id===id);
+          return e ? {...e, poids: poids?parseInt(poids):2} : null;
+        }).filter(Boolean)
+        .sort((a,b)=>b.poids-a.poids)
       : [];
 
     let html=`<div style="font-family:Cinzel,serif;font-size:.72rem;color:#8b2020;margin-bottom:.4rem;">`
       +`⚔ RÉSOLUTION — ${_manoeuvreActive.m.nom} — marge ${marge>=0?'+':''}${marge}, palier ${effets.label}</div>`
+      + (catMoi && catAdv ? `<div style="font-size:.76rem;font-style:italic;color:var(--ink3,#666);margin-bottom:.3rem;">`
+        + `${catMoi} contre ${catAdv}${modifCategorie?` — ${modifCategorie>0?'+':''}${modifCategorie} pour vous`:' — aucun effet de croisement'}</div>` : '')
       + noteEngagement;
     canaux.forEach(ca=>{
       const checked = cumulTout ? 'checked' : (ca.key==='des'?'checked':'');
@@ -1639,7 +1713,8 @@
       html += `<div style="font-family:Cinzel,serif;font-size:.65rem;color:#185FA5;margin-top:.4rem;">EFFETS LIÉS À « ${_manoeuvreActive.m.nom} »</div>`;
       effetsLiesManoeuvre.forEach(e=>{
         html += `<label style="display:block;margin:.2rem 0;cursor:pointer;font-size:.8rem;">`
-          + `<input type="checkbox" class="combat-effet-nomme-cb" data-id="${e.id}"> ${e.nom.trim()} (${e.niveau}, ${e.cible}) — ${e.effet}</label>`;
+          + `<input type="checkbox" class="combat-effet-nomme-cb" data-id="${e.id}" ${e.poids>=3?'checked':''}> ${e.nom.trim()} `
+          + `<span style="opacity:.6;font-size:.72rem;">(${POIDS_LABEL[e.poids]})</span> — ${e.effet}</label>`;
       });
     }
     if(palierAdv){
@@ -1862,6 +1937,7 @@
     try{ installerPanneauEditeur(); } catch(e){ console.error('[sifhr-combat-mode] installerPanneauEditeur a échoué :', e); }
     try{ installerHookLogin(); } catch(e){ console.error('[sifhr-combat-mode] installerHookLogin a échoué :', e); }
     try{ installerHookDuel(); } catch(e){ console.error('[sifhr-combat-mode] installerHookDuel a échoué :', e); }
+    try{ installerHookSaveDuelResult(); } catch(e){ console.error('[sifhr-combat-mode] installerHookSaveDuelResult a échoué :', e); }
     try{ pollerEffetsEntrants(); } catch(e){ console.error('[sifhr-combat-mode] pollerEffetsEntrants a échoué :', e); }
     try{ pollerEvenementsImpromptus(); } catch(e){ console.error('[sifhr-combat-mode] pollerEvenementsImpromptus a échoué :', e); }
     try{ installerHookRollResolu(); } catch(e){ console.error('[sifhr-combat-mode] installerHookRollResolu a échoué :', e); }
