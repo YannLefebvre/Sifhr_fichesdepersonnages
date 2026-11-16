@@ -2210,7 +2210,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
           document.getElementById('btn-occultation-gm').style.display='flex';
           document.querySelectorAll('.gm-only-zone').forEach(el=>el.classList.add('gm-visible'));
           document.getElementById('nine-panel').style.display='block';
-          document.getElementById('fiches-liees-row').style.display='block';
+          {const fl=document.getElementById('fiches-liees-row'); if(fl) fl.style.display='block';}
           // Restaurer fiches liées dans l'input
           renderFichesPersoList();
           pollNines();
@@ -3998,6 +3998,7 @@ async function bibOctSave(){
 
 // ── Mini SVG octogone ──
 const BIB_CX=150, BIB_CY=150, BIB_OUTER=110, BIB_INNER=18, BIB_RINGS=6;
+const BIB_AXES=SECTORS; // manquait : faisait planter la bibliothèque des octogones idéaux
 
 function bibPolar(r,deg){
   const a=(deg-90)*Math.PI/180;
