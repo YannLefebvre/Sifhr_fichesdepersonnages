@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- sifhr-carte-damas v1 — lecture seule : ne modifie jamais Supabase -->
+<title>Damas · Qâsiyûn — Carte · Sifhr</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1a1208; --ink:#e8d5a0; --ink2:#c8b080; --ink3:#8a7055;
+  --accent:#c8a060; --border:#4a3820; --border2:#3a2810;
+  --panel-bg:rgba(14,9,4,0.96); --red:#c04020;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'Crimson Text',serif;}
+#app{display:flex;width:100%;height:100%;}
+#map-wrap{flex:1;position:relative;overflow:hidden;cursor:grab;touch-action:none;}
+#map-wrap.grabbing{cursor:grabbing;}
+#map-wrap svg{position:absolute;top:0;left:0;transform-origin:0 0;}
+#side{width:290px;flex-shrink:0;background:var(--panel-bg);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+#side-head{padding:.55rem .7rem;border-bottom:1px solid var(--border);}
+#side-head .t{font-family:'Cinzel',serif;font-size:.78rem;color:var(--accent);letter-spacing:.08em;}
+#side-head .s{font-size:.78rem;color:var(--ink3);font-style:italic;}
+#role{font-family:'Cinzel',serif;font-size:.55rem;padding:1px 6px;border:1px solid var(--border);border-radius:8px;color:var(--ink3);margin-left:.3rem;}
+#tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{flex:1;padding:.45rem .2rem;text-align:center;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.04em;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+#side-body{flex:1;overflow-y:auto;padding:.5rem;}
+#side-body::-webkit-scrollbar{width:3px;}
+#side-body::-webkit-scrollbar-thumb{background:var(--border);}
+.grp{font-family:'Cinzel',serif;font-size:.55rem;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;margin:.6rem 0 .25rem;}
+.li{display:flex;align-items:center;gap:.35rem;padding:.32rem .4rem;border:1px solid transparent;border-radius:3px;cursor:pointer;margin-bottom:.12rem;}
+.li:hover{border-color:var(--border);background:rgba(200,160,96,.06);}
+.li.sel{border-color:var(--accent);background:rgba(200,160,96,.1);}
+.li .ic{font-size:.9rem;width:1.2rem;text-align:center;}
+.li .nm{font-family:'Cinzel',serif;font-size:.6rem;color:var(--ink2);flex:1;line-height:1.25;}
+.li .nm small{display:block;font-family:'Crimson Text',serif;font-size:.7rem;color:var(--ink3);font-style:italic;letter-spacing:0;}
+.badge{font-family:'Cinzel',serif;font-size:.52rem;padding:1px 5px;border-radius:8px;border:1px solid var(--border);color:var(--ink3);white-space:nowrap;}
+.badge.act{border-color:var(--accent);color:var(--accent);}
+.badge.evt{border-color:#6aaccc;color:#6aaccc;}
+.back{font-family:'Cinzel',serif;font-size:.58rem;background:none;border:none;color:var(--ink3);cursor:pointer;margin-bottom:.4rem;}
+.card{padding:.5rem;background:rgba(200,160,96,.05);border:1px solid var(--border);border-radius:5px;margin-bottom:.4rem;}
+.card h3{font-family:'Cinzel',serif;font-size:.8rem;color:var(--accent);font-weight:400;}
+.card .meta{font-size:.72rem;color:var(--ink3);font-style:italic;}
+.sec-t{font-family:'Cinzel',serif;font-size:.58rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase;margin:.2rem 0 .3rem;}
+.btn{font-family:'Cinzel',serif;font-size:.62rem;padding:.35rem .5rem;border:1px solid var(--accent);border-radius:3px;background:rgba(200,160,96,.1);color:var(--accent);cursor:pointer;width:100%;}
+.btn:hover{background:rgba(200,160,96,.2);}
+.btn:disabled{opacity:.4;cursor:default;}
+.note{font-size:.72rem;color:var(--ink3);font-style:italic;margin-top:.25rem;}
+.axes{display:grid;grid-template-columns:auto 1fr auto;gap:.1rem .4rem;font-size:.75rem;align-items:center;}
+.axes .a{font-family:'Cinzel',serif;font-size:.55rem;color:var(--ink2);}
+.axes .tk{letter-spacing:.1em;}
+.axes .vv{font-size:.68rem;color:var(--ink3);text-align:right;}
+.pz{font-size:.78rem;color:var(--ink2);line-height:1.4;border-left:2px solid var(--border);padding-left:.4rem;margin:.2rem 0;}
+.pz b{font-family:'Cinzel',serif;font-size:.55rem;color:var(--ink3);font-weight:400;display:block;}
+.evt{padding:.3rem .4rem;border:1px solid var(--border2);border-radius:3px;margin-bottom:.25rem;background:rgba(200,160,96,.04);}
+.evt .et{font-family:'Cinzel',serif;font-size:.6rem;color:var(--accent);}
+.evt .ex{font-size:.76rem;color:var(--ink2);line-height:1.35;margin-top:.1rem;}
+.evt .ex i{color:var(--ink3);font-size:.68rem;}
+.evt.hid{opacity:.55;}
+.lay{margin-bottom:.45rem;}
+.lay label{display:flex;justify-content:space-between;font-family:'Cinzel',serif;font-size:.58rem;color:var(--ink2);}
+.lay label span{color:var(--ink3);font-family:monospace;}
+.lay input{width:100%;accent-color:var(--accent);}
+.leg{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--ink2);margin-bottom:.2rem;}
+.leg i{display:inline-block;width:18px;height:10px;border-radius:5px;flex-shrink:0;}
+#zoom{position:absolute;bottom:1rem;right:1rem;display:flex;flex-direction:column;gap:.25rem;z-index:10;}
+.z{width:30px;height:30px;border:1px solid var(--border);background:var(--panel-bg);color:var(--ink);border-radius:4px;cursor:pointer;font-size:1rem;}
+.z:hover{border-color:var(--accent);color:var(--accent);}
+#tt{position:fixed;z-index:200;pointer-events:none;background:var(--panel-bg);border:1px solid var(--accent);border-radius:6px;padding:.4rem .6rem;max-width:230px;display:none;font-size:.78rem;color:var(--ink2);}
+#tt b{font-family:'Cinzel',serif;font-size:.7rem;color:var(--accent);font-weight:400;display:block;}
+#coord{position:absolute;bottom:.5rem;left:.5rem;font-family:monospace;font-size:.68rem;color:var(--accent);background:rgba(10,7,3,.85);padding:2px 8px;border-radius:3px;pointer-events:none;z-index:20;opacity:0;transition:opacity .2s;}
+#status{position:absolute;top:.5rem;left:50%;transform:translateX(-50%);font-family:'Cinzel',serif;font-size:.6rem;color:var(--ink3);background:rgba(10,7,3,.85);padding:2px 10px;border-radius:10px;z-index:20;}
+/* marqueurs */
+.lieu{cursor:pointer;}
+.lieu:hover .ring{stroke-width:2.6;}
+.lieu.sel .ring{stroke:#fff8e8;stroke-width:2.6;}
+.pulse{animation:pulse 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+@keyframes pulse{0%,100%{opacity:.9;transform:scale(1);}50%{opacity:.25;transform:scale(1.35);}}
+.zoom-lbl{transition:opacity .2s;}
+/* connexion */
+#login{position:fixed;inset:0;background:rgba(10,7,3,.88);display:flex;align-items:center;justify-content:center;z-index:300;}
+#login .box{background:#1f150a;border:1px solid var(--border);border-radius:8px;padding:1.4rem;width:320px;text-align:center;}
+#login h2{font-family:'Cinzel',serif;font-size:.95rem;color:var(--accent);font-weight:400;letter-spacing:.1em;margin-bottom:.3rem;}
+#login p{font-size:.85rem;color:var(--ink3);font-style:italic;margin-bottom:.8rem;}
+#login input{width:100%;padding:.45rem;margin-bottom:.5rem;background:#120c05;border:1px solid var(--border);border-radius:3px;color:var(--ink);font-family:'Cinzel',serif;text-align:center;}
+#login button{font-family:'Cinzel',serif;font-size:.7rem;padding:.4rem .8rem;margin:.15rem;border:1px solid var(--accent);border-radius:3px;background:rgba(200,160,96,.12);color:var(--accent);cursor:pointer;}
+#login button.sec{border-color:var(--border);color:var(--ink3);background:none;}
+#login-err{color:#e07050;font-size:.8rem;min-height:1.1em;margin-top:.4rem;}
+@media(max-width:720px){
+  #app{flex-direction:column;}
+  #side{width:100%;height:42%;border-left:none;border-top:1px solid var(--border);}
+}
+</style>
+</head>
+<body>
+<div id="login">
+  <div class="box">
+    <h2>Damas · Qâsiyûn</h2>
+    <p>Carte de l'environnement <span id="login-fiche" style="font-family:Cinzel,serif;font-style:normal;color:var(--ink2)"></span></p>
+    <input id="pw" type="password" placeholder="Mot de passe de l'environnement" autocomplete="current-password">
+    <input id="pid" type="text" placeholder="Identifiant du personnage (facultatif)">
+    <div>
+      <button id="b-player">Entrer (joueur)</button>
+      <button id="b-gm">Entrer (meneur)</button>
+    </div>
+    <div><button class="sec" id="b-seule">Voir la carte seule</button></div>
+    <div id="login-err"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="map-wrap">
+    <svg id="map" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900"></svg>
+    <div id="status">Lecture seule</div>
+    <div id="coord"></div>
+    <div id="zoom">
+      <button class="z" onclick="zoomBy(1.25)">+</button>
+      <button class="z" onclick="zoomBy(1/1.25)">&#8722;</button>
+      <button class="z" onclick="resetView()">&#8962;</button>
+    </div>
+  </div>
+  <div id="side">
+    <div id="side-head">
+      <div class="t">Damas et ses abords <span id="role"></span></div>
+      <div class="s" id="env-nom">vers 576 de l'Hégire · 1180</div>
+    </div>
+    <div id="tabs">
+      <div class="tab active" data-t="lieux">Lieux</div>
+      <div class="tab" data-t="calques">Calques</div>
+      <div class="tab" data-t="legende">Légende</div>
+    </div>
+    <div id="side-body"></div>
+  </div>
+</div>
+<div id="tt"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   CONTRAT CARTE ⇄ ENVIRONNEMENT (v1)
+   — Lieux : etat.lieux[clé] = {nom, tokens, scores, pneumato, nineCount, nineThreshold,
+       geo:{lat, lon, rayon (m), parent (clé), icone?, vents?:[{axe, cap (° depuis le nord), intensite 1-3}]}}
+   — Lieu actif : etat.lieuActif
+   — Événements : etat.slots[clé].lieu_key (repli : colonne carte.slots)
+   — Cette page ne fait que LIRE. Pour changer de lieu, elle envoie à la page parente :
+       {type:'SIFHR_LIEU_ACTIF', fiche, lieu}
+     et accepte : {type:'SIFHR_ETAT', etat} et {type:'SIFHR_FOCUS', lieu}
+   ════════════════════════════════════════════════════════════ */
+const SUPABASE_URL='https://qyifamxfvswcglvrzduf.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5aWZhbXhmdnN3Y2dsdnJ6ZHVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Njc5NDcsImV4cCI6MjA5NjM0Mzk0N30.CEx_xQGgEiWukuc62Z_NSrrYX6TalAHC-z3HdjI4ZPs';
+const params=new URLSearchParams(location.search);
+const FICHE_ID=params.get('fiche')||'env-seisme-damas';
+const HDR={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
+const IN_FRAME=window.parent!==window;
+
+/* ── Projection ── */
+const W=1200,H=900;
+const LON0=36.262,LON1=36.326,LAT0=33.5005,LAT1=33.5407;
+const MPP=(LON1-LON0)*Math.cos(33.52*Math.PI/180)*111320/W; // mètres par pixel (≈4,95)
+const P=(lat,lon)=>[(lon-LON0)/(LON1-LON0)*W,(LAT1-lat)/(LAT1-LAT0)*H];
+const inside=(lat,lon)=>lat>=LAT0&&lat<=LAT1&&lon>=LON0&&lon<=LON1;
+const f1=n=>n.toFixed(1);
+const pts=a=>a.map(([la,lo])=>P(la,lo).map(f1).join(',')).join(' ');
+// courbe lissée (Catmull-Rom → Bézier)
+function smooth(a,close){
+  const p=a.map(([la,lo])=>P(la,lo)); if(p.length<2) return '';
+  const g=i=>close?p[(i+p.length)%p.length]:p[Math.max(0,Math.min(p.length-1,i))];
+  let d=`M${f1(p[0][0])},${f1(p[0][1])}`;
+  const n=close?p.length:p.length-1;
+  for(let i=0;i<n;i++){
+    const p0=g(i-1),p1=g(i),p2=g(i+1),p3=g(i+2);
+    const c1=[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6], c2=[p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6];
+    d+=` C${f1(c1[0])},${f1(c1[1])} ${f1(c2[0])},${f1(c2[1])} ${f1(p2[0])},${f1(p2[1])}`;
+  }
+  return d+(close?' Z':'');
+}
+function lineToTop(a){ // bande de relief : de la ligne jusqu'au bord supérieur
+  const p=a.map(([la,lo])=>P(la,lo));
+  return `M${f1(p[0][0])},0 `+p.map(q=>`L${f1(q[0])},${f1(q[1])}`).join(' ')+` L${f1(p[p.length-1][0])},0 Z`;
+}
+
+/* ── Géographie (d'après N. Elisséeff et les relevés modernes, simplifiée) ── */
+const G={
+  foot:[[33.5195,36.262],[33.5205,36.270],[33.5228,36.280],[33.5245,36.290],[33.5262,36.300],[33.5285,36.310],[33.5300,36.318],[33.5315,36.326]],
+  mid: [[33.5255,36.262],[33.5280,36.272],[33.5305,36.284],[33.5325,36.296],[33.5345,36.308],[33.5365,36.318],[33.5378,36.326]],
+  crest:[[33.5300,36.262],[33.5330,36.271],[33.5362,36.282],[33.5378,36.293],[33.5392,36.306],[33.5400,36.318],[33.5405,36.326]],
+  mezzeh:[[33.5005,36.262],[33.5060,36.262],[33.5120,36.2625],[33.5150,36.2650],[33.5140,36.2700],[33.5095,36.2730],[33.5040,36.2715],[33.5005,36.2700]],
+  barada:[[33.5185,36.262],[33.5180,36.270],[33.5170,36.278],[33.5160,36.287],[33.5149,36.296],[33.5144,36.301],[33.5143,36.306],[33.5146,36.312],[33.5149,36.317],[33.5152,36.3215],[33.5160,36.326]],
+  canaux:[
+    {nom:'Nahr Yazîd',a:[[33.5195,36.265],[33.5225,36.276],[33.5250,36.286],[33.5268,36.296],[33.5283,36.306],[33.5293,36.316],[33.5302,36.326]]},
+    {nom:'Nahr Thawrâ',a:[[33.5188,36.267],[33.5205,36.280],[33.5216,36.292],[33.5226,36.304],[33.5232,36.316],[33.5238,36.326]]},
+    {nom:'Nahr Bâniyâs',a:[[33.5178,36.272],[33.5162,36.284],[33.5146,36.294],[33.5130,36.2998],[33.5120,36.304],[33.5112,36.309]]},
+    {nom:'Nahr Qanawât',a:[[33.5172,36.267],[33.5145,36.279],[33.5118,36.290],[33.5100,36.2985],[33.5097,36.303]]},
+    {nom:'Nahr ʿAqrabânî',a:[[33.5149,36.317],[33.5135,36.3205],[33.5118,36.3235],[33.5100,36.326]]},
+  ],
+  murs:[[33.5135,36.3005],[33.5138,36.3045],[33.5140,36.3080],[33.5143,36.3125],[33.5141,36.3160],[33.5131,36.3180],[33.5113,36.3189],[33.5097,36.3188],[33.5080,36.3176],[33.5066,36.3152],[33.5060,36.3112],[33.5061,36.3045],[33.5071,36.3015],[33.5094,36.3000],[33.5112,36.3000]],
+  portes:[
+    {n:'Bâb al-Faraj',p:[33.5138,36.3045]},{n:'Bâb al-Farâdîs',p:[33.5140,36.3080]},{n:'Bâb al-Salâma',p:[33.5143,36.3125]},
+    {n:'Bâb Tûmâ',p:[33.5141,36.3160]},{n:'Bâb Sharqî',p:[33.5097,36.3188]},{n:'Bâb Kaysân',p:[33.5066,36.3152]},
+    {n:'Bâb al-Ṣaghîr',p:[33.5061,36.3045]},{n:'Bâb al-Jâbiya',p:[33.5094,36.3000]},{n:'Bâb al-Naṣr',p:[33.5112,36.3000]},
+  ],
+  citadelle:[[33.5137,36.3006],[33.5137,36.3033],[33.5116,36.3033],[33.5116,36.3006]],
+  mosquee:[[33.5121,36.3058],[33.5121,36.3076],[33.5112,36.3076],[33.5112,36.3058]],
+  droite:[[33.5095,36.3001],[33.5097,36.3060],[33.5097,36.3120],[33.5097,36.3187]],
+  cimetiere:[[33.5056,36.3015],[33.5056,36.3060],[33.5036,36.3065],[33.5030,36.3020]],
+  routes:[
+    {n:'vers Baalbek',a:[[33.5138,36.3045],[33.5150,36.296],[33.5168,36.284],[33.5182,36.272],[33.5190,36.262]]},
+    {n:'vers al-Ṣâliḥiyya',a:[[33.5140,36.3080],[33.5180,36.3050],[33.5220,36.3005],[33.5255,36.2965]]},
+    {n:'vers Ḥimṣ et Ḥamâh',a:[[33.5141,36.3160],[33.5180,36.3190],[33.5225,36.3225],[33.5265,36.326]]},
+    {n:'vers le Ḥawrân',a:[[33.5094,36.3000],[33.5060,36.2992],[33.5030,36.2988],[33.5005,36.2985]]},
+  ],
+  quartiers:[
+    {n:'Quartier juif',p:[33.5074,36.3125]},{n:'Quartier chrétien',p:[33.5125,36.3160]},
+    {n:'Sûq al-Kabîr',p:[33.5101,36.3095]},{n:'al-Qaymariyya',p:[33.5128,36.3105]},
+  ],
+  sites:[
+    {n:'Grotte du Sang',d:"Maghârat al-Dam : là où Caïn aurait tué Abel. Une trace rouge, une fente « bouche ouverte d'horreur ».",p:[33.5332,36.2862],ic:'🕳'},
+    {n:'Ancien observatoire',d:"Vestiges de l'observatoire d'al-Maʾmûn : murets, socle des instruments, alignements gravés. C'est ici que l'on monte le pneumatographe.",p:[33.5362,36.2945],ic:'✶'},
+    {n:'Carrières',d:"On y taille la pierre des chantiers de Saladin.",p:[33.5305,36.3055],ic:'⛏'},
+    {n:'Gorge d\'al-Rabwa',d:"Le Baradâ sort de la montagne et se divise en ses canaux.",p:[33.5186,36.2665],ic:'〰'},
+    {n:'Cimetière de Bâb al-Ṣaghîr',d:"Le grand cimetière au sud des murs.",p:[33.5044,36.3040],ic:'⚰'},
+  ],
+};
+// Calque « scénario » (meneur) : signes et zones de la secousse
+const SCEN={
+  fissures:[
+    {n:'Faille du Qâsiyûn',a:[[33.5348,36.2835],[33.5338,36.2850],[33.5332,36.2862],[33.5318,36.2875],[33.5300,36.2888],[33.5285,36.2905],[33.5272,36.2925]]},
+    {n:'Dalle fendue du hammam',a:[[33.51075,36.30665],[33.51062,36.30695]]},
+  ],
+  tiede:[[33.5355,36.2840],[33.5340,36.2885],[33.5362,36.2920]],
+  puits:[{p:[33.5149,36.296],n:'Le Baradâ baisse'},{p:[33.5268,36.296],n:'Puits qui baissent à al-Ṣâliḥiyya'},{p:[33.5100,36.3140],n:'Eau trouble dans les souks'}],
+  zones:[
+    {niv:2,n:'Secousse niveau 2 : maisons effondrées à al-Ṣâliḥiyya',c:[33.5268,36.2945],r:520},
+    {niv:3,n:'Secousse niveau 3 : la ville entière',c:[33.5170,36.3010],r:1500},
+  ],
+};
+const AXES={
+  feu:{l:'Feu',c:'#d0502a',v:'Force',vi:'Envie'},
+  bile_j:{l:'Bile jaune',c:'#d0a828',v:'Charité',vi:'Luxure'},
+  terre:{l:'Terre',c:'#8a6a38',v:'Loyauté',vi:'Malignité'},
+  bile_n:{l:'Bile noire',c:'#6a3a8a',v:'Prudence',vi:'Acédie'},
+  eau:{l:'Eau',c:'#2a70b0',v:'Tempérance',vi:'Lâcheté'},
+  flegme:{l:'Flegme',c:'#2a9070',v:'Chasteté',vi:'Avarice'},
+  air:{l:'Air',c:'#80b0d8',v:'Foi',vi:'Félonie'},
+  sang:{l:'Sang',c:'#a02848',v:'Espérance',vi:'Témérité'},
+};
+const AXE_IDS=Object.keys(AXES);
+const AXE_ALIAS={bile_jaune:'bile_j',bile_noire:'bile_n'};
+
+/* ── État ── */
+let ROW=null, ETAT={}, CARTE={}, isGM=false, playerId='joueur', authenticated=false;
+let selected=null, tab='lieux';
+const LAYERS=[
+  {id:'L-grille',n:'Grille',v:0},{id:'L-relief',n:'Relief',v:100},{id:'L-ghuta',n:'Vergers de la Ghûṭa',v:100},
+  {id:'L-eaux',n:'Baradâ et canaux',v:100},{id:'L-routes',n:'Routes',v:80},{id:'L-ville',n:'Enceinte et monuments',v:100},
+  {id:'L-sites',n:'Sites',v:100},{id:'L-pneuma',n:'Pneuma locale',v:100},{id:'L-vents',n:'Vents de pneuma',v:100},
+  {id:'L-scenario',n:'Scénario (meneur)',v:100,gm:true},{id:'L-lieux',n:'Lieux',v:100},
+];
+
+/* ══════════ Dessin du fond ══════════ */
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('map');
+function el(tag,attrs={},parent=svg,text){
+  const e=document.createElementNS(NS,tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  if(text!==undefined) e.textContent=text;
+  parent.appendChild(e); return e;
+}
+function label(parent,x,y,txt,o={}){
+  return el('text',{x:f1(x),y:f1(y),'text-anchor':o.anchor||'middle','font-family':o.font||'serif','font-size':o.size||9,
+    fill:o.fill||'#8a7050','font-style':o.italic?'italic':'normal','letter-spacing':o.ls||0,opacity:o.op??1,
+    class:o.cls||'', style:o.halo?'paint-order:stroke;stroke:#0d0904;stroke-width:3;':'' ,
+    ...(o.rot?{transform:`rotate(${o.rot},${f1(x)},${f1(y)})`}:{})},parent,txt);
+}
+function drawBase(){
+  svg.innerHTML='';
+  const defs=el('defs');
+  defs.innerHTML=`
+    <radialGradient id="bgG" cx="55%" cy="65%" r="75%"><stop offset="0%" stop-color="#2a1e0c"/><stop offset="100%" stop-color="#0c0804"/></radialGradient>
+    <pattern id="verger" width="16" height="14" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="2.1" fill="#2c3a18" opacity=".9"/><circle cx="12" cy="11" r="2.1" fill="#2c3a18" opacity=".9"/>
+      <circle cx="4" cy="4" r=".8" fill="#46582a"/><circle cx="12" cy="11" r=".8" fill="#46582a"/></pattern>
+    <pattern id="hach" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2="7" stroke="#5a4220" stroke-width=".7" opacity=".55"/></pattern>
+    <pattern id="tombes" width="8" height="8" patternUnits="userSpaceOnUse"><rect x="2" y="2" width="2" height="4" fill="#5a4a38" opacity=".7"/></pattern>
+    <mask id="mGhuta"><rect width="${W}" height="${H}" fill="white"/>
+      <path d="${lineToTop(G.foot)}" fill="black"/><path d="${smooth(G.mezzeh,true)}" fill="black"/>
+      <polygon points="${pts(G.murs)}" fill="black" stroke="black" stroke-width="40"/>
+      <circle cx="${f1(P(33.5262,36.2950)[0])}" cy="${f1(P(33.5262,36.2950)[1])}" r="55" fill="black"/>
+    </mask>
+    <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <marker id="arrE" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#c8a060"/></marker>`;
+  el('rect',{width:W,height:H,fill:'url(#bgG)'});
+
+  // Grille
+  const gr=el('g',{id:'L-grille'});
+  for(let lo=36.265;lo<LON1;lo+=0.01){const [x]=P(LAT0,lo); el('line',{x1:f1(x),y1:0,x2:f1(x),y2:H,stroke:'#c8a060','stroke-width':.3,opacity:.35},gr); label(gr,x,12,lo.toFixed(2)+'°E',{font:'monospace',size:8,fill:'#c8a060',op:.6});}
+  for(let la=33.505;la<LAT1;la+=0.005){const [,y]=P(la,LON0); el('line',{x1:0,y1:f1(y),x2:W,y2:f1(y),stroke:'#c8a060','stroke-width':.3,opacity:.35},gr); label(gr,6,y-2,la.toFixed(3)+'°N',{font:'monospace',size:8,fill:'#c8a060',op:.6,anchor:'start'});}
+
+  // Ghûṭa
+  const gh=el('g',{id:'L-ghuta'});
+  el('rect',{width:W,height:H,fill:'url(#verger)',mask:'url(#mGhuta)',opacity:.85},gh);
+  label(gh,...P(33.5035,36.2860),'al-Ghûṭa',{size:15,italic:true,fill:'#5a6a38',ls:6,op:.9});
+  label(gh,...P(33.5050,36.3205),'vergers de la Ghûṭa',{size:10,italic:true,fill:'#5a6a38',ls:3,op:.8});
+
+  // Relief
+  const rl=el('g',{id:'L-relief'});
+  el('path',{d:lineToTop(G.foot),fill:'#241a0c',stroke:'#4a3218','stroke-width':1},rl);
+  el('path',{d:lineToTop(G.mid),fill:'#2e2210',stroke:'#5a3e1c','stroke-width':.8},rl);
+  el('path',{d:lineToTop(G.crest),fill:'#3a2b14',stroke:'#6a4a22','stroke-width':.8},rl);
+  el('path',{d:lineToTop(G.foot),fill:'url(#hach)'},rl);
+  el('path',{d:smooth(G.mezzeh,true),fill:'#261b0d',stroke:'#4a3218','stroke-width':1},rl);
+  el('path',{d:smooth(G.mezzeh,true),fill:'url(#hach)'},rl);
+  // ligne de crête dentelée
+  const cr=G.crest.map(([la,lo])=>P(la-0.0006,lo));
+  let dc=''; for(let i=0;i<cr.length-1;i++){const [x1,y1]=cr[i],[x2,y2]=cr[i+1];const n=6;for(let k=0;k<n;k++){const t=k/n,x=x1+(x2-x1)*t,y=y1+(y2-y1)*t;dc+=`M${f1(x-5)},${f1(y+5)} L${f1(x)},${f1(y-3)} L${f1(x+5)},${f1(y+5)} `;}}
+  el('path',{d:dc,fill:'none',stroke:'#8a6a38','stroke-width':.9,opacity:.6},rl);
+  label(rl,...P(33.5358,36.3080),'Jabal Qâsiyûn',{size:16,font:'Cinzel,serif',fill:'#9a7a48',ls:5,op:.9,rot:-9});
+  label(rl,...P(33.5340,36.3075),'جبل قاسيون',{size:11,fill:'#7a5a30',op:.8,rot:-9});
+  label(rl,...P(33.5080,36.2668),'Jabal al-Mizza',{size:9,italic:true,fill:'#7a5a30',rot:-70});
+
+  // Eaux
+  const ea=el('g',{id:'L-eaux'});
+  G.canaux.forEach(c=>{
+    el('path',{d:smooth(c.a),fill:'none',stroke:'#1a3a5a','stroke-width':2.4,'stroke-linecap':'round',opacity:.7},ea);
+    el('path',{d:smooth(c.a),fill:'none',stroke:'#3a7ab0','stroke-width':1,'stroke-linecap':'round',opacity:.7},ea);
+  });
+  el('path',{d:smooth(G.barada),fill:'none',stroke:'#1a3a5a','stroke-width':7,'stroke-linecap':'round',opacity:.85},ea);
+  el('path',{d:smooth(G.barada),fill:'none',stroke:'#3a7ab0','stroke-width':3,'stroke-linecap':'round',opacity:.85},ea);
+  label(ea,...P(33.5168,36.2795),'Baradâ',{size:11,italic:true,fill:'#5a9ad0',halo:true,rot:6});
+  label(ea,...P(33.5156,36.3205),'Baradâ',{size:10,italic:true,fill:'#5a9ad0',halo:true,rot:-6});
+  const cl=el('g',{class:'zoom-lbl','data-min':1.3},ea);
+  [['Nahr Yazîd',33.5258,36.2885,-14],['Nahr Thawrâ',33.5222,36.3000,-6],['Nahr Bâniyâs',33.5148,36.2900,14],['Nahr Qanawât',33.5122,36.2865,16]].forEach(([n,la,lo,r])=>label(cl,...P(la,lo),n,{size:7,italic:true,fill:'#4a8ab0',halo:true,rot:r}));
+
+  // Routes
+  const ro=el('g',{id:'L-routes'});
+  G.routes.forEach(r=>{
+    el('path',{d:smooth(r.a),fill:'none',stroke:'#c8a060','stroke-width':1.6,'stroke-dasharray':'7,4',opacity:.55},ro);
+    const e=r.a[r.a.length-1], [x,y]=P(...e);
+    label(ro,x+(x<20?24:x>W-20?-24:0),y+(y>H-20?-8:y<20?14:-6),r.n,{size:8,italic:true,fill:'#c8a060',op:.8,anchor:x<20?'start':x>W-20?'end':'middle'});
+  });
+
+  // Ville
+  const vi=el('g',{id:'L-ville'});
+  el('polygon',{points:pts(G.murs),fill:'#2a1f12',stroke:'none',opacity:.95},vi);
+  // trame de ruelles
+  const st=el('g',{opacity:.35},vi);
+  for(let i=0;i<46;i++){const la=33.5063+Math.random()*0.0076,lo=36.3005+Math.random()*0.0178;
+    const [x,y]=P(la,lo),len=6+Math.random()*16,a=Math.random()<.5?0:90; el('line',{x1:f1(x),y1:f1(y),x2:f1(x+(a?0:len)),y2:f1(y+(a?len:0)),stroke:'#7a5a30','stroke-width':.6},st);}
+  el('polygon',{points:pts(G.murs),fill:'none',stroke:'#a07a40','stroke-width':3,'stroke-linejoin':'round'},vi);
+  el('polygon',{points:pts(G.murs),fill:'none',stroke:'#1a1208','stroke-width':1,'stroke-dasharray':'2,3'},vi);
+  el('polyline',{points:pts(G.droite),fill:'none',stroke:'#c8a060','stroke-width':1.8,opacity:.7},vi);
+  el('polygon',{points:pts(G.citadelle),fill:'#3a2a14',stroke:'#c8a060','stroke-width':1.8},vi);
+  el('polygon',{points:pts(G.mosquee),fill:'#3a2c16',stroke:'#e0c080','stroke-width':1.6},vi);
+  el('polygon',{points:pts(G.cimetiere),fill:'url(#tombes)',stroke:'#5a4a38','stroke-width':.8},vi);
+  label(vi,...P(33.5139,36.2990),'Citadelle',{size:8,font:'Cinzel,serif',fill:'#d0b070',halo:true,anchor:'end'});
+  label(vi,...P(33.5124,36.3067),'Grande Mosquée',{size:8,font:'Cinzel,serif',fill:'#e0c080',halo:true});
+  label(vi,...P(33.5084,36.3095),'DIMASHQ',{size:15,font:'Cinzel,serif',fill:'#c8a060',ls:8,op:.75,halo:true});
+  const ql=el('g',{class:'zoom-lbl','data-min':1.6},vi);
+  G.quartiers.forEach(q=>label(ql,...P(...q.p),q.n,{size:6.5,italic:true,fill:'#a08860',halo:true}));
+  label(ql,...P(33.5093,36.3150),'rue Droite',{size:6.5,italic:true,fill:'#c8a060',halo:true});
+  const po=el('g',{},vi), pl=el('g',{class:'zoom-lbl','data-min':1.5},vi);
+  G.portes.forEach(g=>{const [x,y]=P(...g.p); el('rect',{x:f1(x-2.5),y:f1(y-2.5),width:5,height:5,fill:'#c8a060',stroke:'#1a1208','stroke-width':.8},po);
+    const out=[x-P(33.5100,36.3095)[0],y-P(33.5100,36.3095)[1]], nn=Math.hypot(...out)||1;
+    label(pl,x+out[0]/nn*14,y+out[1]/nn*12+3,g.n,{size:6.5,fill:'#d8c090',halo:true});});
+
+  // Sites
+  const si=el('g',{id:'L-sites'});
+  G.sites.forEach(s=>{const [x,y]=P(...s.p); const g=el('g',{transform:`translate(${f1(x)},${f1(y)})`,style:'cursor:help'},si);
+    el('circle',{r:7,fill:'#1a1208',stroke:'#8a7050','stroke-width':1},g); el('text',{'text-anchor':'middle',dy:3.5,'font-size':9,fill:'#c8a060'},g,s.ic);
+    label(g,0,17,s.n,{size:7.5,italic:true,fill:'#b09060',halo:true});
+    g.addEventListener('mouseenter',e=>tip(e,s.n,s.d)); g.addEventListener('mouseleave',untip);});
+
+  // Couches dynamiques
+  el('g',{id:'L-pneuma'}); el('g',{id:'L-vents'}); el('g',{id:'L-scenario'}); el('g',{id:'L-lieux'});
+
+  // Cartouche, rose, échelle
+  const ca=el('g',{transform:'translate(430,858)'});
+  el('rect',{x:-150,y:-34,width:300,height:52,rx:4,fill:'rgba(10,7,3,.75)',stroke:'#4a3820'},ca);
+  label(ca,0,-12,'Damas · al-Ṣâliḥiyya · Qâsiyûn',{size:12,font:'Cinzel,serif',fill:'#c8a060',ls:1.5});
+  label(ca,0,5,'vers 576 de l\'Hégire · 1180 — d\'après N. Elisséeff',{size:8.5,italic:true,fill:'#8a7050'});
+  const ro2=el('g',{transform:'translate(1150,60)',opacity:.6});
+  el('circle',{r:20,fill:'none',stroke:'#4a3218'},ro2); el('path',{d:'M0,-18 L4,0 L0,18 L-4,0 Z',fill:'#6a4a20'},ro2);
+  el('path',{d:'M0,-18 L4,0 L-4,0 Z',fill:'#c8a060'},ro2); label(ro2,0,-23,'N',{size:10,fill:'#c8a060'});
+  const px500=500/MPP, sc=el('g',{transform:'translate(30,870)'});
+  el('line',{x1:0,y1:0,x2:f1(px500),y2:0,stroke:'#c8a060','stroke-width':2},sc);
+  [0,px500/2,px500].forEach(x=>el('line',{x1:f1(x),y1:-4,x2:f1(x),y2:4,stroke:'#c8a060','stroke-width':1.2},sc));
+  label(sc,0,-8,'0',{size:8,fill:'#c8a060'}); label(sc,px500,-8,'500 m',{size:8,fill:'#c8a060'});
+}
+
+/* ══════════ Données de l'environnement ══════════ */
+function lieuxOf(e){
+  if(e&&e.lieux&&Object.keys(e.lieux).length) return e.lieux;
+  if(e&&(e.tokens||e.scores)) return {lieu_principal:{nom:'Lieu principal',tokens:e.tokens,scores:e.scores,pneumato:e.pneumato,nineCount:e.nineCount,nineThreshold:e.nineThreshold}};
+  return {};
+}
+const lieuActif=()=>ETAT.lieuActif||Object.keys(lieuxOf(ETAT))[0]||'';
+const slotsOf=()=>({...((CARTE&&CARTE.slots)||{}),...(ETAT.slots||{})});
+function toks(l){ // jetons normalisés {axe:[...]}
+  const t={}; const src=l.tokens||{};
+  for(const k in src){ t[AXE_ALIAS[k]||k]=src[k]; }
+  return t;
+}
+function pneuOf(l){ const p=l.pneumato||{}; return {...p, direction:p.direction||p.occultation||{}, zonesRevealed:{...(p.zonesRevealed||{}),direction:(p.zonesRevealed||{}).direction??(p.zonesRevealed||{}).occultation}}; }
+function bilan(l){
+  const t=toks(l); let w=0,b=0,best=null,bestN=0;
+  AXE_IDS.forEach(a=>{const arr=t[a]||[]; const nw=arr.filter(x=>x==='white').length, nb=arr.filter(x=>x==='black').length; w+=nw;b+=nb; const sc2=nb*2+nw; if(sc2>bestN){bestN=sc2;best=a;}});
+  return {w,b,dom:best||'terre',tot:w+b};
+}
+function slotVisible(s){
+  if(isGM) return !!(s.titre||s.texte);
+  const ra=s.revele_a; if(!ra||ra==='aucun') return false;
+  if(ra==='tous') return true; if(Array.isArray(ra)) return ra.includes(playerId); return false;
+}
+const revealed=(v)=>v==='tous'||(Array.isArray(v)&&v.includes(playerId));
+function iconeOf(k,l){
+  if(l.geo&&l.geo.icone) return l.geo.icone;
+  const n=(l.nom||k).toLowerCase();
+  if(/hamm/.test(n)) return '♨'; if(/b[iî]m[aâ]r/.test(n)) return '⚕'; if(/q[aâ]siy|mont|jabal/.test(n)) return '⛰';
+  if(/sagesse|hikma|ḥikma|biblioth/.test(n)) return '📚'; if(/[sṣ][aâ]li|couvent|madrasa|mosqu/.test(n)) return '🕌';
+  if(/gu[eé]|chastel|bataille/.test(n)) return '⚔'; if(/chayzar|shayzar|citadel|forter/.test(n)) return '🏰'; return '🏛';
+}
+function distKm(a,b){const R=6371,r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lon-a.lon)*r;const x=Math.sin(dl/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+
+/* ══════════ Couches dynamiques ══════════ */
+function drawDynamic(){
+  const lieux=lieuxOf(ETAT), act=lieuActif(), slots=slotsOf();
+  const Lp=document.getElementById('L-pneuma'), Lv=document.getElementById('L-vents'), Ls=document.getElementById('L-scenario'), Ll=document.getElementById('L-lieux');
+  [Lp,Lv,Ls,Ll].forEach(g=>g.innerHTML='');
+  const defs=svg.querySelector('defs');
+  defs.querySelectorAll('.dyn').forEach(d=>d.remove());
+  const nEvt={}; Object.values(slots).forEach(s=>{ if(s&&s.lieu_key&&slotVisible(s)) nEvt[s.lieu_key]=(nEvt[s.lieu_key]||0)+1; });
+
+  // Scénario (meneur)
+  if(isGM){
+    SCEN.zones.forEach(z=>{const [x,y]=P(...z.c); const c=el('circle',{cx:f1(x),cy:f1(y),r:f1(z.r/MPP),fill:z.niv===3?'rgba(160,30,20,.05)':'rgba(200,60,30,.08)',stroke:z.niv===3?'#8a2010':'#c04020','stroke-width':1.3,'stroke-dasharray':z.niv===3?'10,6':'5,4'},Ls);
+      c.addEventListener('mouseenter',e=>tip(e,'Zone de secousse',z.n)); c.addEventListener('mouseleave',untip);
+      label(Ls,x,y-z.r/MPP+12,z.niv===3?'secousse niv. 3':'secousse niv. 2',{size:7.5,italic:true,fill:'#e07050',halo:true});});
+    SCEN.fissures.forEach(f=>{const p=el('polyline',{points:pts(f.a),fill:'none',stroke:'#e05030','stroke-width':1.6,'stroke-linejoin':'bevel',opacity:.85},Ls);
+      p.addEventListener('mouseenter',e=>tip(e,f.n,'Signe à découvrir (Terre)')); p.addEventListener('mouseleave',untip);});
+    SCEN.tiede.forEach(t=>{const [x,y]=P(...t); el('circle',{cx:f1(x),cy:f1(y),r:9,fill:'rgba(224,112,64,.15)',stroke:'#e07040','stroke-width':.8,'stroke-dasharray':'2,2'},Ls);});
+    label(Ls,...P(33.5370,36.2860),'sol tiède',{size:7,italic:true,fill:'#e07040',halo:true});
+    SCEN.puits.forEach(w=>{const [x,y]=P(...w.p); const g=el('g',{transform:`translate(${f1(x)},${f1(y)})`},Ls);
+      el('circle',{r:5.5,fill:'#0d1a26',stroke:'#e07040','stroke-width':1},g); el('text',{'text-anchor':'middle',dy:3,'font-size':7,fill:'#e07040'},g,'↓');
+      g.addEventListener('mouseenter',e=>tip(e,w.n,'Signe à découvrir (Eau/Flegme)')); g.addEventListener('mouseleave',untip);});
+  }
+
+  // Lieux : d'abord les zones (parents), puis les points
+  const entries=Object.entries(lieux).filter(([,l])=>l.geo&&l.geo.lat!=null);
+  const onMap=entries.filter(([,l])=>inside(l.geo.lat,l.geo.lon));
+  const offMap=entries.filter(([,l])=>!inside(l.geo.lat,l.geo.lon));
+  const parents=new Set(entries.map(([,l])=>l.geo.parent).filter(Boolean));
+
+  onMap.forEach(([k,l])=>{
+    const [x,y]=P(l.geo.lat,l.geo.lon), r=Math.max(14,(l.geo.rayon||120)/MPP);
+    const pz=pneuOf(l), zr=pz.zonesRevealed||{}, bl=bilan(l);
+    // Pneuma : intensité si « valeurs » révélées, couleur si « polarité » révélée (le meneur voit tout)
+    const showV=isGM||zr.valeurs, showP=isGM||zr.polarite;
+    if(showV&&bl.tot>0){
+      const col=showP?AXES[bl.dom].c:'#a09888';
+      const gid='pz_'+k;
+      const rg=el('radialGradient',{id:gid,class:'dyn'},defs);
+      el('stop',{offset:'0%','stop-color':col,'stop-opacity':(0.18+bl.tot/24*0.45).toFixed(2)},rg);
+      el('stop',{offset:'70%','stop-color':col,'stop-opacity':(0.06+bl.tot/24*0.2).toFixed(2)},rg);
+      el('stop',{offset:'100%','stop-color':col,'stop-opacity':0},rg);
+      el('circle',{cx:f1(x),cy:f1(y),r:f1(r*1.15),fill:`url(#${gid})`},Lp);
+      if(showP){ const dev=bl.b>bl.w; el('circle',{cx:f1(x),cy:f1(y),r:f1(r),fill:'none',stroke:dev?'#7a3aa0':'#d4a820','stroke-width':dev?1.4:1,'stroke-dasharray':dev?'3,3':'none',opacity:.7},Lp); }
+    }
+    // Vents
+    const vents=(l.geo.vents||[]);
+    if((isGM||zr.direction)&&vents.length){
+      vents.forEach((v,i)=>{const a=AXES[AXE_ALIAS[v.axe]||v.axe]; if(!a) return; const cap=(v.cap||0)*Math.PI/180, n=(v.intensite||1)*2+1, len=r*0.9+(v.intensite||1)*25;
+        const mid='vt_'+k+'_'+i; const mk=el('marker',{id:mid,class:'dyn',markerWidth:8,markerHeight:8,refX:6,refY:3,orient:'auto'},defs); el('path',{d:'M0,0 L0,6 L8,3 z',fill:a.c},mk);
+        for(let j=0;j<n;j++){const sp=n>1?(j/(n-1)-.5)*0.5:0, ang=cap+sp, dx=Math.sin(ang), dy=-Math.cos(ang);
+          el('line',{x1:f1(x+dx*r*0.35),y1:f1(y+dy*r*0.35),x2:f1(x+dx*len),y2:f1(y+dy*len),stroke:a.c,'stroke-width':(0.9+(v.intensite||1)*.4).toFixed(1),opacity:.75,'marker-end':`url(#${mid})`},Lv);}
+        label(Lv,x+Math.sin(cap)*(len+12),y-Math.cos(cap)*(len+12),'vent de '+a.l.toLowerCase(),{size:7.5,italic:true,fill:a.c,halo:true});
+      });
+    }
+    // Zone (lieu englobant) ou point
+    const isParent=parents.has(k)||(l.geo.rayon||0)>=300;
+    const g=el('g',{class:'lieu'+(selected===k?' sel':''),'data-k':k},Ll);
+    if(isParent){
+      el('circle',{class:'ring',cx:f1(x),cy:f1(y),r:f1(r),fill:'rgba(200,160,96,.03)',stroke:k===act?'#e0b860':'#8a7050','stroke-width':k===act?2:1.2,'stroke-dasharray':'6,4'},g);
+      const ly=y-r-8>20?y-r-8:y+r+16;
+      const txt=iconeOf(k,l)+' '+(l.nom||k), hw=Math.min(150,txt.length*2.9+14);
+      el('rect',{x:f1(x-hw),y:f1(ly-11),width:f1(hw*2),height:16,rx:8,fill:'rgba(10,7,3,.8)',stroke:k===act?'#e0b860':'#4a3820'},g);
+      label(g,x,ly+1,txt,{size:8.5,font:'Cinzel,serif',fill:k===act?'#f0d080':'#d8c090'});
+      if(nEvt[k]){ el('circle',{cx:f1(x+hw-2),cy:f1(ly-9),r:6.5,fill:'#1a4a6a',stroke:'#6aaccc'},g); label(g,x+hw-2,ly-6.5,String(nEvt[k]),{size:7,fill:'#e8f4ff'}); }
+      if(k===act) el('circle',{cx:f1(x),cy:f1(y),r:f1(r),fill:'none',stroke:'#f0d080','stroke-width':2,class:'pulse'},g);
+    } else {
+      if(k===act) el('circle',{cx:f1(x),cy:f1(y),r:15,fill:'none',stroke:'#f0d080','stroke-width':2,class:'pulse'},g);
+      el('circle',{class:'ring',cx:f1(x),cy:f1(y),r:9.5,fill:'#1a1208',stroke:k===act?'#f0d080':'#c8a060','stroke-width':1.8,filter:'url(#glow)'},g);
+      el('text',{x:f1(x),y:f1(y+3.8),'text-anchor':'middle','font-size':10.5,fill:'#f0d8a0'},g,iconeOf(k,l));
+      const lb=el('g',{class:'zoom-lbl','data-min':l.geo.parent?1.25:0},g);
+      label(lb,x,y+21,l.nom||k,{size:8,fill:'#fff3d8',halo:true});
+      if(nEvt[k]){ el('circle',{cx:f1(x+9),cy:f1(y-9),r:6,fill:'#1a4a6a',stroke:'#6aaccc'},g); label(g,x+9,y-6.6,String(nEvt[k]),{size:7,fill:'#e8f4ff'}); }
+    }
+    if(isGM&&(l.nineThreshold||0)>0&&(l.nineCount||0)>0){ label(g,x+(isParent?0:0),y+(isParent?r-6:31),`9 : ${l.nineCount}/${l.nineThreshold}`,{size:7,fill:(l.nineCount>=l.nineThreshold)?'#ff7050':'#c8a060',halo:true}); }
+    g.addEventListener('click',ev=>{ev.stopPropagation();select(k,false);});
+    g.addEventListener('mouseenter',e=>tip(e,l.nom||k,(nEvt[k]?nEvt[k]+' événement(s)':'')+(k===act?' · lieu actif':'')));
+    g.addEventListener('mouseleave',untip);
+  });
+
+  // Lieux hors carte : flèches au bord
+  const C={lat:(LAT0+LAT1)/2,lon:(LON0+LON1)/2};
+  offMap.forEach(([k,l])=>{
+    const kmx=(l.geo.lon-C.lon)*Math.cos(C.lat*Math.PI/180), kmy=(l.geo.lat-C.lat);
+    const ang=Math.atan2(kmx,kmy); const dx=Math.sin(ang), dy=-Math.cos(ang);
+    const cx=W/2, cy=H/2, m=34; const tx=dx>0?(W-m-cx)/dx:dx<0?(m-cx)/dx:1e9, ty=dy>0?(H-m-cy)/dy:dy<0?(m-cy)/dy:1e9; const t=Math.min(tx,ty);
+    const x=cx+dx*t, y=cy+dy*t, km=Math.round(distKm(C,l.geo));
+    const g=el('g',{class:'lieu'+(selected===k?' sel':''),transform:`translate(${f1(x)},${f1(y)})`},Ll);
+    el('line',{x1:f1(-dx*26),y1:f1(-dy*26),x2:f1(dx*4),y2:f1(dy*4),stroke:k===act?'#f0d080':'#c8a060','stroke-width':2.2,'marker-end':'url(#arrE)'},g);
+    el('circle',{class:'ring',cx:f1(-dx*34),cy:f1(-dy*34),r:9,fill:'#1a1208',stroke:k===act?'#f0d080':'#c8a060','stroke-width':1.6},g);
+    el('text',{x:f1(-dx*34),y:f1(-dy*34+3.6),'text-anchor':'middle','font-size':10,fill:'#f0d8a0'},g,iconeOf(k,l));
+    const lx=-dx*34+(dx>0.3?-14:dx<-0.3?14:0), ly=-dy*34+(dy>0.3?-14:dy<-0.3?22:22);
+    label(g,lx,ly,`${l.nom||k} · ${km} km`,{size:8,fill:'#fff3d8',halo:true,anchor:dx>0.3?'end':dx<-0.3?'start':'middle'});
+    if(nEvt[k]){ el('circle',{cx:f1(-dx*34+9),cy:f1(-dy*34-9),r:6,fill:'#1a4a6a',stroke:'#6aaccc'},g); label(g,-dx*34+9,-dy*34-6.6,String(nEvt[k]),{size:7,fill:'#e8f4ff'}); }
+    g.addEventListener('click',ev=>{ev.stopPropagation();select(k,false);});
+    g.addEventListener('mouseenter',e=>tip(e,l.nom||k,`Hors de la carte, à ${km} km`)); g.addEventListener('mouseleave',untip);
+  });
+  applyLayers(); updateZoomLabels();
+}
+
+/* ══════════ Panneau latéral ══════════ */
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function renderSide(){
+  const b=document.getElementById('side-body');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.t===tab));
+  if(tab==='calques') return renderLayers(b);
+  if(tab==='legende') return renderLegend(b);
+  if(selected&&lieuxOf(ETAT)[selected]) return renderDetail(b,selected);
+  const lieux=lieuxOf(ETAT), act=lieuActif(), slots=slotsOf();
+  const nEvt={}; Object.values(slots).forEach(s=>{ if(s&&s.lieu_key&&slotVisible(s)) nEvt[s.lieu_key]=(nEvt[s.lieu_key]||0)+1; });
+  const E=Object.entries(lieux);
+  if(!E.length){ b.innerHTML=`<p class="note">${ROW?'Cet environnement n\'a pas encore de lieux.':'Carte seule : connectez-vous pour afficher les lieux de l\'environnement.'}</p>`; return; }
+  const grp={on:[],off:[],none:[]};
+  E.forEach(([k,l])=>{ const g=l.geo&&l.geo.lat!=null?(inside(l.geo.lat,l.geo.lon)?'on':'off'):'none'; grp[g].push([k,l]); });
+  const row=([k,l])=>`<div class="li${selected===k?' sel':''}" data-k="${esc(k)}"><span class="ic">${iconeOf(k,l)}</span><span class="nm">${esc(l.nom||k)}${l.geo&&l.geo.parent&&lieux[l.geo.parent]?`<small>dans ${esc(lieux[l.geo.parent].nom)}</small>`:''}</span>${k===act?'<span class="badge act">actif</span>':''}${nEvt[k]?`<span class="badge evt">${nEvt[k]}</span>`:''}</div>`;
+  b.innerHTML=(grp.on.length?'<div class="grp">Sur la carte</div>'+grp.on.map(row).join(''):'')
+    +(grp.off.length?'<div class="grp">Hors de la carte</div>'+grp.off.map(row).join(''):'')
+    +(grp.none.length?'<div class="grp">Sans position</div>'+grp.none.map(row).join('')+'<p class="note">Ajoutez une position (latitude, longitude) à ces lieux dans le document de l\'environnement.</p>':'');
+  b.querySelectorAll('.li').forEach(d=>d.onclick=()=>select(d.dataset.k,true));
+}
+function renderDetail(b,k){
+  const lieux=lieuxOf(ETAT), l=lieux[k], act=lieuActif(), pz=pneuOf(l), zr=pz.zonesRevealed||{};
+  const t=toks(l), sc=l.scores||{};
+  let h=`<button class="back" id="bk">← Tous les lieux</button><div class="card"><h3>${iconeOf(k,l)} ${esc(l.nom||k)}</h3>`;
+  if(l.geo&&l.geo.parent&&lieux[l.geo.parent]) h+=`<div class="meta">dans ${esc(lieux[l.geo.parent].nom)}</div>`;
+  if(l.geo&&l.geo.lat!=null) h+=`<div class="meta">${l.geo.lat.toFixed(4)}° N · ${l.geo.lon.toFixed(4)}° E${inside(l.geo.lat,l.geo.lon)?'':' · hors de la carte, à '+Math.round(distKm({lat:(LAT0+LAT1)/2,lon:(LON0+LON1)/2},l.geo))+' km'}</div>`;
+  h+=k===act?'<div style="margin-top:.35rem"><span class="badge act">lieu actif</span></div>':'';
+  h+='</div>';
+  if(isGM&&k!==act){ h+=`<button class="btn" id="b-act" ${IN_FRAME?'':'disabled'}>⇄ Faire de ce lieu le lieu actif</button>`;
+    if(!IN_FRAME) h+='<p class="note">Ouvrez la carte depuis la fiche d\'environnement pour changer de lieu actif.</p>'; }
+  // Octogone local
+  if(isGM){
+    h+='<div class="card"><div class="sec-t">Octogone du lieu</div><div class="axes">';
+    AXE_IDS.forEach(a=>{const arr=t[a]||[]; const tk=arr.map(x=>x==='white'?'○':x==='black'?'●':'·').join('')||'···';
+      h+=`<span class="a" style="color:${AXES[a].c}">${AXES[a].l}</span><span class="tk">${tk}</span><span class="vv">${AXES[a].v} ${sc[a+'_0']||0} · ${AXES[a].vi} ${sc[a+'_1']||0}</span>`;});
+    h+=`</div>${l.nineThreshold?`<div class="note">Neuf recueillis : ${l.nineCount||0} / ${l.nineThreshold}</div>`:''}</div>`;
+  }
+  // Pneumatographie
+  const bl=bilan(l); let pzH='';
+  if(isGM||zr.valeurs) pzH+=`<div class="pz"><b>Valeurs</b>niveau ${pz.valeurs||0}${bl.tot?` · ${bl.tot} jeton(s) en jeu`:''}</div>`;
+  if(isGM||zr.polarite) pzH+=`<div class="pz"><b>Polarité</b>niveau ${pz.polarite||0}${(isGM||zr.polarite)&&bl.tot?` · ${bl.w} vertueux, ${bl.b} dévoyé(s)`:''}</div>`;
+  ['direction','dynamique'].forEach(z=>{ [1,2,3].forEach(n=>{ const s=(pz[z]||{})[n]; if(!s||!s.text) return; if(!isGM&&!(zr[z]&&s.active)) return;
+    pzH+=`<div class="pz"${isGM&&!s.active?' style="opacity:.55"':''}><b>${z==='direction'?'Direction':'Dynamique'} ${['I','II','III'][n-1]}${isGM&&!s.active?' · non révélé':''}</b>${esc(s.text)}</div>`; }); });
+  if(pzH) h+=`<div class="card"><div class="sec-t">Pneumatographie</div>${pzH}</div>`;
+  // Événements
+  const ev=Object.entries(slotsOf()).filter(([,s])=>s&&s.lieu_key===k&&slotVisible(s));
+  if(ev.length){
+    h+='<div class="card"><div class="sec-t">Événements</div>';
+    ev.forEach(([key,s])=>{
+      const vis=isGM||revealed(s.revele_a);
+      let tx=''; [['rumeur','texte_rumeur','revele_rumeur'],['indice','texte_indice','revele_indice'],['fait établi','texte_fait','revele_fait']].forEach(([lb,f,r])=>{
+        if(!s[f]) return; const ok=isGM||revealed(s[r]); if(!ok) return;
+        tx+=`<div class="ex"><i>${lb}${isGM&&!revealed(s[r])?' (non révélé)':''} —</i> ${esc(s[f])}</div>`; });
+      if(isGM&&s.texte) tx=`<div class="ex">${esc(s.texte)}</div>`+tx;
+      h+=`<div class="evt${isGM&&!revealed(s.revele_a)?' hid':''}"><div class="et">${esc(s.titre||key)}${isGM&&!revealed(s.revele_a)?' · masqué aux joueurs':''}</div>${tx}</div>`;
+    });
+    h+='</div>';
+  }
+  b.innerHTML=h;
+  b.querySelector('#bk').onclick=()=>{selected=null;drawDynamic();renderSide();};
+  const ba=b.querySelector('#b-act');
+  if(ba) ba.onclick=()=>{ window.parent.postMessage({type:'SIFHR_LIEU_ACTIF',fiche:FICHE_ID,lieu:k},'*'); ba.disabled=true; ba.textContent='Demande envoyée…'; };
+}
+function renderLayers(b){
+  b.innerHTML='<div class="grp">Opacité des calques</div>'+LAYERS.filter(L=>!L.gm||isGM).map(L=>`<div class="lay"><label>${L.n}<span id="v-${L.id}">${L.v} %</span></label><input type="range" min="0" max="100" step="5" value="${L.v}" data-id="${L.id}"></div>`).join('')
+    +'<p class="note">Les réglages sont propres à votre écran.</p>';
+  b.querySelectorAll('input').forEach(i=>i.oninput=()=>{const L=LAYERS.find(x=>x.id===i.dataset.id);L.v=+i.value;document.getElementById('v-'+L.id).textContent=L.v+' %';applyLayers();saveLayers();});
+}
+function renderLegend(b){
+  let h='<div class="grp">Pneuma locale</div>';
+  h+='<p class="note" style="margin-bottom:.4rem">Le halo d\'un lieu prend la couleur de l\'humeur qui porte le plus de jetons ; son intensité suit le nombre de jetons. Un cercle doré : les jetons vertueux dominent. Un cercle violet en pointillé : les jetons dévoyés dominent.'+(isGM?'':' Vous ne voyez que ce que le meneur a révélé (valeurs, polarité, direction).')+'</p>';
+  AXE_IDS.forEach(a=>h+=`<div class="leg"><i style="background:${AXES[a].c}"></i>${AXES[a].l}</div>`);
+  h+='<div class="grp">Carte</div><div class="leg"><i style="background:#3a7ab0"></i>Baradâ et canaux</div><div class="leg"><i style="background:#2c3a18"></i>Vergers de la Ghûṭa</div><div class="leg"><i style="background:#3a2b14"></i>Pentes du Qâsiyûn</div><div class="leg"><i style="background:#a07a40"></i>Enceinte, portes (■)</div><div class="leg"><i style="background:#1a4a6a;border:1px solid #6aaccc"></i>Nombre d\'événements visibles</div>';
+  if(isGM) h+='<div class="grp">Scénario (meneur)</div><div class="leg"><i style="background:#e05030"></i>Fissures</div><div class="leg"><i style="border:1px dashed #e07040"></i>Sol tiède · ↓ eaux qui baissent</div><div class="leg"><i style="border:1px dashed #c04020"></i>Zones de la secousse (niv. 2 et 3)</div>';
+  b.innerHTML=h;
+}
+function applyLayers(){ LAYERS.forEach(L=>{const g=document.getElementById(L.id); if(g) g.setAttribute('opacity',(L.gm&&!isGM)?0:L.v/100);}); }
+function saveLayers(){ try{localStorage.setItem('sifhr_carte_damas_calques',JSON.stringify(Object.fromEntries(LAYERS.map(L=>[L.id,L.v]))));}catch(e){} }
+function loadLayers(){ try{const s=JSON.parse(localStorage.getItem('sifhr_carte_damas_calques')||'{}'); LAYERS.forEach(L=>{if(s[L.id]!=null) L.v=s[L.id];});}catch(e){} }
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{tab=t.dataset.t;renderSide();});
+
+function select(k,center){
+  selected=k; tab='lieux';
+  const l=lieuxOf(ETAT)[k];
+  if(center&&l&&l.geo&&inside(l.geo.lat,l.geo.lon)){ const [x,y]=P(l.geo.lat,l.geo.lon); const r=wrap.getBoundingClientRect(); px=r.width/2-x*sc; py=r.height/2-y*sc; applyT(); }
+  drawDynamic(); renderSide();
+}
+
+/* ══════════ Zoom et déplacement ══════════ */
+const wrap=document.getElementById('map-wrap');
+let sc=1,px=0,py=0,pan=null,pinch=null;
+function clampPan(){ const r=wrap.getBoundingClientRect(), mw=W*sc, mh=H*sc;
+  px = mw<=r.width ? (r.width-mw)/2 : Math.min(0,Math.max(r.width-mw,px));
+  py = mh<=r.height ? (r.height-mh)/2 : Math.min(0,Math.max(r.height-mh,py)); }
+function applyT(){ clampPan(); svg.style.transform=`translate(${px}px,${py}px) scale(${sc})`; updateZoomLabels(); }
+function updateZoomLabels(){ svg.querySelectorAll('.zoom-lbl').forEach(g=>{const m=+g.dataset.min||0; g.setAttribute('opacity',sc>=m?1:0);}); }
+function resetView(){ const r=wrap.getBoundingClientRect(); sc=Math.min(r.width/W,r.height/H); px=(r.width-W*sc)/2; py=(r.height-H*sc)/2; applyT(); }
+function zoomAt(f,cx,cy){ const r=wrap.getBoundingClientRect(); const ns=Math.max(0.3,Math.min(10,sc*f)); const mx=cx-r.left,my=cy-r.top; px=mx-(mx-px)*(ns/sc); py=my-(my-py)*(ns/sc); sc=ns; applyT(); }
+function zoomBy(f){ const r=wrap.getBoundingClientRect(); zoomAt(f,r.left+r.width/2,r.top+r.height/2); }
+wrap.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.deltaY<0?1.15:1/1.15,e.clientX,e.clientY);},{passive:false});
+wrap.addEventListener('pointerdown',e=>{ if(e.target.closest('.lieu')) return; pan={x:e.clientX,y:e.clientY,px,py}; wrap.classList.add('grabbing'); });
+window.addEventListener('pointermove',e=>{
+  if(pan&&!pinch){ px=pan.px+e.clientX-pan.x; py=pan.py+e.clientY-pan.y; applyT(); }
+  const r=wrap.getBoundingClientRect(), sx=(e.clientX-r.left-px)/sc, sy=(e.clientY-r.top-py)/sc, cd=document.getElementById('coord');
+  if(sx>=0&&sx<=W&&sy>=0&&sy<=H&&e.clientX<r.right){ const lon=LON0+sx/W*(LON1-LON0), lat=LAT1-sy/H*(LAT1-LAT0); cd.textContent=lat.toFixed(4)+'° N · '+lon.toFixed(4)+'° E'; cd.style.opacity=1; } else cd.style.opacity=0;
+  moveTip(e);
+});
+window.addEventListener('pointerup',()=>{pan=null;wrap.classList.remove('grabbing');});
+wrap.addEventListener('touchstart',e=>{ if(e.touches.length===2){ pinch=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); } },{passive:true});
+wrap.addEventListener('touchmove',e=>{ if(e.touches.length===2&&pinch){ const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); zoomAt(d/pinch,(e.touches[0].clientX+e.touches[1].clientX)/2,(e.touches[0].clientY+e.touches[1].clientY)/2); pinch=d; } },{passive:true});
+wrap.addEventListener('touchend',()=>{pinch=null;},{passive:true});
+// clic droit : copie « lat, lon » (pratique pour remplir la position d'un lieu dans le document)
+wrap.addEventListener('contextmenu',e=>{ e.preventDefault(); const r=wrap.getBoundingClientRect(), sx=(e.clientX-r.left-px)/sc, sy=(e.clientY-r.top-py)/sc;
+  const t=`${(LAT1-sy/H*(LAT1-LAT0)).toFixed(4)}, ${(LON0+sx/W*(LON1-LON0)).toFixed(4)}`; try{navigator.clipboard.writeText(t);}catch(x){} setStatus('Position copiée : '+t); });
+window.addEventListener('resize',resetView);
+
+/* ── Infobulle ── */
+const TT=document.getElementById('tt');
+function tip(e,t,d){ TT.innerHTML=`<b>${esc(t)}</b>${d?esc(d):''}`; TT.style.display='block'; moveTip(e); }
+function untip(){ TT.style.display='none'; }
+function moveTip(e){ if(TT.style.display==='none') return; let x=e.clientX+14,y=e.clientY+14; if(x+TT.offsetWidth>innerWidth) x=e.clientX-TT.offsetWidth-14; if(y+TT.offsetHeight>innerHeight) y=e.clientY-TT.offsetHeight-14; TT.style.left=x+'px'; TT.style.top=y+'px'; }
+let stT=null; function setStatus(t){ const s=document.getElementById('status'); s.textContent=t; clearTimeout(stT); stT=setTimeout(()=>s.textContent=authenticated?(isGM?'Meneur · lecture seule':'Joueur · lecture seule'):'Carte seule',2500); }
+
+/* ══════════ Connexion et données ══════════ */
+async function fetchRow(){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=id,nom,etat,carte,mot_de_passe,mot_de_passe_mj`,{headers:HDR});
+  const d=await r.json(); return d[0]||null;
+}
+function applyRow(row){
+  ROW=row; ETAT=(row&&row.etat&&typeof row.etat==='object')?row.etat:{}; CARTE=(row&&row.carte&&typeof row.carte==='object')?row.carte:{};
+  if(row&&row.nom) document.getElementById('env-nom').textContent=row.nom;
+  if(selected&&!lieuxOf(ETAT)[selected]) selected=null;
+  drawDynamic(); renderSide();
+}
+async function login(pw,gm,pid){
+  const err=document.getElementById('login-err'); err.textContent='';
+  if(!pw){err.textContent='Saisissez le mot de passe.';return;}
+  try{
+    const row=await fetchRow();
+    if(!row){err.textContent='Environnement introuvable : « '+FICHE_ID+' »';return;}
+    if(row[gm?'mot_de_passe_mj':'mot_de_passe']!==pw){err.textContent=gm?'Mot de passe meneur incorrect.':'Mot de passe incorrect.';return;}
+    delete row.mot_de_passe; delete row.mot_de_passe_mj;
+    authenticated=true; isGM=gm; playerId=gm?'__mj__':(pid||'joueur');
+    document.getElementById('login').style.display='none';
+    document.getElementById('role').textContent=gm?'meneur':'joueur';
+    setStatus(gm?'Meneur · lecture seule':'Joueur · lecture seule');
+    applyRow(row); startRealtime();
+    if(IN_FRAME) window.parent.postMessage({type:'CARTE_READY',fiche:FICHE_ID,carte:'damas'},'*');
+  }catch(e){ err.textContent='Erreur réseau.'; console.error(e); }
+}
+document.getElementById('login-fiche').textContent='« '+FICHE_ID+' »';
+document.getElementById('b-player').onclick=()=>login(document.getElementById('pw').value.trim(),false,document.getElementById('pid').value.trim());
+document.getElementById('b-gm').onclick=()=>login(document.getElementById('pw').value.trim(),true,'');
+document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter') document.getElementById('b-player').click();});
+document.getElementById('b-seule').onclick=()=>{ document.getElementById('login').style.display='none'; document.getElementById('role').textContent='sans données'; setStatus('Carte seule'); drawDynamic(); renderSide(); };
+
+function startRealtime(){
+  const url=SUPABASE_URL.replace('https://','wss://')+'/realtime/v1/websocket?apikey='+SUPABASE_KEY+'&vsn=1.0.0';
+  let ws,hb;
+  function connect(){
+    try{ ws=new WebSocket(url); }catch(e){ return; }
+    ws.onopen=()=>{ ws.send(JSON.stringify({topic:'realtime:public:fiches:id=eq.'+FICHE_ID,event:'phx_join',payload:{},ref:'cd1'})); hb=setInterval(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'})),25000); };
+    ws.onmessage=e=>{ try{ const m=JSON.parse(e.data); const rec=m.payload&&m.payload.record; if((m.event==='UPDATE'||m.event==='INSERT')&&rec&&rec.id===FICHE_ID){ delete rec.mot_de_passe; delete rec.mot_de_passe_mj; applyRow({...ROW,...rec}); } }catch(x){} };
+    ws.onclose=()=>{ clearInterval(hb); setTimeout(connect,3000); };
+    ws.onerror=()=>ws.close();
+  }
+  connect();
+}
+// Messages de la page parente (environnement.html)
+window.addEventListener('message',e=>{
+  if(!IN_FRAME||e.source!==window.parent) return;
+  const m=e.data||{};
+  if(m.type==='SIFHR_ETAT'&&m.etat&&authenticated){ applyRow({...ROW,etat:m.etat}); }
+  if(m.type==='SIFHR_FOCUS'&&m.lieu){ select(m.lieu,true); }
+});
+
+/* ── Démarrage ── */
+loadLayers(); drawBase(); resetView(); renderSide();
+(function auto(){ const pw=params.get('pw'); if(pw) setTimeout(()=>login(pw,params.get('gm')==='1',params.get('pid')||params.get('player_fiche')||''),30); })();
+</script>
+</body>
+</html>
