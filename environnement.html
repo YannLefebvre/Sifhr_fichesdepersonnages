@@ -1238,6 +1238,13 @@ async function gmReset(){
     <input type="file" accept=".json" style="display:none" onchange="importerSauvegarde(this)">
   </label>
 </div>
+<div id="lieux-bar" style="display:none;align-items:center;justify-content:center;gap:.45rem;flex-wrap:wrap;margin:.6rem auto 0;max-width:900px;font-family:Cinzel,serif;font-size:.7rem;color:var(--ink3);">
+  <span>📍 Lieu</span>
+  <select id="lieux-sel" onchange="envSwitchLieu(this.value)" style="font-family:Cinzel,serif;font-size:.72rem;padding:3px 8px;border:1px solid var(--border,#c8a060);border-radius:4px;background:var(--input-bg,#fff8e8);color:inherit;max-width:280px;"></select>
+  <span id="lieu-nom-joueur" style="display:none;color:var(--ink2,#6a4a20);"></span>
+  <button class="gm-btn safe" id="btn-carte-evts" onclick="CarteEnvPanel.toggle()">🗺️ Carte des événements</button>
+  <button class="gm-btn safe" id="btn-carte-geo" style="display:none" onclick="CarteEnvPanel.openGeo()">🧭 Carte des lieux</button>
+</div>
 <p class="save-info" id="save-msg">Synchronisation en cours…</p>
 
 <!-- ══════════════════════════════════════════
@@ -1358,6 +1365,7 @@ async function gmReset(){
     </div>
     <div class="chrono-evt-box-date" id="chrono-evt-box-date"></div>
     <div class="chrono-evt-box-text" id="chrono-evt-box-text"></div>
+    <div id="chrono-evt-box-doc" style="display:none;margin-top:.7rem;"></div>
     <!-- Éditeur MJ (caché pour les joueurs) -->
     <div id="chrono-evt-editor" style="display:none;margin-top:.8rem;border-top:1px solid rgba(200,134,10,.2);padding-top:.7rem;">
       <input id="chrono-evt-ed-titre" type="text" placeholder="Titre…"
@@ -1377,6 +1385,8 @@ async function gmReset(){
         <label style="font-family:Cinzel,serif;font-size:.65rem;color:#8a6a20;display:flex;align-items:center;gap:.3rem;">
           <input type="checkbox" id="chrono-evt-ed-revele"> Révélé aux joueurs
         </label>
+        <input id="chrono-evt-ed-pour" type="text" placeholder="Seulement pour : identifiants séparés par des virgules (vide = tous)"
+          style="flex:1 1 100%;font-family:'Crimson Text',serif;font-size:.82rem;padding:4px 8px;border:1px solid #c8860a;border-radius:4px;background:#fff8e8;">
         <button class="chrono-btn secondary" onclick="chronoShowCarteSelector()">📍 Importer depuis la carte</button>
         <button class="chrono-btn" onclick="chronoSaveEvt()">💾 Sauvegarder</button>
         <button class="chrono-btn danger" onclick="chronoDeleteEvt()">🗑 Supprimer</button>
@@ -2095,15 +2105,92 @@ function saveState(){
     const msg=document.getElementById('save-msg');
     try{
       const stateCopy=JSON.parse(JSON.stringify(state));
-      const ok=await SB.upsert(FICHE_ID,stateCopy);
+      // Fusion : on relit la ligne pour ne pas effacer ce que d'autres pages y rangent (lieux, événements, galerie…)
+      const remote=await envFetchEtat();
+      if(remote===null){ msg.textContent='Hors-ligne : non sauvegardé';msg.className='save-info error';return; }
+      const merged={...remote,...stateCopy};
+      envSyncLieuActif(merged,stateCopy);
+      const ok=await SB.upsert(FICHE_ID,merged);
+      if(ok) envMetaFrom(merged);
       if(ok){msg.textContent='Sauvegardé ✓';msg.className='save-info saved';setTimeout(()=>{msg.textContent='Synchronisation active';msg.className='save-info';},2000);}
       else{msg.textContent='Erreur de sauvegarde';msg.className='save-info error';}
     }catch(e){msg.textContent='Hors-ligne';msg.className='save-info error';}
   },600);
 }
 
+// ══════════ LIEUX (contrat carte ⇄ environnement v1) ══════════
+const envMeta={lieux:{},lieuActif:'',carteGeo:''};
+const ENV_TOK_ALIAS={bile_jaune:'bile_j',bile_noire:'bile_n'};
+async function envFetchEtat(){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(FICHE_ID)}&select=etat`,{headers:SB.headers});
+    if(!r.ok) return null; const d=await r.json(); const e=d[0]?.etat;
+    return (e&&typeof e==='object')?e:{};
+  }catch(e){ return null; }
+}
+// Recopie l'octogone affiché dans le lieu actif
+function envSyncLieuActif(merged,flat){
+  const k=merged.lieuActif; if(!k||!merged.lieux||!merged.lieux[k]) return;
+  const L={...merged.lieux[k]};
+  ['tokens','scores','pneumato','nineCount','nineThreshold'].forEach(f=>{ if(flat[f]!==undefined) L[f]=JSON.parse(JSON.stringify(flat[f])); });
+  merged.lieux={...merged.lieux,[k]:L};
+}
+function envMetaFrom(e){
+  if(!e||typeof e!=='object') return;
+  if(e.lieux&&typeof e.lieux==='object') envMeta.lieux=e.lieux;
+  if(e.lieuActif!==undefined) envMeta.lieuActif=e.lieuActif;
+  const anyGeo=Object.values(envMeta.lieux).some(l=>l&&l.geo&&l.geo.lat!=null);
+  envMeta.carteGeo=e.carteGeo||(anyGeo?'carte_damas.html':'');
+  envRenderLieuxBar();
+}
+function envRenderLieuxBar(){
+  const bar=document.getElementById('lieux-bar'); if(!bar||!authenticated) return;
+  bar.style.display='flex';
+  const sel=document.getElementById('lieux-sel'), nomJ=document.getElementById('lieu-nom-joueur');
+  const E=Object.entries(envMeta.lieux||{});
+  if(isGM&&E.length>1){
+    sel.style.display=''; nomJ.style.display='none';
+    sel.innerHTML=E.map(([k,l])=>`<option value="${k}"${k===envMeta.lieuActif?' selected':''}>${(l.nom||k).replace(/</g,'&lt;')}</option>`).join('');
+  } else {
+    sel.style.display='none';
+    const l=envMeta.lieux[envMeta.lieuActif]; nomJ.textContent=l?(l.nom||envMeta.lieuActif):''; nomJ.style.display=l?'':'none';
+  }
+  if(!E.length) bar.firstElementChild.style.display='none'; else bar.firstElementChild.style.display='';
+  document.getElementById('btn-carte-geo').style.display=envMeta.carteGeo?'':'none';
+}
+// Changer de lieu actif : l'octogone courant retourne dans son lieu, celui du nouveau lieu s'affiche
+async function envSwitchLieu(key){
+  if(!isGM||!key||key===envMeta.lieuActif) return;
+  const msg=document.getElementById('save-msg');
+  const remote=await envFetchEtat();
+  if(remote===null){ msg.textContent='Hors-ligne : lieu non changé'; msg.className='save-info error'; envRenderLieuxBar(); return; }
+  const flat=JSON.parse(JSON.stringify(state));
+  const merged={...remote,...flat};
+  envSyncLieuActif(merged,flat);
+  const L=merged.lieux&&merged.lieux[key]; if(!L){ envRenderLieuxBar(); return; }
+  const tok={}; Object.entries(L.tokens||{}).forEach(([k,v])=>tok[ENV_TOK_ALIAS[k]||k]=v);
+  ['feu','bile_j','terre','bile_n','eau','flegme','air','sang'].forEach(a=>{ if(!Array.isArray(tok[a])) tok[a]=['empty','empty','empty']; });
+  merged.tokens=tok; merged.scores=JSON.parse(JSON.stringify(L.scores||{}));
+  if(L.pneumato) merged.pneumato=JSON.parse(JSON.stringify(L.pneumato));
+  merged.nineCount=L.nineCount??0; merged.nineThreshold=L.nineThreshold??merged.nineThreshold??5;
+  merged.lieuActif=key;
+  const ok=await SB.upsert(FICHE_ID,merged);
+  if(!ok){ msg.textContent='Erreur : lieu non changé'; msg.className='save-info error'; envRenderLieuxBar(); return; }
+  state.scores={}; applyRemoteState(merged);
+  msg.textContent='Lieu actif : '+(L.nom||key); msg.className='save-info saved';
+  const fr=document.getElementById('carte-env-iframe');
+  try{ fr.contentWindow&&fr.contentWindow.postMessage({type:'SIFHR_ETAT',etat:merged},'*'); }catch(e){}
+}
+window.addEventListener('message',e=>{
+  const fr=document.getElementById('carte-env-iframe');
+  if(!fr||e.source!==fr.contentWindow) return;
+  const m=e.data||{};
+  if(m.type==='SIFHR_LIEU_ACTIF'&&m.fiche===FICHE_ID&&isGM) envSwitchLieu(m.lieu);
+});
+
 // ── Appliquer état distant ──
 function applyRemoteState(saved){
+  envMetaFrom(saved);
   applyingRemote=true;
   try{
     // 1. Mettre à jour les données d'état SANS toucher au rendu encore
@@ -2191,7 +2278,7 @@ async function doLoginWithPw(pw, tryGM, resolvedPid){
       if(row[pwField]!==pw){
         err.textContent=tryGM?'Mot de passe meneur incorrect.':'Mot de passe incorrect.';
       } else {
-        authenticated=true; isGM=tryGM;
+        authenticated=true; isGM=tryGM; window._envPw=pw;
         // Utiliser l'identité vérifiée du joueur si fournie, sinon fallback
         if(resolvedPid) playerId=resolvedPid;
         else playerId=tryGM?'__mj__':'joueur';
@@ -2535,7 +2622,7 @@ const OcculteGen = {
 /* ── Panneau flottant Carte depuis Environnement ── */
 const CarteEnvPanel = {
   _buildUrl(base, sector){
-    const pw=isGM?(state.envFichePwGM||''):(state.envFichePw||'');
+    const pw=window._envPw||(isGM?(state.envFichePwGM||''):(state.envFichePw||''));
     let url=base+'carte.html?fiche='+encodeURIComponent(FICHE_ID);
     if(sector) url+='&sector='+encodeURIComponent(sector);
     if(pw) url+='&pw='+encodeURIComponent(pw)+(isGM?'&gm=1':'');
@@ -2556,7 +2643,7 @@ const CarteEnvPanel = {
       iframe.setAttribute('data-loaded','1');
     }
     ol.classList.add('open');
-    document.getElementById('carte-env-fab').classList.add('open');
+    document.getElementById('carte-env-fab')?.classList.add('open');
   },
   openToSector(key){
     const ol=document.getElementById('carte-env-overlay');
@@ -2565,11 +2652,23 @@ const CarteEnvPanel = {
     iframe.src=this._buildUrl(base, key);
     iframe.setAttribute('data-loaded','1');
     ol.classList.add('open');
-    document.getElementById('carte-env-fab').classList.add('open');
+    document.getElementById('carte-env-fab')?.classList.add('open');
+  },
+  openGeo(){
+    const geo=envMeta.carteGeo; if(!geo) return;
+    const iframe=document.getElementById('carte-env-iframe');
+    const base=new URL(location.href).origin+new URL(location.href).pathname.replace(/[^/]*$/,'');
+    let url=base+geo+'?fiche='+encodeURIComponent(FICHE_ID);
+    if(window._envPw) url+='&pw='+encodeURIComponent(window._envPw)+(isGM?'&gm=1':'');
+    if(!isGM&&playerId&&playerId!=='joueur') url+='&pid='+encodeURIComponent(playerId);
+    iframe.src=url; iframe.setAttribute('data-loaded','geo');
+    document.querySelector('.carte-env-header-title').textContent='🧭 Carte des lieux';
+    document.getElementById('carte-env-overlay').classList.add('open');
   },
   close(){
+    document.querySelector('.carte-env-header-title').textContent="🗺️ Carte de l'environnement";
     document.getElementById('carte-env-overlay').classList.remove('open');
-    document.getElementById('carte-env-fab').classList.remove('open');
+    document.getElementById('carte-env-fab')?.classList.remove('open');
     document.getElementById('carte-env-iframe').removeAttribute('data-loaded');
   }
 };
@@ -3819,7 +3918,7 @@ async function _syncChronologieVersJoueurs(){
       );
       const d=await r.json();
       const etat=JSON.parse(JSON.stringify(d[0]?.etat||{}));
-      etat.chronologie=state.chronologie;
+      etat.chronologie={...state.chronologie,evenements:(state.chronologie.evenements||[]).filter(e=>e.revele&&(!Array.isArray(e.pour)||!e.pour.length||e.pour.includes(ficheId)))};
       await fetch(`${SUPABASE_URL}/rest/v1/fiches?id=eq.${encodeURIComponent(ficheId)}`,{
         method:'PATCH',
         headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
@@ -4234,8 +4333,39 @@ async function chronoAvancerHeure(n){
 // ── État de l'événement en cours d'édition ──
 let _chronoEditEvtId=null;
 
+// ── Aides de jeu (ADJ) liées aux événements de la chronologie ──
+let _chronoDoc=null; // {slot_key, adj, image, aide, destinataires}
+const CHRONO_DOC_FIELDS=['slot_key','adj','image','aide','destinataires'];
+function chronoVisible(e){
+  if(isGM) return true;
+  if(!e.revele) return false;
+  const pour=Array.isArray(e.pour)?e.pour:[];
+  return !pour.length || pour.includes(playerId);
+}
+function chronoEsc(t){ return String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function chronoRenderDoc(d){
+  const box=document.getElementById('chrono-evt-box-doc'); if(!box) return;
+  if(!d||(!d.image&&!d.aide)){ box.style.display='none'; box.innerHTML=''; return; }
+  const u=d.aide||d.image;
+  box.innerHTML=(d.image?`<a href="${chronoEsc(u)}" target="_blank" rel="noopener"><img src="${chronoEsc(d.image)}" alt="${chronoEsc(d.adj||'')}" style="width:100%;max-height:55vh;object-fit:contain;border:1px solid #c8860a;border-radius:4px;background:#f3e6c6;"></a>`:'')
+    +`<a href="${chronoEsc(u)}" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:.45rem;font-family:Cinzel,serif;font-size:.72rem;color:#8a5a10;border:1px solid #c8860a;border-radius:4px;padding:.4rem;text-decoration:none;background:#fff8e8;">📜 Ouvrir le document${d.adj?' '+chronoEsc(d.adj):''}</a>`
+    +(isGM&&Array.isArray(d.destinataires)&&d.destinataires.length?`<div style="font-size:.75rem;color:#8a6a20;margin-top:.3rem;font-style:italic;">Destinataires prévus : ${chronoEsc(d.destinataires.join(', '))}</div>`:'');
+  box.style.display='block';
+}
+// Retrouve l'aide d'un événement créé avant cette version (titre « ADJ3 · … »)
+async function chronoFindDoc(evt){
+  const m=/^\s*(ADJ\d+)/i.exec(evt.titre||''); if(!m&&!evt.slot_key) return null;
+  let cache=window._carteEvtCache;
+  if(!cache){ const evts=await chronoLoadCarteEvts(); cache=window._carteEvtCache=Object.fromEntries(evts); }
+  if(evt.slot_key&&cache[evt.slot_key]) return {slot_key:evt.slot_key,...cache[evt.slot_key]};
+  const hit=Object.entries(cache).find(([,s])=>s&&(s.adj||'').toUpperCase()===m[1].toUpperCase());
+  return hit?{slot_key:hit[0],...hit[1]}:null;
+}
+
 function chronoAddEvt(){
   _chronoEditEvtId='evt_'+Date.now();
+  _chronoDoc=null; chronoRenderDoc(null);
+  const pf=document.getElementById('chrono-evt-ed-pour'); if(pf) pf.value='';
   const cur=state.chronologie?.dateCourante||state.chronologie?.dateDebut||{};
   document.getElementById('chrono-evt-ed-titre').value='';
   chronoSetInputDate('chrono-evt-ed',cur);
@@ -4261,8 +4391,11 @@ async function chronoSaveEvt(){
   };
   const texte=document.getElementById('chrono-evt-ed-texte').value;
   const revele=document.getElementById('chrono-evt-ed-revele').checked;
+  const pour=(document.getElementById('chrono-evt-ed-pour')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
   const existing=state.chronologie.evenements.findIndex(e=>e.id===_chronoEditEvtId);
   const evt={id:_chronoEditEvtId,titre,texte,date,revele,source:'mj'};
+  if(pour.length) evt.pour=pour;
+  if(_chronoDoc) CHRONO_DOC_FIELDS.forEach(k=>{ if(_chronoDoc[k]!=null) evt[k]=_chronoDoc[k]; });
   if(existing>=0) state.chronologie.evenements[existing]=evt;
   else state.chronologie.evenements.push(evt);
   await saveState();
@@ -4284,6 +4417,10 @@ function chronoOpenEvt(evt){
   document.getElementById('chrono-evt-box-title').textContent=evt.titre||'Événement';
   document.getElementById('chrono-evt-box-date').textContent=formatDate(evt.date,true);
   document.getElementById('chrono-evt-box-text').textContent=evt.texte||'';
+  _chronoDoc=(evt.image||evt.aide)?Object.fromEntries(CHRONO_DOC_FIELDS.map(k=>[k,evt[k]])):null;
+  chronoRenderDoc(_chronoDoc);
+  if(!_chronoDoc){ const id=evt.id; chronoFindDoc(evt).then(d=>{ if(d&&_chronoEditEvtId===id){ _chronoDoc=Object.fromEntries(CHRONO_DOC_FIELDS.map(k=>[k,d[k]])); chronoRenderDoc(_chronoDoc); } }).catch(()=>{}); }
+  const pf=document.getElementById('chrono-evt-ed-pour'); if(pf) pf.value=(evt.pour||[]).join(', ');
   if(isGM){
     document.getElementById('chrono-evt-ed-titre').value=evt.titre||'';
     if(evt.date) chronoSetInputDate('chrono-evt-ed',evt.date);
@@ -4297,7 +4434,7 @@ function chronoOpenEvt(evt){
 }
 function chronoCloseEvtOverlay(){
   document.getElementById('chrono-evt-overlay').classList.remove('open');
-  _chronoEditEvtId=null;
+  _chronoEditEvtId=null; _chronoDoc=null; chronoRenderDoc(null);
 }
 
 // ══════════════════════════════════════════════
@@ -4443,7 +4580,7 @@ function chronoRender(){
 
   const evts=(ch.evenements||[]).filter(e=>{
     if(!e.date?.annee) return false;
-    if(!isGM&&!e.revele) return false;
+    if(!chronoVisible(e)) return false;
     if(!isGM){
       if(diffJours(debut,e.date)>diffJours(debut,cur)) return false;
     }
@@ -4639,6 +4776,10 @@ function chronoImportCarteEvt(){
   const slot=window._carteEvtCache?.[sel.value]; if(!slot) return;
   document.getElementById('chrono-evt-ed-titre').value=slot.titre||'';
   document.getElementById('chrono-evt-ed-texte').value=slot.texte||'';
+  _chronoDoc={slot_key:sel.value,adj:slot.adj||null,image:slot.image||null,aide:slot.aide||null,destinataires:slot.destinataires||null};
+  chronoRenderDoc(_chronoDoc);
+  const pf=document.getElementById('chrono-evt-ed-pour');
+  if(pf&&!pf.value&&Array.isArray(slot.destinataires)) pf.value=slot.destinataires.join(', ');
   sel.style.display='none';
 }
 
